@@ -1,0 +1,61 @@
+.asciinema-player
+  .terminal
+    box-sizing: content-box
+    -moz-box-sizing: content-box
+    -webkit-box-sizing: content-box
+    overflow: hidden
+    padding: 0
+    margin: 0px
+    display: block
+    white-space: pre
+    border: 0
+    word-wrap: normal
+    word-break: normal
+    border-radius: 0
+
+    &.cursor-on
+      .line
+        .cursor.visible
+          background-color: #D3D7CF
+
+    .bright
+      font-weight: bold
+
+    .underline
+      text-decoration: underline
+
+    .italic
+      font-style: italic
+
+    .fg8, .fg9, .fg10, .fg11, .fg12, .fg13, .fg14, .fg15
+      font-weight: bold
+
+  &.font-small
+    .terminal
+      +terminal-font
+
+  &.font-medium
+    .terminal
+      +terminal-font-medium
+
+  &.font-big
+    .terminal
+      +terminal-font-big
+
+  // .play-button
+  //   position: absolute
+  //   left: 0
+  //   top: 0
+  //   right: 0
+  //   bottom: 0
+  //   text-align: center
+  //   color: white
+
+  //   .arrow
+  //     width: 100%
+  //     height: 100%
+  //     display: table
+
+  //     span
+  //       vertical-align: middle
+  //       display: table-cell
