@@ -1,5 +1,5 @@
 .asciinema-player {
-  display: block;
+  display: inline-block;
   padding: 0px;
   position: relative;
   box-sizing: content-box;
@@ -25,6 +25,8 @@
   word-wrap: normal;
   word-break: normal;
   border-radius: 0; }
+  .asciinema-player .terminal .line {
+    display: block; }
   .asciinema-player .terminal.cursor-on .line .cursor.visible {
     background-color: #d3d7cf; }
   .asciinema-player .terminal .bright {
