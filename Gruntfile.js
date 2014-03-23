@@ -28,6 +28,16 @@ module.exports = function(grunt) {
       }
     },
 
+    mochaTest: {
+      test: {
+        options: {
+          reporter: 'spec',
+          require: 'coffee-script/register'
+        },
+        src: ['test/**/*.coffee']
+      }
+    },
+
     watch: {
       coffee: {
         files: 'src/**/*.coffee',
@@ -52,6 +62,11 @@ module.exports = function(grunt) {
       cssmin: {
         files: ['dist/css/**/*.css', '!dist/css/**/*.min.css'],
         tasks: ['cssmin']
+      },
+
+      test: {
+        files: ['test/**/*.coffee'],
+        tasks: ['mochaTest']
       }
     }
   });
@@ -60,6 +75,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-coffee');
   grunt.loadNpmTasks('grunt-contrib-sass');
   grunt.loadNpmTasks('grunt-contrib-cssmin');
+  grunt.loadNpmTasks('grunt-mocha-test');
 
   grunt.registerTask('default', ['watch']);
 
