@@ -12,14 +12,10 @@
     word-wrap: normal
     word-break: normal
     border-radius: 0
+    cursor: text
 
     .line
       display: block
-
-    &.cursor-on
-      .line
-        .cursor.visible
-          background-color: #D3D7CF
 
     .bright
       font-weight: bold
@@ -30,35 +26,29 @@
     .italic
       font-style: italic
 
-    .fg8, .fg9, .fg10, .fg11, .fg12, .fg13, .fg14, .fg15
+    .fg-8, .fg-9, .fg-10, .fg-11, .fg-12, .fg-13, .fg-14, .fg-15
       font-weight: bold
 
-  &.font-small
-    .terminal
+    &.font-small
       +terminal-font
+      border: 6px solid black
 
-  &.font-medium
-    .terminal
+    &.font-medium
       +terminal-font-medium
+      border: 9px solid black
 
-  &.font-big
-    .terminal
+    &.font-big
       +terminal-font-big
+      border: 12px solid black
 
-  // .play-button
-  //   position: absolute
-  //   left: 0
-  //   top: 0
-  //   right: 0
-  //   bottom: 0
-  //   text-align: center
-  //   color: white
+    .font-sample
+      display: block
 
-  //   .arrow
-  //     width: 100%
-  //     height: 100%
-  //     display: table
+      &.font-small
+        +terminal-font
 
-  //     span
-  //       vertical-align: middle
-  //       display: table-cell
+      &.font-medium
+        +terminal-font-medium
+
+      &.font-big
+        +terminal-font-big

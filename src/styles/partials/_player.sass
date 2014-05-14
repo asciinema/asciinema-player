@@ -1,16 +1,25 @@
-.asciinema-player
-  display: inline-block
-  padding: 0px
-  position: relative
-  box-sizing: content-box
-  -moz-box-sizing: content-box
-  -webkit-box-sizing: content-box
+=fullscreen
+  background-color: #000
+  width: 100%
+  height: 100%
 
-  &.font-small
-    border: 3px solid black
+.asciinema-player-wrapper
+  text-align: center
 
-  &.font-medium
-    border: 4px solid black
+  &:fullscreen
+    +fullscreen
 
-  &.font-big
-    border: 6px solid black
+  &:-webkit-full-screen
+    +fullscreen
+
+  &:-moz-full-screen
+    +fullscreen
+
+  .asciinema-player
+    text-align: left
+    display: inline-block
+    padding: 0px
+    position: relative
+    box-sizing: content-box
+    -moz-box-sizing: content-box
+    -webkit-box-sizing: content-box

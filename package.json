@@ -16,7 +16,9 @@
     "grunt-contrib-cssmin": "^0.9.0",
     "mocha": "^1.18.2",
     "chai": "^1.9.1",
-    "grunt-mocha-test": "^0.10.0",
-    "coffee-script": "^1.7.1"
+    "coffee-script": "^1.7.1",
+    "grunt-react": "^0.7.0",
+    "react": "^0.10.0",
+    "grunt-mocha": "^0.4.10"
   }
 }

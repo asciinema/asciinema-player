@@ -1,0 +1,171 @@
+.asciinema-player
+  .control-bar
+    width: 100%
+    height: 32px
+    background-color: #000
+    color: #fff
+    border-top: 1px solid #222
+
+    .playback-button
+      display: block
+      float: left
+      cursor: pointer
+      height: 12px
+      width: 12px
+      padding: 10px
+      box-sizing: content-box
+      -webkit-box-sizing: content-box
+      -moz-box-sizing: content-box
+      -o-box-sizing: content-box
+
+      svg
+        height: 12px
+        width: 12px
+
+    .timer
+      display: block
+      float: left
+      width: 50px
+      height: 100%
+      text-align: center
+      font-family: Helvetica, Arial, sans-serif
+      font-size: 11px
+      font-weight: bold
+      line-height: 32px
+
+      span
+        cursor: default
+        display: inline-block
+
+      .time-remaining
+        display: none
+
+      &:hover
+        .time-elapsed
+          display: none
+
+        .time-remaining
+          display: inline
+
+    .progress-bar
+      display: block
+      overflow: hidden
+      height: 100%
+      padding: 0 10px
+
+      .bar
+        display: block
+        cursor: pointer
+        height: 100%
+        padding-top: 14px
+
+        .gutter
+          display: block
+          height: 3px
+          background-color: #333
+
+          span
+            display: inline-block
+            height: 100%
+            background-color: #fff
+            border-radius: 3px
+
+    .fullscreen-button
+      display: block
+      float: right
+      width: 14px
+      height: 14px
+      padding: 9px
+      cursor: pointer
+
+      svg
+        width: 14px
+        height: 14px
+
+  // .hud
+  //   +terminal-font
+
+  //   padding: 0
+  //   margin: 0
+  //   border: 0
+  //   background-color: #000
+  //   opacity: 0
+  //   position: absolute
+  //   left: 0
+  //   right: 0
+  //   bottom: 0
+  //   overflow: hidden
+  //   color: black
+  //   -webkit-transition: opacity 0.2s ease-in-out
+  //   height: 32px
+
+  //   .toggle
+  //     background-color: black
+  //     color: white
+  //     cursor: pointer
+
+  //     .play
+  //       display: inline
+
+  //     .pause
+  //       display: none
+
+  //   .progress
+  //     color: black
+  //     cursor: pointer
+
+  //   .time
+  //     background-color: black
+  //     color: white
+
+  // &:hover
+  //   .hud
+  //     opacity: 1.0
+
+  // &.playing
+  //   .hud
+  //     .toggle
+  //       background-color: $color4
+
+  //       .play
+  //         display: none
+
+  //       .pause
+  //         display: inline
+
+  // &.font-small
+  //   .hud
+  // height: 16px
+
+  // &.font-medium
+  //   .hud
+  //     +terminal-font-medium
+  //     height: 24px
+
+  // &.font-big
+  //   .hud
+  //     +terminal-font-big
+  //     height: 32px
+
+// #play
+//   background-color: transparent !important
+//   pointer-events: none !important
+//   position: absolute !important
+//   top: 0px !important
+//   left: 0px !important
+//   width: 32px !important
+//   height: 32px !important
+//   background-position: initial initial !important
+//   background-repeat: initial initial !important
+
+// #progress
+//   background-color: transparent !important
+//   pointer-events: none !important
+//   position: absolute !important
+//   top: 0px !important
+//   left: 0px !important
+//   width: 260.76599999999996px !important
+//   height: 26px !important
+//   background-position: initial initial !important
+//   background-repeat: initial initial !important
+

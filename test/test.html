@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <title>Example Mocha Test</title>
+    <link rel="stylesheet" href="css/mocha.css" type="text/css" charset="utf-8" />
+</head>
+<body>
+    <!-- Required for browser reporter -->
+    <div id="mocha"></div>
+
+    <!-- mocha -->
+    <script src="js/mocha.js" type="text/javascript" charset="utf-8"></script>
+    <script type="text/javascript" charset="utf-8">
+        // This will be overridden by mocha-helper if you run with grunt
+        mocha.setup('bdd');
+    </script>
+
+    <!-- Include your assertion lib of choice -->
+    <script src="js/chai.js" type="text/javascript" charset="utf-8"></script>
+    <script type="text/javascript" charset="utf-8">
+        // Setup chai
+        var expect = chai.expect;
+    </script>
+
+    <script src="js/es5-shim.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/es5-sham.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/jquery-2.1.0.min.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/react-with-addons.js" type="text/javascript" charset="utf-8"></script>
+    <script type="text/javascript" charset="utf-8">
+      var ReactTestUtils = React.addons.TestUtils;
+    </script>
+
+    <!-- Include anything you want to test -->
+    <script src="../src/scripts/terminal.js" type="text/javascript" charset="utf-8"></script>
+    <script src="../src/scripts/progress_bar.js" type="text/javascript" charset="utf-8"></script>
+    <script src="../src/scripts/clock.js" type="text/javascript" charset="utf-8"></script>
+    <script src="../src/scripts/line.js" type="text/javascript" charset="utf-8"></script>
+    <script src="../src/scripts/part.js" type="text/javascript" charset="utf-8"></script>
+    <script src="../src/scripts/cursor.js" type="text/javascript" charset="utf-8"></script>
+
+    <!-- Test files -->
+    <script src="terminal_test.js" type="text/javascript" charset="utf-8"></script>
+    <script src="line_test.js" type="text/javascript" charset="utf-8"></script>
+    <script src="part_test.js" type="text/javascript" charset="utf-8"></script>
+    <script src="clock_test.js" type="text/javascript" charset="utf-8"></script>
+    <script src="progress_bar_test.js" type="text/javascript" charset="utf-8"></script>
+
+    <!-- run mocha -->
+    <script type="text/javascript" charset="utf-8">
+        // If tests run in a real browser
+        // Can alternatively do a check on window.PHANTOMJS
+        if (navigator.userAgent.indexOf('PhantomJS') < 0) {
+            mocha
+                .run();
+        }
+    </script>
+</body>
+</html>
