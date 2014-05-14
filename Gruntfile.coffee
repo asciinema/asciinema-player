@@ -28,32 +28,6 @@ module.exports = (grunt) ->
       js:
         files:
           "dist/js/<%= pkg.name %>.min.js": ["dist/js/<%= pkg.name %>.js"]
-    react:
-      files:
-        expand: true
-        cwd: 'src/'
-        src: ['**/*.jsx']
-        dest: 'src/'
-        ext: '.js'
-
-    coffee:
-      options:
-        bare: true
-
-      all:
-        files: [{
-          expand: true
-          cwd: 'src/'
-          src: ['**/*.coffee']
-          dest: 'src/'
-          ext: '.js'
-        }, {
-          expand: true
-          cwd: 'test/'
-          src: ['**/*.coffee']
-          dest: 'test/'
-          ext: '.js'
-        }]
 
     mocha:
       test:
@@ -77,14 +51,6 @@ module.exports = (grunt) ->
         ]
         tasks: ["cssmin"]
 
-      react:
-        files: "src/**/*.jsx"
-        tasks: ["react"]
-
-      coffee:
-        files: ["src/**/*.coffee", "test/**/*.coffee"]
-        tasks: ["coffee"]
-
       test:
         files: ["test/**/*_test.js", "test/*.html"]
         tasks: ["mocha"]
@@ -98,8 +64,6 @@ module.exports = (grunt) ->
         tasks: ["themes"]
 
   grunt.loadNpmTasks "grunt-contrib-watch"
-  grunt.loadNpmTasks "grunt-contrib-coffee"
-  grunt.loadNpmTasks "grunt-react"
   grunt.loadNpmTasks "grunt-contrib-sass"
   grunt.loadNpmTasks "grunt-contrib-cssmin"
   grunt.loadNpmTasks "grunt-mocha"
