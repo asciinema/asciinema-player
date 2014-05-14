@@ -19,6 +19,8 @@
     "coffee-script": "^1.7.1",
     "grunt-react": "^0.7.0",
     "react": "^0.10.0",
-    "grunt-mocha": "^0.4.10"
+    "grunt-mocha": "^0.4.10",
+    "grunt-contrib-concat": "^0.4.0",
+    "grunt-contrib-uglify": "^0.4.0"
   }
 }

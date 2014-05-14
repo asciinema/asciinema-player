@@ -19,6 +19,15 @@ module.exports = (grunt) ->
         dest: "dist/css/"
         ext: ".min.css"
 
+    concat:
+      js:
+        src: ["src/scripts/*.js"],
+        dest: "dist/js/<%= pkg.name %>.js"
+
+    uglify:
+      js:
+        files:
+          "dist/js/<%= pkg.name %>.min.js": ["dist/js/<%= pkg.name %>.js"]
     react:
       files:
         expand: true
@@ -94,8 +103,13 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks "grunt-contrib-sass"
   grunt.loadNpmTasks "grunt-contrib-cssmin"
   grunt.loadNpmTasks "grunt-mocha"
+  grunt.loadNpmTasks "grunt-contrib-concat"
+  grunt.loadNpmTasks "grunt-contrib-uglify"
 
-  grunt.registerTask "default", ["watch"]
+  grunt.registerTask "build-styles", ["rgb-colors", "themes", "sass", "cssmin"]
+  grunt.registerTask "build-scripts", ["concat:js", "uglify:js"]
+  grunt.registerTask "build", ["build-styles", "build-scripts"]
+  grunt.registerTask "default", ["build"]
 
   generatePalette = (colors, baseIndex, parentSelector) ->
     css = ""
