@@ -1,6 +1,6 @@
 {
   "name": "asciinema-player",
-  "version": "0.0.1",
+  "version": "1.99.1",
   "description": "",
   "main": "index.js",
   "scripts": {
