@@ -124,5 +124,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.provision "shell", inline: "apt-get install -y nodejs npm && ln -s /usr/bin/nodejs /usr/bin/node"
   config.vm.provision "shell", inline: "echo 'export PATH=$PATH:/vagrant/node_modules/.bin' >>/home/vagrant/.bashrc"
   config.vm.provision "shell", inline: "apt-get install -y ruby && gem install sass"
-  config.vm.provision "shell", inline: "apt-get install -y nginx && ln -nfs /vagrant /usr/share/nginx/html"
+  config.vm.provision "shell", inline: <<EOS
+    set -e
+    apt-get install -y nginx
+    ln -nfs /vagrant /usr/share/nginx/html
+    sed -i 's/sendfile on;/sendfile off;/' /etc/nginx/nginx.conf
+    /etc/init.d/nginx restart
+EOS
+
 end
