@@ -34,7 +34,11 @@
   word-wrap: normal;
   word-break: normal;
   border-radius: 0;
-  cursor: text; }
+  cursor: text;
+  font-family: Consolas, Menlo, "Bitstream Vera Sans Mono", monospace; }
+  .asciinema-player .terminal .line span {
+    padding: 0;
+    display: inline-block; }
   .asciinema-player .terminal .line {
     display: block; }
   .asciinema-player .terminal .bright {
@@ -46,13 +50,10 @@
   .asciinema-player .terminal .fg-8, .asciinema-player .terminal .fg-9, .asciinema-player .terminal .fg-10, .asciinema-player .terminal .fg-11, .asciinema-player .terminal .fg-12, .asciinema-player .terminal .fg-13, .asciinema-player .terminal .fg-14, .asciinema-player .terminal .fg-15 {
     font-weight: bold; }
   .asciinema-player .terminal.font-small {
-    font-family: "Bitstream Vera Sans Mono", monospace;
     font-size: 12px;
     line-height: 16px;
     border: 6px solid black; }
     .asciinema-player .terminal.font-small .line span {
-      padding: 0;
-      display: inline-block;
       height: 16px; }
   .asciinema-player .terminal.font-medium {
     font-size: 18px;
@@ -69,12 +70,9 @@
   .asciinema-player .terminal .font-sample {
     display: block; }
     .asciinema-player .terminal .font-sample.font-small {
-      font-family: "Bitstream Vera Sans Mono", monospace;
       font-size: 12px;
       line-height: 16px; }
       .asciinema-player .terminal .font-sample.font-small .line span {
-        padding: 0;
-        display: inline-block;
         height: 16px; }
     .asciinema-player .terminal .font-sample.font-medium {
       font-size: 18px;
@@ -211,7 +209,6 @@ svg.icon path {
 
   100% {
     z-index: 1; } }
-
 @-moz-keyframes expand {
   0% {
     -moz-transform: scale(0); }
@@ -221,7 +218,6 @@ svg.icon path {
 
   100% {
     z-index: 1; } }
-
 @-o-keyframes expand {
   0% {
     -o-transform: scale(0); }
@@ -231,7 +227,6 @@ svg.icon path {
 
   100% {
     z-index: 1; } }
-
 @keyframes expand {
   0% {
     transform: scale(0); }
@@ -241,7 +236,6 @@ svg.icon path {
 
   100% {
     z-index: 1; } }
-
 .loader {
   position: absolute;
   left: 50%;
