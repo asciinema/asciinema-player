@@ -19,7 +19,9 @@
     position: relative;
     box-sizing: content-box;
     -moz-box-sizing: content-box;
-    -webkit-box-sizing: content-box; }
+    -webkit-box-sizing: content-box;
+    overflow: hidden;
+    max-width: 100%; }
 
 .asciinema-player .terminal {
   box-sizing: content-box;
