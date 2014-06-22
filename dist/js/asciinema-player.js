@@ -914,17 +914,6 @@
     }
   }
 
-  exports.createPlayer = function(parent) {
-    var source = new asciinema.HttpArraySource("/demo/7443-stdout.json", 1);
-    var snapshot = [[["$ # Wow! it must have some special characters to do that.                       ",{}]],[["$ cat -A file                                                                   ",{}]],[["Printing with ^[[1m^[[5m^[[31m^[[4mstyle!^[[m^O$                                ",{}]],[["$ # Hm, well that's not very explanatory...                                     ",{}]],[["$ teseq --color file                                                            ",{}]],[["|",{}],["Printing with ",{"fg":6,"inverse":true}],["|                                                                ",{}]],[[": Esc [ 1 m",{"fg":3}],["                                                                     ",{}]],[["\u0026 SGR: SELECT GRAPHIC RENDITION",{"fg":5}],["                                                 ",{}]],[["\" Set bold text.",{"fg":2}],["                                                                ",{}]],[[": Esc [ 5 m",{"fg":3}],["                                                                     ",{}]],[["\u0026 SGR: SELECT GRAPHIC RENDITION",{"fg":5}],["                                                 ",{}]],[["\" Set slowly blinking text.",{"fg":2}],["                                                     ",{}]],[[": Esc [ 31 m",{"fg":3}],["                                                                    ",{}]],[["\u0026 SGR: SELECT GRAPHIC RENDITION",{"fg":5}],["                                                 ",{}]],[["\" Set foreground color red.",{"fg":2}],["                                                     ",{}]],[[": Esc [ 4 m",{"fg":3}],["                                                                     ",{}]],[["\u0026 SGR: SELECT GRAPHIC RENDITION",{"fg":5}],["                                                 ",{}]],[["\" Set underlined text.",{"fg":2}],["                                                          ",{}]],[["|",{}],["style!",{"fg":6,"inverse":true}],["|                                                                        ",{}]],[[": Esc [ m",{"fg":3}],["                                                                       ",{}]],[["\u0026 SGR: SELECT GRAPHIC RENDITION",{"fg":5}],["                                                 ",{}]],[["\" Clear graphic rendition to defaults.",{"fg":2}],["                                          ",{}]],[[". SI/^O LF/^J",{"fg":1}],["                                                                   ",{}]],[["$ # Oh, cool, now I know how it does it!",{}],[" ",{"inverse":true}],["                                       ",{}]]];
-    var movie = new asciinema.Movie(80, 24, source, snapshot, 52);
-
-    React.renderComponent(
-      asciinema.Player({ autoPlay: false, movie: movie }),
-      parent
-    );
-  }
-
 })(window.asciinema = window.asciinema || {});
 
 (function(exports) {
