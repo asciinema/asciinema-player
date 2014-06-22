@@ -927,7 +927,7 @@
       var width = 100 * this.props.value;
 
       return (
-        dom.span({ className: "progress-bar" },
+        dom.span({ className: "progressbar" },
           dom.span({ className: "bar", ref: "bar", onMouseDown: this.handleClick },
             dom.span({ className: "gutter" },
               dom.span({ style: { width: width + "%" } })

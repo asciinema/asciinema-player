@@ -5,6 +5,12 @@
     background-color: #000
     color: #fff
     border-top: 1px solid #222
+    box-sizing: content-box
+    line-height: 1
+
+    *
+      box-sizing: inherit
+      font-size: 0
 
     .playback-button
       display: block
@@ -13,10 +19,6 @@
       height: 12px
       width: 12px
       padding: 10px
-      box-sizing: content-box
-      -webkit-box-sizing: content-box
-      -moz-box-sizing: content-box
-      -o-box-sizing: content-box
 
       svg
         height: 12px
@@ -36,6 +38,7 @@
       span
         cursor: default
         display: inline-block
+        font-size: inherit
 
       .time-remaining
         display: none
@@ -47,7 +50,7 @@
         .time-remaining
           display: inline
 
-    .progress-bar
+    .progressbar
       display: block
       overflow: hidden
       height: 100%
@@ -57,7 +60,8 @@
         display: block
         cursor: pointer
         height: 100%
-        padding-top: 14px
+        padding-top: 15px
+        font-size: 0
 
         .gutter
           display: block

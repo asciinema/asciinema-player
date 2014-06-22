@@ -95,18 +95,19 @@ svg.icon path {
   height: 32px;
   background-color: black;
   color: white;
-  border-top: 1px solid #222222; }
+  border-top: 1px solid #222222;
+  box-sizing: content-box;
+  line-height: 1; }
+  .asciinema-player .control-bar * {
+    box-sizing: inherit;
+    font-size: 0; }
   .asciinema-player .control-bar .playback-button {
     display: block;
     float: left;
     cursor: pointer;
     height: 12px;
     width: 12px;
-    padding: 10px;
-    box-sizing: content-box;
-    -webkit-box-sizing: content-box;
-    -moz-box-sizing: content-box;
-    -o-box-sizing: content-box; }
+    padding: 10px; }
     .asciinema-player .control-bar .playback-button svg {
       height: 12px;
       width: 12px; }
@@ -122,28 +123,30 @@ svg.icon path {
     line-height: 32px; }
     .asciinema-player .control-bar .timer span {
       cursor: default;
-      display: inline-block; }
+      display: inline-block;
+      font-size: inherit; }
     .asciinema-player .control-bar .timer .time-remaining {
       display: none; }
     .asciinema-player .control-bar .timer:hover .time-elapsed {
       display: none; }
     .asciinema-player .control-bar .timer:hover .time-remaining {
       display: inline; }
-  .asciinema-player .control-bar .progress-bar {
+  .asciinema-player .control-bar .progressbar {
     display: block;
     overflow: hidden;
     height: 100%;
     padding: 0 10px; }
-    .asciinema-player .control-bar .progress-bar .bar {
+    .asciinema-player .control-bar .progressbar .bar {
       display: block;
       cursor: pointer;
       height: 100%;
-      padding-top: 14px; }
-      .asciinema-player .control-bar .progress-bar .bar .gutter {
+      padding-top: 15px;
+      font-size: 0; }
+      .asciinema-player .control-bar .progressbar .bar .gutter {
         display: block;
         height: 3px;
         background-color: #333333; }
-        .asciinema-player .control-bar .progress-bar .bar .gutter span {
+        .asciinema-player .control-bar .progressbar .bar .gutter span {
           display: inline-block;
           height: 100%;
           background-color: white;
