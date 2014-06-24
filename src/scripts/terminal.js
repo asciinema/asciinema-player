@@ -70,22 +70,22 @@
     },
 
     calculateCharDimensions: function() {
-      var $tmpChild = $('<span class="font-sample"><span class="line"><span class="char">M</span></span></span>');
+      var $tmpChild = $('<span class="font-sample"><span class="line"><span class="char">MMMMMMMMMM</span></span></span>');
       this.getDOMNode().appendChild($tmpChild[0]);
       var $span = $tmpChild.find('.char');
 
       var charDimensions = {};
 
       $tmpChild.addClass('font-small');
-      charDimensions.small = { width: $span.width(), height: $tmpChild.height() };
+      charDimensions.small = { width: $span.width() / 10, height: $tmpChild.height() };
 
       $tmpChild.removeClass('font-small');
       $tmpChild.addClass('font-medium');
-      charDimensions.medium = { width: $span.width(), height: $tmpChild.height() };
+      charDimensions.medium = { width: $span.width() / 10, height: $tmpChild.height() };
 
       $tmpChild.removeClass('font-medium');
       $tmpChild.addClass('font-big');
-      charDimensions.big = { width: $span.width(), height: $tmpChild.height() };
+      charDimensions.big = { width: $span.width() / 10, height: $tmpChild.height() };
 
       $tmpChild.remove();
 
