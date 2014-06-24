@@ -28,7 +28,7 @@
     },
 
     className: function() {
-      return "terminal " + this.fontClassName();
+      return "asciinema-terminal " + this.fontClassName();
     },
 
     fontClassName: function() {

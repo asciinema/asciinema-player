@@ -23,7 +23,7 @@
     overflow: hidden;
     max-width: 100%; }
 
-.asciinema-player .terminal {
+.asciinema-terminal {
   box-sizing: content-box;
   -moz-box-sizing: content-box;
   -webkit-box-sizing: content-box;
@@ -38,53 +38,55 @@
   border-radius: 0;
   cursor: text;
   font-family: Consolas, Menlo, "Bitstream Vera Sans Mono", monospace; }
-  .asciinema-player .terminal .line span {
-    padding: 0;
-    display: inline-block; }
-  .asciinema-player .terminal .line {
+  .asciinema-terminal .line {
+    letter-spacing: normal; }
+    .asciinema-terminal .line span {
+      padding: 0;
+      display: inline-block; }
+  .asciinema-terminal .line {
     display: block; }
-  .asciinema-player .terminal .bright {
+  .asciinema-terminal .bright {
     font-weight: bold; }
-  .asciinema-player .terminal .underline {
+  .asciinema-terminal .underline {
     text-decoration: underline; }
-  .asciinema-player .terminal .italic {
+  .asciinema-terminal .italic {
     font-style: italic; }
-  .asciinema-player .terminal .fg-8, .asciinema-player .terminal .fg-9, .asciinema-player .terminal .fg-10, .asciinema-player .terminal .fg-11, .asciinema-player .terminal .fg-12, .asciinema-player .terminal .fg-13, .asciinema-player .terminal .fg-14, .asciinema-player .terminal .fg-15 {
+  .asciinema-terminal .fg-8, .asciinema-terminal .fg-9, .asciinema-terminal .fg-10, .asciinema-terminal .fg-11, .asciinema-terminal .fg-12, .asciinema-terminal .fg-13, .asciinema-terminal .fg-14, .asciinema-terminal .fg-15 {
     font-weight: bold; }
-  .asciinema-player .terminal.font-small {
+  .asciinema-terminal.font-small {
     font-size: 12px;
     line-height: 16px;
     border: 6px solid black; }
-    .asciinema-player .terminal.font-small .line span {
+    .asciinema-terminal.font-small .line span {
       height: 16px; }
-  .asciinema-player .terminal.font-medium {
+  .asciinema-terminal.font-medium {
     font-size: 18px;
     line-height: 24px;
     border: 9px solid black; }
-    .asciinema-player .terminal.font-medium .line span {
+    .asciinema-terminal.font-medium .line span {
       height: 24px; }
-  .asciinema-player .terminal.font-big {
+  .asciinema-terminal.font-big {
     font-size: 24px;
     line-height: 32px;
     border: 12px solid black; }
-    .asciinema-player .terminal.font-big .line span {
+    .asciinema-terminal.font-big .line span {
       height: 32px; }
-  .asciinema-player .terminal .font-sample {
+  .asciinema-terminal .font-sample {
     display: block; }
-    .asciinema-player .terminal .font-sample.font-small {
+    .asciinema-terminal .font-sample.font-small {
       font-size: 12px;
       line-height: 16px; }
-      .asciinema-player .terminal .font-sample.font-small .line span {
+      .asciinema-terminal .font-sample.font-small .line span {
         height: 16px; }
-    .asciinema-player .terminal .font-sample.font-medium {
+    .asciinema-terminal .font-sample.font-medium {
       font-size: 18px;
       line-height: 24px; }
-      .asciinema-player .terminal .font-sample.font-medium .line span {
+      .asciinema-terminal .font-sample.font-medium .line span {
         height: 24px; }
-    .asciinema-player .terminal .font-sample.font-big {
+    .asciinema-terminal .font-sample.font-big {
       font-size: 24px;
       line-height: 32px; }
-      .asciinema-player .terminal .font-sample.font-big .line span {
+      .asciinema-terminal .font-sample.font-big .line span {
         height: 32px; }
 
 svg.icon path {

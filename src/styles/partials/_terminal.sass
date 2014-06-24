@@ -1,56 +1,55 @@
-.asciinema-player
-  .terminal
-    box-sizing: content-box
-    -moz-box-sizing: content-box
-    -webkit-box-sizing: content-box
-    overflow: hidden
-    padding: 0
-    margin: 0px
+.asciinema-terminal
+  box-sizing: content-box
+  -moz-box-sizing: content-box
+  -webkit-box-sizing: content-box
+  overflow: hidden
+  padding: 0
+  margin: 0px
+  display: block
+  white-space: pre
+  border: 0
+  word-wrap: normal
+  word-break: normal
+  border-radius: 0
+  cursor: text
+
+  +terminal-font
+
+  .line
     display: block
-    white-space: pre
-    border: 0
-    word-wrap: normal
-    word-break: normal
-    border-radius: 0
-    cursor: text
 
-    +terminal-font
+  .bright
+    font-weight: bold
 
-    .line
-      display: block
+  .underline
+    text-decoration: underline
 
-    .bright
-      font-weight: bold
+  .italic
+    font-style: italic
 
-    .underline
-      text-decoration: underline
+  .fg-8, .fg-9, .fg-10, .fg-11, .fg-12, .fg-13, .fg-14, .fg-15
+    font-weight: bold
 
-    .italic
-      font-style: italic
+  &.font-small
+    +terminal-font-small
+    border: 6px solid black
 
-    .fg-8, .fg-9, .fg-10, .fg-11, .fg-12, .fg-13, .fg-14, .fg-15
-      font-weight: bold
+  &.font-medium
+    +terminal-font-medium
+    border: 9px solid black
+
+  &.font-big
+    +terminal-font-big
+    border: 12px solid black
+
+  .font-sample
+    display: block
 
     &.font-small
       +terminal-font-small
-      border: 6px solid black
 
     &.font-medium
       +terminal-font-medium
-      border: 9px solid black
 
     &.font-big
       +terminal-font-big
-      border: 12px solid black
-
-    .font-sample
-      display: block
-
-      &.font-small
-        +terminal-font-small
-
-      &.font-medium
-        +terminal-font-medium
-
-      &.font-big
-        +terminal-font-big
