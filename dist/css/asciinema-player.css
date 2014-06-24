@@ -42,7 +42,7 @@
     letter-spacing: normal; }
     .asciinema-terminal .line span {
       padding: 0;
-      display: inline-block; }
+      display: inline; }
   .asciinema-terminal .line {
     display: block; }
   .asciinema-terminal .bright {
