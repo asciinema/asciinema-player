@@ -184,6 +184,8 @@
       time: function() {
         if (controller && controller.time) {
           return controller.time();
+        } else {
+          return 0;
         }
       },
 
