@@ -438,6 +438,7 @@
     var stop;
 
     var playFrom = function(time) {
+      lastFrameTime = now();
       elapsedTime = time;
 
       return play(this.framesFrom(time), this.speed, function(delay, changes) {
