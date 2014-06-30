@@ -75,11 +75,18 @@ module.exports = (grunt) ->
   grunt.registerTask "build", ["build-styles", "build-scripts"]
   grunt.registerTask "default", ["build"]
 
-  generatePalette = (colors, baseIndex, parentSelector) ->
+  generatePalette = (colors, baseIndex, parentSelector, brightIsBold) ->
     css = ""
+
     colors.forEach (color, index) ->
-      css += parentSelector + " .fg-" + (baseIndex + index) + " { color: " + color + " }\n"
-      css += parentSelector + " .bg-" + (baseIndex + index) + " { background-color: " + color + " }\n"
+      index += baseIndex
+
+      extraFgStyles = ""
+      if brightIsBold and index > 7 and index < 16
+        extraFgStyles = "; font-weight: bold"
+
+      css += parentSelector + " .fg-" + index + " { color: " + color + extraFgStyles + " }\n"
+      css += parentSelector + " .bg-" + index + " { background-color: " + color + " }\n"
 
     css
 
@@ -107,6 +114,6 @@ module.exports = (grunt) ->
       contents += ".asciinema-theme-" + name + " .bg-fg {"
       contents += "background-color: " + theme.foreground
       contents += "}\n"
-      contents += generatePalette(theme.palette, 0, ".asciinema-theme-" + name)
+      contents += generatePalette(theme.palette, 0, ".asciinema-theme-" + name, theme.bright_is_bold)
       outputPath = "dist/css/themes/" + name + ".css"
       grunt.file.write outputPath, contents
