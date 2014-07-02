@@ -92,7 +92,7 @@ module.exports = (grunt) ->
 
   grunt.registerTask "rgb-colors", "...", ->
     colors = grunt.file.readJSON("src/colors/rgb.json")
-    contents = generatePalette(colors, 16, ".asciinema-player")
+    contents = generatePalette(colors, 16, ".asciinema-terminal")
     grunt.file.write "src/styles/partials/_rgb.scss", contents
 
   path = require("path")
