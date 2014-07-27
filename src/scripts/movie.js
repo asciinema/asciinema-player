@@ -8,15 +8,29 @@
     this.totalTime = totalTime;
   }
 
-  Movie.prototype.start = function(onFrame, onFinish, setTime, setLoading) {
+  Movie.prototype.start = function(onFrame, onFinish, setTime, setLoading, loop) {
     var timeIntervalId;
 
+    var controller = {};
+
     function onSourceFinish() {
-      clearInterval(timeIntervalId);
-      onFinish();
+      if (loop) {
+        start();
+      } else {
+        clearInterval(timeIntervalId);
+        onFinish();
+      }
     }
 
-    var controller = this.source.start(onFrame, onSourceFinish, setLoading);
+    function start() {
+      var ctrl = this.source.start(onFrame, onSourceFinish, setLoading);
+
+      for (prop in ctrl) {
+        controller[prop] = ctrl[prop];
+      }
+    }
+
+    start();
 
     timeIntervalId = setInterval(function() {
       setTime(controller.time());

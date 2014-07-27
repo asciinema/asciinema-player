@@ -2,7 +2,7 @@
   var dom = React.DOM;
 
   exports.Player = React.createClass({ displayName: 'Player',
-    // props: movie, autoPlay, fontSize, theme
+    // props: movie, autoPlay, fontSize, theme, loop
 
     getInitialState: function() {
       var lines = this.props.movie.snapshot || [];
@@ -117,7 +117,7 @@
 
     start: function() {
       this.setState({ state: 'playing' });
-      this.movieController = this.props.movie.start(this.onFrame, this.onFinish, this.setTime, this.setLoading);
+      this.movieController = this.props.movie.start(this.onFrame, this.onFinish, this.setTime, this.setLoading, this.props.loop);
     },
 
     onFinish: function() {
