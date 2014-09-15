@@ -11,6 +11,7 @@
   Movie.prototype.start = function(onFrame, onFinish, setTime, setLoading, loop) {
     var timeIntervalId;
 
+    var source = this.source;
     var controller = {};
 
     function onSourceFinish() {
@@ -23,7 +24,7 @@
     }
 
     function start() {
-      var ctrl = this.source.start(onFrame, onSourceFinish, setLoading);
+      var ctrl = source.start(onFrame, onSourceFinish, setLoading);
 
       for (prop in ctrl) {
         controller[prop] = ctrl[prop];
