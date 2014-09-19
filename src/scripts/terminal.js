@@ -38,8 +38,8 @@
     style: function() {
       if (this.state.charDimensions) {
         var dimensions = this.state.charDimensions[this.props.fontSize];
-        var width  = this.props.width  * dimensions.width  + 'px';
-        var height = this.props.height * dimensions.height + 'px';
+        var width  = Math.ceil(this.props.width  * dimensions.width)  + 'px';
+        var height = Math.ceil(this.props.height * dimensions.height) + 'px';
         return { width: width, height: height };
       } else {
         return {};
