@@ -4,6 +4,10 @@ module.exports = (grunt) ->
     pkg: grunt.file.readJSON("package.json")
 
     sass:
+      options:
+        loadPath: [
+          "src/styles"
+        ]
       dist:
         files:
           "dist/css/<%= pkg.name %>.css": "src/styles/main.sass"
