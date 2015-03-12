@@ -21,8 +21,8 @@
         dom.div({ className: "start-prompt", onClick: this.onClick },
           dom.div({ className: "play-button" },
             dom.div(null,
-              dom.span(null, 
-                asciinema.PlayIcon()
+              dom.span(null,
+                asciinema.LogoPlayIcon()
               )
             )
           )
