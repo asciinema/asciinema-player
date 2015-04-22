@@ -234,7 +234,7 @@
     }
   }
 
-  exports.CreatePlayer = function(parentId, width, height, dataUrl, totalTime, options) {
+  exports.CreatePlayer = function(parent, width, height, dataUrl, totalTime, options) {
     var options = options || {};
     var source = new asciinema.HttpArraySource(dataUrl, options.speed);
     var movie = new asciinema.Movie(width, height, source, options.snapshot, totalTime);
@@ -247,7 +247,7 @@
         fontSize: options.fontSize,
         theme: options.theme
       }),
-      document.getElementById(parentId)
+      parent
     );
   }
 
