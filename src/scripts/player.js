@@ -1,7 +1,7 @@
 (function(exports) {
   var dom = React.DOM;
 
-  exports.Player = React.createClass({ displayName: 'Player',
+  var Player = React.createClass({ displayName: 'Player',
     // props: movie, autoPlay, fontSize, theme, loop
 
     getInitialState: function() {
@@ -232,6 +232,23 @@
         dest.cursor[key] = src.cursor[key];
       }
     }
+  }
+
+  exports.CreatePlayer = function(parentId, width, height, dataUrl, totalTime, options) {
+    var options = options || {};
+    var source = new asciinema.HttpArraySource(dataUrl, options.speed);
+    var movie = new asciinema.Movie(width, height, source, options.snapshot, totalTime);
+
+    React.renderComponent(
+      Player({
+        movie: movie,
+        autoPlay: options.autoPlay,
+        loop: options.loop,
+        fontSize: options.fontSize,
+        theme: options.theme
+      }),
+      document.getElementById(parentId)
+    );
   }
 
 })(window.asciinema = window.asciinema || {});
