@@ -216,6 +216,8 @@
     },
   });
 
+  exports.Player = Player;
+
   exports.mergeChanges = function(dest, src) {
     if (src.lines) {
       dest.lines = dest.lines || {};
