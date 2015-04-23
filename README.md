@@ -57,6 +57,8 @@ For example:
 </script>
 ```
 
+See [demo/index.html](demo/index.html) for another example.
+
 ### Note on `dataUrl`
 
 The player doesn't directly support [asciicast v1
