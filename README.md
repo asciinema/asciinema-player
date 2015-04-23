@@ -72,6 +72,12 @@ To obtain proper JSON file that can be used as `dataUrl` argument you can either
 * convert asciicast v1 format (as produced by `asciinema rec file.json`) with
   [this script](https://gist.github.com/sickill/504474702dd18c7dc0ec).
 
+## TODO
+
+* update player to directly support asciicast v1 format
+* use browserify to produce single js file with all dependencies included
+* polish build process
+
 ## Contributing
 
 If you want to contribute to this project check out
