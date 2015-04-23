@@ -1,9 +1,26 @@
+$inactive-controls: #bbb
+$active-controls: #fff
+
 .asciinema-player
+  &:hover
+    .control-bar
+      color: $active-controls
+
+      .progressbar
+        .bar
+          .gutter
+            span
+              background-color: $active-controls
+
+      svg.icon
+        path
+          fill: $active-controls
+
   .control-bar
     width: 100%
     height: 32px
     background-color: #000
-    color: #fff
+    color: $inactive-controls
     border-top: 1px solid #222
     box-sizing: content-box
     line-height: 1
@@ -11,6 +28,10 @@
     *
       box-sizing: inherit
       font-size: 0
+
+    svg.icon
+      path
+        fill: $inactive-controls
 
     .playback-button
       display: block
@@ -71,7 +92,7 @@
           span
             display: inline-block
             height: 100%
-            background-color: #fff
+            background-color: $inactive-controls
             border-radius: 3px
 
     .fullscreen-button
