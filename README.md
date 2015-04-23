@@ -38,13 +38,13 @@ where:
 * `parent` - DOM element into which the player should be inserted as a child,
 * `width` - width of the player (number of terminal columns),
 * `height` - height of the player (number of terminal lines),
-* `dataUrl` - URL of the data file which contains animation frames,
-* `duration` - total duration of the recording,
+* `dataUrl` - URL of the data file which contains animation frames (also see note below),
+* `duration` - total duration of the recording in seconds,
 * `options` - (optional) object with any of the following properties:
   * `speed` - playback speed, default: 1,
-  * `snapshot` - snapshot (preview) to display, default: [],
-  * `autoPlay` - set to true if playback should start automatically, default: false,
-  * `loop` - set to true if playback should be looped, default: false,
+  * `snapshot` - snapshot (preview) to display, default: `[]`,
+  * `autoPlay` - set to true if playback should start automatically, default: `false`,
+  * `loop` - set to true if playback should be looped, default: `false`,
   * `fontSize` - size of terminal font: `'small'`, `'medium'` or `'big'`; default: `'small'`,
   * `theme` - terminal theme: `'tango'`, `'solarized-dark'` or `'solarized-light'`; default: `'tango'`
 
@@ -56,6 +56,21 @@ For example:
   asciinema.CreatePlayer(document.getElementById('player-container'), 80, 24, '/frames.json', 123.0, { speed: 2 })
 </script>
 ```
+
+### Note on `dataUrl`
+
+The player doesn't directly support [asciicast v1
+format](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v1.md).
+It's rather dumb at the moment. asciinema.org does heavy lifting and converts
+v1 format JSON into a simple format (series of line diffs) understandable by
+the player.
+
+To obtain proper JSON file that can be used as `dataUrl` argument you can either:
+
+* download it from asciinema.org (look it up in specific recording's HTML page
+  source: https://asciinema.org/a/190),
+* convert asciicast v1 format (as produced by `asciinema rec file.json`) with
+  [this script](https://gist.github.com/sickill/504474702dd18c7dc0ec).
 
 ## Contributing
 
