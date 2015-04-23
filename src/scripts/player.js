@@ -52,8 +52,10 @@
 
     onKeyPress: function(event) {
       if (event.which == 32) { // space bar
+        event.preventDefault();
         this.togglePlay();
       } else if (event.which == 102) { // 'f'
+        event.preventDefault();
         this.toggleFullscreen();
       }
     },
