@@ -42,7 +42,7 @@
         icon = asciinema.ExpandIcon();
       }
 
-      return dom.span({ className: "fullscreen-button", onClick: this.handleClick }, icon);
+      return dom.span({ className: "fullscreen-button", onClick: this.handleClick, title: 'Toggle full screen mode (f)' }, icon);
     },
 
     handleClick: function(event) {
