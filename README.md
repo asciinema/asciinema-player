@@ -77,6 +77,7 @@ To obtain proper JSON file that can be used as `dataUrl` argument you can either
 ## TODO
 
 * update player to directly support asciicast v1 format
+* add hooks (start/pause/resume/finish)
 * use browserify to produce single js file with all dependencies included
 * polish build process
 
