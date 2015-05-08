@@ -28,14 +28,15 @@
   [:span {:class-name (part-class-name (last p))} (first p)])
 
 (defn line [parts]
-  [:span.line (map (fn [p] ^{:key p} [part p]) parts)])
+  [:span.line (map (fn [p] [part p]) parts)])
+  ;[:span.line (map (fn [p] ^{:key p} [part p]) parts)])
 
 (defn click! [e]
   (swap! app-state update-in [:clicks] inc))
 
 (defn terminal [lines]
   [:pre.asciinema-terminal.font-small
-   (map (fn [l] ^{:key l} [line l]) lines)])
+   (map (fn [l] [line l]) lines)])
 
 (defn control-bar []
   [:div.controlbar (str "xbar ")])
