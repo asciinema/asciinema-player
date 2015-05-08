@@ -1,0 +1,66 @@
+.asciinema-terminal {
+  box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  -webkit-box-sizing: content-box;
+  overflow: hidden;
+  padding: 0;
+  margin: 0px;
+  display: block;
+  white-space: pre;
+  border: 0;
+  word-wrap: normal;
+  word-break: normal;
+  border-radius: 0;
+  border-style: solid;
+  cursor: text;
+
+  .terminal-font;
+
+  .line {
+    display: block;
+    width: 200%;
+  }
+
+  .bright {
+    font-weight: bold;
+  }
+
+  .underline {
+    text-decoration: underline;
+  }
+
+  .italic {
+    font-style: italic;
+  }
+
+  &.font-small {
+    .terminal-font-small;
+    border-width: 6px;
+  }
+
+  &.font-medium {
+    .terminal-font-medium;
+    border-width: 9px;
+  }
+
+  &.font-big {
+    .terminal-font-big;
+    border-width: 12px;
+  }
+
+  .font-sample {
+    display: block;
+
+    &.font-small {
+      .terminal-font-small;
+    }
+
+    &.font-medium {
+      .terminal-font-medium;
+    }
+
+    &.font-big {
+      .terminal-font-big;
+    }
+  }
+}
