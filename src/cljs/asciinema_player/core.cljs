@@ -48,4 +48,5 @@
 ; (swap! player-state assoc :theme "solarized-dark")
 ; (swap! player-state assoc :theme "solarized-light")
 ; (swap! player-state assoc :theme "tango")
+(swap! player-state assoc :theme "seti")
 ; (swap! player-state assoc :font-size "small")
