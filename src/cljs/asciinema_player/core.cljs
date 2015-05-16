@@ -27,6 +27,8 @@
   (atom {:width 80
    :height 24
    :duration 148.297910690308
+   :font-size "small"
+   :theme "solarized-dark"
    :lines snapshot }))
 
 (defonce player-state (make-player-state snapshot))
@@ -42,3 +44,8 @@
 (defn main []
   (create-player player-state (. js/document (getElementById "app"))))
 ; (reagent/render-component [player p1] (. js/document (getElementById "app"))))
+
+; (swap! player-state assoc :theme "solarized-dark")
+; (swap! player-state assoc :theme "solarized-light")
+; (swap! player-state assoc :theme "tango")
+; (swap! player-state assoc :font-size "small")

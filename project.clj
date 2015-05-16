@@ -34,7 +34,7 @@
                                         :pretty-print  true}}}}
 
 
-  :less {:source-paths ["src/less"]
+  :less {:source-paths ["src/less/main"]
          :target-path "resources/public/css"}
 
   :profiles {:dev {:source-paths ["env/dev/clj"]

@@ -33,3 +33,8 @@
   (is (= (v/part-class-name {:bg 2 :inverse true}) "fg-2 bg-fg"))
   (is (= (v/part-class-name {:fg 1 :bg 2 :inverse true}) "fg-2 bg-1"))
   (is (= (v/part-class-name {:fg 1 :bg 2 :bold true :blink true :inverse true}) "fg-10 bg-9 bright")))
+
+(deftest format-time-test
+  (is (= (v/format-time 0.88) "00:00"))
+  (is (= (v/format-time 1.00) "00:01"))
+  (is (= (v/format-time 133.95) "02:13")))
