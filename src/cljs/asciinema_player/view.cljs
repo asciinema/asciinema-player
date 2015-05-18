@@ -115,5 +115,5 @@
   [:div.asciinema-player-wrapper {:tab-index -1}
    [:div.asciinema-player {:class-name (player-class-name (:theme @state)) :style (player-style)}
     [terminal (:font-size @state) (:lines @state)]
-    [control-bar false false 24 32]
+    [control-bar false false 24 (:duration @state)]
     #_ [start-overlay]]])
