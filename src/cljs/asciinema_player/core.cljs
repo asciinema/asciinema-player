@@ -28,6 +28,7 @@
 (defn make-player-state [snapshot]
   (atom {:width 80
    :height 24
+   :current-time 23
    :duration 148.297910690308
    :font-size "small"
    :theme "solarized-dark"
@@ -59,4 +60,5 @@
 ; (swap! player-state assoc :theme "solarized-light")
 ; (swap! player-state assoc :theme "tango")
 (swap! player-state assoc :theme "seti")
+; (swap! player-state assoc :current-time 45)
 ; (swap! player-state assoc :font-size "small")

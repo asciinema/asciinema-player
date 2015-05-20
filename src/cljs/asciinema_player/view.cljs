@@ -151,5 +151,5 @@
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press}
       [:div.asciinema-player {:class-name class-name :style (player-style)}
         [terminal font-size lines]
-        [control-bar playing? false 24 duration events]
+        [control-bar playing? false current-time duration events]
         #_ [start-overlay]]]))
