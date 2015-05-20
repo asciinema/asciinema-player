@@ -141,9 +141,15 @@
       (go (>! events [event-name])))))
 
 (defn player [state events]
-  (let [on-key-press (partial process-key-event events)]
+  (let [on-key-press (partial process-key-event events)
+        class-name (player-class-name (:theme @state))
+        font-size (:font-size @state)
+        lines (:lines @state)
+        playing? (:playing @state)
+        current-time (:current-time @state)
+        duration (:duration @state)]
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press}
-    [:div.asciinema-player {:class-name (player-class-name (:theme @state)) :style (player-style)}
-      [terminal (:font-size @state) (:lines @state)]
-      [control-bar (:playing @state) false 24 (:duration @state) events]
-      #_ [start-overlay]]]))
+      [:div.asciinema-player {:class-name class-name :style (player-style)}
+        [terminal font-size lines]
+        [control-bar playing? false 24 duration events]
+        #_ [start-overlay]]]))
