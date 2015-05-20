@@ -1,5 +1,7 @@
 (ns asciinema-player.view
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [cljs.core.async :refer [>!]])
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (defn fg-color [fg bold?]
   (if (and fg bold? (< fg 8)) (+ fg 8) fg))
@@ -56,8 +58,11 @@
     [:path {:d "M5,5 L5,0 L3,2 L1,0 L0,1 L2,3 L0,5 Z"}]
     [:path {:d "M7,7 L12,7 L10,9 L12,11 L11,12 L9,10 L7,12 Z"}]])
 
-(defn playback-control-button [playing?]
-  [:span.playback-button [(if playing? pause-icon play-icon)]])
+(defn playback-control-button [playing? events]
+  (let [on-click (fn [e]
+                   (.preventDefault e)
+                   (go (>! events [:toggle-play])))]
+    [:span.playback-button {:on-click on-click} [(if playing? pause-icon play-icon)]]))
 
 (defn pad2 [number]
   (if (< number 10) (str "0" number) number))
@@ -78,21 +83,37 @@
     [:span.time-elapsed (elapsed-time current-time)]
     [:span.time-remaining (remaining-time current-time total-time)]])
 
-(defn fullscreen-toggle-button [fullscreen?]
-  [:span.fullscreen-button [(if fullscreen? shrink-icon expand-icon)]])
+(defn fullscreen-toggle-button [fullscreen? events]
+  (let [on-click (fn [e]
+                   (.preventDefault e)
+                   (go (>! events [:toggle-fullscreen])))]
+    [:span.fullscreen-button {:on-click on-click} [(if fullscreen? shrink-icon expand-icon)]]))
 
-(defn progress-bar [progress]
-  [:span.progressbar
-    [:span.bar
-      [:span.gutter
-        [:span {:style {:width (str (* 100 progress) "%")}}]]]])
+(defn element-local-mouse-x [e]
+  (let [rect (.getBoundingClientRect (.-currentTarget e))]
+    (- (.-clientX e) (.-left rect))))
 
-(defn control-bar [playing? fullscreen? current-time total-time]
+(defn adjust-to-range [value min-value max-value]
+  (.min js/Math max-value (.max js/Math value min-value)))
+
+(defn progress-bar [progress events]
+  (let [on-mouse-down (fn [e]
+                        (.preventDefault e)
+                        (let [bar-width (.-offsetWidth (.-currentTarget e))
+                              mouse-x (adjust-to-range (element-local-mouse-x e) 0 bar-width)
+                              position (/ mouse-x bar-width)]
+                          (go (>! events [:seek position]))))]
+    [:span.progressbar
+      [:span.bar {:on-mouse-down on-mouse-down}
+        [:span.gutter
+          [:span {:style {:width (str (* 100 progress) "%")}}]]]]))
+
+(defn control-bar [playing? fullscreen? current-time total-time events]
   [:div.control-bar
-    [playback-control-button playing?]
+    [playback-control-button playing? events]
     [timer current-time total-time]
-    [fullscreen-toggle-button fullscreen?]
-    [progress-bar (/ current-time total-time)]])
+    [fullscreen-toggle-button fullscreen? events]
+    [progress-bar (/ current-time total-time) events]])
 
 (defn start-overlay []
   [:div.start-prompt
@@ -110,9 +131,9 @@
 
 (defn player-style [] {})
 
-(defn player [state on-click]
+(defn player [state events]
   [:div.asciinema-player-wrapper {:tab-index -1}
    [:div.asciinema-player {:class-name (player-class-name (:theme @state)) :style (player-style)}
     [terminal (:font-size @state) (:lines @state)]
-    [control-bar false false 24 (:duration @state)]
+    [control-bar (:playing @state) false 24 (:duration @state) events]
     #_ [start-overlay]]])
