@@ -131,9 +131,19 @@
 
 (defn player-style [] {})
 
+(defn process-key-event [events e]
+  (if-let [event-name (case (.-which e)
+                        32 :toggle-play
+                        102 :toggle-fullscreen
+                        nil)]
+    (do
+      (.preventDefault e)
+      (go (>! events [event-name])))))
+
 (defn player [state events]
-  [:div.asciinema-player-wrapper {:tab-index -1}
-   [:div.asciinema-player {:class-name (player-class-name (:theme @state)) :style (player-style)}
-    [terminal (:font-size @state) (:lines @state)]
-    [control-bar (:playing @state) false 24 (:duration @state) events]
-    #_ [start-overlay]]])
+  (let [on-key-press (partial process-key-event events)]
+    [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press}
+    [:div.asciinema-player {:class-name (player-class-name (:theme @state)) :style (player-style)}
+      [terminal (:font-size @state) (:lines @state)]
+      [control-bar (:playing @state) false 24 (:duration @state) events]
+      #_ [start-overlay]]]))
