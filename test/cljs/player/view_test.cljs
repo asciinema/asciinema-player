@@ -38,3 +38,8 @@
   (is (= (v/format-time 0.88) "00:00"))
   (is (= (v/format-time 1.00) "00:01"))
   (is (= (v/format-time 133.95) "02:13")))
+
+(deftest adjust-to-range-test
+  (is (= (v/adjust-to-range 1 -5 5) 1))
+  (is (= (v/adjust-to-range -6 -5 5) -5))
+  (is (= (v/adjust-to-range 6 -5 5) 5)))
