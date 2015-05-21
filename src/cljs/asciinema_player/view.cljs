@@ -50,13 +50,13 @@
 
 (defn expand-icon []
   [:svg {:version "1.1" :xmlns "http://www.w3.org/2000/svg" :view-box "0 0 12 12" :class-name "icon"}
-    [:path {:d "M0,0 L5,0 L3,2 L5,4 L4,5 L2,3 L0,5 Z"}]
-    [:path {:d "M12,12 L12,7 L10,9 L8,7 L7,8 L9,10 L7,12 Z"}]])
+    [:path {:d "M12,0 L7,0 L9,2 L7,4 L8,5 L10,3 L12,5 Z"}]
+    [:path {:d "M0,12 L0,7 L2,9 L4,7 L5,8 L3,10 L5,12 Z"}]])
 
 (defn shrink-icon []
   [:svg {:version "1.1" :xmlns "http://www.w3.org/2000/svg" :view-box "0 0 12 12" :class-name "icon"}
-    [:path {:d "M5,5 L5,0 L3,2 L1,0 L0,1 L2,3 L0,5 Z"}]
-    [:path {:d "M7,7 L12,7 L10,9 L12,11 L11,12 L9,10 L7,12 Z"}]])
+    [:path {:d "M7,5 L7,0 L9,2 L11,0 L12,1 L10,3 L12,5 Z"}]
+    [:path {:d "M5,7 L0,7 L2,9 L0,11 L1,12 L3,10 L5,12 Z"}]])
 
 (defn playback-control-button [playing? events]
   (let [on-click (fn [e]
