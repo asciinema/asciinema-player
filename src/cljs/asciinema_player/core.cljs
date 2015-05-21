@@ -42,13 +42,22 @@
 (defn toggle-play [state]
   (swap! state update-in [:playing] not))
 
+(defn toggle-fullscreen [state]
+  (swap! state update-in [:fullscreen] not))
+
+(defn seek [state position]
+  (swap! state assoc :current-time (* position (:duration @state))))
+
 (defn create-player [state dom-node]
   (let [events (chan)]
     (go
       (loop []
-        (let [event (<! events)]
-          (toggle-play state)
-          (print event))
+        (let [[event & args] (<! events)]
+          (print event)
+          (case event
+            :toggle-play (toggle-play state)
+            :toggle-fullscreen (toggle-fullscreen state)
+            :seek (seek state (first args))))
         (recur)))
     (reagent/render-component [view/player state events] dom-node)
     (clj->js {:toggle (fn [] toggle-play state)})))

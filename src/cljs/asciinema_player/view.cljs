@@ -146,10 +146,11 @@
         font-size (:font-size @state)
         lines (:lines @state)
         playing? (:playing @state)
+        fullscreen? (:fullscreen @state)
         current-time (:current-time @state)
         duration (:duration @state)]
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press}
       [:div.asciinema-player {:class-name class-name :style (player-style)}
         [terminal font-size lines]
-        [control-bar playing? false current-time duration events]
+        [control-bar playing? fullscreen? current-time duration events]
         #_ [start-overlay]]]))
