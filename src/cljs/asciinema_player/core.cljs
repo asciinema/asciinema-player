@@ -16,9 +16,6 @@
 (defn toggle-play [state]
   (swap! state update-in [:playing] not))
 
-(defn toggle-fullscreen [state]
-  (swap! state update-in [:fullscreen] not))
-
 (defn seek [state position]
   (swap! state assoc :current-time (* position (:duration @state))))
 
@@ -27,10 +24,8 @@
     (go
       (loop []
         (let [[event & args] (<! events)]
-          (print event)
           (case event
             :toggle-play (toggle-play state)
-            :toggle-fullscreen (toggle-fullscreen state)
             :seek (seek state (first args))))
         (recur)))
     (reagent/render-component [view/player state events] dom-node)

@@ -83,11 +83,16 @@
     [:span.time-elapsed (elapsed-time current-time)]
     [:span.time-remaining (remaining-time current-time total-time)]])
 
-(defn fullscreen-toggle-button [fullscreen? events]
+(defn toggle-fullscreen [dom-node]
+  (if (.-webkitIsFullScreen js/document)
+    (.webkitExitFullscreen js/document)
+    (.webkitRequestFullScreen dom-node)))
+
+(defn fullscreen-toggle-button []
   (let [on-click (fn [e]
                    (.preventDefault e)
-                   (go (>! events [:toggle-fullscreen])))]
-    [:span.fullscreen-button {:on-click on-click} [(if fullscreen? shrink-icon expand-icon)]]))
+                   (toggle-fullscreen (-> e .-currentTarget .-parentNode .-parentNode .-parentNode)))]
+    [:span.fullscreen-button {:on-click on-click} [expand-icon] [shrink-icon]]))
 
 (defn element-local-mouse-x [e]
   (let [rect (.getBoundingClientRect (.-currentTarget e))]
@@ -108,11 +113,11 @@
         [:span.gutter
           [:span {:style {:width (str (* 100 progress) "%")}}]]]]))
 
-(defn control-bar [playing? fullscreen? current-time total-time events]
+(defn control-bar [playing? current-time total-time events]
   [:div.control-bar
     [playback-control-button playing? events]
     [timer current-time total-time]
-    [fullscreen-toggle-button fullscreen? events]
+    [fullscreen-toggle-button]
     [progress-bar (/ current-time total-time) events]])
 
 (defn start-overlay []
@@ -138,7 +143,9 @@
                         nil)]
     (do
       (.preventDefault e)
-      (go (>! events [event-name])))))
+      (if (= event-name :toggle-fullscreen)
+        (toggle-fullscreen (.-currentTarget e))
+        (go (>! events [event-name]))))))
 
 (defn player [state events]
   (let [on-key-press (partial process-key-event events)
@@ -146,11 +153,10 @@
         font-size (:font-size @state)
         lines (:lines @state)
         playing? (:playing @state)
-        fullscreen? (:fullscreen @state)
         current-time (:current-time @state)
         duration (:duration @state)]
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press}
       [:div.asciinema-player {:class-name class-name :style (player-style)}
         [terminal font-size lines]
-        [control-bar playing? fullscreen? current-time duration events]
+        [control-bar playing? current-time duration events]
         #_ [start-overlay]]]))

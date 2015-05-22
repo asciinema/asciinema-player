@@ -130,6 +130,28 @@
         width: 14px;
         height: 14px;
       }
+
+      svg:first-child {
+        display: inline;
+      }
+
+      svg:last-child {
+        display: none;
+      }
+    }
+  }
+}
+
+.asciinema-player-wrapper {
+  &:-webkit-full-screen {
+    .fullscreen-button {
+      svg:first-child {
+        display: none;
+      }
+
+      svg:last-child {
+        display: inline;
+      }
     }
   }
 }
