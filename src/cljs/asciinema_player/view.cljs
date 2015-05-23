@@ -1,6 +1,7 @@
 (ns asciinema-player.view
   (:require [clojure.string :as string]
-            [cljs.core.async :refer [>!]])
+            [cljs.core.async :refer [>!]]
+            [asciinema-player.fullscreen :as fullscreen])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (defn fg-color [fg bold?]
@@ -83,15 +84,10 @@
     [:span.time-elapsed (elapsed-time current-time)]
     [:span.time-remaining (remaining-time current-time total-time)]])
 
-(defn toggle-fullscreen [dom-node]
-  (if (.-webkitIsFullScreen js/document)
-    (.webkitExitFullscreen js/document)
-    (.webkitRequestFullScreen dom-node)))
-
 (defn fullscreen-toggle-button []
   (let [on-click (fn [e]
                    (.preventDefault e)
-                   (toggle-fullscreen (-> e .-currentTarget .-parentNode .-parentNode .-parentNode)))]
+                   (fullscreen/toggle (-> e .-currentTarget .-parentNode .-parentNode .-parentNode)))]
     [:span.fullscreen-button {:on-click on-click} [expand-icon] [shrink-icon]]))
 
 (defn element-local-mouse-x [e]
@@ -144,7 +140,7 @@
     (do
       (.preventDefault e)
       (if (= event-name :toggle-fullscreen)
-        (toggle-fullscreen (.-currentTarget e))
+        (fullscreen/toggle (.-currentTarget e))
         (go (>! events [event-name]))))))
 
 (defn player [state events]
