@@ -7,12 +7,14 @@
   (let [options ["fullscreenElement"
                  "mozFullScreenElement"
                  "webkitFullscreenElement"
+                 "webkitCurrentFullScreenElement"
                  "msFullscreenElement"]]
   (some (comp boolean document-prop) options)))
 
 (defn request [dom-node]
   (let [options ["requestFullscreen"
                  "webkitRequestFullscreen"
+                 "webkitRequestFullScreen"
                  "mozRequestFullScreen"
                  "msRequestFullscreen"]
         f (some (partial aget dom-node) options)]
@@ -22,6 +24,7 @@
 (defn exit []
   (let [options ["exitFullscreen"
                  "webkitExitFullscreen"
+                 "webkitCancelFullScreen"
                  "mozCancelFullScreen"
                  "msExitFullscreen"]
         f (some document-prop options)]
