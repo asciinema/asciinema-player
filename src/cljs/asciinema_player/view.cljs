@@ -144,15 +144,11 @@
         (go (>! events [event-name]))))))
 
 (defn player [state events]
-  (let [on-key-press (partial process-key-event events)
-        class-name (player-class-name (:theme @state))
-        font-size (:font-size @state)
-        lines (:lines @state)
-        playing? (:playing @state)
-        current-time (:current-time @state)
-        duration (:duration @state)]
+  (let [{:keys [font-size theme lines playing current-time duration]} @state
+        on-key-press (partial process-key-event events)
+        class-name (player-class-name theme)]
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press}
       [:div.asciinema-player {:class-name class-name :style (player-style)}
         [terminal font-size lines]
-        [control-bar playing? current-time duration events]
+        [control-bar playing current-time duration events]
         #_ [start-overlay]]]))
