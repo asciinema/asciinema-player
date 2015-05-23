@@ -2,8 +2,12 @@
   background-color: #000;
   width: 100%;
   height: 100%;
+  display: -webkit-flex;
+  display: -ms-flexbox;
   display: flex;
+  -webkit-justify-content: center;
   justify-content: center;
+  -webkit-align-items: center;
   align-items: center;
 }
 
@@ -20,6 +24,10 @@
   }
 
   &:-moz-full-screen {
+    .fullscreen;
+  }
+
+  &:-ms-fullscreen {
     .fullscreen;
   }
 

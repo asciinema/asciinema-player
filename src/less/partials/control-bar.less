@@ -143,7 +143,7 @@
 }
 
 .asciinema-player-wrapper {
-  &:-webkit-full-screen {
+  .in-fullscreen() {
     .fullscreen-button {
       svg:first-child {
         display: none;
@@ -153,5 +153,21 @@
         display: inline;
       }
     }
+  }
+
+  &:fullscreen {
+    .in-fullscreen;
+  }
+
+  &:-webkit-full-screen {
+    .in-fullscreen;
+  }
+
+  &:-moz-full-screen {
+    .in-fullscreen;
+  }
+
+  &:-ms-fullscreen {
+    .in-fullscreen;
   }
 }
