@@ -34,10 +34,15 @@
   (is (= (v/part-class-name {:fg 1 :bg 2 :inverse true}) "fg-2 bg-1"))
   (is (= (v/part-class-name {:fg 1 :bg 2 :bold true :blink true :inverse true}) "fg-10 bg-9 bright")))
 
-(deftest format-time-test
-  (is (= (v/format-time 0.88) "00:00"))
-  (is (= (v/format-time 1.00) "00:01"))
-  (is (= (v/format-time 133.95) "02:13")))
+(deftest elapsed-time-test
+  (is (= (v/elapsed-time 0.88) "00:00"))
+  (is (= (v/elapsed-time 1.00) "00:01"))
+  (is (= (v/elapsed-time 133.95) "02:13")))
+
+(deftest remaining-time-test
+  (is (= (v/remaining-time 0.88 3) "-00:02"))
+  (is (= (v/remaining-time 1.00 3) "-00:02"))
+  (is (= (v/remaining-time 133.95 134) "-00:00")))
 
 (deftest adjust-to-range-test
   (is (= (v/adjust-to-range 1 -5 5) 1))
