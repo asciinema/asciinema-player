@@ -20,6 +20,15 @@
 (defn seek [state position]
   (swap! state assoc :current-time (* position (:duration @state))))
 
+(defn new-position [current-time total-time offset]
+  (/ (util/adjust-to-range (+ current-time offset) 0 total-time) total-time))
+
+(defn current-time [state]
+  (:current-time @state))
+
+(defn total-time [state]
+  (:duration @state))
+
 (defn create-player-with-state [state dom-node]
   (let [events (chan)]
     (go
@@ -27,7 +36,9 @@
         (let [[event & args] (<! events)]
           (case event
             :toggle-play (toggle-play state)
-            :seek (seek state (first args))))
+            :seek (seek state (first args))
+            :rewind (seek state (new-position (current-time state) (total-time state) -5))
+            :fast-forward (seek state (new-position (current-time state) (total-time state) 5))))
         (recur)))
     (reagent/render-component [view/player state events] dom-node)
     (clj->js {:toggle (fn [] toggle-play state)})))

@@ -130,22 +130,32 @@
 
 (defn player-style [] {})
 
-(defn process-key-event [events e]
-  (if-let [event-name (case (.-which e)
-                        32 :toggle-play
-                        102 :toggle-fullscreen
-                        nil)]
+(defn handle-event [f events dom-event]
+  (if-let [[event-name & args :as event] (f dom-event)]
     (do
-      (.preventDefault e)
-      (if (= event-name :toggle-fullscreen)
-        (fullscreen/toggle (.-currentTarget e))
-        (go (>! events [event-name]))))))
+      (.preventDefault dom-event)
+      (if (= event-name :toggle-fullscreen) ; has to be processed synchronously
+        (fullscreen/toggle (.-currentTarget dom-event))
+        (go (>! events event))))))
+
+(defn map-key-press [dom-event]
+  (case (.-key dom-event)
+    " " [:toggle-play]
+    "f" [:toggle-fullscreen]
+    nil))
+
+(defn map-key-down [dom-event]
+  (case (.-which dom-event)
+    37 [:rewind]
+    39 [:fast-forward]
+    nil))
 
 (defn player [state events]
   (let [{:keys [font-size theme lines playing current-time duration]} @state
-        on-key-press (partial process-key-event events)
+        on-key-press (partial handle-event map-key-press events)
+        on-key-down (partial handle-event map-key-down events)
         class-name (player-class-name theme)]
-    [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press}
+    [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down}
       [:div.asciinema-player {:class-name class-name :style (player-style)}
         [terminal font-size lines]
         [control-bar playing current-time duration events]
