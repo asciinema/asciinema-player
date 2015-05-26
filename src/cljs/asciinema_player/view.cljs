@@ -142,6 +142,16 @@
   (case (.-key dom-event)
     " " [:toggle-play]
     "f" [:toggle-fullscreen]
+    "0" [:seek 0.0]
+    "1" [:seek 0.1]
+    "2" [:seek 0.2]
+    "3" [:seek 0.3]
+    "4" [:seek 0.4]
+    "5" [:seek 0.5]
+    "6" [:seek 0.6]
+    "7" [:seek 0.7]
+    "8" [:seek 0.8]
+    "9" [:seek 0.9]
     nil))
 
 (defn map-key-down [dom-event]
