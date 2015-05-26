@@ -8,18 +8,16 @@
                  [org.clojure/clojurescript "0.0-3211"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [cljsjs/react "0.13.1-0"]
-                 [reagent "0.5.0"]
-                 [figwheel "0.2.1-SNAPSHOT"]
-                 [figwheel-sidecar "0.2.1-SNAPSHOT"]]
+                 [reagent "0.5.0"]]
 
   :plugins [[lein-cljsbuild "1.0.6"]
-            [lein-figwheel "0.2.1-SNAPSHOT"]
+            [lein-figwheel "0.3.3"]
             [lein-less "1.7.2"]]
 
   :min-lein-version "2.5.0"
 
   :cljsbuild {:builds {:dev {:source-paths ["src/cljs" "env/dev/cljs"]
-                             :figwheel true
+                             :figwheel {:on-jsload "asciinema-player.main/reload"}
                              :compiler {:output-to     "resources/public/js/dev.js"
                                         :output-dir    "resources/public/js/dev"
                                         :source-map    true
