@@ -22,7 +22,7 @@
                              :figwheel true
                              :compiler {:output-to     "resources/public/js/dev.js"
                                         :output-dir    "resources/public/js/dev"
-                                        :source-map    "resources/public/js/dev.js.map"
+                                        :source-map    true
                                         :preamble      ["react/react.min.js"]
                                         :optimizations :none
                                         :pretty-print  true}}
