@@ -43,8 +43,3 @@
   (is (= (v/remaining-time 0.88 3) "-00:02"))
   (is (= (v/remaining-time 1.00 3) "-00:02"))
   (is (= (v/remaining-time 133.95 134) "-00:00")))
-
-(deftest adjust-to-range-test
-  (is (= (v/adjust-to-range 1 -5 5) 1))
-  (is (= (v/adjust-to-range -6 -5 5) -5))
-  (is (= (v/adjust-to-range 6 -5 5) 5)))

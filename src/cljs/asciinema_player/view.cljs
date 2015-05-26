@@ -1,6 +1,7 @@
 (ns asciinema-player.view
   (:require [clojure.string :as string]
             [cljs.core.async :refer [>!]]
+            [asciinema-player.util :as util]
             [asciinema-player.fullscreen :as fullscreen])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
@@ -94,14 +95,11 @@
   (let [rect (.getBoundingClientRect (.-currentTarget e))]
     (- (.-clientX e) (.-left rect))))
 
-(defn adjust-to-range [value min-value max-value]
-  (.min js/Math max-value (.max js/Math value min-value)))
-
 (defn progress-bar [progress events]
   (let [on-mouse-down (fn [e]
                         (.preventDefault e)
                         (let [bar-width (.-offsetWidth (.-currentTarget e))
-                              mouse-x (adjust-to-range (element-local-mouse-x e) 0 bar-width)
+                              mouse-x (util/adjust-to-range (element-local-mouse-x e) 0 bar-width)
                               position (/ mouse-x bar-width)]
                           (go (>! events [:seek position]))))]
     [:span.progressbar

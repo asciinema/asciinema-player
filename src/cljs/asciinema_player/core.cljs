@@ -1,6 +1,7 @@
 (ns asciinema-player.core
   (:require [reagent.core :as reagent :refer [atom]]
             [asciinema-player.view :as view]
+            [asciinema-player.util :as util]
             [cljs.core.async :refer [chan >! <!]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
