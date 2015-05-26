@@ -18,32 +18,27 @@
 
   :min-lein-version "2.5.0"
 
-  :cljsbuild {:builds {:dev {:source-paths ["src/cljs"]
+  :cljsbuild {:builds {:dev {:source-paths ["src/cljs" "env/dev/cljs"]
                              :figwheel true
                              :compiler {:output-to     "resources/public/js/app.js"
                                         :output-dir    "resources/public/js/out"
                                         :source-map    "resources/public/js/out.js.map"
                                         :preamble      ["react/react.min.js"]
                                         :optimizations :none
-                                        :pretty-print  true}}}}
+                                        :pretty-print  true}}
+                       :test {:source-paths ["src/cljs" "test/cljs"]
+                              :notify-command ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]
+                              :compiler {:output-to     "resources/public/js/app_test.js"
+                                         :output-dir    "resources/public/js/test"
+                                         :source-map    "resources/public/js/test.js.map"
+                                         :preamble      ["react/react.min.js"]
+                                         :optimizations :whitespace
+                                         :pretty-print  false}}}
+              :test-commands {"test" ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]}}
 
   :figwheel {:http-server-root "public"
              :server-port 3449
              :css-dirs ["resources/public/css"]}
 
   :less {:source-paths ["src/less/main"]
-         :target-path "resources/public/css"}
-
-  :profiles {:dev {:source-paths ["env/dev/clj"]
-                   :test-paths ["test/clj"]
-
-                   :cljsbuild {:test-commands { "test" ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"] }
-                               :builds {:dev {:source-paths ["env/dev/cljs"]}
-                                        :test {:source-paths ["src/cljs" "test/cljs"]
-                                               :notify-command ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]
-                                               :compiler {:output-to     "resources/public/js/app_test.js"
-                                                          :output-dir    "resources/public/js/test"
-                                                          :source-map    "resources/public/js/test.js.map"
-                                                          :preamble      ["react/react.min.js"]
-                                                          :optimizations :whitespace
-                                                          :pretty-print  false}}}}}})
+         :target-path "resources/public/css"})
