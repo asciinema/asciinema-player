@@ -23,7 +23,6 @@
                              :compiler {:output-to     "resources/public/js/dev.js"
                                         :output-dir    "resources/public/js/dev"
                                         :source-map    true
-                                        :preamble      ["react/react.min.js"]
                                         :optimizations :none
                                         :pretty-print  true}}
                        :test {:source-paths ["src/cljs" "test"]
@@ -31,7 +30,6 @@
                               :compiler {:output-to     "resources/public/js/test.js"
                                          :output-dir    "resources/public/js/test"
                                          :source-map    "resources/public/js/test.js.map"
-                                         :preamble      ["react/react.min.js"]
                                          :optimizations :whitespace
                                          :pretty-print  false}}}
               :test-commands {"test" ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]}}
