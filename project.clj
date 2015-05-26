@@ -14,7 +14,9 @@
             [lein-figwheel "0.3.3"]
             [lein-less "1.7.2"]]
 
-  :min-lein-version "2.5.0"
+  :min-lein-version "2.4.0"
+
+  :hooks [leiningen.cljsbuild]
 
   :cljsbuild {:builds {:dev {:source-paths ["src/cljs" "env/dev/cljs"]
                              :figwheel {:on-jsload "asciinema-player.main/reload"}
