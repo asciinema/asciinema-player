@@ -26,7 +26,7 @@
                                         :preamble      ["react/react.min.js"]
                                         :optimizations :none
                                         :pretty-print  true}}
-                       :test {:source-paths ["src/cljs" "test/cljs"]
+                       :test {:source-paths ["src/cljs" "test"]
                               :notify-command ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]
                               :compiler {:output-to     "resources/public/js/test.js"
                                          :output-dir    "resources/public/js/test"

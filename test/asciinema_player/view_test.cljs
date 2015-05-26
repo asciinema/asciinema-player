@@ -1,7 +1,7 @@
-(ns player.view-test
+(ns asciinema-player.view-test
   (:require-macros [cljs.test :refer (is deftest testing)])
   (:require [cljs.test]
-            [player.view :as v]))
+            [asciinema-player.view :as v]))
 
 (deftest fg-color-test
   (is (= (v/fg-color nil false) nil))
