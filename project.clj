@@ -12,7 +12,7 @@
                  [figwheel "0.2.1-SNAPSHOT"]
                  [figwheel-sidecar "0.2.1-SNAPSHOT"]]
 
-  :plugins [[lein-cljsbuild "1.0.5"]
+  :plugins [[lein-cljsbuild "1.0.6"]
             [lein-figwheel "0.2.1-SNAPSHOT"]
             [lein-less "1.7.2"]]
 
