@@ -20,15 +20,15 @@
 
   :cljsbuild {:builds {:dev {:source-paths ["src/cljs" "env/dev/cljs"]
                              :figwheel true
-                             :compiler {:output-to     "resources/public/js/app.js"
-                                        :output-dir    "resources/public/js/out"
-                                        :source-map    "resources/public/js/out.js.map"
+                             :compiler {:output-to     "resources/public/js/dev.js"
+                                        :output-dir    "resources/public/js/dev"
+                                        :source-map    "resources/public/js/dev.js.map"
                                         :preamble      ["react/react.min.js"]
                                         :optimizations :none
                                         :pretty-print  true}}
                        :test {:source-paths ["src/cljs" "test/cljs"]
                               :notify-command ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]
-                              :compiler {:output-to     "resources/public/js/app_test.js"
+                              :compiler {:output-to     "resources/public/js/test.js"
                                          :output-dir    "resources/public/js/test"
                                          :source-map    "resources/public/js/test.js.map"
                                          :preamble      ["react/react.min.js"]
