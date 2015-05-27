@@ -12,7 +12,7 @@
 
   :plugins [[lein-cljsbuild "1.0.6"]
             [lein-figwheel "0.3.3"]
-            [lein-less "1.7.2"]]
+            [lein-less "1.7.5"]]
 
   :min-lein-version "2.4.0"
 
