@@ -29,16 +29,18 @@
 (defn total-time [state]
   (:duration @state))
 
+(defn process-event [[event-name & args] state]
+  (case event-name
+    :toggle-play (toggle-play state)
+    :seek (seek state (first args))
+    :rewind (seek state (new-position (current-time state) (total-time state) -5))
+    :fast-forward (seek state (new-position (current-time state) (total-time state) 5))))
+
 (defn create-player-with-state [state dom-node]
   (let [events (chan)]
     (go
       (loop []
-        (let [[event & args] (<! events)]
-          (case event
-            :toggle-play (toggle-play state)
-            :seek (seek state (first args))
-            :rewind (seek state (new-position (current-time state) (total-time state) -5))
-            :fast-forward (seek state (new-position (current-time state) (total-time state) 5))))
+        (process-event (<! events) state)
         (recur)))
     (reagent/render-component [view/player state events] dom-node)
     (clj->js {:toggle (fn [] toggle-play state)})))
