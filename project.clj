@@ -38,5 +38,5 @@
              :server-port 3449
              :css-dirs ["resources/public/css"]}
 
-  :less {:source-paths ["src/less/main"]
+  :less {:source-paths ["src/less"]
          :target-path "resources/public/css"})
