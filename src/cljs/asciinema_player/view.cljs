@@ -131,7 +131,7 @@
 (defn player-style [] {})
 
 (defn handle-event [f events dom-event]
-  (if-let [[event-name & args :as event] (f dom-event)]
+  (if-let [[event-name & _ :as event] (f dom-event)]
     (do
       (.preventDefault dom-event)
       (if (= event-name :toggle-fullscreen) ; has to be processed synchronously
