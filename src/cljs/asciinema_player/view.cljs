@@ -131,12 +131,11 @@
 (defn player-style [] {})
 
 (defn handle-event [f events dom-event]
-  (if-let [[event-name & _ :as event] (f dom-event)]
-    (do
-      (.preventDefault dom-event)
-      (if (= event-name :toggle-fullscreen) ; has to be processed synchronously
-        (fullscreen/toggle (.-currentTarget dom-event))
-        (go (>! events event))))))
+  (when-let [[event-name & _ :as event] (f dom-event)]
+    (.preventDefault dom-event)
+    (if (= event-name :toggle-fullscreen) ; has to be processed synchronously
+      (fullscreen/toggle (.-currentTarget dom-event))
+      (go (>! events event)))))
 
 (defn map-key-press [dom-event]
   (case (.-key dom-event)
