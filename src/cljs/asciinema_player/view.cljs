@@ -92,13 +92,13 @@
     [:span.fullscreen-button {:on-click on-click} [expand-icon] [shrink-icon]]))
 
 (defn element-local-mouse-x [e]
-  (let [rect (.getBoundingClientRect (.-currentTarget e))]
+  (let [rect (-> e .-currentTarget .getBoundingClientRect)]
     (- (.-clientX e) (.-left rect))))
 
 (defn progress-bar [progress events]
   (let [on-mouse-down (fn [e]
                         (.preventDefault e)
-                        (let [bar-width (.-offsetWidth (.-currentTarget e))
+                        (let [bar-width (-> e .-currentTarget .-offsetWidth)
                               mouse-x (util/adjust-to-range (element-local-mouse-x e) 0 bar-width)
                               position (/ mouse-x bar-width)]
                           (go (>! events [:seek position]))))]
