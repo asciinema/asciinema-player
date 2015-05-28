@@ -14,8 +14,8 @@
 (defn part-class-name [{:keys [fg bg bold blink underline inverse]}]
   (let [fg (fg-color fg bold)
         bg (bg-color bg blink)
-        final-fg (if inverse (if bg bg "bg") fg)
-        final-bg (if inverse (if fg fg "fg") bg)
+        final-fg (if inverse (or bg "bg") fg)
+        final-bg (if inverse (or fg "fg") bg)
         fg-class (if final-fg (str "fg-" final-fg))
         bg-class (if final-bg (str "bg-" final-bg))
         bold-class (if bold "bright")
