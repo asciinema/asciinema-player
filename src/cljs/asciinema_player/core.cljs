@@ -40,7 +40,8 @@
   (let [events (chan)]
     (go
       (loop []
-        (process-event (<! events) state)
-        (recur)))
+        (when-let [event (<! events)]
+          (process-event event state)
+          (recur))))
     (reagent/render-component [view/player state events] dom-node)
     (clj->js {:toggle (fn [] toggle-play state)})))
