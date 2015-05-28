@@ -1,6 +1,7 @@
 (ns asciinema-player.test-runner
   (:require
    [cljs.test :refer-macros [run-tests]]
+   [asciinema-player.core-test]
    [asciinema-player.view-test]
    [asciinema-player.util-test]))
 
@@ -14,5 +15,6 @@
 
 (defn runner []
   (run-tests
+    'asciinema-player.core-test
     'asciinema-player.view-test
     'asciinema-player.util-test))
