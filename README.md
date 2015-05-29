@@ -2,28 +2,34 @@
 
 This is the player used on asciinema.org.
 
+## Development
+
+The project uses [leiningen](http://leiningen.org/) for development and build
+related tasks so make sure you have it installed.
+
+TODO: clarify this all
+
+    line figwheel
+    line less auto
+    line cljsbuild auto test
+
 ## Building
 
-To build run:
+To build Javascript and CSS bundles run:
 
-    $ node_modules/.bin/grunt
+    lein cljsbuild once
+    lein less once
 
 ## Usage
+
+TODO: update this section to reflect new namespace
 
 Add player script, it's dependencies and stylesheets to the page:
 
 ```html
 <head>
-  <link rel="stylesheet" type="text/css" href="/dist/css/asciinema-player.css" />
-  <link rel="stylesheet" type="text/css" href="/dist/css/themes/tango.css" />
-  <link rel="stylesheet" type="text/css" href="/dist/css/themes/solarized-dark.css" />
-  <link rel="stylesheet" type="text/css" href="/dist/css/themes/solarized-light.css" />
-
-  <script src="http://fb.me/react-0.10.0.js"></script>
-  <script src="http://fb.me/JSXTransformer-0.10.0.js"></script>
-  <script src="http://code.jquery.com/jquery-1.10.0.min.js"></script>
-  <script src="/src/scripts/vendor/screenfull.js"></script>
-  <script src="/dist/js/asciinema-player.js"></script>
+  <link rel="stylesheet" type="text/css" href="/asciinema-player.css" />
+  <script src="/asciinema-player.js"></script>
 </head>
 ```
 
@@ -57,8 +63,6 @@ For example:
 </script>
 ```
 
-See [demo/index.html](demo/index.html) for another example.
-
 ### Note on `dataUrl`
 
 The player doesn't directly support [asciicast v1
@@ -78,8 +82,6 @@ To obtain proper JSON file that can be used as `dataUrl` argument you can either
 
 * update player to directly support asciicast v1 format
 * add hooks (start/pause/resume/finish)
-* use browserify to produce single js file with all dependencies included
-* polish build process
 
 ## Contributing
 
