@@ -20,7 +20,7 @@
         bg-class (if final-bg (str "bg-" final-bg))
         bold-class (if bold "bright")
         underline-class (if underline "underline")
-        classes (filter boolean [fg-class bg-class bold-class underline-class])]
+        classes (remove nil? [fg-class bg-class bold-class underline-class])]
     (string/join " " classes)))
 
 (defn part [p]
