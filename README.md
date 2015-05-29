@@ -9,9 +9,9 @@ related tasks so make sure you have it installed.
 
 TODO: clarify this all
 
-    line figwheel
-    line less auto
-    line cljsbuild auto test
+    lein figwheel
+    lein less auto
+    lein cljsbuild auto test
 
 ## Building
 
