@@ -31,7 +31,7 @@
                               :compiler {:output-to     "resources/public/js/test.js"
                                          :output-dir    "resources/public/js/test"
                                          :source-map    "resources/public/js/test.js.map"
-                                         :optimizations :whitespace
+                                         :optimizations :none
                                          :pretty-print  false}}}
               :test-commands {"test" ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]}}
 
