@@ -9,7 +9,7 @@ related tasks so make sure you have it installed.
 
 TODO: clarify this all
 
-    lein figwheel
+    lein figwheel dev
     lein less auto
     lein cljsbuild auto test
 
