@@ -37,11 +37,11 @@
     :fast-forward (seek state (new-position (current-time state) (total-time state) 5))))
 
 (defn create-player-with-state [state dom-node]
-  (let [events (chan)]
-    (go
-      (loop []
-        (when-let [event (<! events)]
-          (process-event event state)
-          (recur))))
-    (reagent/render-component [view/player state events] dom-node)
+  (let [events (chan)
+        dispatch (fn [event] (go (>! events event)))]
+    (go-loop []
+      (when-let [event (<! events)]
+        (process-event event state)
+        (recur)))
+    (reagent/render-component [view/player state dispatch] dom-node)
     (clj->js {:toggle (fn [] toggle-play state)})))

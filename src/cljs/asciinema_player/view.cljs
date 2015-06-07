@@ -2,8 +2,7 @@
   (:require [clojure.string :as string]
             [cljs.core.async :refer [>!]]
             [asciinema-player.util :as util]
-            [asciinema-player.fullscreen :as fullscreen])
-  (:require-macros [cljs.core.async.macros :refer [go]]))
+            [asciinema-player.fullscreen :as fullscreen]))
 
 (defn fg-color [fg bold?]
   (if (and fg bold? (< fg 8)) (+ fg 8) fg))
@@ -60,10 +59,10 @@
     [:path {:d "M7,5 L7,0 L9,2 L11,0 L12,1 L10,3 L12,5 Z"}]
     [:path {:d "M5,7 L0,7 L2,9 L0,11 L1,12 L3,10 L5,12 Z"}]])
 
-(defn playback-control-button [playing? events]
+(defn playback-control-button [playing? dispatch]
   (let [on-click (fn [e]
                    (.preventDefault e)
-                   (go (>! events [:toggle-play])))]
+                   (dispatch [:toggle-play]))]
     [:span.playback-button {:on-click on-click} [(if playing? pause-icon play-icon)]]))
 
 (defn pad2 [number]
@@ -95,31 +94,34 @@
   (let [rect (-> e .-currentTarget .getBoundingClientRect)]
     (- (.-clientX e) (.-left rect))))
 
-(defn progress-bar [progress events]
+(defn progress-bar [progress dispatch]
   (let [on-mouse-down (fn [e]
                         (.preventDefault e)
                         (let [bar-width (-> e .-currentTarget .-offsetWidth)
                               mouse-x (util/adjust-to-range (element-local-mouse-x e) 0 bar-width)
                               position (/ mouse-x bar-width)]
-                          (go (>! events [:seek position]))))]
+                          (dispatch [:seek position])))]
     [:span.progressbar
       [:span.bar {:on-mouse-down on-mouse-down}
         [:span.gutter
           [:span {:style {:width (str (* 100 progress) "%")}}]]]]))
 
-(defn control-bar [playing? current-time total-time events]
+(defn control-bar [playing? current-time total-time dispatch]
   [:div.control-bar
-    [playback-control-button playing? events]
+    [playback-control-button playing? dispatch]
     [timer current-time total-time]
     [fullscreen-toggle-button]
-    [progress-bar (/ current-time total-time) events]])
+    [progress-bar (/ current-time total-time) dispatch]])
 
-(defn start-overlay []
-  [:div.start-prompt
-    [:div.play-button
-      [:div
-        [:span
-          [logo-play-icon]]]]])
+(defn start-overlay [dispatch]
+  (let [on-click (fn [e]
+                   (.preventDefault e)
+                   (dispatch [:toggle-play]))]
+    [:div.start-prompt {:on-click on-click}
+      [:div.play-button
+        [:div
+          [:span
+            [logo-play-icon]]]]]))
 
 (defn loading-overlay []
   [:div.loading
@@ -130,12 +132,12 @@
 
 (defn player-style [] {})
 
-(defn handle-event [f events dom-event]
+(defn handle-event [f dispatch dom-event]
   (when-let [[event-name & _ :as event] (f dom-event)]
     (.preventDefault dom-event)
     (if (= event-name :toggle-fullscreen) ; has to be processed synchronously
       (fullscreen/toggle (.-currentTarget dom-event))
-      (go (>! events event)))))
+      (dispatch event))))
 
 (defn map-key-press [dom-event]
   (case (.-key dom-event)
@@ -159,13 +161,15 @@
     39 [:fast-forward]
     nil))
 
-(defn player [state events]
-  (let [{:keys [font-size theme lines playing current-time duration]} @state
-        on-key-press (partial handle-event map-key-press events)
-        on-key-down (partial handle-event map-key-down events)
-        class-name (player-class-name theme)]
+(defn player [state dispatch]
+  (let [{:keys [font-size theme lines stop-playback-chan current-time duration loading frames]} @state
+        on-key-press (partial handle-event map-key-press dispatch)
+        on-key-down (partial handle-event map-key-down dispatch)
+        class-name (player-class-name theme)
+        playing? (boolean stop-playback-chan)]
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down}
       [:div.asciinema-player {:class-name class-name :style (player-style)}
         [terminal font-size lines]
-        [control-bar playing current-time duration events]
-        #_ [start-overlay]]]))
+        [control-bar playing? current-time duration dispatch]
+        (when-not (or loading frames) [start-overlay dispatch])
+        (when loading [loading-overlay])]]))
