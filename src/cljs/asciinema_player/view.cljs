@@ -1,6 +1,5 @@
 (ns asciinema-player.view
   (:require [clojure.string :as string]
-            [cljs.core.async :refer [>!]]
             [asciinema-player.util :as util]
             [asciinema-player.fullscreen :as fullscreen]))
 
