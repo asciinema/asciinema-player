@@ -131,14 +131,14 @@
 
 (defn player-style [] {})
 
-(defn handle-event [f dispatch dom-event]
-  (when-let [[event-name & _ :as event] (f dom-event)]
+(defn handle-dom-event [dispatch event-mapper dom-event]
+  (when-let [[event-name & _ :as event] (event-mapper dom-event)]
     (.preventDefault dom-event)
     (if (= event-name :toggle-fullscreen) ; has to be processed synchronously
       (fullscreen/toggle (.-currentTarget dom-event))
       (dispatch event))))
 
-(defn map-key-press [dom-event]
+(defn key-press->event [dom-event]
   (case (.-key dom-event)
     " " [:toggle-play]
     "f" [:toggle-fullscreen]
@@ -154,7 +154,7 @@
     "9" [:seek 0.9]
     nil))
 
-(defn map-key-down [dom-event]
+(defn key-down->event [dom-event]
   (case (.-which dom-event)
     37 [:rewind]
     39 [:fast-forward]
@@ -162,8 +162,8 @@
 
 (defn player [state dispatch]
   (let [{:keys [font-size theme lines stop-playback-chan current-time duration loading frames]} @state
-        on-key-press (partial handle-event map-key-press dispatch)
-        on-key-down (partial handle-event map-key-down dispatch)
+        on-key-press (partial handle-dom-event dispatch key-press->event)
+        on-key-down (partial handle-dom-event dispatch key-down->event)
         class-name (player-class-name theme)
         playing? (boolean stop-playback-chan)]
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down}
