@@ -87,10 +87,13 @@
     (assoc state :loading true)))
 
 (defn prev-changes [frames seconds]
-  (let [frames-with-abs-time (reductions (fn [[t _] [delay changes]] [(+ t delay) changes]) frames)
-        prev-frames (take-while (comp (partial >= seconds) first) frames-with-abs-time)
-        fs1 (map last prev-frames)]
-    (reduce (partial merge-with merge) fs1)))
+  (loop [frames frames
+        seconds seconds
+        candidate nil]
+    (let [[delay changes :as frame] (first frames)]
+      (if (or (nil? frame) (< seconds delay))
+        candidate
+        (recur (rest frames) (- seconds delay) (merge-with merge candidate changes))))))
 
 (defn new-position [current-time total-time offset]
   (/ (util/adjust-to-range (+ current-time offset) 0 total-time) total-time))
