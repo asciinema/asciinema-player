@@ -36,4 +36,5 @@
     (is (= (c/next-frames frames 5) [[1 :b] [6 :c]]))
     (is (= (c/next-frames frames 6) [[6 :c]]))
     (is (= (c/next-frames frames 11) [[1 :c]]))
-    (is (= (c/next-frames frames 12) []))))
+    (is (= (c/next-frames frames 12) []))
+    (is (= (c/next-frames frames 13) []))))

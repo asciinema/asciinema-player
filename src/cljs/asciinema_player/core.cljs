@@ -37,12 +37,12 @@
     ch))
 
 (defn next-frames [frames seconds]
-  (if (zero? seconds)
-    frames
+  (if (seq frames)
     (let [[delay changes] (first frames)]
       (if (<= delay seconds)
         (recur (rest frames) (- seconds delay))
-        (cons [(- delay seconds) changes] (rest frames))))))
+        (cons [(- delay seconds) changes] (rest frames))))
+    frames))
 
 (defn start-playback [state dispatch]
   (print "starting")
