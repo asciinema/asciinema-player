@@ -28,7 +28,7 @@
       (loop [coll coll]
         (when-let [[delay data] (first coll)]
           (let [timeout-chan (timeout (* 1000 delay))
-               [val c] (alts! [timeout-chan stop-chan])]
+               [_ c] (alts! [timeout-chan stop-chan])]
             (when (= c timeout-chan)
               (>! ch data)
               (recur (rest coll))))))
