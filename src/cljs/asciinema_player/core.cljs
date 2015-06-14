@@ -36,6 +36,15 @@
       (close! ch))
     ch))
 
+(defn prev-changes [frames seconds]
+  (loop [frames frames
+        seconds seconds
+        candidate nil]
+    (let [[delay changes :as frame] (first frames)]
+      (if (or (nil? frame) (< seconds delay))
+        candidate
+        (recur (rest frames) (- seconds delay) (merge-with merge candidate changes))))))
+
 (defn next-frames [frames seconds]
   (if (seq frames)
     (let [[delay changes] (first frames)]
@@ -85,15 +94,6 @@
       :handler #(dispatch [:frames-response %])
       :error-handler #(dispatch [:bad-response %])})
     (assoc state :loading true)))
-
-(defn prev-changes [frames seconds]
-  (loop [frames frames
-        seconds seconds
-        candidate nil]
-    (let [[delay changes :as frame] (first frames)]
-      (if (or (nil? frame) (< seconds delay))
-        candidate
-        (recur (rest frames) (- seconds delay) (merge-with merge candidate changes))))))
 
 (defn new-position [current-time total-time offset]
   (/ (util/adjust-to-range (+ current-time offset) 0 total-time) total-time))
