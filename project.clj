@@ -12,7 +12,7 @@
                  [cljs-ajax "0.3.11"]]
 
   :plugins [[lein-cljsbuild "1.0.6"]
-            [lein-figwheel "0.3.3"]
+            [lein-figwheel "0.3.5"]
             [lein-less "1.7.5"]
             [lein-kibit "0.1.2"]]
 
@@ -38,6 +38,7 @@
 
   :figwheel {:http-server-root "public"
              :server-port 3449
+             :nrepl-port 7888
              :css-dirs ["resources/public/css"]}
 
   :less {:source-paths ["src/less"]
