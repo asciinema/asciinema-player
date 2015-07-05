@@ -14,7 +14,7 @@
    :duration 148.297910690308
    :frames-url "/frames.json"
    :font-size "small"
-   :theme "solarized-dark"
+   :theme "seti"
    :lines snapshot }))
 
 (defn apply-changes [state changes]
