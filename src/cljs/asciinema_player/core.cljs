@@ -91,8 +91,8 @@
     (GET
       url
       {:format :json
-      :handler #(dispatch [:frames-response %])
-      :error-handler #(dispatch [:bad-response %])})
+       :handler #(dispatch [:frames-response %])
+       :error-handler #(dispatch [:bad-response %])})
     (assoc state :loading true)))
 
 (defn new-position [current-time total-time offset]
