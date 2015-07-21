@@ -8,14 +8,16 @@
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (defn make-player-state [snapshot]
-  (atom {:width 80
-   :height 24
-   :current-time 23
-   :duration 148.297910690308
-   :frames-url "/frames.json"
-   :font-size "small"
-   :theme "seti"
-   :lines snapshot }))
+  (atom {
+         :width 80
+         :height 24
+         :duration 148.297910690308
+         :frames-url "/frames.json"
+         :font-size "small"
+         :theme "seti"
+         :lines snapshot
+         :play-from 0
+         :current-time 23}))
 
 (defn apply-changes [state changes]
   (if-let [line-changes (seq (:lines changes))]
@@ -38,8 +40,8 @@
 
 (defn prev-changes [frames seconds]
   (loop [frames frames
-        seconds seconds
-        candidate nil]
+         seconds seconds
+         candidate nil]
     (let [[delay changes :as frame] (first frames)]
       (if (or (nil? frame) (< seconds delay))
         candidate
@@ -89,10 +91,10 @@
 (defn fetch-frames [state dispatch]
   (let [url (:frames-url state)]
     (GET
-      url
-      {:format :json
-       :handler #(dispatch [:frames-response %])
-       :error-handler #(dispatch [:bad-response %])})
+     url
+     {:format :json
+      :handler #(dispatch [:frames-response %])
+      :error-handler #(dispatch [:bad-response %])})
     (assoc state :loading true)))
 
 (defn new-position [current-time total-time offset]
