@@ -24,16 +24,14 @@
     (update-in state [:lines] #(apply assoc % (apply concat line-changes)))
     state))
 
-(defn coll->chan [coll stop-chan]
+(defn coll->chan [coll]
   (let [ch (chan)]
     (go
       (loop [coll coll]
         (when-let [[delay data] (first coll)]
-          (let [timeout-chan (timeout (* 1000 delay))
-               [_ c] (alts! [timeout-chan stop-chan])]
-            (when (= c timeout-chan)
-              (>! ch data)
-              (recur (rest coll))))))
+          (<! (timeout (* 1000 delay)))
+          (>! ch data)
+          (recur (rest coll))))
       (print "finished sending data")
       (close! ch))
     ch))
@@ -55,26 +53,33 @@
         (cons [(- delay seconds) changes] (rest frames))))
     frames))
 
+(defn elapsed-time-since [then]
+  (/ (- (.getTime (js/Date.)) (.getTime then)) 1000))
+
 (defn start-playback [state dispatch]
   (print "starting")
   (let [start (js/Date.)
-        start-at (rand 120)
-        frames (next-frames (:frames state) start-at)
+        play-from (:play-from state)
+        frames (next-frames (:frames state) play-from)
         stop-playback-chan (chan)
-        changes-chan (coll->chan frames stop-playback-chan)
-        timer-chan (coll->chan (repeat [0.3 true]) stop-playback-chan)]
+        changes-chan (coll->chan frames)
+        timer-chan (coll->chan (repeat [0.3 true]))]
     (go-loop []
-      (when-let [changes (<! changes-chan)]
-        (dispatch [:frame-changes changes])
-        (recur)))
-    (go-loop []
-      (when (<! timer-chan)
-        (let [t (+ start-at (/ (- (.getTime (js/Date.)) (.getTime start)) 1000))]
-          (dispatch [:current-time t]))
-        (recur)))
+      (let [[v c] (alts! [changes-chan timer-chan stop-playback-chan])]
+        (condp = c
+          timer-chan (let [t (+ play-from (elapsed-time-since start))]
+                       (dispatch [:update-state assoc :current-time t])
+                       (recur))
+          changes-chan (if v
+                         (do
+                           (dispatch [:update-state apply-changes v])
+                           (recur))
+                         (dispatch [:update-state #(-> % (dissoc :stop-playback-chan) (assoc :play-from 0))]))
+          stop-playback-chan (let [t (+ play-from (elapsed-time-since start))]
+                               (dispatch [:update-state assoc :play-from t])))))
     (go
       (<! stop-playback-chan)
-      (print (str "finished in " (- (.getTime (js/Date.)) (.getTime start)))))
+      (print (str "finished in " (elapsed-time-since start))))
     (assoc state :stop-playback-chan stop-playback-chan)))
 
 (defn stop-playback [state]
@@ -111,7 +116,7 @@
   (let [new-time (* position (:duration state))
         changes (prev-changes (:frames state) new-time)]
     (-> state
-        (assoc :current-time new-time)
+        (assoc :current-time new-time :play-from new-time)
         (apply-changes changes))))
 
 (defn handle-rewind [state dispatch]
@@ -127,19 +132,15 @@
   (assoc state :loading false
                :frames (frames-json->clj frames-json)))
 
-(defn handle-frame-changes [state _ [changes]]
-  (apply-changes state changes))
-
-(defn handle-current-time [state _ [current-time]]
-  (assoc state :current-time current-time))
+(defn handle-update-state [state _ [f & args]]
+  (apply f state args))
 
 (def event-handlers {:toggle-play handle-toggle-play
                      :seek handle-seek
                      :rewind handle-rewind
                      :fast-forward handle-fast-forward
                      :frames-response handle-frames-response
-                     :frame-changes handle-frame-changes
-                     :current-time handle-current-time})
+                     :update-state handle-update-state})
 
 (defn process-event [state dispatch [event-name & args]]
   (if-let [handler (get event-handlers event-name)]
