@@ -17,7 +17,8 @@
          :theme "seti"
          :lines snapshot
          :play-from 0
-         :current-time 23}))
+         :current-time 0
+         :speed 1.0}))
 
 (defn apply-changes [state changes]
   (if-let [line-changes (seq (:lines changes))]
@@ -56,21 +57,26 @@
 (defn elapsed-time-since [then]
   (/ (- (.getTime (js/Date.)) (.getTime then)) 1000))
 
+(defn frames-at-speed [frames speed]
+  (map (fn [[delay changes]] [(/ delay speed) changes]) frames))
+
 (defn start-playback [state dispatch]
   (print "starting")
   (let [start (js/Date.)
         play-from (:play-from state)
-        frames (next-frames (:frames state) play-from)
+        speed (:speed state)
+        frames (-> (:frames state) (next-frames play-from) (frames-at-speed speed))
         changes-chan (coll->chan frames)
         timer-chan (coll->chan (repeat [0.3 true]))
         stop-playback-chan (chan)
+        elapsed-time #(* (elapsed-time-since start) speed)
         stop-fn (fn []
                   (close! stop-playback-chan)
-                  (elapsed-time-since start))]
+                  (elapsed-time))]
     (go-loop []
       (let [[v c] (alts! [changes-chan timer-chan stop-playback-chan])]
         (condp = c
-          timer-chan (let [t (+ play-from (elapsed-time-since start))]
+          timer-chan (let [t (+ play-from (elapsed-time))]
                        (dispatch [:update-state assoc :current-time t])
                        (recur))
           changes-chan (if v
