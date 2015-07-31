@@ -47,12 +47,13 @@
         (recur (rest frames) (- seconds delay) (merge-with merge candidate changes))))))
 
 (defn next-frames [frames seconds]
-  (if (seq frames)
-    (let [[delay changes] (first frames)]
-      (if (<= delay seconds)
-        (recur (rest frames) (- seconds delay))
-        (cons [(- delay seconds) changes] (rest frames))))
-    frames))
+  (lazy-seq
+    (if (seq frames)
+      (let [[delay changes] (first frames)]
+        (if (<= delay seconds)
+          (next-frames (rest frames) (- seconds delay))
+          (cons [(- delay seconds) changes] (rest frames))))
+      frames)))
 
 (defn elapsed-time-since [then]
   (/ (- (.getTime (js/Date.)) (.getTime then)) 1000))
