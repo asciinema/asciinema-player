@@ -77,7 +77,7 @@
                          (do
                            (dispatch [:update-state apply-changes v])
                            (recur))
-                         (dispatch [:update-state #(-> % (dissoc :stop) (assoc :play-from 0))]))
+                         (dispatch [:finished]))
           stop-playback-chan nil))) ; do nothing, break the loop
     (go
       (<! stop-playback-chan)
@@ -137,6 +137,9 @@
   (let [position (new-position (:current-time state) (:duration state) 5)]
     (handle-seek state dispatch [position])))
 
+(defn handle-finished [state _]
+  (-> state (dissoc :stop) (assoc :play-from 0)))
+
 (defn handle-frames-response [state dispatch [frames-json]]
   (dispatch [:toggle-play])
   (assoc state :loading false
@@ -149,6 +152,7 @@
                      :seek handle-seek
                      :rewind handle-rewind
                      :fast-forward handle-fast-forward
+                     :finished handle-finished
                      :frames-response handle-frames-response
                      :update-state handle-update-state})
 
