@@ -61,9 +61,12 @@
   (let [start (js/Date.)
         play-from (:play-from state)
         frames (next-frames (:frames state) play-from)
-        stop-playback-chan (chan)
         changes-chan (coll->chan frames)
-        timer-chan (coll->chan (repeat [0.3 true]))]
+        timer-chan (coll->chan (repeat [0.3 true]))
+        stop-playback-chan (chan)
+        stop-fn (fn []
+                  (close! stop-playback-chan)
+                  (elapsed-time-since start))]
     (go-loop []
       (let [[v c] (alts! [changes-chan timer-chan stop-playback-chan])]
         (condp = c
@@ -74,18 +77,19 @@
                          (do
                            (dispatch [:update-state apply-changes v])
                            (recur))
-                         (dispatch [:update-state #(-> % (dissoc :stop-playback-chan) (assoc :play-from 0))]))
-          stop-playback-chan (let [t (+ play-from (elapsed-time-since start))]
-                               (dispatch [:update-state assoc :play-from t])))))
+                         (dispatch [:update-state #(-> % (dissoc :stop) (assoc :play-from 0))]))
+          stop-playback-chan nil))) ; do nothing, break the loop
     (go
       (<! stop-playback-chan)
       (print (str "finished in " (elapsed-time-since start))))
-    (assoc state :stop-playback-chan stop-playback-chan)))
+    (assoc state :stop stop-fn)))
 
 (defn stop-playback [state]
   (print "stopping")
-  (close! (:stop-playback-chan state))
-  (dissoc state :stop-playback-chan))
+  (let [t ((:stop state))]
+    (-> state
+        (dissoc :stop)
+        (update-in [:play-from] + t))))
 
 (defn fix-line-changes-keys [frame]
   (update-in frame [1 :lines] #(into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) %))))
@@ -107,17 +111,23 @@
 
 (defn handle-toggle-play [state dispatch]
   (if (contains? state :frames)
-    (if (contains? state :stop-playback-chan)
+    (if (contains? state :stop)
       (stop-playback state)
       (start-playback state dispatch))
     (fetch-frames state dispatch)))
 
-(defn handle-seek [state _ [position]]
+(defn handle-seek [state dispatch [position]]
   (let [new-time (* position (:duration state))
-        changes (prev-changes (:frames state) new-time)]
-    (-> state
-        (assoc :current-time new-time :play-from new-time)
-        (apply-changes changes))))
+        changes (prev-changes (:frames state) new-time)
+        playing? (contains? state :stop)]
+    (when playing?
+      ((:stop state)))
+    (let [new-state (-> state
+                        (assoc :current-time new-time :play-from new-time)
+                        (apply-changes changes))]
+      (if playing?
+        (start-playback new-state dispatch)
+        new-state))))
 
 (defn handle-rewind [state dispatch]
   (let [position (new-position (:current-time state) (:duration state) -5)]

@@ -161,11 +161,11 @@
     nil))
 
 (defn player [state dispatch]
-  (let [{:keys [font-size theme lines stop-playback-chan current-time duration loading frames]} @state
+  (let [{:keys [font-size theme lines stop current-time duration loading frames]} @state
         on-key-press (partial handle-dom-event dispatch key-press->event)
         on-key-down (partial handle-dom-event dispatch key-down->event)
         class-name (player-class-name theme)
-        playing? (boolean stop-playback-chan)]
+        playing? (boolean stop)]
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down}
       [:div.asciinema-player {:class-name class-name :style (player-style)}
         [terminal font-size lines]
