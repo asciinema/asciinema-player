@@ -152,6 +152,8 @@
     "7" [:seek 0.7]
     "8" [:seek 0.8]
     "9" [:seek 0.9]
+    ">" [:speed-up]
+    "<" [:speed-down]
     nil))
 
 (defn key-down->event [dom-event]

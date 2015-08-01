@@ -147,6 +147,21 @@
 (defn handle-finished [state _]
   (-> state (dissoc :stop) (assoc :play-from 0)))
 
+(defn speed-up [speed]
+  (* speed 2))
+
+(defn speed-down [speed]
+  (/ speed 2))
+
+(defn handle-speed-change [change-fn state dispatch]
+  (if-let [stop (:stop state)]
+    (let [t (stop)]
+      (-> state
+          (update-in [:play-from] + t)
+          (update-in [:speed] change-fn)
+          (start-playback dispatch)))
+    (update-in state [:speed] change-fn)))
+
 (defn handle-frames-response [state dispatch [frames-json]]
   (dispatch [:toggle-play])
   (assoc state :loading false
@@ -160,6 +175,8 @@
                      :rewind handle-rewind
                      :fast-forward handle-fast-forward
                      :finished handle-finished
+                     :speed-up (partial handle-speed-change speed-up)
+                     :speed-down (partial handle-speed-change speed-down)
                      :frames-response handle-frames-response
                      :update-state handle-update-state})
 
