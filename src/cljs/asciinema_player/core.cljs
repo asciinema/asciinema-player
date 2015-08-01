@@ -18,6 +18,7 @@
          :lines snapshot
          :play-from 0
          :current-time 0
+         :autoplay false
          :speed 1.0}))
 
 (defn apply-changes [state changes]
@@ -193,4 +194,6 @@
         (process-event state dispatch event)
         (recur)))
     (reagent/render-component [view/player state dispatch] dom-node)
+    (when (:autoplay @state)
+      (dispatch [:toggle-play]))
     (clj->js {:toggle (fn [] true)})))
