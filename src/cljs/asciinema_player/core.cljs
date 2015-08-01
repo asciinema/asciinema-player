@@ -19,6 +19,7 @@
          :play-from 0
          :current-time 0
          :autoplay false
+         :loop false
          :speed 1.0}))
 
 (defn apply-changes [state changes]
@@ -145,7 +146,9 @@
   (let [position (new-position (:current-time state) (:duration state) 5)]
     (handle-seek state dispatch [position])))
 
-(defn handle-finished [state _]
+(defn handle-finished [state dispatch]
+  (when (:loop state)
+    (dispatch [:toggle-play]))
   (-> state (dissoc :stop) (assoc :play-from 0)))
 
 (defn speed-up [speed]
