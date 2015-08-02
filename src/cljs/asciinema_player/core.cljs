@@ -33,7 +33,6 @@
           (<! (timeout (* 1000 delay)))
           (>! ch data)
           (recur (rest coll))))
-      (print "finished sending data")
       (close! ch))
     ch))
 
@@ -62,7 +61,6 @@
   (map (fn [[delay changes]] [(/ delay speed) changes]) frames))
 
 (defn start-playback [state dispatch]
-  (print "starting")
   (let [start (js/Date.)
         play-from (:play-from state)
         speed (:speed state)
@@ -84,15 +82,13 @@
                          (do
                            (dispatch [:update-state apply-changes v])
                            (recur))
-                         (dispatch [:finished]))
+                         (do
+                           (dispatch [:finished])
+                           (print (str "finished in " (elapsed-time-since start)))))
           stop-playback-chan nil))) ; do nothing, break the loop
-    (go
-      (<! stop-playback-chan)
-      (print (str "finished in " (elapsed-time-since start))))
     (assoc state :stop stop-fn)))
 
 (defn stop-playback [state]
-  (print "stopping")
   (let [t ((:stop state))]
     (-> state
         (dissoc :stop)
