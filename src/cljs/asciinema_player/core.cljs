@@ -15,7 +15,7 @@
          :frames-url "/frames.json"
          :font-size "small"
          :theme "seti"
-         :lines snapshot
+         :lines (into (sorted-map) (map-indexed vector snapshot))
          :play-from 0
          :current-time 0
          :autoplay false
@@ -23,9 +23,7 @@
          :speed 1.0}))
 
 (defn apply-changes [state changes]
-  (if-let [line-changes (seq (:lines changes))]
-    (update-in state [:lines] #(apply assoc % (apply concat line-changes)))
-    state))
+  (update-in state [:lines] merge (:lines changes)))
 
 (defn coll->chan [coll]
   (let [ch (chan)]
