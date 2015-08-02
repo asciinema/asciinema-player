@@ -16,14 +16,15 @@
          :font-size "small"
          :theme "seti"
          :lines (into (sorted-map) (map-indexed vector snapshot))
+         :cursor {}
          :play-from 0
          :current-time 0
          :autoplay false
          :loop false
          :speed 1.0}))
 
-(defn apply-changes [state changes]
-  (update-in state [:lines] merge (:lines changes)))
+(defn apply-changes [state {:keys [lines cursor]}]
+  (merge-with merge state {:lines lines :cursor cursor}))
 
 (defn coll->chan [coll]
   (let [ch (chan)]
