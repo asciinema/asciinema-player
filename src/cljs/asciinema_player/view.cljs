@@ -9,7 +9,7 @@
 (defn bg-color [bg blink?]
   (if (and bg blink? (< bg 8)) (+ bg 8) bg))
 
-(defn part-class-name [{:keys [fg bg bold blink underline inverse]}]
+(defn part-class-name [{:keys [fg bg bold blink underline inverse cursor]}]
   (let [fg (fg-color fg bold)
         bg (bg-color bg blink)
         final-fg (if inverse (or bg "bg") fg)
@@ -18,7 +18,8 @@
         bg-class (if final-bg (str "bg-" final-bg))
         bold-class (if bold "bright")
         underline-class (if underline "underline")
-        classes (remove nil? [fg-class bg-class bold-class underline-class])]
+        cursor-class (when cursor "cursor")
+        classes (remove nil? [fg-class bg-class bold-class underline-class cursor-class])]
     (string/join " " classes)))
 
 (defn part [p]
@@ -30,9 +31,29 @@
 (defn terminal-class-name [font-size]
   (str "font-" font-size))
 
-(defn terminal [font-size lines]
+(defn split-part-with-cursor [[text attrs] position]
+  (let [left-chars (take position text)
+        left-part (if (seq left-chars) [(apply str left-chars) attrs])
+        center-part [(nth text position) (assoc attrs :cursor true)]
+        right-chars (drop (inc position) text)
+        right-part (if (seq right-chars) [(apply str right-chars) attrs])]
+    (remove nil? (vector left-part center-part right-part))))
+
+(defn insert-cursor [parts cursor-x]
+  (loop [left [] right parts idx cursor-x]
+    (let [[text attrs :as part] (first right)
+          len (count text)]
+      (if (<= len idx)
+        (recur (conj left part) (rest right) (- idx len))
+        (concat left (split-part-with-cursor part idx) (rest right))))))
+
+(defn terminal [font-size lines {cursor-x :x cursor-y :y cursor-visible :visible}]
   [:pre.asciinema-terminal {:class-name (terminal-class-name font-size)}
-    (map (fn [[idx l]] ^{:key idx} [line l]) lines)])
+   (map (fn [[idx parts]]
+          (let [cursor-x (when (and cursor-visible (= idx cursor-y)) cursor-x)
+                parts (if cursor-x (insert-cursor parts cursor-x) parts)]
+            ^{:key idx} [line parts]))
+        lines)])
 
 (def logo-raw-svg "<defs> <mask id=\"small-triangle-mask\"> <rect width=\"100%\" height=\"100%\" fill=\"white\"/> <polygon points=\"508.01270189221935 433.01270189221935, 208.0127018922194 259.8076211353316, 208.01270189221927 606.217782649107\" fill=\"black\"></polygon> </mask> </defs> <polygon points=\"808.0127018922194 433.01270189221935, 58.01270189221947 -1.1368683772161603e-13, 58.01270189221913 866.0254037844386\" mask=\"url(#small-triangle-mask)\" fill=\"white\"></polygon> <polyline points=\"481.2177826491071 333.0127018922194, 134.80762113533166 533.0127018922194\" stroke=\"white\" stroke-width=\"90\"></polyline>")
 
@@ -163,14 +184,14 @@
     nil))
 
 (defn player [state dispatch]
-  (let [{:keys [font-size theme lines stop current-time duration loading frames]} @state
+  (let [{:keys [font-size theme lines cursor stop current-time duration loading frames]} @state
         on-key-press (partial handle-dom-event dispatch key-press->event)
         on-key-down (partial handle-dom-event dispatch key-down->event)
         class-name (player-class-name theme)
         playing? (boolean stop)]
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down}
       [:div.asciinema-player {:class-name class-name :style (player-style)}
-        [terminal font-size lines]
+        [terminal font-size lines cursor]
         [control-bar playing? current-time duration dispatch]
         (when-not (or loading frames) [start-overlay dispatch])
         (when loading [loading-overlay])]]))
