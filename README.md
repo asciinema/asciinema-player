@@ -96,3 +96,5 @@ source [contributors](https://github.com/asciinema/asciinema-player/contributors
 ## License
 
 Copyright &copy; 2011-2015 Marcin Kulik.
+
+All code is licensed under the GPL, v3 or later. See LICENSE file for details.
