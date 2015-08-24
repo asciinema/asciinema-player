@@ -16,8 +16,8 @@
         final-bg (if inverse (or fg "fg") bg)
         fg-class (if final-fg (str "fg-" final-fg))
         bg-class (if final-bg (str "bg-" final-bg))
-        bold-class (if bold "bright")
-        underline-class (if underline "underline")
+        bold-class (when bold "bright")
+        underline-class (when underline "underline")
         cursor-class (when cursor "cursor")
         classes (remove nil? [fg-class bg-class bold-class underline-class cursor-class])]
     (string/join " " classes)))
