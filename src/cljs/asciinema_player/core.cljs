@@ -87,7 +87,9 @@
                            (dispatch [:finished])
                            (print (str "finished in " (elapsed-time-since start)))))
           stop-playback-chan nil))) ; do nothing, break the loop
-    (assoc state :stop stop-fn)))
+    (-> state
+        (apply-changes (prev-changes (:frames state) play-from))
+        (assoc :stop stop-fn))))
 
 (defn stop-playback [state]
   (let [t ((:stop state))]
