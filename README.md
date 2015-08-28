@@ -13,6 +13,9 @@ TODO: clarify this all
     lein less auto
     lein cljsbuild auto test
 
+Open [localhost:3449](http://localhost:3449/) in the browser to load the player
+with sample asciicast.
+
 ## Building
 
 To build Javascript and CSS bundles run:
