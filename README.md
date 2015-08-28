@@ -62,7 +62,14 @@ For example:
 ```html
 <div id="player-container"></div>
 <script>
-  asciinema.CreatePlayer(document.getElementById('player-container'), 80, 24, '/frames.json', 123.0, { speed: 2 })
+  asciinema.CreatePlayer(
+    document.getElementById('player-container'),
+    80,
+    24,
+    '/frames.json',
+    123.0,
+    { speed: 2 }
+  );
 </script>
 ```
 
