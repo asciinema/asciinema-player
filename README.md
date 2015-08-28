@@ -27,7 +27,7 @@ To build Javascript and CSS bundles run:
 
 TODO: update this section to reflect new namespace
 
-Add player script, it's dependencies and stylesheets to the page:
+Add player script and stylesheet to the page:
 
 ```html
 <head>
