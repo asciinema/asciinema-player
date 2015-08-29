@@ -97,11 +97,14 @@
         (dissoc :stop)
         (update-in [:play-from] + t))))
 
-(defn fix-line-diff-keys [frame]
-  (update-in frame [1 :lines] #(into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) %))))
+(defn- fix-line-diff-keys [line]
+  (into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) line)))
+
+(defn- fix-diff-keys [frame]
+  (update-in frame [1 :lines] fix-line-diff-keys))
 
 (defn frames-json->clj [frames]
-  (map fix-line-diff-keys (walk/keywordize-keys frames)))
+  (map fix-diff-keys (walk/keywordize-keys frames)))
 
 (defn fetch-frames [state dispatch]
   (let [url (:frames-url state)]
