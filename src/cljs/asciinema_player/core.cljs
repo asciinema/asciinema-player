@@ -23,7 +23,7 @@
          :loop false
          :speed 1.0}))
 
-(defn apply-changes [state {:keys [lines cursor]}]
+(defn apply-diff [state {:keys [lines cursor]}]
   (merge-with merge state {:lines lines :cursor cursor}))
 
 (defn coll->chan [coll]
@@ -37,36 +37,36 @@
       (close! ch))
     ch))
 
-(defn prev-changes [frames seconds]
+(defn prev-diff [frames seconds]
   (loop [frames frames
          seconds seconds
          candidate nil]
-    (let [[delay changes :as frame] (first frames)]
+    (let [[delay diff :as frame] (first frames)]
       (if (or (nil? frame) (< seconds delay))
         candidate
-        (recur (rest frames) (- seconds delay) (merge-with merge candidate changes))))))
+        (recur (rest frames) (- seconds delay) (merge-with merge candidate diff))))))
 
 (defn next-frames [frames seconds]
   (lazy-seq
     (if (seq frames)
-      (let [[delay changes] (first frames)]
+      (let [[delay diff] (first frames)]
         (if (<= delay seconds)
           (next-frames (rest frames) (- seconds delay))
-          (cons [(- delay seconds) changes] (rest frames))))
+          (cons [(- delay seconds) diff] (rest frames))))
       frames)))
 
 (defn elapsed-time-since [then]
   (/ (- (.getTime (js/Date.)) (.getTime then)) 1000))
 
 (defn frames-at-speed [frames speed]
-  (map (fn [[delay changes]] [(/ delay speed) changes]) frames))
+  (map (fn [[delay diff]] [(/ delay speed) diff]) frames))
 
 (defn start-playback [state dispatch]
   (let [start (js/Date.)
         play-from (:play-from state)
         speed (:speed state)
         frames (-> (:frames state) (next-frames play-from) (frames-at-speed speed))
-        changes-chan (coll->chan frames)
+        diff-chan (coll->chan frames)
         timer-chan (coll->chan (repeat [0.3 true]))
         stop-playback-chan (chan)
         elapsed-time #(* (elapsed-time-since start) speed)
@@ -74,21 +74,21 @@
                   (close! stop-playback-chan)
                   (elapsed-time))]
     (go-loop []
-      (let [[v c] (alts! [changes-chan timer-chan stop-playback-chan])]
+      (let [[v c] (alts! [diff-chan timer-chan stop-playback-chan])]
         (condp = c
           timer-chan (let [t (+ play-from (elapsed-time))]
                        (dispatch [:update-state assoc :current-time t])
                        (recur))
-          changes-chan (if v
+          diff-chan (if v
                          (do
-                           (dispatch [:update-state apply-changes v])
+                           (dispatch [:update-state apply-diff v])
                            (recur))
                          (do
                            (dispatch [:finished])
                            (print (str "finished in " (elapsed-time-since start)))))
           stop-playback-chan nil))) ; do nothing, break the loop
     (-> state
-        (apply-changes (prev-changes (:frames state) play-from))
+        (apply-diff (prev-diff (:frames state) play-from))
         (assoc :stop stop-fn))))
 
 (defn stop-playback [state]
@@ -97,11 +97,11 @@
         (dissoc :stop)
         (update-in [:play-from] + t))))
 
-(defn fix-line-changes-keys [frame]
+(defn fix-line-diff-keys [frame]
   (update-in frame [1 :lines] #(into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) %))))
 
 (defn frames-json->clj [frames]
-  (map fix-line-changes-keys (walk/keywordize-keys frames)))
+  (map fix-line-diff-keys (walk/keywordize-keys frames)))
 
 (defn fetch-frames [state dispatch]
   (let [url (:frames-url state)]
@@ -124,13 +124,13 @@
 
 (defn handle-seek [state dispatch [position]]
   (let [new-time (* position (:duration state))
-        changes (prev-changes (:frames state) new-time)
+        diff (prev-diff (:frames state) new-time)
         playing? (contains? state :stop)]
     (when playing?
       ((:stop state)))
     (let [new-state (-> state
                         (assoc :current-time new-time :play-from new-time)
-                        (apply-changes changes))]
+                        (apply-diff diff))]
       (if playing?
         (start-playback new-state dispatch)
         new-state))))
