@@ -45,3 +45,7 @@
     (is (= (c/next-frames frames 11) [[1 :c]]))
     (is (= (c/next-frames frames 12) []))
     (is (= (c/next-frames frames 13) []))))
+
+(deftest frames-json->clj-test
+  (let [frames [[1.2 {"lines" {"0" [["foo" {"fg" 1}]] "1" [["bar" {"bg" 2}]]} "cursor" {"x" 1 "y" 2 "visible" false}}]]]
+    (is (= (c/frames-json->clj frames) [[1.2 {:lines {0 [["foo" {:fg 1}]] 1 [["bar" {:bg 2}]]} :cursor {:x 1 :y 2 :visible false}}]]))))
