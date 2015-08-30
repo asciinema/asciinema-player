@@ -22,8 +22,8 @@
         classes (remove nil? [fg-class bg-class bold-class underline-class cursor-class])]
     (string/join " " classes)))
 
-(defn part [p]
-  [:span {:class-name (part-class-name (last p))} (first p)])
+(defn part [[text attrs]]
+  [:span {:class-name (part-class-name attrs)} text])
 
 (defn line [parts]
   [:span.line (map-indexed (fn [idx p] ^{:key idx} [part p]) parts)])
