@@ -2,6 +2,14 @@
 
 This is the player used on asciinema.org.
 
+## Keyboard shortcuts
+
+* `space` - play / pause
+* `f` - toggle fullscreen mode
+* `←` / `→` - rewind 5 seconds / fast-forward 5 seconds
+* `0, 1, 2 ... 9` - jump to 0%, 10%, 20% ... 90%
+* `<` / `>` - decrease / increase playback speed
+
 ## Development
 
 The project uses [leiningen](http://leiningen.org/) for development and build
@@ -16,7 +24,7 @@ TODO: clarify this all
 Open [localhost:3449](http://localhost:3449/) in the browser to load the player
 with sample asciicast.
 
-## Building
+### Building
 
 To build Javascript and CSS bundles run:
 
