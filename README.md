@@ -100,6 +100,7 @@ To obtain proper JSON file that can be used as `dataUrl` argument you can either
 
 * update player to directly support asciicast v1 format
 * add hooks (start/pause/resume/finish)
+* figure out if GPL is compatible with Clojure(Script)'s EPL
 
 ## Contributing
 
