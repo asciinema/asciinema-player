@@ -186,7 +186,7 @@
 
 (defn process-event [state dispatch [event-name & args]]
   (if-let [handler (get event-handlers event-name)]
-    (reset! state (handler @state dispatch args))
+    (swap! state handler dispatch args)
     (print (str "unhandled event: " event-name))))
 
 (defn create-player-with-state [state dom-node]
