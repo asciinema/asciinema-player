@@ -89,12 +89,12 @@
                               (dispatch [:update-state assoc-in [:cursor :on] v])
                               (recur cursor-blink-chan))
           diff-chan (if v
-                         (do
-                           (dispatch [:update-state #(-> % (apply-diff v) reset-blink)])
-                           (recur (make-cursor-blink-chan)))
-                         (do
-                           (dispatch [:finished])
-                           (print (str "finished in " (elapsed-time-since start)))))
+                      (do
+                        (dispatch [:update-state #(-> % (apply-diff v) reset-blink)])
+                        (recur (make-cursor-blink-chan)))
+                      (do
+                        (dispatch [:finished])
+                        (print (str "finished in " (elapsed-time-since start)))))
           stop-playback-chan nil))) ; do nothing, break the loop
     (-> state
         (apply-diff (prev-diff (:frames state) play-from))
