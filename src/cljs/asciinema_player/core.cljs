@@ -16,7 +16,7 @@
          :font-size "small"
          :theme "seti"
          :lines (into (sorted-map) (map-indexed vector snapshot))
-         :cursor {}
+         :cursor {:on true}
          :play-from 0
          :current-time 0
          :autoplay false
@@ -61,6 +61,12 @@
 (defn frames-at-speed [frames speed]
   (map (fn [[delay diff]] [(/ delay speed) diff]) frames))
 
+(defn reset-blink [state]
+  (assoc-in state [:cursor :on] true))
+
+(defn make-cursor-blink-chan []
+  (coll->chan (cycle [[0.5 false] [0.5 true]])))
+
 (defn start-playback [state dispatch]
   (let [start (js/Date.)
         play-from (:play-from state)
@@ -73,16 +79,19 @@
         stop-fn (fn []
                   (close! stop-playback-chan)
                   (elapsed-time))]
-    (go-loop []
-      (let [[v c] (alts! [diff-chan timer-chan stop-playback-chan])]
+    (go-loop [cursor-blink-chan (make-cursor-blink-chan)]
+      (let [[v c] (alts! [diff-chan timer-chan cursor-blink-chan stop-playback-chan])]
         (condp = c
           timer-chan (let [t (+ play-from (elapsed-time))]
                        (dispatch [:update-state assoc :current-time t])
-                       (recur))
+                       (recur cursor-blink-chan))
+          cursor-blink-chan (do
+                              (dispatch [:update-state assoc-in [:cursor :on] v])
+                              (recur cursor-blink-chan))
           diff-chan (if v
                          (do
-                           (dispatch [:update-state apply-diff v])
-                           (recur))
+                           (dispatch [:update-state #(-> % (apply-diff v) reset-blink)])
+                           (recur (make-cursor-blink-chan)))
                          (do
                            (dispatch [:finished])
                            (print (str "finished in " (elapsed-time-since start)))))
