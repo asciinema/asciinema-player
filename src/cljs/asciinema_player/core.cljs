@@ -79,23 +79,25 @@
         stop-fn (fn []
                   (close! stop-playback-chan)
                   (elapsed-time))]
-    (go-loop [cursor-blink-chan (make-cursor-blink-chan)]
-      (let [[v c] (alts! [diff-chan timer-chan cursor-blink-chan stop-playback-chan])]
-        (condp = c
-          timer-chan (let [t (+ play-from (elapsed-time))]
-                       (dispatch [:update-state assoc :current-time t])
-                       (recur cursor-blink-chan))
-          cursor-blink-chan (do
-                              (dispatch [:update-state assoc-in [:cursor :on] v])
-                              (recur cursor-blink-chan))
-          diff-chan (if v
-                      (do
-                        (dispatch [:update-state #(-> % (apply-diff v) reset-blink)])
-                        (recur (make-cursor-blink-chan)))
-                      (do
-                        (dispatch [:finished])
-                        (print (str "finished in " (elapsed-time-since start)))))
-          stop-playback-chan nil))) ; do nothing, break the loop
+    (go
+      (loop [cursor-blink-chan (make-cursor-blink-chan)]
+        (let [[v c] (alts! [diff-chan timer-chan cursor-blink-chan stop-playback-chan])]
+          (condp = c
+            timer-chan (let [t (+ play-from (elapsed-time))]
+                         (dispatch [:update-state assoc :current-time t])
+                         (recur cursor-blink-chan))
+            cursor-blink-chan (do
+                                (dispatch [:update-state assoc-in [:cursor :on] v])
+                                (recur cursor-blink-chan))
+            diff-chan (if v
+                        (do
+                          (dispatch [:update-state #(-> % (apply-diff v) reset-blink)])
+                          (recur (make-cursor-blink-chan)))
+                        (do
+                          (dispatch [:finished])
+                          (print (str "finished in " (elapsed-time-since start)))))
+            stop-playback-chan nil))) ; do nothing, break the loop
+      (dispatch [:update-state reset-blink]))
     (-> state
         (apply-diff (prev-diff (:frames state) play-from))
         (assoc :stop stop-fn))))
