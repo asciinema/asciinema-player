@@ -1,5 +1,6 @@
 (ns asciinema-player.core
-  (:require [reagent.core :as reagent :refer [atom]]
+  (:require [goog.dom :as dom]
+            [reagent.core :as reagent :refer [atom]]
             [asciinema-player.view :as view]
             [asciinema-player.util :as util]
             [cljs.core.async :refer [chan >! <! timeout close!]]
@@ -7,21 +8,21 @@
             [ajax.core :refer [GET]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
-(defn make-player-state [snapshot]
+(defn make-player-state [width height frames-url duration {:keys [speed snapshot auto-play loop font-size theme] :or {speed 1 snapshot [] auto-play false loop false font-size "small" theme "seti"}}]
   (atom {
-         :width 80
-         :height 24
-         :duration 148.297910690308
-         :frames-url "/frames.json"
-         :font-size "small"
-         :theme "seti"
+         :width width
+         :height height
+         :duration duration
+         :frames-url frames-url
+         :font-size font-size
+         :theme theme
          :lines (into (sorted-map) (map-indexed vector snapshot))
          :cursor {:on true}
          :play-from 0
          :current-time 0
-         :autoplay false
-         :loop false
-         :speed 1.0}))
+         :autoplay auto-play
+         :loop loop
+         :speed speed}))
 
 (defn apply-diff [state {:keys [lines cursor]}]
   (merge-with merge state {:lines lines :cursor cursor}))
@@ -211,3 +212,12 @@
     (when (:autoplay @state)
       (dispatch [:toggle-play]))
     (clj->js {:toggle (fn [] true)})))
+
+(defn create-player [dom-node width height frames-url duration options]
+  (let [dom-node (if (string? dom-node) (dom/getElement dom-node) dom-node)
+        state (make-player-state width height frames-url duration options)]
+    (create-player-with-state state dom-node)))
+
+(defn CreatePlayer [dom-node width height frames-url duration options]
+  (let [options (js->clj options :keywordize-keys true)]
+    (create-player dom-node width height frames-url duration options)))
