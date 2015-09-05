@@ -37,6 +37,7 @@
                        :release {:source-paths ["src/cljs"]
                               :compiler {:output-to     "resources/public/js/release.js"
                                          :output-dir    "resources/public/js/release"
+                                         :preamble      ["license.js"]
                                          :optimizations :advanced
                                          :pretty-print  false}}}
               :test-commands {"test" ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]}}
