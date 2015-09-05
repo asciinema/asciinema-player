@@ -33,6 +33,11 @@
                                          :output-dir    "resources/public/js/test"
                                          :source-map    "resources/public/js/test.js.map"
                                          :optimizations :none
+                                         :pretty-print  false}}
+                       :release {:source-paths ["src/cljs"]
+                              :compiler {:output-to     "resources/public/js/release.js"
+                                         :output-dir    "resources/public/js/release"
+                                         :optimizations :advanced
                                          :pretty-print  false}}}
               :test-commands {"test" ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]}}
 

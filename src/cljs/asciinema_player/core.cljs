@@ -218,6 +218,6 @@
         state (make-player-state width height frames-url duration options)]
     (create-player-with-state state dom-node)))
 
-(defn CreatePlayer [dom-node width height frames-url duration options]
+(defn ^:export CreatePlayer [dom-node width height frames-url duration options]
   (let [options (js->clj options :keywordize-keys true)]
     (create-player dom-node width height frames-url duration options)))
