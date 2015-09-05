@@ -5,6 +5,7 @@
             [asciinema-player.util :as util]
             [cljs.core.async :refer [chan >! <! timeout close!]]
             [clojure.walk :as walk]
+            [clojure.set :refer [rename-keys]]
             [ajax.core :refer [GET]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
@@ -219,5 +220,7 @@
     (create-player-with-state state dom-node)))
 
 (defn ^:export CreatePlayer [dom-node width height frames-url duration options]
-  (let [options (js->clj options :keywordize-keys true)]
+  (let [options (-> options
+                    (js->clj :keywordize-keys true)
+                    (rename-keys {:autoPlay :auto-play :fontSize :font-size}))]
     (create-player dom-node width height frames-url duration options)))
