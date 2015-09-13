@@ -1,6 +1,5 @@
 (ns asciinema-player.core
-  (:require [goog.dom :as dom]
-            [reagent.core :as reagent :refer [atom]]
+  (:require [reagent.core :as reagent :refer [atom]]
             [asciinema-player.view :as view]
             [asciinema-player.util :as util]
             [cljs.core.async :refer [chan >! <! timeout close!]]
@@ -215,7 +214,7 @@
     (clj->js {:toggle (fn [] true)})))
 
 (defn create-player [dom-node width height frames-url duration options]
-  (let [dom-node (if (string? dom-node) (dom/getElement dom-node) dom-node)
+  (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)
         state (make-player-state width height frames-url duration options)]
     (create-player-with-state state dom-node)))
 
