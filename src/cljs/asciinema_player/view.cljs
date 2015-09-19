@@ -29,9 +29,6 @@
 (defn line [parts cursor-on]
   [:span.line (map-indexed (fn [idx p] ^{:key idx} [part p cursor-on]) parts)])
 
-(defn terminal-class-name [font-size]
-  (str "font-" font-size))
-
 (defn split-part-with-cursor [[text attrs] position]
   (let [left-chars (take position text)
         left-part (if (seq left-chars) [(apply str left-chars) attrs])
@@ -50,8 +47,18 @@
         (recur (conj left part) (rest right) (- idx len))
         (concat left (split-part-with-cursor part idx) (rest right))))))
 
-(defn terminal [font-size lines {cursor-x :x cursor-y :y cursor-visible :visible cursor-on :on}]
-  [:pre.asciinema-terminal {:class-name (terminal-class-name font-size)}
+(defn terminal-class-name [font-size]
+  (str "font-" font-size))
+
+(def font-height {"small" 16 "medium" 24 "big" 32}) ; must match line-heights defined in CSS
+
+(defn terminal-style [width height font-size]
+  {:width (str width "ch")
+   :height (str (* height (font-height font-size)) "px")})
+
+(defn terminal [width height font-size lines {cursor-x :x cursor-y :y cursor-visible :visible cursor-on :on}]
+  [:pre.asciinema-terminal
+   {:class-name (terminal-class-name font-size) :style (terminal-style width height font-size)}
    (map (fn [[idx parts]]
           (let [cursor-x (when (and cursor-visible (= idx cursor-y)) cursor-x)
                 parts (if cursor-x (insert-cursor parts cursor-x) parts)]
@@ -151,7 +158,7 @@
     [:div.loader]])
 
 (defn player-class-name [theme-name]
-  (str "asciinema-theme-" (or theme-name "seti")))
+  (str "asciinema-theme-" (name theme-name)))
 
 (defn player-style [] {})
 
@@ -187,14 +194,14 @@
     nil))
 
 (defn player [state dispatch]
-  (let [{:keys [font-size theme lines cursor stop current-time duration loading frames]} @state
+  (let [{:keys [width height font-size theme lines cursor stop current-time duration loading frames]} @state
         on-key-press (partial handle-dom-event dispatch key-press->event)
         on-key-down (partial handle-dom-event dispatch key-down->event)
         class-name (player-class-name theme)
         playing? (boolean stop)]
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down}
       [:div.asciinema-player {:class-name class-name :style (player-style)}
-        [terminal font-size lines cursor]
+        [terminal width height font-size lines cursor]
         [control-bar playing? current-time duration dispatch]
         (when-not (or loading frames) [start-overlay dispatch])
         (when loading [loading-overlay])]]))
