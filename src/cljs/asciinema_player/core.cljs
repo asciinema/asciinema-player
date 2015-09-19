@@ -223,3 +223,5 @@
                     (js->clj :keywordize-keys true)
                     (rename-keys {:autoPlay :auto-play :fontSize :font-size}))]
     (create-player dom-node width height frames-url duration options)))
+
+(enable-console-print!)

@@ -13,7 +13,6 @@
   (p/create-player-with-state player-state (. js/document (getElementById "player"))))
 
 (defn start-dev []
-  (enable-console-print!)
   (reload))
 
 ; (swap! player-state assoc :theme "solarized-dark")
