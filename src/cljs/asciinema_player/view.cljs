@@ -158,7 +158,7 @@
     [:div.loader]])
 
 (defn player-class-name [theme-name]
-  (str "asciinema-theme-" (name theme-name)))
+  (str "asciinema-theme-" theme-name))
 
 (defn player-style [] {})
 
