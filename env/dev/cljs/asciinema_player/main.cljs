@@ -9,6 +9,9 @@
 (defonce player-state
   (p/make-player-state 80 24 "/frames-10386.json" 148.297910690308 {:snapshot snapshot}))
 
+;; (defonce player-state
+;;   (p/make-player-state 80 24 "/frames-20055.json" 38.91 {}))
+
 (defn reload []
   (p/create-player-with-state player-state (. js/document (getElementById "player"))))
 
