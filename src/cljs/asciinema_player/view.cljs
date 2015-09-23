@@ -23,11 +23,15 @@
         classes (remove nil? [fg-class bg-class bold-class underline-class cursor-class])]
     (string/join " " classes)))
 
+(def part-class-name-memoized (memoize part-class-name))
+
 (defn part [[text attrs] cursor-on]
-  [:span {:class-name (part-class-name attrs cursor-on)} text])
+  [:span {:class-name (part-class-name-memoized attrs cursor-on)} text])
+
+(def part-memoized (memoize part))
 
 (defn line [parts cursor-on]
-  [:span.line (map-indexed (fn [idx p] ^{:key idx} [part p cursor-on]) parts)])
+  [:span.line (map-indexed (fn [idx p] ^{:key idx} [part-memoized p cursor-on]) parts)])
 
 (defn split-part-with-cursor [[text attrs] position]
   (let [left-chars (take position text)
