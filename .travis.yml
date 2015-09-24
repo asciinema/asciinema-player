@@ -1,2 +1,3 @@
 language: clojure
 script: lein doo phantom test once
+sudo: false
