@@ -19,7 +19,7 @@ TODO: clarify this all
 
     lein figwheel dev
     lein less auto
-    lein cljsbuild auto test
+    lein doo phantom test
 
 Open [localhost:3449](http://localhost:3449/) in the browser to load the player
 with sample asciicast.
