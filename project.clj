@@ -33,7 +33,7 @@
                                          :source-map "resources/public/js/test.js.map"
                                          :optimizations :none
                                          :pretty-print false
-                                         :main 'asciinema-player.runner}}
+                                         :main "asciinema-player.runner"}}
                        :release {:source-paths ["src/cljs"]
                               :compiler {:output-to     "resources/public/js/release.js"
                                          :output-dir    "resources/public/js/release"
