@@ -24,6 +24,9 @@
          :loop loop
          :speed speed}))
 
+(defn elapsed-time-since [then]
+  (/ (- (.getTime (js/Date.)) (.getTime then)) 1000))
+
 (defn apply-diff [state {:keys [lines cursor]}]
   (merge-with merge state {:lines lines :cursor cursor}))
 
@@ -35,6 +38,28 @@
           (<! (timeout (* 1000 delay)))
           (>! ch data)
           (recur (rest coll))))
+      (close! ch))
+    ch))
+
+(defn frames->chan [frames speed]
+  (let [ch (chan)
+        start (js/Date.)]
+    (go
+      (loop [frames frames
+             virtual-time 0
+             pending-diff {}]
+        (when-let [[delay diff] (first frames)]
+          (let [wall-time (* (elapsed-time-since start) speed)
+                new-virtual-time (+ virtual-time delay)
+                ahead (- new-virtual-time wall-time)]
+            (if (pos? ahead)
+              (do
+                (when-not (empty? pending-diff)
+                  (>! ch pending-diff))
+                (<! (timeout (/ (* 1000 ahead) speed)))
+                (>! ch diff)
+                (recur (rest frames) new-virtual-time {}))
+              (recur (rest frames) new-virtual-time (merge-with merge pending-diff diff))))))
       (close! ch))
     ch))
 
@@ -56,12 +81,6 @@
           (cons [(- delay seconds) diff] (rest frames))))
       frames)))
 
-(defn elapsed-time-since [then]
-  (/ (- (.getTime (js/Date.)) (.getTime then)) 1000))
-
-(defn frames-at-speed [frames speed]
-  (map (fn [[delay diff]] [(/ delay speed) diff]) frames))
-
 (defn reset-blink [state]
   (assoc-in state [:cursor :on] true))
 
@@ -72,8 +91,8 @@
   (let [start (js/Date.)
         play-from (:play-from state)
         speed (:speed state)
-        frames (-> (:frames state) (next-frames play-from) (frames-at-speed speed))
-        diff-chan (coll->chan frames)
+        frames (-> (:frames state) (next-frames play-from))
+        diff-chan (frames->chan frames speed)
         timer-chan (coll->chan (repeat [0.3 true]))
         stop-playback-chan (chan)
         elapsed-time #(* (elapsed-time-since start) speed)
