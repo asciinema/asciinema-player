@@ -8,7 +8,9 @@
             [ajax.core :refer [GET]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
-(defn make-player-state [width height frames-url duration {:keys [speed snapshot auto-play loop font-size theme] :or {speed 1 snapshot [] auto-play false loop false font-size "small" theme "seti"}}]
+(defn make-player-state
+  "Returns Reagent atom with fresh player state."
+  [width height frames-url duration {:keys [speed snapshot auto-play loop font-size theme] :or {speed 1 snapshot [] auto-play false loop false font-size "small" theme "seti"}}]
   (atom {
          :width width
          :height height
@@ -24,13 +26,23 @@
          :loop loop
          :speed speed}))
 
-(defn elapsed-time-since [then]
+(defn elapsed-time-since
+  "Returns wall time (in seconds) elapsed since then."
+  [then]
   (/ (- (.getTime (js/Date.)) (.getTime then)) 1000))
 
-(defn apply-diff [state {:keys [lines cursor]}]
+(defn apply-diff
+  "Applies given diff (line content and cursor position changes) to player's
+  state."
+  [state {:keys [lines cursor]}]
   (merge-with merge state {:lines lines :cursor cursor}))
 
-(defn coll->chan [coll]
+(defn coll->chan
+  "Returns a channel that emits values from the given collection.
+  The difference from core.async/to-chan is this function expects elements of
+  the collection to be tuples of [delay data], and it emits data after
+  delay (sec) for each element."
+  [coll]
   (let [ch (chan)]
     (go
       (loop [coll coll]
@@ -41,7 +53,9 @@
       (close! ch))
     ch))
 
-(defn frames->chan [frames speed]
+(defn frames->chan
+  "Returns a channel that emits frames from the given collection."
+  [frames speed]
   (let [ch (chan)
         start (js/Date.)]
     (go
@@ -63,7 +77,10 @@
       (close! ch))
     ch))
 
-(defn prev-diff [frames seconds]
+(defn prev-diff
+  "Returns a combined diff from frames up to (and including) given time (in
+  seconds)."
+  [frames seconds]
   (loop [frames frames
          seconds seconds
          candidate nil]
@@ -72,7 +89,9 @@
         candidate
         (recur (rest frames) (- seconds delay) (merge-with merge candidate diff))))))
 
-(defn next-frames [frames seconds]
+(defn next-frames
+  "Returns a lazy sequence of frames starting from given time (in seconds)."
+  [frames seconds]
   (lazy-seq
     (if (seq frames)
       (let [[delay diff] (first frames)]
@@ -81,13 +100,21 @@
           (cons [(- delay seconds) diff] (rest frames))))
       frames)))
 
-(defn reset-blink [state]
+(defn reset-blink
+  "Makes cursor 'block' visible."
+  [state]
   (assoc-in state [:cursor :on] true))
 
-(defn make-cursor-blink-chan []
+(defn make-cursor-blink-chan
+  "Returns a channel emitting true/false/true/false/... in 0.5 sec periods."
+  []
   (coll->chan (cycle [[0.5 false] [0.5 true]])))
 
-(defn start-playback [state dispatch]
+(defn start-playback
+  "The heart of the player. Coordinates dispatching of state update events like
+  terminal line updating, time reporting and cursor blinking.
+  Returns function which stops the playback and returns time of the playback."
+  [state dispatch]
   (let [start (js/Date.)
         play-from (:play-from state)
         speed (:speed state)
@@ -122,7 +149,9 @@
         (apply-diff (prev-diff (:frames state) play-from))
         (assoc :stop stop-fn))))
 
-(defn stop-playback [state]
+(defn stop-playback
+  "Stops the playback and returns updated state with new start position."
+  [state]
   (let [t ((:stop state))]
     (-> state
         (dissoc :stop)
@@ -134,10 +163,17 @@
 (defn- fix-diff-keys [frame]
   (update-in frame [1 :lines] fix-line-diff-keys))
 
-(defn frames-json->clj [frames]
+(defn frames-json->clj
+  "Converts keys in frames (as received as JSON) to keywords. Integer keys
+  referring to line numbers are converted to integers."
+  [frames]
   (map fix-diff-keys (walk/keywordize-keys frames)))
 
-(defn fetch-frames [state dispatch]
+(defn fetch-frames
+  "Fetches frames, setting :loading to true at the start,
+  dispatching :frames-response event on success, :bad-response event on
+  failure."
+  [state dispatch]
   (let [url (:frames-url state)]
     (GET
      url
@@ -146,17 +182,23 @@
       :error-handler #(dispatch [:bad-response %])})
     (assoc state :loading true)))
 
-(defn new-position [current-time total-time offset]
+(defn new-position
+  "Returns time adjusted by given offset, clipped to the range 0..total-time."
+  [current-time total-time offset]
   (/ (util/adjust-to-range (+ current-time offset) 0 total-time) total-time))
 
-(defn handle-toggle-play [state dispatch]
+(defn handle-toggle-play
+  "Toggles the playback. Fetches frames if they were not loaded yet."
+  [state dispatch]
   (if (contains? state :frames)
     (if (contains? state :stop)
       (stop-playback state)
       (start-playback state dispatch))
     (fetch-frames state dispatch)))
 
-(defn handle-seek [state dispatch [position]]
+(defn handle-seek
+  "Jumps to a given position (in seconds)."
+  [state dispatch [position]]
   (let [new-time (* position (:duration state))
         diff (prev-diff (:frames state) new-time)
         playing? (contains? state :stop)]
@@ -169,15 +211,22 @@
         (start-playback new-state dispatch)
         new-state))))
 
-(defn handle-rewind [state dispatch]
+(defn handle-rewind
+  "Rewinds the playback by 5 seconds."
+  [state dispatch]
   (let [position (new-position (:current-time state) (:duration state) -5)]
     (handle-seek state dispatch [position])))
 
-(defn handle-fast-forward [state dispatch]
+(defn handle-fast-forward
+  "Fast-forwards the playback by 5 seconds."
+  [state dispatch]
   (let [position (new-position (:current-time state) (:duration state) 5)]
     (handle-seek state dispatch [position])))
 
-(defn handle-finished [state dispatch]
+(defn handle-finished
+  "Prepares player to be ready for playback from the beginning. Starts the
+  playback immediately when loop option is true."
+  [state dispatch]
   (when (:loop state)
     (dispatch [:toggle-play]))
   (-> state (dissoc :stop) (assoc :play-from 0)))
@@ -188,7 +237,9 @@
 (defn speed-down [speed]
   (/ speed 2))
 
-(defn handle-speed-change [change-fn state dispatch]
+(defn handle-speed-change
+  "Alters the speed of the playback by applying change-fn to the current speed."
+  [change-fn state dispatch]
   (if-let [stop (:stop state)]
     (let [t (stop)]
       (-> state
@@ -197,12 +248,17 @@
           (start-playback dispatch)))
     (update-in state [:speed] change-fn)))
 
-(defn handle-frames-response [state dispatch [frames-json]]
+(defn handle-frames-response
+  "Merges frames into player state, hides loading indicator and starts the
+  playback."
+  [state dispatch [frames-json]]
   (dispatch [:toggle-play])
   (assoc state :loading false
                :frames (frames-json->clj frames-json)))
 
-(defn handle-update-state [state _ [f & args]]
+(defn handle-update-state
+  "Applies given function (with args) to the player state."
+  [state _ [f & args]]
   (apply f state args))
 
 (def event-handlers {:toggle-play handle-toggle-play
@@ -215,12 +271,17 @@
                      :frames-response handle-frames-response
                      :update-state handle-update-state})
 
-(defn process-event [state dispatch [event-name & args]]
+(defn process-event
+  "Finds handler for the given event and applies it to the player state."
+  [state dispatch [event-name & args]]
   (if-let [handler (get event-handlers event-name)]
     (swap! state handler dispatch args)
     (print (str "unhandled event: " event-name))))
 
-(defn create-player-with-state [state dom-node]
+(defn create-player-with-state
+  "Creates the player with given state by starting event processing loop and
+  mounting Reagent component in DOM."
+  [state dom-node]
   (let [events (chan)
         dispatch (fn [event] (go (>! events event)))]
     (go-loop []
@@ -232,12 +293,17 @@
       (dispatch [:toggle-play]))
     (clj->js {:toggle (fn [] true)})))
 
-(defn create-player [dom-node width height frames-url duration options]
+(defn create-player
+  "Creates the player with the state built from given options by starting event
+  processing loop and mounting Reagent component in DOM."
+  [dom-node width height frames-url duration options]
   (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)
         state (make-player-state width height frames-url duration options)]
     (create-player-with-state state dom-node)))
 
-(defn ^:export CreatePlayer [dom-node width height frames-url duration options]
+(defn ^:export CreatePlayer
+  "JavaScript API for creating the player, delegating to create-player."
+  [dom-node width height frames-url duration options]
   (let [options (-> options
                     (js->clj :keywordize-keys true)
                     (rename-keys {:autoPlay :auto-play :fontSize :font-size}))]
