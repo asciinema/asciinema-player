@@ -1,6 +1,8 @@
 # asciinema player
 
-This is the player used on asciinema.org.
+[![Build Status](https://travis-ci.org/asciinema/asciinema-player.svg?branch=master)](https://travis-ci.org/asciinema/asciinema-player)
+
+The player used on asciinema.org.
 
 ## Keyboard shortcuts
 
@@ -24,11 +26,14 @@ TODO: clarify this all
 Open [localhost:3449](http://localhost:3449/) in the browser to load the player
 with sample asciicast.
 
+Any changes made to `.cljs` or `.less` files will be automatically pushed to the
+browser, preserving player's state.
+
 ### Building
 
 To build Javascript and CSS bundles run:
 
-    lein cljsbuild once
+    lein cljsbuild once release
     lein less once
 
 ## Usage
@@ -47,7 +52,7 @@ Add player script and stylesheet to the page:
 Insert the player with:
 
 ```javascript
-asciinema.CreatePlayer(parent, width, height, dataUrl, duration, options)
+asciinema_player.core.CreatePlayer(parent, width, height, dataUrl, duration, options)
 ```
 
 where:
@@ -70,8 +75,8 @@ For example:
 ```html
 <div id="player-container"></div>
 <script>
-  asciinema.CreatePlayer(
-    document.getElementById('player-container'),
+  asciinema_player.core.CreatePlayer(
+    document.getElementById('player-container')
     80,
     24,
     '/frames.json',
