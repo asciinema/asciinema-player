@@ -55,7 +55,7 @@
 
 (defn frames->chan
   "Returns a channel that emits frames from the given collection."
-  [frames speed]
+  [frames]
   (let [ch (chan)
         start (js/Date.)]
     (go
@@ -63,14 +63,14 @@
              virtual-time 0
              pending-diff {}]
         (when-let [[delay diff] (first frames)]
-          (let [wall-time (* (elapsed-time-since start) speed)
+          (let [wall-time (elapsed-time-since start)
                 new-virtual-time (+ virtual-time delay)
                 ahead (- new-virtual-time wall-time)]
             (if (pos? ahead)
               (do
                 (when-not (empty? pending-diff)
                   (>! ch pending-diff))
-                (<! (timeout (/ (* 1000 ahead) speed)))
+                (<! (timeout (* 1000 ahead)))
                 (>! ch diff)
                 (recur (rest frames) new-virtual-time {}))
               (recur (rest frames) new-virtual-time (merge-with merge pending-diff diff))))))
@@ -110,6 +110,9 @@
   []
   (coll->chan (cycle [[0.5 false] [0.5 true]])))
 
+(defn frames-at-speed [frames speed]
+  (map (fn [[delay diff]] [(/ delay speed) diff]) frames))
+
 (defn start-playback
   "The heart of the player. Coordinates dispatching of state update events like
   terminal line updating, time reporting and cursor blinking.
@@ -118,8 +121,8 @@
   (let [start (js/Date.)
         play-from (:play-from state)
         speed (:speed state)
-        frames (-> (:frames state) (next-frames play-from))
-        diff-chan (frames->chan frames speed)
+        frames (-> (:frames state) (next-frames play-from) (frames-at-speed speed))
+        diff-chan (frames->chan frames)
         timer-chan (coll->chan (repeat [0.3 true]))
         stop-playback-chan (chan)
         elapsed-time #(* (elapsed-time-since start) speed)
