@@ -225,7 +225,10 @@
   [state dispatch]
   (when (:loop state)
     (dispatch [:toggle-play]))
-  (-> state (dissoc :stop) (assoc :play-from 0)))
+  (-> state
+      (dissoc :stop)
+      (assoc :play-from 0)
+      (assoc :current-time (:duration state))))
 
 (defn speed-up [speed]
   (* speed 2))
