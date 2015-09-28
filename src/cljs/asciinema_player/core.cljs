@@ -37,45 +37,38 @@
   [state {:keys [lines cursor]}]
   (merge-with merge state {:lines lines :cursor cursor}))
 
-(defn coll->chan
-  "Returns a channel that emits values from the given collection.
-  The difference from core.async/to-chan is this function expects elements of
-  the collection to be tuples of [delay data], and it emits data after
-  delay (sec) for each element."
-  [coll]
-  (let [ch (chan)]
-    (go
-      (loop [coll coll]
-        (when-let [[delay data] (first coll)]
-          (<! (timeout (* 1000 delay)))
-          (>! ch data)
-          (recur (rest coll))))
-      (close! ch))
-    ch))
 
-(defn frames->chan
-  "Returns a channel that emits frames from the given collection."
-  [frames]
-  (let [ch (chan)
-        start (js/Date.)]
-    (go
-      (loop [frames frames
-             virtual-time 0
-             pending-diff {}]
-        (when-let [[delay diff] (first frames)]
-          (let [wall-time (elapsed-time-since start)
-                new-virtual-time (+ virtual-time delay)
-                ahead (- new-virtual-time wall-time)]
-            (if (pos? ahead)
-              (do
-                (when-not (empty? pending-diff)
-                  (>! ch pending-diff))
-                (<! (timeout (* 1000 ahead)))
-                (>! ch diff)
-                (recur (rest frames) new-virtual-time {}))
-              (recur (rest frames) new-virtual-time (merge-with merge pending-diff diff))))))
-      (close! ch))
-    ch))
+(defn coll->chan
+  "Returns a channel that emits frames from the given collection.
+  The difference from core.async/to-chan is this function expects elements of
+  the collection to be tuples of [delay data], and it emits data after delay
+  (sec) for each element. It tries to always stay 'on the schedule' by measuring
+  elapsed time and skipping elements if necessary. When reducer and init given
+  it reduces consecutive elements instead of skipping."
+  ([coll] (coll->chan coll (fn [_ v] v) nil))
+  ([coll reducer init]
+   (let [ch (chan)
+         start (js/Date.)]
+     (go
+       (loop [coll coll
+              virtual-time 0
+              pending-diff init]
+         (if-let [[delay diff] (first coll)]
+           (let [wall-time (elapsed-time-since start)
+                 new-virtual-time (+ virtual-time delay)
+                 ahead (- new-virtual-time wall-time)]
+             (if (pos? ahead)
+               (do
+                 (when-not (empty? pending-diff)
+                   (>! ch pending-diff))
+                 (<! (timeout (* 1000 ahead)))
+                 (>! ch diff)
+                 (recur (rest coll) new-virtual-time init))
+               (recur (rest coll) new-virtual-time (reducer pending-diff diff)))))
+         (when-not (empty? pending-diff)
+           (>! ch pending-diff)))
+       (close! ch))
+     ch)))
 
 (defn prev-diff
   "Returns a combined diff from frames up to (and including) given time (in
@@ -122,7 +115,7 @@
         play-from (:play-from state)
         speed (:speed state)
         frames (-> (:frames state) (next-frames play-from) (frames-at-speed speed))
-        diff-chan (frames->chan frames)
+        diff-chan (coll->chan frames (partial merge-with merge) {})
         timer-chan (coll->chan (repeat [0.3 true]))
         stop-playback-chan (chan)
         elapsed-time #(* (elapsed-time-since start) speed)
