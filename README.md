@@ -15,7 +15,7 @@ The player used on asciinema.org.
 ## Development
 
 The project uses [leiningen](http://leiningen.org/) for development and build
-related tasks so make sure you have it installed.
+related tasks so make sure you have it installed (as well as Java 7 or 8).
 
 TODO: clarify this all
 
