@@ -48,24 +48,25 @@
   ([coll] (coll->chan coll (fn [_ v] v) nil))
   ([coll reducer init]
    (let [ch (chan)
-         start (js/Date.)]
+         start (js/Date.)
+         reducer (fnil reducer init)]
      (go
        (loop [coll coll
               virtual-time 0
               wall-time (elapsed-time-since start)
-              acc init]
+              acc nil]
          (if-let [[delay data] (first coll)]
            (let [new-virtual-time (+ virtual-time delay)
                  ahead (- new-virtual-time wall-time)]
              (if (pos? ahead)
                (do
-                 (when-not (empty? acc)
+                 (when-not (nil? acc)
                    (>! ch acc))
                  (<! (timeout (* 1000 ahead)))
                  (>! ch data)
-                 (recur (rest coll) new-virtual-time (elapsed-time-since start) init))
+                 (recur (rest coll) new-virtual-time (elapsed-time-since start) nil))
                (recur (rest coll) new-virtual-time wall-time (reducer acc data)))))
-         (when-not (empty? acc)
+         (when-not (nil? acc)
            (>! ch acc)))
        (close! ch))
      ch)))
