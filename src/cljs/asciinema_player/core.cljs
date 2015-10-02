@@ -153,18 +153,6 @@
         (dissoc :stop)
         (update-in [:play-from] + t))))
 
-(defn- fix-line-diff-keys [line]
-  (into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) line)))
-
-(defn- fix-diff-keys [frame]
-  (update-in frame [1 :lines] fix-line-diff-keys))
-
-(defn frames-json->clj
-  "Converts keys in frames (as received as JSON) to keywords. Integer keys
-  referring to line numbers are converted to integers."
-  [frames]
-  (map fix-diff-keys (walk/keywordize-keys frames)))
-
 (defn fetch-frames
   "Fetches frames, setting :loading to true at the start,
   dispatching :frames-response event on success, :bad-response event on
@@ -173,7 +161,7 @@
   (let [url (:frames-url state)]
     (GET
      url
-     {:format :json
+     {:response-format :raw
       :handler #(dispatch [:frames-response %])
       :error-handler #(dispatch [:bad-response %])})
     (assoc state :loading true)))
@@ -247,13 +235,25 @@
           (start-playback dispatch)))
     (update-in state [:speed] change-fn)))
 
+(defn- fix-line-diff-keys [line-diff]
+  (into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) line-diff)))
+
+(defn fix-frames
+  "Converts integer keys referring to line numbers in line diff (which are
+  keywords) to actual integers."
+  [frames]
+  (map #(update-in % [1 :lines] fix-line-diff-keys) frames))
+
 (defn handle-frames-response
   "Merges frames into player state, hides loading indicator and starts the
   playback."
-  [state dispatch [frames-json]]
+  [state dispatch [json]]
   (dispatch [:toggle-play])
-  (assoc state :loading false
-               :frames (frames-json->clj frames-json)))
+  (let [frames (-> json
+                   js/JSON.parse
+                   (util/faster-js->clj :keywordize-keys true)
+                   fix-frames)]
+    (assoc state :loading false :frames frames)))
 
 (defn handle-update-state
   "Applies given function (with args) to the player state."
