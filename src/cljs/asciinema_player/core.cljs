@@ -53,20 +53,20 @@
        (loop [coll coll
               virtual-time 0
               wall-time (elapsed-time-since start)
-              pending-diff init]
-         (if-let [[delay diff] (first coll)]
+              acc init]
+         (if-let [[delay data] (first coll)]
            (let [new-virtual-time (+ virtual-time delay)
                  ahead (- new-virtual-time wall-time)]
              (if (pos? ahead)
                (do
-                 (when-not (empty? pending-diff)
-                   (>! ch pending-diff))
+                 (when-not (empty? acc)
+                   (>! ch acc))
                  (<! (timeout (* 1000 ahead)))
-                 (>! ch diff)
+                 (>! ch data)
                  (recur (rest coll) new-virtual-time (elapsed-time-since start) init))
-               (recur (rest coll) new-virtual-time wall-time (reducer pending-diff diff)))))
-         (when-not (empty? pending-diff)
-           (>! ch pending-diff)))
+               (recur (rest coll) new-virtual-time wall-time (reducer acc data)))))
+         (when-not (empty? acc)
+           (>! ch acc)))
        (close! ch))
      ch)))
 
