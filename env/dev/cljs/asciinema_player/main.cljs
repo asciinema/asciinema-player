@@ -24,3 +24,4 @@
 ; (swap! player-state assoc :theme "seti")
 ; (swap! player-state assoc :current-time 45)
 ; (swap! player-state assoc :font-size "small")
+; (swap! player-state assoc :speed 1)
