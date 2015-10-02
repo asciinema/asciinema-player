@@ -52,10 +52,10 @@
      (go
        (loop [coll coll
               virtual-time 0
+              wall-time (elapsed-time-since start)
               pending-diff init]
          (if-let [[delay diff] (first coll)]
-           (let [wall-time (elapsed-time-since start)
-                 new-virtual-time (+ virtual-time delay)
+           (let [new-virtual-time (+ virtual-time delay)
                  ahead (- new-virtual-time wall-time)]
              (if (pos? ahead)
                (do
@@ -63,8 +63,8 @@
                    (>! ch pending-diff))
                  (<! (timeout (* 1000 ahead)))
                  (>! ch diff)
-                 (recur (rest coll) new-virtual-time init))
-               (recur (rest coll) new-virtual-time (reducer pending-diff diff)))))
+                 (recur (rest coll) new-virtual-time (elapsed-time-since start) init))
+               (recur (rest coll) new-virtual-time wall-time (reducer pending-diff diff)))))
          (when-not (empty? pending-diff)
            (>! ch pending-diff)))
        (close! ch))
