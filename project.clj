@@ -14,7 +14,6 @@
   :plugins [[lein-cljsbuild "1.0.6"]
             [lein-figwheel "0.3.7"]
             [lein-less "1.7.5"]
-            [lein-doo "0.1.5-SNAPSHOT"]
             [lein-kibit "0.1.2"]]
 
   :min-lein-version "2.4.0"
@@ -29,17 +28,19 @@
                                         :optimizations :none
                                         :pretty-print  true}}
                        :test {:source-paths ["src/cljs" "test"]
-                              :compiler {:output-to "resources/public/js/test.js"
-                                         :source-map "resources/public/js/test.js.map"
+                              :notify-command ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]
+                              :compiler {:output-to     "resources/public/js/test.js"
+                                         :output-dir    "resources/public/js/test"
+                                         :source-map    "resources/public/js/test.js.map"
                                          :optimizations :none
-                                         :pretty-print false
-                                         :main "asciinema-player.runner"}}
+                                         :pretty-print  false}}
                        :release {:source-paths ["src/cljs"]
                               :compiler {:output-to     "resources/public/js/release.js"
                                          :output-dir    "resources/public/js/release"
                                          :preamble      ["license.js"]
                                          :optimizations :advanced
-                                         :pretty-print  false}}}}
+                                         :pretty-print  false}}}
+              :test-commands {"test" ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]}}
 
   :figwheel {:http-server-root "public"
              :server-port 3449
