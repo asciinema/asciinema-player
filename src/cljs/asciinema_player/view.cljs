@@ -43,13 +43,20 @@
         right-part (if (seq right-chars) [(apply str right-chars) attrs])]
     (remove nil? (vector left-part center-part right-part))))
 
-(defn insert-cursor [parts cursor-x]
-  (loop [left [] right parts idx cursor-x]
-    (let [[text attrs :as part] (first right)
-          len (count text)]
-      (if (<= len idx)
-        (recur (conj left part) (rest right) (- idx len))
-        (concat left (split-part-with-cursor part idx) (rest right))))))
+(defn insert-cursor
+  "Marks proper character in line with ':cursor true' by locating and splitting
+  a fragment that contains the cursor position."
+  [parts cursor-x]
+  (loop [left []
+         right parts
+         idx cursor-x]
+    (if (seq right)
+      (let [[text attrs :as part] (first right)
+            len (count text)]
+        (if (<= len idx)
+          (recur (conj left part) (rest right) (- idx len))
+          (concat left (split-part-with-cursor part idx) (rest right))))
+      left)))
 
 (defn terminal-class-name [font-size]
   (str "font-" font-size))
