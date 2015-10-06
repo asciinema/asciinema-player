@@ -12,7 +12,7 @@
 (defonce player-state
   (p/make-player-state 80 24 "/frames-10386.json" 148.297910690308 (merge options {:snapshot snapshot})))
 
-;; (add-watch player-state :foo (fn [_ id old new] (prn (:show-hud new))))
+;; (add-watch player-state :foo (fn [_ id old new] (prn (-> new (dissoc :lines) (dissoc :snapshot) (dissoc :frames)))))
 
 ;; "fractals"
 
