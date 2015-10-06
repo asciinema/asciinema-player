@@ -83,22 +83,22 @@
 
 (defn play-icon []
   [:svg {:version "1.1" :xmlns "http://www.w3.org/2000/svg" :view-box "0 0 12 12" :class-name "icon"}
-    [:path {:d "M1,0 L11,6 L1,12 Z"}]])
+   [:path {:d "M1,0 L11,6 L1,12 Z"}]])
 
 (defn pause-icon []
   [:svg {:version "1.1" :xmlns "http://www.w3.org/2000/svg" :view-box "0 0 12 12" :class-name "icon"}
-    [:path {:d "M1,0 L4,0 L4,12 L1,12 Z"}]
-    [:path {:d "M8,0 L11,0 L11,12 L8,12 Z"}]])
+   [:path {:d "M1,0 L4,0 L4,12 L1,12 Z"}]
+   [:path {:d "M8,0 L11,0 L11,12 L8,12 Z"}]])
 
 (defn expand-icon []
   [:svg {:version "1.1" :xmlns "http://www.w3.org/2000/svg" :view-box "0 0 12 12" :class-name "icon"}
-    [:path {:d "M12,0 L7,0 L9,2 L7,4 L8,5 L10,3 L12,5 Z"}]
-    [:path {:d "M0,12 L0,7 L2,9 L4,7 L5,8 L3,10 L5,12 Z"}]])
+   [:path {:d "M12,0 L7,0 L9,2 L7,4 L8,5 L10,3 L12,5 Z"}]
+   [:path {:d "M0,12 L0,7 L2,9 L4,7 L5,8 L3,10 L5,12 Z"}]])
 
 (defn shrink-icon []
   [:svg {:version "1.1" :xmlns "http://www.w3.org/2000/svg" :view-box "0 0 12 12" :class-name "icon"}
-    [:path {:d "M7,5 L7,0 L9,2 L11,0 L12,1 L10,3 L12,5 Z"}]
-    [:path {:d "M5,7 L0,7 L2,9 L0,11 L1,12 L3,10 L5,12 Z"}]])
+   [:path {:d "M7,5 L7,0 L9,2 L11,0 L12,1 L10,3 L12,5 Z"}]
+   [:path {:d "M5,7 L0,7 L2,9 L0,11 L1,12 L3,10 L5,12 Z"}]])
 
 (defn playback-control-button [playing? dispatch]
   (let [on-click (fn [e]
@@ -122,8 +122,8 @@
 
 (defn timer [current-time total-time]
   [:span.timer
-    [:span.time-elapsed (elapsed-time current-time)]
-    [:span.time-remaining (remaining-time current-time total-time)]])
+   [:span.time-elapsed (elapsed-time current-time)]
+   [:span.time-remaining (remaining-time current-time total-time)]])
 
 (defn fullscreen-toggle-button []
   (let [on-click (fn [e]
@@ -143,30 +143,30 @@
                               position (/ mouse-x bar-width)]
                           (dispatch [:seek position])))]
     [:span.progressbar
-      [:span.bar {:on-mouse-down on-mouse-down}
-        [:span.gutter
-          [:span {:style {:width (str (* 100 progress) "%")}}]]]]))
+     [:span.bar {:on-mouse-down on-mouse-down}
+      [:span.gutter
+       [:span {:style {:width (str (* 100 progress) "%")}}]]]]))
 
 (defn control-bar [playing? current-time total-time dispatch]
   [:div.control-bar
-    [playback-control-button playing? dispatch]
-    [timer current-time total-time]
-    [fullscreen-toggle-button]
-    [progress-bar (/ current-time total-time) dispatch]])
+   [playback-control-button playing? dispatch]
+   [timer current-time total-time]
+   [fullscreen-toggle-button]
+   [progress-bar (/ current-time total-time) dispatch]])
 
 (defn start-overlay [dispatch]
   (let [on-click (fn [e]
                    (.preventDefault e)
                    (dispatch [:toggle-play]))]
     [:div.start-prompt {:on-click on-click}
-      [:div.play-button
-        [:div
-          [:span
-            [logo-play-icon]]]]]))
+     [:div.play-button
+      [:div
+       [:span
+        [logo-play-icon]]]]]))
 
 (defn loading-overlay []
   [:div.loading
-    [:div.loader]])
+   [:div.loader]])
 
 (defn player-class-name [theme-name]
   (str "asciinema-theme-" theme-name))
@@ -211,8 +211,8 @@
         class-name (player-class-name theme)
         playing? (boolean stop)]
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down}
-      [:div.asciinema-player {:class-name class-name :style (player-style)}
-        [terminal width height font-size lines cursor]
-        [control-bar playing? current-time duration dispatch]
-        (when-not (or loading frames) [start-overlay dispatch])
-        (when loading [loading-overlay])]]))
+     [:div.asciinema-player {:class-name class-name :style (player-style)}
+      [terminal width height font-size lines cursor]
+      [control-bar playing? current-time duration dispatch]
+      (when-not (or loading frames) [start-overlay dispatch])
+      (when loading [loading-overlay])]]))
