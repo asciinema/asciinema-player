@@ -204,6 +204,9 @@
     39 [:fast-forward]
     nil))
 
+(defn title-bar [title]
+  [:span.title title])
+
 (defn player [state dispatch]
   (let [{:keys [width height font-size theme lines cursor stop current-time duration loading frames title show-hud]} @state
         on-key-press (partial handle-dom-event dispatch key-press->event)
@@ -216,5 +219,6 @@
      [:div.asciinema-player {:class-name player-class-name :style (player-style)}
       [terminal width height font-size lines cursor]
       [control-bar playing? current-time duration dispatch]
+      (when title [title-bar title])
       (when-not (or loading frames) [start-overlay dispatch])
       (when loading [loading-overlay])]]))

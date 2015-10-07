@@ -10,7 +10,7 @@
 
 (defn make-player-state
   "Returns Reagent atom with fresh player state."
-  [width height frames-url duration {:keys [speed snapshot auto-play loop font-size theme] :or {speed 1 snapshot [] auto-play false loop false font-size "small" theme "seti"}}]
+  [width height frames-url duration {:keys [speed snapshot auto-play loop font-size theme title] :or {speed 1 snapshot [] auto-play false loop false font-size "small" theme "seti"}}]
   (atom {
          :width width
          :height height
@@ -25,7 +25,8 @@
          :autoplay auto-play
          :loop loop
          :speed speed
-         :show-hud false}))
+         :show-hud false
+         :title title}))
 
 (defn elapsed-time-since
   "Returns wall time (in seconds) elapsed since then."

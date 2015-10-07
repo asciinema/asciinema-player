@@ -13,12 +13,30 @@
   .asciinema-player {
     position: static;
   }
+
+  &.hud .title {
+    top: 0;
+  }
 }
 
 .asciinema-player-wrapper {
   position: relative;
   text-align: center;
   outline: none;
+
+  .title {
+    top: -55px;
+    transition: top 0.15s linear;
+    position: absolute;
+    left: 0;
+    right: 0;
+    font-size: 20px;
+    line-height: 1em;
+    padding: 15px;
+    font-family: sans-serif;
+    color: white;
+    background-color: rgba(0, 0, 0, 0.8);
+  }
 
   &:fullscreen {
     .fullscreen;
