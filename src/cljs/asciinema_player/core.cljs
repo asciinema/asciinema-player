@@ -2,7 +2,7 @@
   (:require [reagent.core :as reagent :refer [atom]]
             [asciinema-player.view :as view]
             [asciinema-player.util :as util]
-            [cljs.core.async :refer [chan >! <! timeout close!]]
+            [cljs.core.async :refer [chan >! <! timeout close! dropping-buffer]]
             [clojure.walk :as walk]
             [clojure.set :refer [rename-keys]]
             [ajax.core :refer [GET]])
@@ -24,7 +24,8 @@
          :current-time 0
          :autoplay auto-play
          :loop loop
-         :speed speed}))
+         :speed speed
+         :show-hud false}))
 
 (defn elapsed-time-since
   "Returns wall time (in seconds) elapsed since then."
@@ -275,19 +276,53 @@
   "Finds handler for the given event and applies it to the player state."
   [state dispatch [event-name & args]]
   (if-let [handler (get event-handlers event-name)]
-    (swap! state handler dispatch args)
-    (print (str "unhandled event: " event-name))))
+    (handler state dispatch args)
+    (do
+      (print "unhandled event:" event-name)
+      state)))
+
+(defn activity-chan
+  "Converts given channel into an activity indicator channel. The resulting
+  channel emits false when there are no reads on input channel within msec, then
+  true when new values show up on input, then false again after msec without
+  reads on input, and so on."
+  [input msec]
+  (let [out (chan)]
+    (go-loop []
+      ;; wait for activity on input channel
+      (<! input)
+      (>! out true)
+
+      ;; wait for inactivity on input channel
+      (loop []
+        (let [t (timeout msec)
+              [_ c] (alts! [input t])]
+          (when (= c input)
+            (print "moved")
+            (recur))))
+      (>! out false)
+
+      (recur))
+    out))
 
 (defn create-player-with-state
   "Creates the player with given state by starting event processing loop and
   mounting Reagent component in DOM."
   [state dom-node]
   (let [events (chan)
-        dispatch (fn [event] (go (>! events event)))]
+        mouse-moves (chan (dropping-buffer 1))
+        user-activity (activity-chan mouse-moves 2000)
+        dispatch (fn [[event-name & args :as event]]
+                   (go
+                     (if (= event-name :mouse-move)
+                       (>! mouse-moves true)
+                       (>! events event))))]
     (go-loop []
-      (when-let [event (<! events)]
-        (process-event state dispatch event)
-        (recur)))
+      (swap! state process-event dispatch (<! events))
+      (recur))
+    (go-loop []
+      (swap! state assoc :show-hud (<! user-activity))
+      (recur))
     (reagent/render-component [view/player state dispatch] dom-node)
     (when (:autoplay @state)
       (dispatch [:toggle-play]))

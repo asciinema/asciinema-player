@@ -205,13 +205,15 @@
     nil))
 
 (defn player [state dispatch]
-  (let [{:keys [width height font-size theme lines cursor stop current-time duration loading frames]} @state
+  (let [{:keys [width height font-size theme lines cursor stop current-time duration loading frames title show-hud]} @state
         on-key-press (partial handle-dom-event dispatch key-press->event)
         on-key-down (partial handle-dom-event dispatch key-down->event)
-        class-name (player-class-name theme)
+        on-mouse-move #(dispatch [:mouse-move])
+        wrapper-class-name (when show-hud "hud")
+        player-class-name (player-class-name theme)
         playing? (boolean stop)]
-    [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down}
-     [:div.asciinema-player {:class-name class-name :style (player-style)}
+    [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down :on-mouse-move on-mouse-move :class-name wrapper-class-name}
+     [:div.asciinema-player {:class-name player-class-name :style (player-style)}
       [terminal width height font-size lines cursor]
       [control-bar playing? current-time duration dispatch]
       (when-not (or loading frames) [start-overlay dispatch])
