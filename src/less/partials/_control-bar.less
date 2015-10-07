@@ -156,8 +156,13 @@
 
     .control-bar {
       position: absolute;
-      bottom: 0;
+      bottom: -35px;
       left: 0;
+      transition: bottom 0.15s linear;
+    }
+
+    &.hud .control-bar {
+      bottom: 0px;
     }
   }
 
