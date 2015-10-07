@@ -52,7 +52,7 @@ Add player script and stylesheet to the page:
 Insert the player with:
 
 ```javascript
-asciinema_player.core.CreatePlayer(parent, width, height, dataUrl, duration, options)
+asciinema_player.core.CreatePlayer(parent, width, height, dataURL, duration, options)
 ```
 
 where:
@@ -60,7 +60,7 @@ where:
 * `parent` - DOM element into which the player should be inserted as a child,
 * `width` - width of the player (number of terminal columns),
 * `height` - height of the player (number of terminal lines),
-* `dataUrl` - URL of the data file which contains animation frames (also see note below),
+* `dataURL` - URL of the data file which contains animation frames (also see note below),
 * `duration` - total duration of the recording in seconds,
 * `options` - (optional) object with any of the following properties:
   * `speed` - playback speed, default: 1,
@@ -88,7 +88,7 @@ For example:
 </script>
 ```
 
-### Note on `dataUrl`
+### Note on `dataURL`
 
 The player doesn't directly support [asciicast v1
 format](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v1.md).
@@ -96,7 +96,7 @@ It's rather dumb at the moment. asciinema.org does heavy lifting and converts
 v1 format JSON into a simple format (series of line diffs) understandable by
 the player.
 
-To obtain proper JSON file that can be used as `dataUrl` argument you can either:
+To obtain proper JSON file that can be used as `dataURL` argument you can either:
 
 * download it from asciinema.org (look it up in specific recording's HTML page
   source: https://asciinema.org/a/190),
