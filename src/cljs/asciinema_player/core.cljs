@@ -303,10 +303,11 @@
 
 (defn ^:export CreatePlayer
   "JavaScript API for creating the player, delegating to create-player."
-  [dom-node width height frames-url duration options]
-  (let [options (-> options
-                    (js->clj :keywordize-keys true)
-                    (rename-keys {:autoPlay :auto-play :fontSize :font-size}))]
-    (create-player dom-node width height frames-url duration options)))
+  ([dom-node width height frames-url duration] (CreatePlayer dom-node width height frames-url duration {}))
+  ([dom-node width height frames-url duration options]
+   (let [options (-> options
+                     (js->clj :keywordize-keys true)
+                     (rename-keys {:autoPlay :auto-play :fontSize :font-size}))]
+     (create-player dom-node width height frames-url duration options))))
 
 (enable-console-print!)
