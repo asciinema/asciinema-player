@@ -68,9 +68,11 @@ where:
   * `autoPlay` - set to true if playback should start automatically, default: `false`,
   * `loop` - set to true if playback should be looped, default: `false`,
   * `fontSize` - size of terminal font: `'small'`, `'medium'` or `'big'`; default: `'small'`,
-  * `theme` - terminal theme: `'tango'`, `'solarized-dark'` or `'solarized-light'`; default: `'tango'`
+  * `theme` - terminal theme: `'tango'`, `'solarized-dark'` or `'solarized-light'`; default: `'tango'`,
   * `title` - title of the asciicast, displayed at the top of the screen in
-    fullscreen mode
+  fullscreen mode,
+  * `authorImgURL` - URL of the author's image, displayed at the top of the
+    screen in fullscreen mode
 
 For example:
 

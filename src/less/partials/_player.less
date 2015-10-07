@@ -25,17 +25,24 @@
   outline: none;
 
   .title {
-    top: -55px;
+    top: -78px;
     transition: top 0.15s linear;
     position: absolute;
     left: 0;
     right: 0;
+    box-sizing: content-box;
     font-size: 20px;
     line-height: 1em;
     padding: 15px;
     font-family: sans-serif;
     color: white;
     background-color: rgba(0, 0, 0, 0.8);
+
+    img {
+      vertical-align: middle;
+      height: 48px;
+      margin-right: 16px;
+    }
   }
 
   &:fullscreen {

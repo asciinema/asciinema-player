@@ -10,7 +10,7 @@
 
 (defn make-player-state
   "Returns Reagent atom with fresh player state."
-  [width height frames-url duration {:keys [speed snapshot auto-play loop font-size theme title] :or {speed 1 snapshot [] auto-play false loop false font-size "small" theme "seti"}}]
+  [width height frames-url duration {:keys [speed snapshot auto-play loop font-size theme title author-img-url] :or {speed 1 snapshot [] auto-play false loop false font-size "small" theme "seti"}}]
   (atom {
          :width width
          :height height
@@ -26,7 +26,8 @@
          :loop loop
          :speed speed
          :show-hud false
-         :title title}))
+         :title title
+         :author-img-url author-img-url}))
 
 (defn elapsed-time-since
   "Returns wall time (in seconds) elapsed since then."
@@ -342,7 +343,7 @@
   ([dom-node width height frames-url duration options]
    (let [options (-> options
                      (js->clj :keywordize-keys true)
-                     (rename-keys {:autoPlay :auto-play :fontSize :font-size}))]
+                     (rename-keys {:autoPlay :auto-play :fontSize :font-size :authorImgURL :author-img-url}))]
      (create-player dom-node width height frames-url duration options))))
 
 (enable-console-print!)
