@@ -299,7 +299,6 @@
         (let [t (timeout msec)
               [_ c] (alts! [input t])]
           (when (= c input)
-            (print "moved")
             (recur))))
       (>! out false)
 
