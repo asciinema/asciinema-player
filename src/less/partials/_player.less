@@ -14,7 +14,7 @@
     position: static;
   }
 
-  &.hud .title {
+  &.hud .title-bar {
     top: 0;
   }
 }
@@ -24,7 +24,7 @@
   text-align: center;
   outline: none;
 
-  .title {
+  .title-bar {
     top: -78px;
     transition: top 0.15s linear;
     position: absolute;
@@ -42,6 +42,15 @@
       vertical-align: middle;
       height: 48px;
       margin-right: 16px;
+    }
+
+    a {
+      color: white;
+      text-decoration: underline;
+    }
+
+    a:hover {
+      text-decoration: none;
     }
   }
 

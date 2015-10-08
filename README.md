@@ -69,10 +69,10 @@ where:
   * `loop` - set to true if playback should be looped, default: `false`,
   * `fontSize` - size of terminal font: `'small'`, `'medium'` or `'big'`; default: `'small'`,
   * `theme` - terminal theme: `'tango'`, `'solarized-dark'` or `'solarized-light'`; default: `'tango'`,
-  * `title` - title of the asciicast, displayed at the top of the screen in
-  fullscreen mode,
-  * `authorImgURL` - URL of the author's image, displayed at the top of the
-    screen in fullscreen mode
+  * `title` - title of the asciicast, displayed in the titlebar in fullscreen mode,
+  * `author` - author of the asciicast, displayed in the titlebar in fullscreen mode,
+  * `authorURL` - URL of the author's homepage/profile,
+  * `authorImgURL` - URL of the author's image, displayed in the titlebar in fullscreen mode
 
 For example:
 

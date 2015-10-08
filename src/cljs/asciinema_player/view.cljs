@@ -204,13 +204,15 @@
     39 [:fast-forward]
     nil))
 
-(defn title-bar [title author-img-url]
-  [:span.title
-   (when author-img-url [:img {:src author-img-url}])
-   title])
+(defn title-bar [title author author-url author-img-url]
+  (let [title-text (if title (str "\"" title "\"") "untitled")]
+    [:span.title-bar
+     (when author-img-url [:img {:src author-img-url}])
+     title-text
+     (when author [:span " by " (if author-url [:a {:href author-url} author] author)])]))
 
 (defn player [state dispatch]
-  (let [{:keys [width height font-size theme lines cursor stop current-time duration loading frames show-hud title author-img-url]} @state
+  (let [{:keys [width height font-size theme lines cursor stop current-time duration loading frames show-hud title author author-url author-img-url]} @state
         on-key-press (partial handle-dom-event dispatch key-press->event)
         on-key-down (partial handle-dom-event dispatch key-down->event)
         on-mouse-move #(dispatch [:mouse-move])
@@ -221,6 +223,6 @@
      [:div.asciinema-player {:class-name player-class-name :style (player-style)}
       [terminal width height font-size lines cursor]
       [control-bar playing? current-time duration dispatch]
-      (when title [title-bar title author-img-url])
+      (when (or title author) [title-bar title author author-url author-img-url])
       (when-not (or loading frames) [start-overlay dispatch])
       (when loading [loading-overlay])]]))
