@@ -2,7 +2,7 @@
   (:require [reagent.core :as reagent :refer [atom]]
             [asciinema-player.view :as view]
             [asciinema-player.util :as util]
-            [cljs.core.async :refer [chan >! <! timeout close! dropping-buffer]]
+            [cljs.core.async :refer [chan >! <! put! timeout close! dropping-buffer]]
             [clojure.walk :as walk]
             [clojure.set :refer [rename-keys]]
             [ajax.core :refer [GET]])
@@ -316,10 +316,10 @@
         mouse-moves (chan (dropping-buffer 1))
         user-activity (activity-chan mouse-moves 2000)
         dispatch (fn [[event-name & args :as event]]
-                   (go
-                     (if (= event-name :mouse-move)
-                       (>! mouse-moves true)
-                       (>! events event))))]
+                   (if (= event-name :mouse-move)
+                     (put! mouse-moves true)
+                     (put! events event))
+                   nil)]
     (go-loop []
       (swap! state process-event dispatch (<! events))
       (recur))
