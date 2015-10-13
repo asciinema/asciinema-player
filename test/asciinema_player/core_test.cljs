@@ -3,6 +3,37 @@
   (:require [cljs.test]
             [asciinema-player.core :as c]))
 
+(deftest make-player-test
+  (let [make-player #(c/make-player 80 24 "https://..." 123.45 %)]
+    (let [player (make-player {})]
+      (is (= (:width player) 80))
+      (is (= (:height player) 24))
+      (is (= (:frames-url player) "https://..."))
+      (is (= (:duration player) 123.45))
+      (is (= (:start-at player) 0))
+      (is (= (:current-time player) 0))
+      (is (= (:theme player) "seti"))
+      (is (= (:font-size player) "small"))
+      (is (= (:speed player) 1))
+      (is (= (:auto-play player) false))
+      (is (= (:loop player) nil)))
+    (let [player (make-player {:speed 3 :theme "tango" :font-size "big" :loop true :author "me"})]
+      (is (= (:speed player) 3))
+      (is (= (:theme player) "tango"))
+      (is (= (:font-size player) "big"))
+      (is (= (:loop player) true))
+      (is (= (:author player) "me")))
+    (let [player (make-player {:start-at 15})]
+      (is (= (:start-at player) 15))
+      (is (= (:current-time player) 15))
+      (is (= (:auto-play player) true)))
+    (let [player (make-player {:start-at 15 :auto-play false})]
+      (is (= (:start-at player) 15))
+      (is (= (:current-time player) 15))
+      (is (= (:auto-play player) false)))
+    (let [player (make-player {:snapshot [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]]})]
+      (is (= (:lines player) {0 [["foo" {}] ["bar" {:fg 1}]] 1 [["baz" {:bg 2}]]})))))
+
 (deftest apply-diff-test
   (let [state {:lines {} :cursor {}}
         changes {:lines {1 :b 3 :d} :cursor {:x 1 :y 2 :visible true} :unknown true}]

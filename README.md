@@ -63,12 +63,15 @@ where:
 * `dataURL` - URL of the data file which contains animation frames (also see note below),
 * `duration` - total duration of the recording in seconds,
 * `options` - (optional) object with any of the following properties:
-  * `speed` - playback speed, default: 1,
-  * `snapshot` - snapshot (preview) to display, default: `[]`,
   * `autoPlay` - set to true if playback should start automatically, default: `false`,
   * `loop` - set to true if playback should be looped, default: `false`,
+  * `startAt` - start playback at given second (implies `autoPlay: true` unless
+    `autoPlay: false` is set explicitly)
+  * `speed` - playback speed, default: 1,
+  * `snapshot` - snapshot (preview) to display, default: `[]`,
   * `fontSize` - size of terminal font: `'small'`, `'medium'` or `'big'`; default: `'small'`,
-  * `theme` - terminal theme: `'tango'`, `'solarized-dark'` or `'solarized-light'`; default: `'tango'`,
+  * `theme` - terminal theme: `'tango'`, `'solarized-dark'` or
+    `'solarized-light'`; default: `'tango'`,
   * `title` - title of the asciicast, displayed in the titlebar in fullscreen mode,
   * `author` - author of the asciicast, displayed in the titlebar in fullscreen mode,
   * `authorURL` - URL of the author's homepage/profile,

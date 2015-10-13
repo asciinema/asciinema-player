@@ -10,21 +10,24 @@
 
 (defn make-player
   "Returns fresh player state for given options."
-  [width height frames-url duration {:keys [speed snapshot font-size theme] :or {speed 1 snapshot [] font-size "small" theme "seti"} :as options}]
-  (let [lines (into (sorted-map) (map-indexed vector snapshot))]
+  [width height frames-url duration {:keys [speed snapshot font-size theme start-at auto-play] :or {speed 1 snapshot [] font-size "small" theme "seti"} :as options}]
+  (let [lines (into (sorted-map) (map-indexed vector snapshot))
+        auto-play (if (nil? auto-play) (boolean start-at) auto-play)
+        start-at (or start-at 0)]
     (merge {:width width
             :height height
             :duration duration
             :frames-url frames-url
             :speed speed
+            :auto-play auto-play
             :lines lines
             :font-size font-size
             :theme theme
             :cursor {:on true}
-            :start-at 0
-            :current-time 0
+            :start-at start-at
+            :current-time start-at
             :show-hud false}
-           (select-keys options [:auto-play :loop :title :author :author-url :author-img-url]))))
+           (select-keys options [:loop :title :author :author-url :author-img-url]))))
 
 (defn make-player-ratom
   "Returns Reagent atom with fresh player state."
@@ -348,6 +351,7 @@
                      (rename-keys {:autoPlay :auto-play
                                    :fontSize :font-size
                                    :authorURL :author-url
+                                   :startAt :start-at
                                    :authorImgURL :author-img-url}))]
      (create-player dom-node width height frames-url duration options))))
 
