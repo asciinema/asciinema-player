@@ -13,24 +13,24 @@
 ;; "emacs"
 
 (defonce player-state
-  (p/make-player-state 80 24 "/frames-10386.json" 148.297910690308 (merge options {:snapshot snapshot})))
+  (p/make-player-ratom 80 24 "/frames-10386.json" 148.297910690308 (merge options {:snapshot snapshot})))
 
 ;; (add-watch player-state :foo (fn [_ id old new] (prn (-> new (dissoc :lines) (dissoc :snapshot) (dissoc :frames)))))
 
 ;; "fractals"
 
 ;; (defonce player-state
-;;   (p/make-player-state 80 24 "/frames-20055.json" 38.91 options))
+;;   (p/make-player-ratom 80 24 "/frames-20055.json" 38.91 options))
 
 ;; "catimg"
 
 ;; (defonce player-state
-;;   (p/make-player-state 100 41 "/frames-26491.json" 12.318521 options))
+;;   (p/make-player-ratom 100 41 "/frames-26491.json" 12.318521 options))
 
 ;; "color table"
 
 ;; (defonce player-state
-;;   (p/make-player-state 84 31 "/frames-color-test.json" 4.533024 options))
+;;   (p/make-player-ratom 84 31 "/frames-color-test.json" 4.533024 options))
 
 (defn reload []
   (p/create-player-with-state player-state (. js/document (getElementById "player"))))

@@ -8,28 +8,28 @@
             [ajax.core :refer [GET]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
-(defn make-player-state
+(defn make-player
+  "Returns fresh player state for given options."
+  [width height frames-url duration {:keys [speed snapshot font-size theme] :or {speed 1 snapshot [] font-size "small" theme "seti"} :as options}]
+  (let [lines (into (sorted-map) (map-indexed vector snapshot))]
+    (merge {:width width
+            :height height
+            :duration duration
+            :frames-url frames-url
+            :speed speed
+            :lines lines
+            :font-size font-size
+            :theme theme
+            :cursor {:on true}
+            :play-from 0
+            :current-time 0
+            :show-hud false}
+           (select-keys options [:auto-play :loop :title :author :author-url :author-img-url]))))
+
+(defn make-player-ratom
   "Returns Reagent atom with fresh player state."
-  [width height frames-url duration {:keys [speed snapshot auto-play loop font-size theme title author author-url author-img-url] :or {speed 1 snapshot [] auto-play false loop false font-size "small" theme "seti"}}]
-  (atom {
-         :width width
-         :height height
-         :duration duration
-         :frames-url frames-url
-         :font-size font-size
-         :theme theme
-         :lines (into (sorted-map) (map-indexed vector snapshot))
-         :cursor {:on true}
-         :play-from 0
-         :current-time 0
-         :autoplay auto-play
-         :loop loop
-         :speed speed
-         :show-hud false
-         :title title
-         :author author
-         :author-url author-url
-         :author-img-url author-img-url}))
+  [& args]
+  (atom (apply make-player args)))
 
 (defn elapsed-time-since
   "Returns wall time (in seconds) elapsed since then."
@@ -327,7 +327,7 @@
       (swap! state assoc :show-hud (<! user-activity))
       (recur))
     (reagent/render-component [view/player state dispatch] dom-node)
-    (when (:autoplay @state)
+    (when (:auto-play @state)
       (dispatch [:toggle-play]))
     (clj->js {:toggle (fn [] true)})))
 
@@ -336,7 +336,7 @@
   processing loop and mounting Reagent component in DOM."
   [dom-node width height frames-url duration options]
   (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)
-        state (make-player-state width height frames-url duration options)]
+        state (make-player-ratom width height frames-url duration options)]
     (create-player-with-state state dom-node)))
 
 (defn ^:export CreatePlayer
