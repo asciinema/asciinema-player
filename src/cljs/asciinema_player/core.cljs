@@ -21,7 +21,7 @@
             :font-size font-size
             :theme theme
             :cursor {:on true}
-            :play-from 0
+            :start-at 0
             :current-time 0
             :show-hud false}
            (select-keys options [:auto-play :loop :title :author :author-url :author-img-url]))))
@@ -118,9 +118,9 @@
   Returns function which stops the playback and returns time of the playback."
   [state dispatch]
   (let [start (js/Date.)
-        play-from (:play-from state)
+        start-at (:start-at state)
         speed (:speed state)
-        frames (-> (:frames state) (next-frames play-from) (frames-at-speed speed))
+        frames (-> (:frames state) (next-frames start-at) (frames-at-speed speed))
         diff-chan (coll->chan frames (partial merge-with merge) {})
         timer-chan (coll->chan (repeat [0.3 true]))
         stop-playback-chan (chan)
@@ -132,7 +132,7 @@
       (loop [cursor-blink-chan (make-cursor-blink-chan)]
         (let [[v c] (alts! [diff-chan timer-chan cursor-blink-chan stop-playback-chan])]
           (condp = c
-            timer-chan (let [t (+ play-from (elapsed-time))]
+            timer-chan (let [t (+ start-at (elapsed-time))]
                          (dispatch [:update-state assoc :current-time t])
                          (recur cursor-blink-chan))
             cursor-blink-chan (do
@@ -148,7 +148,7 @@
             stop-playback-chan nil))) ; do nothing, break the loop
       (dispatch [:update-state reset-blink]))
     (-> state
-        (apply-diff (prev-diff (:frames state) play-from))
+        (apply-diff (prev-diff (:frames state) start-at))
         (assoc :stop stop-fn))))
 
 (defn stop-playback
@@ -157,7 +157,7 @@
   (let [t ((:stop state))]
     (-> state
         (dissoc :stop)
-        (update-in [:play-from] + t))))
+        (update-in [:start-at] + t))))
 
 (defn fetch-frames
   "Fetches frames, setting :loading to true at the start,
@@ -195,7 +195,7 @@
     (when playing?
       ((:stop state)))
     (let [new-state (-> state
-                        (assoc :current-time new-time :play-from new-time)
+                        (assoc :current-time new-time :start-at new-time)
                         (apply-diff diff))]
       (if playing?
         (start-playback new-state dispatch)
@@ -221,7 +221,7 @@
     (dispatch [:toggle-play]))
   (-> state
       (dissoc :stop)
-      (assoc :play-from 0)
+      (assoc :start-at 0)
       (assoc :current-time (:duration state))))
 
 (defn speed-up [speed]
@@ -236,7 +236,7 @@
   (if-let [stop (:stop state)]
     (let [t (stop)]
       (-> state
-          (update-in [:play-from] + t)
+          (update-in [:start-at] + t)
           (update-in [:speed] change-fn)
           (start-playback dispatch)))
     (update-in state [:speed] change-fn)))
