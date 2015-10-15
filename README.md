@@ -70,8 +70,8 @@ where:
   * `speed` - playback speed, default: 1,
   * `snapshot` - snapshot (preview) to display, default: `[]`,
   * `fontSize` - size of terminal font: `'small'`, `'medium'` or `'big'`; default: `'small'`,
-  * `theme` - terminal theme: `'tango'`, `'solarized-dark'` or
-    `'solarized-light'`; default: `'tango'`,
+  * `theme` - terminal theme, one of `'tango'`, `'solarized-dark'`,
+    `'solarized-light'`, `'monokai'`; default: `'tango'`,
   * `title` - title of the asciicast, displayed in the titlebar in fullscreen mode,
   * `author` - author of the asciicast, displayed in the titlebar in fullscreen mode,
   * `authorURL` - URL of the author's homepage/profile,
