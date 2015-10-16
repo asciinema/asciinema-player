@@ -22,11 +22,13 @@
 
   :cljsbuild {:builds {:dev {:source-paths ["src/cljs" "env/dev/cljs"]
                              :figwheel {:on-jsload "asciinema-player.main/reload"}
-                             :compiler {:output-to     "resources/public/js/dev.js"
-                                        :output-dir    "resources/public/js/dev"
-                                        :source-map    true
+                             :compiler {:main "asciinema-player.main"
+                                        :asset-path "js/dev"
+                                        :output-to "resources/public/js/dev.js"
+                                        :output-dir "resources/public/js/dev"
+                                        :source-map true
                                         :optimizations :none
-                                        :pretty-print  true}}
+                                        :pretty-print true}}
                        :test {:source-paths ["src/cljs" "test"]
                               :notify-command ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]
                               :compiler {:output-to     "resources/public/js/test.js"
