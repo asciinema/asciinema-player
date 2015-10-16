@@ -20,6 +20,8 @@
 
   :hooks [leiningen.cljsbuild]
 
+  :clean-targets ^{:protect false} ["resources/public/js" "target"]
+
   :cljsbuild {:builds {:dev {:source-paths ["src/cljs" "env/dev/cljs"]
                              :figwheel {:on-jsload "asciinema-player.main/reload"}
                              :compiler {:main "asciinema-player.main"
