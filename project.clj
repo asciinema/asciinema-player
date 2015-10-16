@@ -5,14 +5,14 @@
             :url "http://www.gnu.org/licenses/gpl-3.0.txt"}
 
   :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/clojurescript "0.0-3297"]
+                 [org.clojure/clojurescript "1.7.122"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [cljsjs/react "0.13.1-0"]
                  [reagent "0.5.0"]
                  [cljs-ajax "0.3.11"]]
 
   :plugins [[lein-cljsbuild "1.0.6"]
-            [lein-figwheel "0.3.7"]
+            [lein-figwheel "0.4.1"]
             [lein-less "1.7.5"]
             [lein-kibit "0.1.2"]]
 
