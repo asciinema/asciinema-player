@@ -311,10 +311,9 @@
       (recur))
     out))
 
-(defn create-player-with-state
-  "Creates the player with given state by starting event processing loop and
-  mounting Reagent component in DOM."
-  [state dom-node]
+(defn start-event-loop!
+  "Starts event processing loop and returns function for dispatching events."
+  [state]
   (let [events (chan)
         mouse-moves (chan (dropping-buffer 1))
         user-activity (activity-chan mouse-moves 2000)
@@ -329,9 +328,15 @@
     (go-loop []
       (swap! state assoc :show-hud (<! user-activity))
       (recur))
-    (reagent/render-component [view/player state dispatch] dom-node)
     (when (:auto-play @state)
       (dispatch [:toggle-play]))
+    dispatch))
+
+(defn create-player-with-state
+  "Creates the player with given state, mounting top Reagent component in DOM."
+  [state dom-node]
+  (let [dispatch (start-event-loop! state)]
+    (reagent/render-component [view/player state dispatch] dom-node)
     (clj->js {:toggle (fn [] true)})))
 
 (defn create-player

@@ -9,6 +9,7 @@
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [cljsjs/react "0.13.1-0"]
                  [reagent "0.5.0"]
+                 [devcards "0.2.0-3"]
                  [cljs-ajax "0.3.11"]]
 
   :plugins [[lein-cljsbuild "1.0.6"]
@@ -31,6 +32,14 @@
                                         :source-map true
                                         :optimizations :none
                                         :pretty-print true}}
+                       :devcards {:source-paths ["src/cljs" "src/cards" ]
+                                  :figwheel {:devcards true}
+                                  :compiler {:main "asciinema-player.cards"
+                                             :asset-path "js/devcards"
+                                             :output-to "resources/public/js/devcards.js"
+                                             :output-dir "resources/public/js/devcards"
+                                             :source-map-timestamp true
+                                             :optimizations :none}}
                        :test {:source-paths ["src/cljs" "test"]
                               :notify-command ["phantomjs" "env/test/js/unit-test.js" "env/test/unit-test.html"]
                               :compiler {:output-to     "resources/public/js/test.js"
