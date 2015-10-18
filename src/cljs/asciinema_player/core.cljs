@@ -10,7 +10,7 @@
 
 (defn make-player
   "Returns fresh player state for given options."
-  [width height frames-url duration {:keys [speed snapshot font-size theme start-at auto-play] :or {speed 1 snapshot [] font-size "small" theme "seti"} :as options}]
+  [width height frames-url duration {:keys [speed snapshot font-size theme start-at auto-play] :or {speed 1 snapshot [] font-size "small" theme "asciinema"} :as options}]
   (let [lines (into (sorted-map) (map-indexed vector snapshot))
         auto-play (if (nil? auto-play) (boolean start-at) auto-play)
         start-at (or start-at 0)]
