@@ -12,7 +12,7 @@
       (is (= (:duration player) 123.45))
       (is (= (:start-at player) 0))
       (is (= (:current-time player) 0))
-      (is (= (:theme player) "seti"))
+      (is (= (:theme player) "asciinema"))
       (is (= (:font-size player) "small"))
       (is (= (:speed player) 1))
       (is (= (:auto-play player) false))
