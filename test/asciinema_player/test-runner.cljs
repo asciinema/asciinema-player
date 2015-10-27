@@ -3,6 +3,7 @@
    [cljs.test :refer-macros [run-tests]]
    [asciinema-player.core-test]
    [asciinema-player.view-test]
+   [asciinema-player.vt-test]
    [asciinema-player.util-test]))
 
 (enable-console-print!)
@@ -17,4 +18,5 @@
   (run-tests
     'asciinema-player.core-test
     'asciinema-player.view-test
+    'asciinema-player.vt-test
     'asciinema-player.util-test))
