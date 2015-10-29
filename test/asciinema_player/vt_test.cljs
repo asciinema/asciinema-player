@@ -366,3 +366,48 @@
       (test-event :sos-pm-apc-string input :sos-pm-apc-string [vt/ignore]))
 
     (test-high-events :sos-pm-apc-string)))
+
+(deftest print-test
+  (let [vt (vt/make-vt 4 3)]
+
+    (testing "printing within single line"
+      (let [{:keys [lines cursor]} (-> vt
+                                       (vt/print 0x41)
+                                       (vt/print 0x42)
+                                       (vt/print 0x43))]
+        (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= cursor {:x 3 :y 0 :visible true}))))
+
+    (testing "printing on the right edge of the line"
+      (let [{:keys [lines cursor]} (-> vt
+                                       (vt/print 0x41)
+                                       (vt/print 0x42)
+                                       (vt/print 0x43)
+                                       (vt/print 0x44))]
+        (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= cursor {:x 0 :y 1 :visible true}))))
+
+    (testing "printing on the bottom right edge of the screen"
+      (let [{:keys [lines cursor]} (-> vt
+                                       (vt/print 0x41)
+                                       (vt/print 0x41)
+                                       (vt/print 0x41)
+                                       (vt/print 0x41)
+                                       (vt/print 0x42)
+                                       (vt/print 0x42)
+                                       (vt/print 0x42)
+                                       (vt/print 0x42)
+                                       (vt/print 0x43)
+                                       (vt/print 0x43)
+                                       (vt/print 0x43)
+                                       (vt/print 0x43)
+                                       (vt/print 0x44)
+                                       (vt/print 0x44))]
+        (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                      [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= cursor {:x 2 :y 2 :visible true}))))))

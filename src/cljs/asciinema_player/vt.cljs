@@ -9,21 +9,49 @@
 ;; http://manpages.ubuntu.com/manpages/lucid/man7/urxvt.7.html
 ;; http://vt100.net/docs/vt102-ug/chapter5.html
 
-(defn make-vt []
-  {:parser {:state :ground
+(def space 0x20)
+(def default-attrs {})
+(def empty-cell [space default-attrs])
+
+(defn empty-line [width]
+  (vec (repeat width empty-cell)))
+
+(defn empty-screen [width height]
+  (let [line (empty-line width)]
+    (vec (repeat height line))))
+
+(defn make-vt [width height]
+  {:width width
+   :height height
+   :parser {:state :ground
             :private-marker nil
             :intermediate-chars []
             :param-chars []}
    :cursor {:x 0 :y 0 :visible true}
-   :lines []})
+   :lines (empty-screen width height)})
 
 ;; actions
 
 (defn ignore [vt input]
   vt)
 
-(defn print [vt input]
-  (update-in vt [:cursor :x] inc))
+(defn- append-empty-line [width lines]
+  (conj (vec (drop 1 lines)) (empty-line width)))
+
+(defn print [{width :width height :height {x :x y :y} :cursor :as vt} input]
+  (if (= width (inc x))
+    (if (= height (inc y))
+      (-> vt
+          (assoc-in [:lines y x 0] input)
+          (update-in [:lines] (partial append-empty-line width))
+          (assoc-in [:cursor :x] 0))
+      (-> vt
+          (assoc-in [:lines y x 0] input)
+          (assoc-in [:cursor :x] 0)
+          (update-in [:cursor :y] inc)))
+    (-> vt
+        (assoc-in [:lines y x 0] input)
+        (update-in [:cursor :x] inc))))
 
 (defn execute [vt input]
   vt)
