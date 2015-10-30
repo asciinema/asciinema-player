@@ -367,6 +367,12 @@
 
     (test-high-events :sos-pm-apc-string)))
 
+(deftest make-vt-test
+  (let [vt (vt/make-vt 80 24)]
+    (is (= (:tabs vt) [8 16 24 32 40 48 56 64 72])))
+  (let [vt (vt/make-vt 20 5)]
+    (is (= (:tabs vt) [8 16]))))
+
 (deftest print-test
   (let [vt (vt/make-vt 4 3)]
 
@@ -411,3 +417,66 @@
                       [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                       [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
         (is (= cursor {:x 2 :y 2 :visible true}))))))
+
+(defn move-cursor [vt x y]
+  (-> vt
+      (assoc-in [:cursor :x] x)
+      (assoc-in [:cursor :y] y)))
+
+(deftest execute-test
+  (let [vt (vt/make-vt 4 3)]
+    (testing "0x00 (NUL)"
+      (is (= vt (vt/execute vt 0x00))))
+
+    (testing "0x01 (SOH)"
+      (is (= vt (vt/execute vt 0x01))))
+
+    (testing "0x02 (STX)"
+      (is (= vt (vt/execute vt 0x02))))
+
+    (testing "0x03 (ETX)"
+      (is (= vt (vt/execute vt 0x03))))
+
+    (testing "0x04 (EOT)"
+      (is (= vt (vt/execute vt 0x04))))
+
+    (testing "0x05 (ENQ)"
+      (is (= vt (vt/execute vt 0x05))))
+
+    (testing "0x06 (ACK)"
+      (is (= vt (vt/execute vt 0x06))))
+
+    (testing "0x07 (BEL)"
+      (is (= vt (vt/execute vt 0x07))))
+
+    (testing "0x08 (BS)"
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/execute 0x08))]
+        (is (= x 0))
+        (is (= y 0)))
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (vt/execute 0x08))]
+        (is (= x 1))
+        (is (= y 0)))
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 2) (vt/execute 0x08))]
+        (is (= x 0))
+        (is (= y 2))))
+
+    (testing "0x09 (HT)"
+      (let [vt (vt/make-vt 20 3)]
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/execute 0x09))]
+          (is (= x 8))
+          (is (= y 0)))
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (vt/execute 0x09))]
+          (is (= x 8))
+          (is (= y 0)))
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 8 1) (vt/execute 0x09))]
+          (is (= x 16))
+          (is (= y 1)))
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 9 1) (vt/execute 0x09))]
+          (is (= x 16))
+          (is (= y 1)))
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 16 1) (vt/execute 0x09))]
+          (is (= x 16))
+          (is (= y 1)))
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 19 1) (vt/execute 0x09))]
+          (is (= x 19))
+          (is (= y 1)))))))

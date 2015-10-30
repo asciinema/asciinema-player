@@ -20,6 +20,9 @@
   (let [line (empty-line width)]
     (vec (repeat height line))))
 
+(defn default-tabs [width]
+  (filter #(zero? (mod % 8)) (range 8 width)))
+
 (defn make-vt [width height]
   {:width width
    :height height
@@ -27,6 +30,7 @@
             :private-marker nil
             :intermediate-chars []
             :param-chars []}
+   :tabs (default-tabs width)
    :cursor {:x 0 :y 0 :visible true}
    :lines (empty-screen width height)})
 
@@ -53,8 +57,20 @@
         (assoc-in [:lines y x 0] input)
         (update-in [:cursor :x] inc))))
 
+(defn execute-bs [vt]
+  (update-in vt [:cursor :x] (fn [x]
+                               (if (pos? x) (dec x) x))))
+
+(defn execute-ht [vt]
+  (update-in vt [:cursor :x] (fn [x]
+                               (let [next-tab (first (filter (partial < x) (:tabs vt)))]
+                                 (or next-tab x)))))
+
 (defn execute [vt input]
-  vt)
+  (condp = input
+    0x08 (execute-bs vt)
+    0x09 (execute-ht vt)
+    vt))
 
 (defn clear [vt input]
   (update-in vt [:parser] merge {:private-marker nil :intermediate-chars [] :param-chars []}))
@@ -229,3 +245,11 @@
                 actions (remove nil? [exit-action transition-action entry-action])]
             [new-state actions])
           [current-state (if transition-action [transition-action] [])])))))
+
+;; References:
+;; http://en.wikipedia.org/wiki/ANSI_escape_code
+;; http://ttssh2.sourceforge.jp/manual/en/about/ctrlseq.html
+;; http://real-world-systems.com/docs/ANSIcode.html
+;; http://www.shaels.net/index.php/propterm/documents
+;; http://manpages.ubuntu.com/manpages/lucid/man7/urxvt.7.html
+;; http://vt100.net/docs/vt102-ug/chapter5.html
