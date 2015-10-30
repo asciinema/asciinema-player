@@ -66,10 +66,20 @@
                                (let [next-tab (first (filter (partial < x) (:tabs vt)))]
                                  (or next-tab x)))))
 
+(defn execute-lf [{width :width height :height {x :x y :y} :cursor :as vt}]
+  (if (= height (inc y))
+    (-> vt
+        (update-in [:lines] (partial append-empty-line width))
+        (assoc-in [:cursor :x] 0))
+    (-> vt
+        (assoc-in [:cursor :x] 0)
+        (update-in [:cursor :y] inc))))
+
 (defn execute [vt input]
   (condp = input
     0x08 (execute-bs vt)
     0x09 (execute-ht vt)
+    0x0a (execute-lf vt)
     vt))
 
 (defn clear [vt input]
