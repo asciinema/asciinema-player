@@ -39,16 +39,17 @@
 (defn ignore [vt input]
   vt)
 
-(defn- append-empty-line [width lines]
-  (conj (vec (drop 1 lines)) (empty-line width)))
+(defn scroll-up [{width :width :as vt}]
+  (update-in vt [:lines] (fn [lines]
+                           (conj (vec (drop 1 lines)) (empty-line width)))))
 
 (defn print [{width :width height :height {x :x y :y} :cursor :as vt} input]
   (if (= width (inc x))
     (if (= height (inc y))
       (-> vt
           (assoc-in [:lines y x 0] input)
-          (update-in [:lines] (partial append-empty-line width))
-          (assoc-in [:cursor :x] 0))
+          (assoc-in [:cursor :x] 0)
+          scroll-up)
       (-> vt
           (assoc-in [:lines y x 0] input)
           (assoc-in [:cursor :x] 0)
@@ -69,17 +70,27 @@
 (defn execute-lf [{width :width height :height {x :x y :y} :cursor :as vt}]
   (if (= height (inc y))
     (-> vt
-        (update-in [:lines] (partial append-empty-line width))
+        scroll-up
         (assoc-in [:cursor :x] 0))
     (-> vt
         (assoc-in [:cursor :x] 0)
         (update-in [:cursor :y] inc))))
+
+(defn move-cursor-down [{width :width height :height {x :x y :y} :cursor :as vt}]
+  (if (= height (inc y))
+    (scroll-up vt)
+    (update-in vt [:cursor :y] inc)))
+
+(def execute-vt move-cursor-down)
+(def execute-ff move-cursor-down)
 
 (defn execute [vt input]
   (condp = input
     0x08 (execute-bs vt)
     0x09 (execute-ht vt)
     0x0a (execute-lf vt)
+    0x0b (execute-vt vt)
+    0x0c (execute-ff vt)
     vt))
 
 (defn clear [vt input]

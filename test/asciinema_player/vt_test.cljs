@@ -514,4 +514,76 @@
                         [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]
                         [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
           (is (= x 0))
-          (is (= y 2)))))))
+          (is (= y 2)))))
+
+    (testing "0x0b (VT)"
+      (let [vt (-> (vt/make-vt 4 3)
+                   (vt/print 0x41)
+                   (vt/print 0x41)
+                   (vt/print 0x41)
+                   (vt/print 0x41)
+                   (vt/print 0x42)
+                   (vt/print 0x42)
+                   (vt/print 0x42)
+                   (vt/print 0x42)
+                   (vt/print 0x43)
+                   (vt/print 0x43)
+                   (vt/print 0x43)
+                   (vt/print 0x43)
+                   (vt/print 0x44)
+                   (vt/print 0x44))]
+        (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/execute 0x0b))]
+          (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                        [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                        [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
+          (is (= x 0))
+          (is (= y 1)))
+        (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) (vt/execute 0x0b))]
+          (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                        [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                        [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
+          (is (= x 1))
+          (is (= y 2)))
+        (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) (vt/execute 0x0b))]
+          (is (= lines [[[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                        [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]
+                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+          (is (= x 2))
+          (is (= y 2)))))
+
+    (testing "0x0c (FF)"
+      (let [vt (-> (vt/make-vt 4 3)
+                   (vt/print 0x41)
+                   (vt/print 0x41)
+                   (vt/print 0x41)
+                   (vt/print 0x41)
+                   (vt/print 0x42)
+                   (vt/print 0x42)
+                   (vt/print 0x42)
+                   (vt/print 0x42)
+                   (vt/print 0x43)
+                   (vt/print 0x43)
+                   (vt/print 0x43)
+                   (vt/print 0x43)
+                   (vt/print 0x44)
+                   (vt/print 0x44))]
+        (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/execute 0x0c))]
+          (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                        [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                        [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
+          (is (= x 0))
+          (is (= y 1)))
+        (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) (vt/execute 0x0c))]
+          (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                        [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                        [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
+          (is (= x 1))
+          (is (= y 2)))
+        (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) (vt/execute 0x0c))]
+          (is (= lines [[[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                        [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]
+                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+          (is (= x 2))
+          (is (= y 2)))))
+
+    ))
