@@ -586,4 +586,13 @@
           (is (= x 2))
           (is (= y 2)))))
 
-    ))
+
+    (testing "0x0d (CR)"
+      (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 1) (vt/execute 0x0d))]
+        (is (= x 0))
+        (is (= y 1)))
+      (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 1) (vt/execute 0x0d))]
+        (is (= x 0))
+        (is (= y 1)))))
+
+    )
