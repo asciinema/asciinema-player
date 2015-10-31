@@ -21,7 +21,7 @@
     (vec (repeat height line))))
 
 (defn default-tabs [width]
-  (filter #(zero? (mod % 8)) (range 8 width)))
+  (range 8 width 8))
 
 (defn make-vt [width height]
   {:width width
