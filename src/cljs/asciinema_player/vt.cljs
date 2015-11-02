@@ -88,6 +88,7 @@
   (assoc-in vt [:cursor :x] 0))
 
 (def execute-ind move-cursor-down)
+(def execute-nel execute-lf)
 
 (defn execute [vt input]
   (condp = input
@@ -98,6 +99,7 @@
     0x0c (execute-ff vt)
     0x0d (execute-cr vt)
     0x84 (execute-ind vt)
+    0x85 (execute-nel vt)
     vt))
 
 (defn clear [vt input]
