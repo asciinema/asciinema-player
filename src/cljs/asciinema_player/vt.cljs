@@ -21,7 +21,7 @@
     (vec (repeat height line))))
 
 (defn default-tabs [width]
-  (range 8 width 8))
+  (apply sorted-set (range 8 width 8)))
 
 (defn make-vt [width height]
   {:width width
@@ -90,6 +90,11 @@
 (def execute-ind move-cursor-down)
 (def execute-nel execute-lf)
 
+(defn execute-hts [{{x :x} :cursor width :width :as vt}]
+  (if (pos? x)
+    (update-in vt [:tabs] conj x)
+    vt))
+
 (defn execute [vt input]
   (condp = input
     0x08 (execute-bs vt)
@@ -100,6 +105,8 @@
     0x0d (execute-cr vt)
     0x84 (execute-ind vt)
     0x85 (execute-nel vt)
+    0x88 (execute-hts vt)
+    ;; 0x8d (execute-ri vt)
     vt))
 
 (defn clear [vt input]

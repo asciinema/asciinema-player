@@ -369,9 +369,9 @@
 
 (deftest make-vt-test
   (let [vt (vt/make-vt 80 24)]
-    (is (= (:tabs vt) [8 16 24 32 40 48 56 64 72])))
+    (is (= (:tabs vt) #{8 16 24 32 40 48 56 64 72})))
   (let [vt (vt/make-vt 20 5)]
-    (is (= (:tabs vt) [8 16]))))
+    (is (= (:tabs vt) #{8 16}))))
 
 (deftest print-test
   (let [vt (vt/make-vt 4 3)]
@@ -559,6 +559,15 @@
         (is (= y 1)))
       (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 1) (vt/execute 0x0d))]
         (is (= x 0))
-        (is (= y 1)))))
+        (is (= y 1))))
 
-    )
+    (testing "0x88 (HTS)"
+      (let [vt (vt/make-vt 20 3)]
+        (let [{tabs :tabs} (-> vt (move-cursor 0 0) (vt/execute 0x88))]
+          (is (= tabs #{8 16})))
+        (let [{tabs :tabs} (-> vt (move-cursor 1 0) (vt/execute 0x88))]
+          (is (= tabs #{1 8 16})))
+        (let [{tabs :tabs} (-> vt (move-cursor 11 0) (vt/execute 0x88))]
+          (is (= tabs #{8 11 16})))
+        (let [{tabs :tabs} (-> vt (move-cursor 19 0) (vt/execute 0x88))]
+          (is (= tabs #{8 16 19})))))))
