@@ -282,11 +282,3 @@
                 actions (remove nil? [exit-action transition-action entry-action])]
             [new-state actions])
           [current-state (if transition-action [transition-action] [])])))))
-
-;; References:
-;; http://en.wikipedia.org/wiki/ANSI_escape_code
-;; http://ttssh2.sourceforge.jp/manual/en/about/ctrlseq.html
-;; http://real-world-systems.com/docs/ANSIcode.html
-;; http://www.shaels.net/index.php/propterm/documents
-;; http://manpages.ubuntu.com/manpages/lucid/man7/urxvt.7.html
-;; http://vt100.net/docs/vt102-ug/chapter5.html
