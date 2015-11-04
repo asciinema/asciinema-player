@@ -369,7 +369,8 @@
 
 (deftest make-vt-test
   (let [vt (vt/make-vt 80 24)]
-    (is (= (:tabs vt) #{8 16 24 32 40 48 56 64 72})))
+    (is (= (:tabs vt) #{8 16 24 32 40 48 56 64 72}))
+    (is (= (-> vt :parser :collect-chars) [])))
   (let [vt (vt/make-vt 20 5)]
     (is (= (:tabs vt) #{8 16}))))
 
@@ -596,3 +597,8 @@
                         [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]]))
           (is (= x 2))
           (is (= y 0)))))))
+
+(deftest collect-test
+  (let [vt (vt/make-vt 4 3)]
+    (is (= (-> vt (vt/collect 0x21) :parser :collect-chars) [0x21]))
+    (is (= (-> vt (vt/collect 0x21) (vt/collect 0x22) :parser :collect-chars) [0x21 0x22]))))

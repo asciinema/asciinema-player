@@ -27,8 +27,7 @@
   {:width width
    :height height
    :parser {:state :ground
-            :private-marker nil
-            :intermediate-chars []
+            :collect-chars []
             :param-chars []}
    :tabs (default-tabs width)
    :cursor {:x 0 :y 0 :visible true}
@@ -119,10 +118,10 @@
     vt))
 
 (defn clear [vt input]
-  (update-in vt [:parser] merge {:private-marker nil :intermediate-chars [] :param-chars []}))
+  (update-in vt [:parser] merge {:collect-chars [] :param-chars []}))
 
 (defn collect [vt input]
-  vt)
+  (update-in vt [:parser :collect-chars] conj input))
 
 (defn param [vt input]
   vt)
