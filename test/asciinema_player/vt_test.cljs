@@ -570,4 +570,29 @@
         (let [{tabs :tabs} (-> vt (move-cursor 11 0) (vt/execute 0x88))]
           (is (= tabs #{8 11 16})))
         (let [{tabs :tabs} (-> vt (move-cursor 19 0) (vt/execute 0x88))]
-          (is (= tabs #{8 16 19})))))))
+          (is (= tabs #{8 16 19})))))
+
+    (testing "0x8d (RI)"
+      (let [vt (-> (vt/make-vt 4 3)
+                   (vt/print 0x41)
+                   (vt/print 0x41)
+                   (vt/print 0x41)
+                   (vt/print 0x41)
+                   (vt/print 0x42)
+                   (vt/print 0x42)
+                   (vt/print 0x42)
+                   (vt/print 0x42)
+                   (vt/print 0x43)
+                   (vt/print 0x43))]
+        (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 1) (vt/execute 0x8d))]
+          (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
+                        [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                        [[0x43 {}] [0x43 {}] [0x20 {}] [0x20 {}]]]))
+          (is (= x 2))
+          (is (= y 0)))
+        (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 0) (vt/execute 0x8d))]
+          (is (= lines [[[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                        [[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
+                        [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]]))
+          (is (= x 2))
+          (is (= y 0)))))))

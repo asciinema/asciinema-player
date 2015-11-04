@@ -43,6 +43,10 @@
   (update-in vt [:lines] (fn [lines]
                            (conj (vec (drop 1 lines)) (empty-line width)))))
 
+(defn scroll-down [{width :width height :height :as vt}]
+  (update-in vt [:lines] (fn [lines]
+                           (vec (conj (take (dec height) lines) (empty-line width))))))
+
 (defn print [{width :width height :height {x :x y :y} :cursor :as vt} input]
   (if (= width (inc x))
     (if (= height (inc y))
@@ -95,6 +99,11 @@
     (update-in vt [:tabs] conj x)
     vt))
 
+(defn execute-ri [{{y :y} :cursor :as vt}]
+  (if (zero? y)
+    (scroll-down vt)
+    (update-in vt [:cursor :y] dec)))
+
 (defn execute [vt input]
   (condp = input
     0x08 (execute-bs vt)
@@ -106,7 +115,7 @@
     0x84 (execute-ind vt)
     0x85 (execute-nel vt)
     0x88 (execute-hts vt)
-    ;; 0x8d (execute-ri vt)
+    0x8d (execute-ri vt)
     vt))
 
 (defn clear [vt input]
