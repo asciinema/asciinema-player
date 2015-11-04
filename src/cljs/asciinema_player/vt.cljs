@@ -124,7 +124,7 @@
   (update-in vt [:parser :collect-chars] conj input))
 
 (defn param [vt input]
-  vt)
+  (update-in vt [:parser :param-chars] conj input))
 
 (defn esc-dispatch [vt input]
   vt)
