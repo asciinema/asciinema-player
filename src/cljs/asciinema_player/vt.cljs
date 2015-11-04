@@ -67,7 +67,7 @@
                                (let [next-tab (first (filter (partial < x) (:tabs vt)))]
                                  (or next-tab x)))))
 
-(defn execute-lf [{width :width height :height {x :x y :y} :cursor :as vt}]
+(defn execute-lf [{height :height {y :y} :cursor :as vt}]
   (if (= height (inc y))
     (-> vt
         scroll-up
@@ -76,7 +76,7 @@
         (assoc-in [:cursor :x] 0)
         (update-in [:cursor :y] inc))))
 
-(defn move-cursor-down [{width :width height :height {x :x y :y} :cursor :as vt}]
+(defn move-cursor-down [{height :height {y :y} :cursor :as vt}]
   (if (= height (inc y))
     (scroll-up vt)
     (update-in vt [:cursor :y] inc)))
@@ -90,7 +90,7 @@
 (def execute-ind move-cursor-down)
 (def execute-nel execute-lf)
 
-(defn execute-hts [{{x :x} :cursor width :width :as vt}]
+(defn execute-hts [{{x :x} :cursor :as vt}]
   (if (pos? x)
     (update-in vt [:tabs] conj x)
     vt))
