@@ -104,17 +104,19 @@
     (update-in vt [:cursor :y] dec)))
 
 (defn execute [vt input]
-  (condp = input
-    0x08 (execute-bs vt)
-    0x09 (execute-ht vt)
-    0x0a (execute-lf vt)
-    0x0b (execute-vt vt)
-    0x0c (execute-ff vt)
-    0x0d (execute-cr vt)
-    0x84 (execute-ind vt)
-    0x85 (execute-nel vt)
-    0x88 (execute-hts vt)
-    0x8d (execute-ri vt)
+  (if-let [action (condp = input
+                    0x08 execute-bs
+                    0x09 execute-ht
+                    0x0a execute-lf
+                    0x0b execute-vt
+                    0x0c execute-ff
+                    0x0d execute-cr
+                    0x84 execute-ind
+                    0x85 execute-nel
+                    0x88 execute-hts
+                    0x8d execute-ri
+                    nil)]
+    (action vt)
     vt))
 
 (defn clear [vt input]
