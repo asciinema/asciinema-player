@@ -1,4 +1,5 @@
 (ns asciinema-player.vt
+  (:refer-clojure :exclude [print])
   (:require [clojure.string :as string]))
 
 ;; References:
