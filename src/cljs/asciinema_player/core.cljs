@@ -8,10 +8,13 @@
             [ajax.core :refer [GET]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
+(defn coll->lines [coll]
+  (into (sorted-map) (map-indexed vector coll)))
+
 (defn make-player
   "Returns fresh player state for given options."
   [width height frames-url duration {:keys [speed snapshot font-size theme start-at auto-play] :or {speed 1 snapshot [] font-size "small" theme "asciinema"} :as options}]
-  (let [lines (into (sorted-map) (map-indexed vector snapshot))
+  (let [lines (coll->lines snapshot)
         auto-play (if (nil? auto-play) (boolean start-at) auto-play)
         start-at (or start-at 0)]
     (merge {:width width
@@ -23,7 +26,7 @@
             :lines lines
             :font-size font-size
             :theme theme
-            :cursor {:on true}
+            :cursor {:visible false}
             :start-at start-at
             :current-time start-at
             :show-hud false}
@@ -39,11 +42,11 @@
   [then]
   (/ (- (.getTime (js/Date.)) (.getTime then)) 1000))
 
-(defn apply-diff
-  "Applies given diff (line content and cursor position changes) to player's
+(defn update-screen
+  "Applies given screen state (line content and cursor attributes) to player's
   state."
   [state {:keys [lines cursor]}]
-  (merge-with merge state {:lines lines :cursor cursor}))
+  (merge state {:lines lines :cursor cursor}))
 
 
 (defn coll->chan
@@ -79,28 +82,27 @@
        (close! ch))
      ch)))
 
-(defn prev-diff
-  "Returns a combined diff from frames up to (and including) given time (in
-  seconds)."
+(defn screen-state-at
+  "Returns screen state (lines + cursor) at given time (in seconds)."
   [frames seconds]
   (loop [frames frames
          seconds seconds
          candidate nil]
-    (let [[delay diff :as frame] (first frames)]
+    (let [[delay screen-state :as frame] (first frames)]
       (if (or (nil? frame) (< seconds delay))
         candidate
-        (recur (rest frames) (- seconds delay) (merge-with merge candidate diff))))))
+        (recur (rest frames) (- seconds delay) screen-state)))))
 
 (defn next-frames
   "Returns a lazy sequence of frames starting from given time (in seconds)."
   [frames seconds]
   (lazy-seq
-    (if (seq frames)
-      (let [[delay diff] (first frames)]
-        (if (<= delay seconds)
-          (next-frames (rest frames) (- seconds delay))
-          (cons [(- delay seconds) diff] (rest frames))))
-      frames)))
+   (if (seq frames)
+     (let [[delay screen-state] (first frames)]
+       (if (<= delay seconds)
+         (next-frames (rest frames) (- seconds delay))
+         (cons [(- delay seconds) screen-state] (rest frames))))
+     frames)))
 
 (defn reset-blink
   "Makes cursor 'block' visible."
@@ -113,7 +115,7 @@
   (coll->chan (cycle [[0.5 false] [0.5 true]])))
 
 (defn frames-at-speed [frames speed]
-  (map (fn [[delay diff]] [(/ delay speed) diff]) frames))
+  (map (fn [[delay screen-state]] [(/ delay speed) screen-state]) frames))
 
 (defn start-playback
   "The heart of the player. Coordinates dispatching of state update events like
@@ -124,7 +126,7 @@
         start-at (:start-at state)
         speed (:speed state)
         frames (-> (:frames state) (next-frames start-at) (frames-at-speed speed))
-        diff-chan (coll->chan frames (partial merge-with merge) {})
+        screen-state-chan (coll->chan frames (partial merge-with merge) {})
         timer-chan (coll->chan (repeat [0.3 true]))
         stop-playback-chan (chan)
         elapsed-time #(* (elapsed-time-since start) speed)
@@ -133,7 +135,7 @@
                   (elapsed-time))]
     (go
       (loop [cursor-blink-chan (make-cursor-blink-chan)]
-        (let [[v c] (alts! [diff-chan timer-chan cursor-blink-chan stop-playback-chan])]
+        (let [[v c] (alts! [screen-state-chan timer-chan cursor-blink-chan stop-playback-chan])]
           (condp = c
             timer-chan (let [t (+ start-at (elapsed-time))]
                          (dispatch [:update-state assoc :current-time t])
@@ -141,17 +143,17 @@
             cursor-blink-chan (do
                                 (dispatch [:update-state assoc-in [:cursor :on] v])
                                 (recur cursor-blink-chan))
-            diff-chan (if v
-                        (do
-                          (dispatch [:update-state #(-> % (apply-diff v) reset-blink)])
-                          (recur (make-cursor-blink-chan)))
-                        (do
-                          (dispatch [:finished])
-                          (print (str "finished in " (elapsed-time-since start)))))
+            screen-state-chan (if v
+                                (do
+                                  (dispatch [:update-state #(-> % (update-screen v) reset-blink)])
+                                  (recur (make-cursor-blink-chan)))
+                                (do
+                                  (dispatch [:finished])
+                                  (print (str "finished in " (elapsed-time-since start)))))
             stop-playback-chan nil))) ; do nothing, break the loop
       (dispatch [:update-state reset-blink]))
     (-> state
-        (apply-diff (prev-diff (:frames state) start-at))
+        (update-screen (screen-state-at (:frames state) start-at))
         (assoc :stop stop-fn))))
 
 (defn stop-playback
@@ -193,13 +195,13 @@
   "Jumps to a given position (in seconds)."
   [state dispatch [position]]
   (let [new-time (* position (:duration state))
-        diff (prev-diff (:frames state) new-time)
+        screen-state (screen-state-at (:frames state) new-time)
         playing? (contains? state :stop)]
     (when playing?
       ((:stop state)))
     (let [new-state (-> state
                         (assoc :current-time new-time :start-at new-time)
-                        (apply-diff diff))]
+                        (update-screen screen-state))]
       (if playing?
         (start-playback new-state dispatch)
         new-state))))
@@ -253,6 +255,17 @@
   [frames]
   (map #(update-in % [1 :lines] fix-line-diff-keys) frames))
 
+(defn make-vt []
+  {:lines (coll->lines [])
+   :cursor {:x 0 :y 0 :visible true :on true}})
+
+(defn reduce-frame [[_ vt] [delay diff]]
+  [delay (merge-with merge vt diff)])
+
+(defn gen-screen-states [frames]
+  (let [vt (make-vt)]
+    (reductions reduce-frame [0 vt] frames)))
+
 (defn handle-frames-response
   "Merges frames into player state, hides loading indicator and starts the
   playback."
@@ -261,7 +274,8 @@
   (let [frames (-> json
                    js/JSON.parse
                    (util/faster-js->clj :keywordize-keys true)
-                   fix-frames)]
+                   fix-frames
+                   gen-screen-states)]
     (assoc state :loading false :frames frames)))
 
 (defn handle-update-state

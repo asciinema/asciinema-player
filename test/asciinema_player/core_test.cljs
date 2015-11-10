@@ -34,12 +34,10 @@
     (let [player (make-player {:snapshot [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]]})]
       (is (= (:lines player) {0 [["foo" {}] ["bar" {:fg 1}]] 1 [["baz" {:bg 2}]]})))))
 
-(deftest apply-diff-test
-  (let [state {:lines {} :cursor {}}
+(deftest update-screen-test
+  (let [state {:lines {2 :a} :cursor {:y 5}}
         changes {:lines {1 :b 3 :d} :cursor {:x 1 :y 2 :visible true} :unknown true}]
-    (is (= (c/apply-diff state changes) {:lines {1 :b 3 :d} :cursor {:x 1 :y 2 :visible true}}))
-    (let [state {:lines {0 :a 1 :bb} :cursor {:x 0 :visible false}}]
-      (is (= (c/apply-diff state changes) {:lines {0 :a 1 :b 3 :d} :cursor {:x 1 :y 2 :visible true}})))))
+    (is (= (c/update-screen state changes) {:lines {1 :b 3 :d} :cursor {:x 1 :y 2 :visible true}}))))
 
 (deftest new-position-test
   (is (= (c/new-position 2 5 -3) 0.0))
@@ -47,22 +45,22 @@
   (is (= (c/new-position 2 5 4) 1.0))
   (is (= (c/new-position 2 5 2) 0.8)))
 
-(deftest prev-diff-test
-  (let [frames [[5 {:lines {:a 1 :b 2} :cursor {:x 1 :y 2 :visible true}}] [3 {:lines {:b 22}}] [4 {:lines {:c 3} :cursor {:y 3 :visible false}}]]]
-    (is (= (c/prev-diff frames 0) nil))
-    (is (= (c/prev-diff frames 1) nil))
-    (is (= (c/prev-diff frames 2) nil))
-    (is (= (c/prev-diff frames 3) nil))
-    (is (= (c/prev-diff frames 4) nil))
-    (is (= (c/prev-diff frames 5) {:lines {:a 1 :b 2} :cursor {:x 1 :y 2 :visible true}}))
-    (is (= (c/prev-diff frames 6) {:lines {:a 1 :b 2} :cursor {:x 1 :y 2 :visible true}}))
-    (is (= (c/prev-diff frames 7) {:lines {:a 1 :b 2} :cursor {:x 1 :y 2 :visible true}}))
-    (is (= (c/prev-diff frames 8) {:lines {:a 1 :b 22} :cursor {:x 1 :y 2 :visible true}}))
-    (is (= (c/prev-diff frames 9) {:lines {:a 1 :b 22} :cursor {:x 1 :y 2 :visible true}}))
-    (is (= (c/prev-diff frames 10) {:lines {:a 1 :b 22} :cursor {:x 1 :y 2 :visible true}}))
-    (is (= (c/prev-diff frames 11) {:lines {:a 1 :b 22} :cursor {:x 1 :y 2 :visible true}}))
-    (is (= (c/prev-diff frames 12) {:lines {:a 1 :b 22 :c 3} :cursor {:x 1 :y 3 :visible false}}))
-    (is (= (c/prev-diff frames 13) {:lines {:a 1 :b 22 :c 3} :cursor {:x 1 :y 3 :visible false}}))))
+(deftest screen-state-at-test
+  (let [frames [[5 :foo] [3 :bar] [4 :baz]]]
+    (is (= (c/screen-state-at frames 0) nil))
+    (is (= (c/screen-state-at frames 1) nil))
+    (is (= (c/screen-state-at frames 2) nil))
+    (is (= (c/screen-state-at frames 3) nil))
+    (is (= (c/screen-state-at frames 4) nil))
+    (is (= (c/screen-state-at frames 5) :foo))
+    (is (= (c/screen-state-at frames 6) :foo))
+    (is (= (c/screen-state-at frames 7) :foo))
+    (is (= (c/screen-state-at frames 8) :bar))
+    (is (= (c/screen-state-at frames 9) :bar))
+    (is (= (c/screen-state-at frames 10) :bar))
+    (is (= (c/screen-state-at frames 11) :bar))
+    (is (= (c/screen-state-at frames 12) :baz))
+    (is (= (c/screen-state-at frames 13) :baz))))
 
 (deftest next-frames-test
   (let [frames [[2 :a] [4 :b] [6 :c]]]
