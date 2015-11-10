@@ -425,6 +425,112 @@
       (assoc-in [:cursor :x] x)
       (assoc-in [:cursor :y] y)))
 
+(defn test-ind [action]
+  (let [vt (-> (vt/make-vt 4 3)
+               (vt/print 0x41)
+               (vt/print 0x41)
+               (vt/print 0x41)
+               (vt/print 0x41)
+               (vt/print 0x42)
+               (vt/print 0x42)
+               (vt/print 0x42)
+               (vt/print 0x42)
+               (vt/print 0x43)
+               (vt/print 0x43)
+               (vt/print 0x43)
+               (vt/print 0x43)
+               (vt/print 0x44)
+               (vt/print 0x44))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) action)]
+      (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                    [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= x 0))
+      (is (= y 1)))
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) action)]
+      (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                    [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= x 1))
+      (is (= y 2)))
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) action)]
+      (is (= lines [[[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                    [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]
+                    [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= x 2))
+      (is (= y 2)))))
+
+(defn test-nel [action]
+  (let [vt (-> (vt/make-vt 4 3)
+               (vt/print 0x41)
+               (vt/print 0x41)
+               (vt/print 0x41)
+               (vt/print 0x41)
+               (vt/print 0x42)
+               (vt/print 0x42)
+               (vt/print 0x42)
+               (vt/print 0x42)
+               (vt/print 0x43)
+               (vt/print 0x43)
+               (vt/print 0x43)
+               (vt/print 0x43)
+               (vt/print 0x44)
+               (vt/print 0x44))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) action)]
+      (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                    [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= x 0))
+      (is (= y 1)))
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) action)]
+      (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                    [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= x 0))
+      (is (= y 2)))
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) action)]
+      (is (= lines [[[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                    [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]
+                    [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= x 0))
+      (is (= y 2)))))
+
+(defn test-hts [action]
+  (let [vt (vt/make-vt 20 3)]
+    (let [{tabs :tabs} (-> vt (move-cursor 0 0) action)]
+      (is (= tabs #{8 16})))
+    (let [{tabs :tabs} (-> vt (move-cursor 1 0) action)]
+      (is (= tabs #{1 8 16})))
+    (let [{tabs :tabs} (-> vt (move-cursor 11 0) action)]
+      (is (= tabs #{8 11 16})))
+    (let [{tabs :tabs} (-> vt (move-cursor 19 0) action)]
+      (is (= tabs #{8 16 19})))))
+
+(defn test-ri [action]
+  (let [vt (-> (vt/make-vt 4 3)
+               (vt/print 0x41)
+               (vt/print 0x41)
+               (vt/print 0x41)
+               (vt/print 0x41)
+               (vt/print 0x42)
+               (vt/print 0x42)
+               (vt/print 0x42)
+               (vt/print 0x42)
+               (vt/print 0x43)
+               (vt/print 0x43))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 1) action)]
+      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
+                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                    [[0x43 {}] [0x43 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= x 2))
+      (is (= y 0)))
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 0) action)]
+      (is (= lines [[[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                    [[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
+                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]]))
+      (is (= x 2))
+      (is (= y 0)))))
+
 (deftest execute-test
   (let [vt (vt/make-vt 4 3)]
     (testing "0x00 (NUL)"
@@ -484,76 +590,12 @@
           (is (= y 1)))))
 
     (testing "0x0a (LF), 0x85 (NEL)"
-      (let [vt (-> (vt/make-vt 4 3)
-                   (vt/print 0x41)
-                   (vt/print 0x41)
-                   (vt/print 0x41)
-                   (vt/print 0x41)
-                   (vt/print 0x42)
-                   (vt/print 0x42)
-                   (vt/print 0x42)
-                   (vt/print 0x42)
-                   (vt/print 0x43)
-                   (vt/print 0x43)
-                   (vt/print 0x43)
-                   (vt/print 0x43)
-                   (vt/print 0x44)
-                   (vt/print 0x44))]
-        (doseq [ch [0x0a 0x85]]
-          (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/execute ch))]
-            (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                          [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                          [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
-            (is (= x 0))
-            (is (= y 1)))
-          (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) (vt/execute ch))]
-            (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                          [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                          [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
-            (is (= x 0))
-            (is (= y 2)))
-          (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) (vt/execute ch))]
-            (is (= lines [[[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                          [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]
-                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-            (is (= x 0))
-            (is (= y 2))))))
+      (doseq [ch [0x0a 0x85]]
+        (test-nel #(vt/execute % ch))))
 
     (testing "0x0b (VT), 0x0c (FF), 0x84 (IND)"
-      (let [vt (-> (vt/make-vt 4 3)
-                   (vt/print 0x41)
-                   (vt/print 0x41)
-                   (vt/print 0x41)
-                   (vt/print 0x41)
-                   (vt/print 0x42)
-                   (vt/print 0x42)
-                   (vt/print 0x42)
-                   (vt/print 0x42)
-                   (vt/print 0x43)
-                   (vt/print 0x43)
-                   (vt/print 0x43)
-                   (vt/print 0x43)
-                   (vt/print 0x44)
-                   (vt/print 0x44))]
         (doseq [ch [0x0b 0x0c 0x84]]
-          (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/execute ch))]
-            (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                          [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                          [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
-            (is (= x 0))
-            (is (= y 1)))
-          (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) (vt/execute ch))]
-            (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                          [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                          [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
-            (is (= x 1))
-            (is (= y 2)))
-          (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) (vt/execute ch))]
-            (is (= lines [[[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                          [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]
-                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-            (is (= x 2))
-            (is (= y 2))))))
+          (test-ind #(vt/execute % ch))))
 
     (testing "0x0d (CR)"
       (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 1) (vt/execute 0x0d))]
@@ -564,40 +606,10 @@
         (is (= y 1))))
 
     (testing "0x88 (HTS)"
-      (let [vt (vt/make-vt 20 3)]
-        (let [{tabs :tabs} (-> vt (move-cursor 0 0) (vt/execute 0x88))]
-          (is (= tabs #{8 16})))
-        (let [{tabs :tabs} (-> vt (move-cursor 1 0) (vt/execute 0x88))]
-          (is (= tabs #{1 8 16})))
-        (let [{tabs :tabs} (-> vt (move-cursor 11 0) (vt/execute 0x88))]
-          (is (= tabs #{8 11 16})))
-        (let [{tabs :tabs} (-> vt (move-cursor 19 0) (vt/execute 0x88))]
-          (is (= tabs #{8 16 19})))))
+      (test-hts #(vt/execute % 0x88)))
 
     (testing "0x8d (RI)"
-      (let [vt (-> (vt/make-vt 4 3)
-                   (vt/print 0x41)
-                   (vt/print 0x41)
-                   (vt/print 0x41)
-                   (vt/print 0x41)
-                   (vt/print 0x42)
-                   (vt/print 0x42)
-                   (vt/print 0x42)
-                   (vt/print 0x42)
-                   (vt/print 0x43)
-                   (vt/print 0x43))]
-        (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 1) (vt/execute 0x8d))]
-          (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                        [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                        [[0x43 {}] [0x43 {}] [0x20 {}] [0x20 {}]]]))
-          (is (= x 2))
-          (is (= y 0)))
-        (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 0) (vt/execute 0x8d))]
-          (is (= lines [[[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                        [[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                        [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]]))
-          (is (= x 2))
-          (is (= y 0)))))))
+      (test-ri #(vt/execute % 0x8d)))))
 
 (deftest collect-test
   (let [vt (vt/make-vt 4 3)]
@@ -608,3 +620,16 @@
   (let [vt (vt/make-vt 4 3)]
     (is (= (-> vt (vt/param 0x31) :parser :param-chars) [0x31]))
     (is (= (-> vt (vt/param 0x31) (vt/param 0x32) :parser :param-chars) [0x31 0x32]))))
+
+(deftest esc-dispatch-test
+  (testing "0x44 (IND)"
+    (test-ind #(vt/esc-dispatch % 0x44)))
+
+  (testing "0x45 (NEL)"
+    (test-nel #(vt/esc-dispatch % 0x45)))
+
+  (testing "0x48 (HTS)"
+    (test-hts #(vt/esc-dispatch % 0x48)))
+
+  (testing "0x4d (RI)"
+    (test-ri #(vt/esc-dispatch % 0x4d))))

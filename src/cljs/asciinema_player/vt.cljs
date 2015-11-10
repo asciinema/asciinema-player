@@ -131,7 +131,9 @@
   (update-in vt [:parser :param-chars] conj input))
 
 (defn esc-dispatch [vt input]
-  vt)
+  (if (<= 0x40 input 0x5f)
+    (execute vt (+ input 0x40))
+    vt))
 
 (defn csi-dispatch [vt input]
   vt)
