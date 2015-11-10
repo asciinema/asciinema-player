@@ -3,6 +3,7 @@
   (:require [clojure.string :as string]))
 
 ;; References:
+;; http://vt100.net/emu/dec_ansi_parser
 ;; http://en.wikipedia.org/wiki/ANSI_escape_code
 ;; http://ttssh2.sourceforge.jp/manual/en/about/ctrlseq.html
 ;; http://real-world-systems.com/docs/ANSIcode.html
