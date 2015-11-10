@@ -330,7 +330,7 @@
   [state]
   (let [events (chan)
         mouse-moves (chan (dropping-buffer 1))
-        user-activity (activity-chan mouse-moves 2000)
+        user-activity (activity-chan mouse-moves 3000)
         dispatch (fn [[event-name & args :as event]]
                    (if (= event-name :mouse-move)
                      (put! mouse-moves true)
