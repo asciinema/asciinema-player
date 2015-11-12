@@ -379,42 +379,24 @@
   (let [vt (vt/make-vt 4 3)]
 
     (testing "printing within single line"
-      (let [{:keys [lines cursor]} (-> vt
-                                       (vt/print 0x41)
-                                       (vt/print 0x42)
-                                       (vt/print 0x43))]
+      (let [{:keys [lines cursor]} (vt/feed vt [0x41 0x42 0x43])]
         (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= cursor {:x 3 :y 0 :visible true}))))
 
     (testing "printing on the right edge of the line"
-      (let [{:keys [lines cursor]} (-> vt
-                                       (vt/print 0x41)
-                                       (vt/print 0x42)
-                                       (vt/print 0x43)
-                                       (vt/print 0x44))]
+      (let [{:keys [lines cursor]} (vt/feed vt [0x41 0x42 0x43 0x44])]
         (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= cursor {:x 0 :y 1 :visible true}))))
 
     (testing "printing on the bottom right edge of the screen"
-      (let [{:keys [lines cursor]} (-> vt
-                                       (vt/print 0x41)
-                                       (vt/print 0x41)
-                                       (vt/print 0x41)
-                                       (vt/print 0x41)
-                                       (vt/print 0x42)
-                                       (vt/print 0x42)
-                                       (vt/print 0x42)
-                                       (vt/print 0x42)
-                                       (vt/print 0x43)
-                                       (vt/print 0x43)
-                                       (vt/print 0x43)
-                                       (vt/print 0x43)
-                                       (vt/print 0x44)
-                                       (vt/print 0x44))]
+      (let [{:keys [lines cursor]} (vt/feed vt [0x41 0x41 0x41 0x41
+                                                0x42 0x42 0x42 0x42
+                                                0x43 0x43 0x43 0x43
+                                                0x44 0x44])]
         (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                       [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                       [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
@@ -425,216 +407,179 @@
       (assoc-in [:cursor :x] x)
       (assoc-in [:cursor :y] y)))
 
-(defn test-ind [action]
+(defn test-ind [inputs]
   (let [vt (-> (vt/make-vt 4 3)
-               (vt/print 0x41)
-               (vt/print 0x41)
-               (vt/print 0x41)
-               (vt/print 0x41)
-               (vt/print 0x42)
-               (vt/print 0x42)
-               (vt/print 0x42)
-               (vt/print 0x42)
-               (vt/print 0x43)
-               (vt/print 0x43)
-               (vt/print 0x43)
-               (vt/print 0x43)
-               (vt/print 0x44)
-               (vt/print 0x44))]
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) action)]
+               (vt/feed [0x41 0x41 0x41 0x41
+                         0x42 0x42 0x42 0x42
+                         0x43 0x43 0x43 0x43
+                         0x44 0x44]))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/feed inputs))]
       (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                     [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 0))
       (is (= y 1)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) action)]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) (vt/feed inputs))]
       (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                     [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 1))
       (is (= y 2)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) action)]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) (vt/feed inputs))]
       (is (= lines [[[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                     [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]
                     [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 2))
       (is (= y 2)))))
 
-(defn test-nel [action]
+(defn test-nel [inputs]
   (let [vt (-> (vt/make-vt 4 3)
-               (vt/print 0x41)
-               (vt/print 0x41)
-               (vt/print 0x41)
-               (vt/print 0x41)
-               (vt/print 0x42)
-               (vt/print 0x42)
-               (vt/print 0x42)
-               (vt/print 0x42)
-               (vt/print 0x43)
-               (vt/print 0x43)
-               (vt/print 0x43)
-               (vt/print 0x43)
-               (vt/print 0x44)
-               (vt/print 0x44))]
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) action)]
+               (vt/feed [0x41 0x41 0x41 0x41
+                         0x42 0x42 0x42 0x42
+                         0x43 0x43 0x43 0x43
+                         0x44 0x44]))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/feed inputs))]
       (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                     [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 0))
       (is (= y 1)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) action)]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) (vt/feed inputs))]
       (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                     [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 0))
       (is (= y 2)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) action)]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) (vt/feed inputs))]
       (is (= lines [[[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                     [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]
                     [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 0))
       (is (= y 2)))))
 
-(defn test-hts [action]
+(defn test-hts [inputs]
   (let [vt (vt/make-vt 20 3)]
-    (let [{tabs :tabs} (-> vt (move-cursor 0 0) action)]
+    (let [{tabs :tabs} (-> vt (move-cursor 0 0) (vt/feed inputs))]
       (is (= tabs #{8 16})))
-    (let [{tabs :tabs} (-> vt (move-cursor 1 0) action)]
+    (let [{tabs :tabs} (-> vt (move-cursor 1 0) (vt/feed inputs))]
       (is (= tabs #{1 8 16})))
-    (let [{tabs :tabs} (-> vt (move-cursor 11 0) action)]
+    (let [{tabs :tabs} (-> vt (move-cursor 11 0) (vt/feed inputs))]
       (is (= tabs #{8 11 16})))
-    (let [{tabs :tabs} (-> vt (move-cursor 19 0) action)]
+    (let [{tabs :tabs} (-> vt (move-cursor 19 0) (vt/feed inputs))]
       (is (= tabs #{8 16 19})))))
 
-(defn test-ri [action]
+(defn test-ri [inputs]
   (let [vt (-> (vt/make-vt 4 3)
-               (vt/print 0x41)
-               (vt/print 0x41)
-               (vt/print 0x41)
-               (vt/print 0x41)
-               (vt/print 0x42)
-               (vt/print 0x42)
-               (vt/print 0x42)
-               (vt/print 0x42)
-               (vt/print 0x43)
-               (vt/print 0x43))]
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 1) action)]
+               (vt/feed [0x41 0x41 0x41 0x41
+                         0x42 0x42 0x42 0x42
+                         0x43 0x43]))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 1) (vt/feed inputs))]
       (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
                     [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 2))
       (is (= y 0)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 0) action)]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 0) (vt/feed inputs))]
       (is (= lines [[[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                     [[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
                     [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]]))
       (is (= x 2))
       (is (= y 0)))))
 
-(deftest execute-test
+(deftest control-char-test
   (let [vt (vt/make-vt 4 3)]
     (testing "0x00 (NUL)"
-      (is (= vt (vt/execute vt 0x00))))
+      (is (= vt (vt/feed-one vt 0x00))))
 
     (testing "0x01 (SOH)"
-      (is (= vt (vt/execute vt 0x01))))
+      (is (= vt (vt/feed-one vt 0x01))))
 
     (testing "0x02 (STX)"
-      (is (= vt (vt/execute vt 0x02))))
+      (is (= vt (vt/feed-one vt 0x02))))
 
     (testing "0x03 (ETX)"
-      (is (= vt (vt/execute vt 0x03))))
+      (is (= vt (vt/feed-one vt 0x03))))
 
     (testing "0x04 (EOT)"
-      (is (= vt (vt/execute vt 0x04))))
+      (is (= vt (vt/feed-one vt 0x04))))
 
     (testing "0x05 (ENQ)"
-      (is (= vt (vt/execute vt 0x05))))
+      (is (= vt (vt/feed-one vt 0x05))))
 
     (testing "0x06 (ACK)"
-      (is (= vt (vt/execute vt 0x06))))
+      (is (= vt (vt/feed-one vt 0x06))))
 
     (testing "0x07 (BEL)"
-      (is (= vt (vt/execute vt 0x07))))
+      (is (= vt (vt/feed-one vt 0x07))))
 
     (testing "0x08 (BS)"
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/execute 0x08))]
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/feed-one 0x08))]
         (is (= x 0))
         (is (= y 0)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (vt/execute 0x08))]
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (vt/feed-one 0x08))]
         (is (= x 1))
         (is (= y 0)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 2) (vt/execute 0x08))]
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 2) (vt/feed-one 0x08))]
         (is (= x 0))
         (is (= y 2))))
 
     (testing "0x09 (HT)"
       (let [vt (vt/make-vt 20 3)]
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/execute 0x09))]
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (vt/feed-one 0x09))]
           (is (= x 8))
           (is (= y 0)))
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (vt/execute 0x09))]
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (vt/feed-one 0x09))]
           (is (= x 8))
           (is (= y 0)))
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 8 1) (vt/execute 0x09))]
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 8 1) (vt/feed-one 0x09))]
           (is (= x 16))
           (is (= y 1)))
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 9 1) (vt/execute 0x09))]
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 9 1) (vt/feed-one 0x09))]
           (is (= x 16))
           (is (= y 1)))
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 16 1) (vt/execute 0x09))]
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 16 1) (vt/feed-one 0x09))]
           (is (= x 16))
           (is (= y 1)))
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 19 1) (vt/execute 0x09))]
+        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 19 1) (vt/feed-one 0x09))]
           (is (= x 19))
           (is (= y 1)))))
 
     (testing "0x0a (LF), 0x85 (NEL)"
       (doseq [ch [0x0a 0x85]]
-        (test-nel #(vt/execute % ch))))
+        (test-nel [ch])))
 
     (testing "0x0b (VT), 0x0c (FF), 0x84 (IND)"
         (doseq [ch [0x0b 0x0c 0x84]]
-          (test-ind #(vt/execute % ch))))
+          (test-ind [ch])))
 
     (testing "0x0d (CR)"
-      (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 1) (vt/execute 0x0d))]
+      (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 1) (vt/feed-one 0x0d))]
         (is (= x 0))
         (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 1) (vt/execute 0x0d))]
+      (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 1) (vt/feed-one 0x0d))]
         (is (= x 0))
         (is (= y 1))))
 
     (testing "0x88 (HTS)"
-      (test-hts #(vt/execute % 0x88)))
+      (test-hts [0x88]))
 
     (testing "0x8d (RI)"
-      (test-ri #(vt/execute % 0x8d)))))
+      (test-ri [0x8d]))))
 
-(deftest collect-test
-  (let [vt (vt/make-vt 4 3)]
-    (is (= (-> vt (vt/collect 0x21) :parser :collect-chars) [0x21]))
-    (is (= (-> vt (vt/collect 0x21) (vt/collect 0x22) :parser :collect-chars) [0x21 0x22]))))
+(deftest esc-sequence-test
+  (testing "0x1b 0x44 (IND)"
+    (test-ind [0x1b 0x44]))
 
-(deftest param-test
-  (let [vt (vt/make-vt 4 3)]
-    (is (= (-> vt (vt/param 0x31) :parser :param-chars) [0x31]))
-    (is (= (-> vt (vt/param 0x31) (vt/param 0x32) :parser :param-chars) [0x31 0x32]))))
+  (testing "0x1b 0x45 (NEL)"
+    (test-nel [0x1b 0x45]))
 
-(deftest esc-dispatch-test
-  (testing "0x44 (IND)"
-    (test-ind #(vt/esc-dispatch % 0x44)))
+  (testing "0x1b 0x48 (HTS)"
+    (test-hts [0x1b 0x48]))
 
-  (testing "0x45 (NEL)"
-    (test-nel #(vt/esc-dispatch % 0x45)))
+  (testing "0x1b 0x4d (RI)"
+    (test-ri [0x1b 0x4d])))
 
-  (testing "0x48 (HTS)"
-    (test-hts #(vt/esc-dispatch % 0x48)))
-
-  (testing "0x4d (RI)"
-    (test-ri #(vt/esc-dispatch % 0x4d))))
-
-(deftest feed-random-rubbish-test
+(deftest random-rubbish-test
   (let [vt (vt/make-vt 80 24)
         vt (vt/feed vt (take 1000 (repeatedly #(rand-int 0xff))))]
     (is (not= nil (-> vt :parser :state)))))
