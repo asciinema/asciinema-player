@@ -573,19 +573,19 @@
       (test-ri [0x8d]))))
 
 (deftest esc-sequence-test
-  (testing "0x1b 0x44 (IND)"
+  (testing "ESC D (IND)"
     (test-ind [0x1b 0x44]))
 
-  (testing "0x1b 0x45 (NEL)"
+  (testing "ESC E (NEL)"
     (test-nel [0x1b 0x45]))
 
-  (testing "0x1b 0x48 (HTS)"
+  (testing "ESC H (HTS)"
     (test-hts [0x1b 0x48]))
 
-  (testing "0x1b 0x4d (RI)"
+  (testing "ESC M (RI)"
     (test-ri [0x1b 0x4d]))
 
-  (testing "0x1b 0x23 0x38 (DECALN)"
+  (testing "ESC #8 (DECALN)"
     (let [vt (-> (vt/make-vt 4 3)
                  (move-cursor 2 1)
                  (vt/feed [0x1b 0x23 0x38]))
@@ -596,7 +596,7 @@
       (is (= x 2))
       (is (= y 1))))
 
-  (testing "0x1b 0x37 (SC)"
+  (testing "ESC 7 (SC)"
     (let [vt (-> (vt/make-vt 4 3)
                  (move-cursor 2 1)
                  (vt/feed [0x1b 0x37]))
@@ -604,7 +604,7 @@
       (is (= x 2))
       (is (= y 1))))
 
-  (testing "0x1b 0x38 (RC)"
+  (testing "ESC 8 (RC)"
     (let [vt (vt/make-vt 4 3)]
       (let [vt (-> vt
                    (move-cursor 2 1)
@@ -621,7 +621,7 @@
         (is (= x 2))
         (is (= y 1)))))
 
-  (testing "0x1b 0x63 (RIS)"
+  (testing "ESC c (RIS)"
     (let [initial-vt (vt/make-vt 4 3)
           new-vt (-> initial-vt
                      (vt/feed [0x41 0x42 0x1b 0x48]) ; print, set tab
