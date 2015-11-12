@@ -557,10 +557,10 @@
           (test-ind [ch])))
 
     (testing "0x0d (CR)"
-      (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 1) (vt/feed-one 0x0d))]
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 1) (vt/feed-one 0x0d))]
         (is (= x 0))
         (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 1) (vt/feed-one 0x0d))]
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 1) (vt/feed-one 0x0d))]
         (is (= x 0))
         (is (= y 1))))
 
@@ -581,7 +581,18 @@
     (test-hts [0x1b 0x48]))
 
   (testing "0x1b 0x4d (RI)"
-    (test-ri [0x1b 0x4d])))
+    (test-ri [0x1b 0x4d]))
+
+  (testing "0x1b 0x23 0x38 (DECALN)"
+    (let [vt (-> (vt/make-vt 4 3)
+                 (move-cursor 2 1)
+                 (vt/feed [0x1b 0x23 0x38]))
+          {lines :lines {x :x y :y} :cursor} vt]
+      (is (= lines [[[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
+                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
+                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]]))
+      (is (= x 2))
+      (is (= y 1)))))
 
 (defspec feeding-rubbish
   100

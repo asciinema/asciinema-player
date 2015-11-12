@@ -105,6 +105,9 @@
     (scroll-down vt)
     (update-in vt [:cursor :y] dec)))
 
+(defn execute-decaln [{:keys [width height] :as vt}]
+  (assoc vt :lines (vec (repeat height (vec (repeat width [0x45 {}]))))))
+
 (defn execute [vt input]
   (if-let [action (condp = input
                     0x08 execute-bs
@@ -133,7 +136,9 @@
 (defn esc-dispatch [vt input]
   (if (<= 0x40 input 0x5f)
     (execute vt (+ input 0x40))
-    vt))
+    (if (and (= input 0x38) (= (get-in vt [:parser :collect-chars]) [0x23]))
+      (execute-decaln vt)
+      vt)))
 
 (defn csi-dispatch [vt input]
   vt)
