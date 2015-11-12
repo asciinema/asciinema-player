@@ -1,6 +1,10 @@
 (ns asciinema-player.vt-test
-  (:require-macros [cljs.test :refer (is deftest testing)])
+  (:require-macros [cljs.test :refer (is deftest testing)]
+                   [clojure.test.check.clojure-test :refer (defspec)])
   (:require [cljs.test]
+            [clojure.test.check :as tc]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :as prop :include-macros true]
             [asciinema-player.vt :as vt]))
 
 (defn test-event [initial-state input expected-state expected-actions]
@@ -579,7 +583,8 @@
   (testing "0x1b 0x4d (RI)"
     (test-ri [0x1b 0x4d])))
 
-(deftest random-rubbish-test
-  (let [vt (vt/make-vt 80 24)
-        vt (vt/feed vt (take 1000 (repeatedly #(rand-int 0xff))))]
-    (is (not= nil (-> vt :parser :state)))))
+(defspec feeding-rubbish
+  100
+  (let [vt (vt/make-vt 80 24)]
+    (prop/for-all [rubbish (gen/vector (gen/choose 0 0x7f) 1 100)]
+      (not= nil (-> vt (vt/feed rubbish) :parser :state)))))
