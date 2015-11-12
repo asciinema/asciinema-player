@@ -296,3 +296,16 @@
                 actions (remove nil? [exit-action transition-action entry-action])]
             [new-state actions])
           [current-state (if transition-action [transition-action] [])])))))
+
+(defn execute-actions [vt actions input]
+  (reduce (fn [vt f] (f vt input)) vt actions))
+
+(defn feed-one [vt input]
+  (let [current-state (get-in vt [:parser :state])
+        [new-state actions] (parse current-state input)]
+    (-> vt
+        (assoc-in [:parser :state] new-state)
+        (execute-actions actions input))))
+
+(defn feed [vt inputs]
+  (reduce (fn [vt input] (feed-one vt input)) vt inputs))

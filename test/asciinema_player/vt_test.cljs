@@ -633,3 +633,8 @@
 
   (testing "0x4d (RI)"
     (test-ri #(vt/esc-dispatch % 0x4d))))
+
+(deftest feed-random-rubbish-test
+  (let [vt (vt/make-vt 80 24)
+        vt (vt/feed vt (take 1000 (repeatedly #(rand-int 0xff))))]
+    (is (not= nil (-> vt :parser :state)))))
