@@ -374,6 +374,8 @@
 (deftest make-vt-test
   (let [vt (vt/make-vt 80 24)]
     (is (= (:tabs vt) #{8 16 24 32 40 48 56 64 72}))
+    (is (= (-> vt :char-attrs) {}))
+    (is (= (-> vt :saved) {:cursor {:x 0 :y 0} :char-attrs {}}))
     (is (= (-> vt :parser :intermediate-chars) []))
     (is (= (-> vt :parser :param-chars) [])))
   (let [vt (vt/make-vt 20 5)]
@@ -592,7 +594,32 @@
                     [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
                     [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]]))
       (is (= x 2))
-      (is (= y 1)))))
+      (is (= y 1))))
+
+  (testing "0x1b 0x37 (SC)"
+    (let [vt (-> (vt/make-vt 4 3)
+                 (move-cursor 2 1)
+                 (vt/feed [0x1b 0x37]))
+          {{{x :x y :y} :cursor} :saved} vt]
+      (is (= x 2))
+      (is (= y 1))))
+
+  (testing "0x1b 0x38 (RC)"
+    (let [vt (vt/make-vt 4 3)]
+      (let [vt (-> vt
+                   (move-cursor 2 1)
+                   (vt/feed [0x1b 0x38]))
+            {{x :x y :y} :cursor} vt]
+        (is (= x 0))
+        (is (= y 0)))
+      (let [vt (-> vt
+                   (move-cursor 2 1)
+                   (vt/feed [0x1b 0x37])
+                   (move-cursor 3 2)
+                   (vt/feed [0x1b 0x38]))
+            {{x :x y :y} :cursor} vt]
+        (is (= x 2))
+        (is (= y 1))))))
 
 (defspec feeding-rubbish
   100

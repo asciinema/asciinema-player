@@ -33,7 +33,9 @@
             :param-chars []}
    :tabs (default-tabs width)
    :cursor {:x 0 :y 0 :visible true}
-   :lines (empty-screen width height)})
+   :char-attrs {}
+   :lines (empty-screen width height)
+   :saved {:cursor {:x 0 :y 0} :char-attrs {}}})
 
 ;; actions
 
@@ -108,6 +110,17 @@
 (defn execute-decaln [{:keys [width height] :as vt}]
   (assoc vt :lines (vec (repeat height (vec (repeat width [0x45 {}]))))))
 
+(defn execute-sc
+  "http://www.vt100.net/docs/vt510-rm/DECSC"
+  [{{x :x y :y} :cursor char-attrs :char-attrs :as vt}]
+  (assoc vt :saved {:cursor {:x x :y y}
+                    :char-attrs char-attrs}))
+
+(defn execute-rc
+  "http://www.vt100.net/docs/vt510-rm/DECRC"
+  [{saved :saved :as vt}]
+  (merge-with merge vt saved))
+
 (defn execute [vt input]
   (if-let [action (condp = input
                     0x08 execute-bs
@@ -136,8 +149,12 @@
 (defn esc-dispatch [vt input]
   (if (<= 0x40 input 0x5f)
     (execute vt (+ input 0x40))
-    (if (and (= input 0x38) (= (get-in vt [:parser :intermediate-chars]) [0x23]))
-      (execute-decaln vt)
+    (condp = input
+      0x37 (execute-sc vt)
+      0x38 (condp = (get-in vt [:parser :intermediate-chars])
+             [] (execute-rc vt)
+             [0x23] (execute-decaln vt)
+             vt)
       vt)))
 
 (defn csi-dispatch [vt input]
