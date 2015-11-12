@@ -29,7 +29,7 @@
   {:width width
    :height height
    :parser {:state :ground
-            :collect-chars []
+            :intermediate-chars []
             :param-chars []}
    :tabs (default-tabs width)
    :cursor {:x 0 :y 0 :visible true}
@@ -125,10 +125,10 @@
     vt))
 
 (defn clear [vt input]
-  (update-in vt [:parser] merge {:collect-chars [] :param-chars []}))
+  (update-in vt [:parser] merge {:intermediate-chars [] :param-chars []}))
 
 (defn collect [vt input]
-  (update-in vt [:parser :collect-chars] conj input))
+  (update-in vt [:parser :intermediate-chars] conj input))
 
 (defn param [vt input]
   (update-in vt [:parser :param-chars] conj input))
@@ -136,7 +136,7 @@
 (defn esc-dispatch [vt input]
   (if (<= 0x40 input 0x5f)
     (execute vt (+ input 0x40))
-    (if (and (= input 0x38) (= (get-in vt [:parser :collect-chars]) [0x23]))
+    (if (and (= input 0x38) (= (get-in vt [:parser :intermediate-chars]) [0x23]))
       (execute-decaln vt)
       vt)))
 

@@ -374,7 +374,7 @@
 (deftest make-vt-test
   (let [vt (vt/make-vt 80 24)]
     (is (= (:tabs vt) #{8 16 24 32 40 48 56 64 72}))
-    (is (= (-> vt :parser :collect-chars) []))
+    (is (= (-> vt :parser :intermediate-chars) []))
     (is (= (-> vt :parser :param-chars) [])))
   (let [vt (vt/make-vt 20 5)]
     (is (= (:tabs vt) #{8 16}))))
