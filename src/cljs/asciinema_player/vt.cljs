@@ -155,6 +155,7 @@
              [] (execute-rc vt)
              [0x23] (execute-decaln vt)
              vt)
+      0x63 (make-vt (:width vt) (:height vt))
       vt)))
 
 (defn csi-dispatch [vt input]

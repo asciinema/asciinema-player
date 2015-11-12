@@ -619,7 +619,14 @@
                    (vt/feed [0x1b 0x38]))
             {{x :x y :y} :cursor} vt]
         (is (= x 2))
-        (is (= y 1))))))
+        (is (= y 1)))))
+
+  (testing "0x1b 0x63 (RIS)"
+    (let [initial-vt (vt/make-vt 4 3)
+          new-vt (-> initial-vt
+                     (vt/feed [0x41 0x42 0x1b 0x48]) ; print, set tab
+                     (vt/feed [0x1b 0x63]))] ; reset
+      (is (= initial-vt new-vt)))))
 
 (defspec feeding-rubbish
   100
