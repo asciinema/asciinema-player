@@ -37,10 +37,7 @@
    :lines (empty-screen width height)
    :saved {:cursor {:x 0 :y 0} :char-attrs {}}})
 
-;; actions
-
-(defn ignore [vt input]
-  vt)
+;; control functions
 
 (defn scroll-up [{width :width :as vt}]
   (update-in vt [:lines] (fn [lines]
@@ -49,21 +46,6 @@
 (defn scroll-down [{width :width height :height :as vt}]
   (update-in vt [:lines] (fn [lines]
                            (vec (conj (take (dec height) lines) (empty-line width))))))
-
-(defn print [{width :width height :height {x :x y :y} :cursor :as vt} input]
-  (if (= width (inc x))
-    (if (= height (inc y))
-      (-> vt
-          (assoc-in [:lines y x 0] input)
-          (assoc-in [:cursor :x] 0)
-          scroll-up)
-      (-> vt
-          (assoc-in [:lines y x 0] input)
-          (assoc-in [:cursor :x] 0)
-          (update-in [:cursor :y] inc)))
-    (-> vt
-        (assoc-in [:lines y x 0] input)
-        (update-in [:cursor :x] inc))))
 
 (defn execute-bs [vt]
   (update-in vt [:cursor :x] (fn [x]
@@ -120,6 +102,26 @@
   "http://www.vt100.net/docs/vt510-rm/DECRC"
   [{saved :saved :as vt}]
   (merge-with merge vt saved))
+
+;; parser actions
+
+(defn ignore [vt input]
+  vt)
+
+(defn print [{width :width height :height {x :x y :y} :cursor :as vt} input]
+  (if (= width (inc x))
+    (if (= height (inc y))
+      (-> vt
+          (assoc-in [:lines y x 0] input)
+          (assoc-in [:cursor :x] 0)
+          scroll-up)
+      (-> vt
+          (assoc-in [:lines y x 0] input)
+          (assoc-in [:cursor :x] 0)
+          (update-in [:cursor :y] inc)))
+    (-> vt
+        (assoc-in [:lines y x 0] input)
+        (update-in [:cursor :x] inc))))
 
 (defn execute [vt input]
   (if-let [action (condp = input
