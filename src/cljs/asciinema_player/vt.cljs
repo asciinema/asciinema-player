@@ -115,6 +115,12 @@
                                                         (repeat n [space char-attrs])
                                                         (drop x line))))))))
 
+(defn execute-cuu [{{y :y} :cursor :as vt}]
+  (let [n (get-param vt 0 1)
+        new-y (- y n)
+        new-y (if (>= new-y 0) new-y 0)]
+    (assoc-in vt [:cursor :y] new-y)))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -175,6 +181,7 @@
 (defn csi-dispatch [vt input]
   (if-let [action (condp = input
                     0x40 execute-ich
+                    0x41 execute-cuu
                     nil)]
     (action vt)
     vt))

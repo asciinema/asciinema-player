@@ -642,7 +642,28 @@
             {{x :x y :y} :cursor [line0 & _] :lines} vt]
         (is (= x 1))
         (is (= y 0))
-        (is (= line0 [[0x41 {}] [0x20 {}] [0x20 {}] [0x42 {}] [0x43 {}]]))))))
+        (is (= line0 [[0x41 {}] [0x20 {}] [0x20 {}] [0x42 {}] [0x43 {}]])))))
+
+  (testing "CSI A (CUU)"
+    (let [vt (make-vt 5 3)]
+      (let [vt (-> vt
+                   (move-cursor 1 0)
+                   (feed [0x1b 0x5b 0x41]))
+            {{x :x y :y} :cursor} vt]
+        (is (= x 1))
+        (is (= y 0)))
+      (let [vt (-> vt
+                   (move-cursor 1 2)
+                   (feed [0x1b 0x5b 0x41]))
+            {{x :x y :y} :cursor} vt]
+        (is (= x 1))
+        (is (= y 1)))
+      (let [vt (-> vt
+                   (move-cursor 1 2)
+                   (feed [0x1b 0x5b 0x34 0x41]))
+            {{x :x y :y} :cursor} vt]
+        (is (= x 1))
+        (is (= y 0))))))
 
 (defspec feeding-rubbish
   100
