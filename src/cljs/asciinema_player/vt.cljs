@@ -144,6 +144,11 @@
       execute-cud
       (assoc-in [:cursor :x] 0)))
 
+(defn execute-cpl [vt]
+  (-> vt
+      execute-cuu
+      (assoc-in [:cursor :x] 0)))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -209,6 +214,7 @@
                     0x43 execute-cuf
                     0x44 execute-cub
                     0x45 execute-cnl
+                    0x46 execute-cpl
                     nil)]
     (action vt)
     vt))

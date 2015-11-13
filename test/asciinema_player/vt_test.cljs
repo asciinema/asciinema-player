@@ -747,7 +747,28 @@
                    (feed [0x1b 0x5b 0x34 0x45]))
             {{x :x y :y} :cursor} vt]
         (is (= x 0))
-        (is (= y 2))))))
+        (is (= y 2)))))
+
+  (testing "CSI F (CPL)"
+    (let [vt (make-vt 5 3)]
+      (let [vt (-> vt
+                   (move-cursor 1 0)
+                   (feed [0x1b 0x5b 0x46]))
+            {{x :x y :y} :cursor} vt]
+        (is (= x 0))
+        (is (= y 0)))
+      (let [vt (-> vt
+                   (move-cursor 1 2)
+                   (feed [0x1b 0x5b 0x46]))
+            {{x :x y :y} :cursor} vt]
+        (is (= x 0))
+        (is (= y 1)))
+      (let [vt (-> vt
+                   (move-cursor 1 2)
+                   (feed [0x1b 0x5b 0x34 0x46]))
+            {{x :x y :y} :cursor} vt]
+        (is (= x 0))
+        (is (= y 0))))))
 
 (defspec feeding-rubbish
   100
