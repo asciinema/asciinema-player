@@ -151,6 +151,11 @@
       execute-cuu
       (assoc-in [:cursor :x] 0)))
 
+(defn execute-cha [{width :width :as vt}]
+  (let [n (get-param vt 0 1)
+        new-x (if (<= n width) (dec n) (dec width))]
+    (assoc-in vt [:cursor :x] new-x)))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -217,6 +222,7 @@
                     0x44 execute-cub
                     0x45 execute-cnl
                     0x46 execute-cpl
+                    0x47 execute-cha
                     nil)]
     (action vt)
     vt))

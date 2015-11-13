@@ -768,7 +768,23 @@
                    (feed [0x1b 0x5b 0x34 0x46]))
             {{x :x y :y} :cursor} vt]
         (is (= x 0))
-        (is (= y 0))))))
+        (is (= y 0)))))
+
+  (testing "CSI G (CHA)"
+    (let [vt (-> (make-vt 5 3)
+                 (move-cursor 1 1))]
+      (let [vt (feed vt [0x1b 0x5b 0x47])
+            {{x :x y :y} :cursor} vt]
+        (is (= x 0))
+        (is (= y 1)))
+      (let [vt (feed vt [0x1b 0x5b 0x33 0x47])
+            {{x :x y :y} :cursor} vt]
+        (is (= x 2))
+        (is (= y 1)))
+      (let [vt (feed vt [0x1b 0x5b 0x38 0x47])
+            {{x :x y :y} :cursor} vt]
+        (is (= x 4))
+        (is (= y 1))))))
 
 (defspec feeding-rubbish
   100
