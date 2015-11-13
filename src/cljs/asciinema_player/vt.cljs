@@ -105,7 +105,9 @@
 
 (defn get-param [vt n default]
   (if-let [v (get-in vt [:parser :param-chars n])]
-    (- v 0x30)
+    (if (= v 0x30) ; value of 0 means "default"
+      default
+      (- v 0x30))
     default))
 
 (defn execute-ich [{{x :x y :y} :cursor width :width char-attrs :char-attrs :as vt}]
