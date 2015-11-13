@@ -628,6 +628,22 @@
                      (feed [0x1b 0x63]))] ; reset
       (is (= initial-vt new-vt)))))
 
+(deftest control-sequence-test
+  (testing "CSI @ (ICH)"
+    (let [vt (-> (make-vt 5 3)
+                 (feed [0x41 0x42 0x43 0x44])
+                 (move-cursor 1 0))]
+      (let [vt (feed vt [0x1b 0x5b 0x40])
+            {{x :x y :y} :cursor [line0 & _] :lines} vt]
+        (is (= x 1))
+        (is (= y 0))
+        (is (= line0 [[0x41 {}] [0x20 {}] [0x42 {}] [0x43 {}] [0x44 {}]])))
+      (let [vt (feed vt [0x1b 0x5b 0x32 0x40])
+            {{x :x y :y} :cursor [line0 & _] :lines} vt]
+        (is (= x 1))
+        (is (= y 0))
+        (is (= line0 [[0x41 {}] [0x20 {}] [0x20 {}] [0x42 {}] [0x43 {}]]))))))
+
 (defspec feeding-rubbish
   100
   (let [vt (make-vt 80 24)]

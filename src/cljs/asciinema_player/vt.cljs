@@ -103,6 +103,18 @@
   [{saved :saved :as vt}]
   (merge-with merge vt saved))
 
+(defn get-param [vt n default]
+  (if-let [v (get-in vt [:parser :param-chars n])]
+    (- v 0x30)
+    default))
+
+(defn execute-ich [{{x :x y :y} :cursor width :width char-attrs :char-attrs :as vt}]
+  (let [n (get-param vt 0 1)]
+    (update-in vt [:lines y] (fn [line]
+                               (vec (take width (concat (take x line)
+                                                        (repeat n [space char-attrs])
+                                                        (drop x line))))))))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -161,7 +173,11 @@
       vt)))
 
 (defn csi-dispatch [vt input]
-  vt)
+  (if-let [action (condp = input
+                    0x40 execute-ich
+                    nil)]
+    (action vt)
+    vt))
 
 (defn hook [vt input]
   vt)
