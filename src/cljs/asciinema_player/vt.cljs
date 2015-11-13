@@ -127,6 +127,12 @@
         new-y (if (< new-y height) new-y (dec height))]
     (assoc-in vt [:cursor :y] new-y)))
 
+(defn execute-cuf [{{x :x} :cursor width :width :as vt}]
+  (let [n (get-param vt 0 1)
+        new-x (+ x n)
+        new-x (if (< new-x width) new-x (dec width))]
+    (assoc-in vt [:cursor :x] new-x)))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -189,6 +195,7 @@
                     0x40 execute-ich
                     0x41 execute-cuu
                     0x42 execute-cud
+                    0x43 execute-cuf
                     nil)]
     (action vt)
     vt))
