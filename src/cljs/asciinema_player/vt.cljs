@@ -139,6 +139,11 @@
         new-x (if (>= new-x 0) new-x 0)]
     (assoc-in vt [:cursor :x] new-x)))
 
+(defn execute-cnl [vt]
+  (-> vt
+      execute-cud
+      (assoc-in [:cursor :x] 0)))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -203,6 +208,7 @@
                     0x42 execute-cud
                     0x43 execute-cuf
                     0x44 execute-cub
+                    0x45 execute-cnl
                     nil)]
     (action vt)
     vt))
