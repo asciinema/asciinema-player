@@ -118,7 +118,7 @@
 (defn reduce-param [chars]
   (let [digits (map #(- % 0x30) chars)
         components (map * (reverse digits) (iterate (partial * 10) 1))]
-  (reduce + 0 components)))
+    (reduce + 0 components)))
 
 (defn get-params [vt]
   (let [chars (get-in vt [:parser :param-chars])
