@@ -103,12 +103,33 @@
   [{saved :saved :as vt}]
   (merge-with merge vt saved))
 
+(defn split-coll [elem coll]
+  (loop [coll coll
+         parts []
+         part []]
+    (if-let [e (first coll)]
+      (if (= e elem)
+        (recur (rest coll) (conj parts part) [])
+        (recur (rest coll) parts (conj part e)))
+      (if (seq part)
+        (conj parts part)
+        parts))))
+
+(defn reduce-param [chars]
+  (let [digits (map #(- % 0x30) chars)
+        components (map * (reverse digits) (iterate (partial * 10) 1))]
+  (reduce + 0 components)))
+
+(defn get-params [vt]
+  (let [chars (get-in vt [:parser :param-chars])
+        groups (split-coll 0x3b chars)]
+    (map reduce-param groups)))
+
 (defn get-param [vt n default]
-  (if-let [v (get-in vt [:parser :param-chars n])]
-    (if (= v 0x30) ; value of 0 means "default"
+  (let [v (nth (get-params vt) n 0)]
+    (if (zero? v)
       default
-      (- v 0x30))
-    default))
+      v)))
 
 (defn execute-ich [{{x :x y :y} :cursor width :width char-attrs :char-attrs :as vt}]
   (let [n (get-param vt 0 1)]
@@ -155,6 +176,15 @@
   (let [n (get-param vt 0 1)
         new-x (if (<= n width) (dec n) (dec width))]
     (assoc-in vt [:cursor :x] new-x)))
+
+(defn execute-cup [{width :width height :height :as vt}]
+  (let [new-x (get-param vt 1 1)
+        new-x (if (<= new-x width) (dec new-x) (dec width))
+        new-y (get-param vt 0 1)
+        new-y (if (<= new-y height) (dec new-y) (dec height))]
+    (-> vt
+        (assoc-in [:cursor :x] new-x)
+        (assoc-in [:cursor :y] new-y))))
 
 ;; parser actions
 
@@ -223,6 +253,7 @@
                     0x45 execute-cnl
                     0x46 execute-cpl
                     0x47 execute-cha
+                    0x48 execute-cup
                     nil)]
     (action vt)
     vt))

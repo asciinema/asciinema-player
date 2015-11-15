@@ -5,7 +5,7 @@
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop :include-macros true]
-            [asciinema-player.vt :as vt :refer [parse make-vt feed feed-one]]))
+            [asciinema-player.vt :as vt :refer [parse make-vt feed feed-one get-params]]))
 
 (defn test-event [initial-state input expected-state expected-actions]
   (is (= (parse initial-state input) [expected-state expected-actions])))
@@ -784,7 +784,39 @@
       (let [vt (feed vt [0x1b 0x5b 0x38 0x47])
             {{x :x y :y} :cursor} vt]
         (is (= x 4))
-        (is (= y 1))))))
+        (is (= y 1)))))
+
+  (testing "CSI H (CUP)"
+    (let [vt (-> (make-vt 5 3)
+                 (move-cursor 1 1))]
+      (let [vt (feed vt [0x1b 0x5b 0x48])
+            {{x :x y :y} :cursor} vt]
+        (is (= x 0))
+        (is (= y 0)))
+      (let [vt (feed vt [0x1b 0x5b 0x33 0x48])
+            {{x :x y :y} :cursor} vt]
+        (is (= x 0))
+        (is (= y 2)))
+      (let [vt (feed vt [0x1b 0x5b 0x3b 0x33 0x48])
+            {{x :x y :y} :cursor} vt]
+        (is (= x 2))
+        (is (= y 0)))
+      (let [vt (feed vt [0x1b 0x5b 0x33 0x3b 0x34 0x48])
+            {{x :x y :y} :cursor} vt]
+        (is (= x 3))
+        (is (= y 2)))
+      (let [vt (feed vt [0x1b 0x5b 0x38 0x3b 0x38 0x48])
+            {{x :x y :y} :cursor} vt]
+        (is (= x 4))
+        (is (= y 2))))))
+
+(deftest get-params-test
+  (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] []))]
+    (is (= (get-params vt) [])))
+  (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] [0x33]))]
+    (is (= (get-params vt) [3])))
+  (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] [0x3b 0x3b 0x31 0x32 0x3b 0x3b 0x32 0x33 0x3b 0x31 0x3b]))]
+    (is (= (get-params vt) [0 0 12 0 23 1]))))
 
 (defspec feeding-rubbish
   100
