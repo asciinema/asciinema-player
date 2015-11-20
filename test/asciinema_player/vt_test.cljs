@@ -544,7 +544,7 @@
           (is (= x 16))
           (is (= y 1)))
         (let [{{x :x y :y} :cursor} (-> vt (move-cursor 16 1) (feed-one 0x09))]
-          (is (= x 16))
+          (is (= x 19))
           (is (= y 1)))
         (let [{{x :x y :y} :cursor} (-> vt (move-cursor 19 1) (feed-one 0x09))]
           (is (= x 19))
@@ -808,7 +808,16 @@
       (let [vt (feed vt [0x1b 0x5b 0x38 0x3b 0x38 0x48])
             {{x :x y :y} :cursor} vt]
         (is (= x 4))
-        (is (= y 2))))))
+        (is (= y 2)))))
+
+  (testing "CSI I (CHT)"
+    (let [vt (-> (make-vt 80 3) (move-cursor 20 0))]
+      (let [{{x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x49])]
+        (is (= x 24))
+        (is (= y 0)))
+      (let [{{x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x33 0x49])]
+        (is (= x 40))
+        (is (= y 0))))))
 
 (deftest get-params-test
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] []))]

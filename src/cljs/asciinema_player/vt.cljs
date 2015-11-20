@@ -51,10 +51,14 @@
   (update-in vt [:cursor :x] (fn [x]
                                (if (pos? x) (dec x) x))))
 
+(defn move-cursor-to-next-tab [{:keys [tabs width] :as vt} n]
+  (let [n (dec n)
+        right-margin (dec width)]
+    (update-in vt [:cursor :x] (fn [x]
+                                 (nth (drop-while (partial >= x) tabs) n right-margin)))))
+
 (defn execute-ht [vt]
-  (update-in vt [:cursor :x] (fn [x]
-                               (let [next-tab (first (filter (partial < x) (:tabs vt)))]
-                                 (or next-tab x)))))
+  (move-cursor-to-next-tab vt 1))
 
 (defn execute-lf [{height :height {y :y} :cursor :as vt}]
   (if (= height (inc y))
@@ -186,6 +190,10 @@
         (assoc-in [:cursor :x] new-x)
         (assoc-in [:cursor :y] new-y))))
 
+(defn execute-cht [vt]
+  (let [n (get-param vt 0 1)]
+    (move-cursor-to-next-tab vt n)))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -254,6 +262,7 @@
                     0x46 execute-cpl
                     0x47 execute-cha
                     0x48 execute-cup
+                    0x49 execute-cht
                     nil)]
     (action vt)
     vt))
