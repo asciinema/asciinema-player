@@ -13,14 +13,20 @@
 
 (def space 0x20)
 (def default-attrs {})
-(def empty-cell [space default-attrs])
 
-(defn empty-line [width]
-  (vec (repeat width empty-cell)))
+(defn empty-cell [char-attrs]
+  [space char-attrs])
 
-(defn empty-screen [width height]
-  (let [line (empty-line width)]
-    (vec (repeat height line))))
+(defn empty-line
+  ([width] (empty-line width default-attrs))
+  ([width char-attrs]
+   (vec (repeat width (empty-cell char-attrs)))))
+
+(defn empty-screen
+  ([width height] (empty-screen width height default-attrs))
+  ([width height char-attrs]
+   (let [line (empty-line width char-attrs)]
+     (vec (repeat height line)))))
 
 (defn default-tabs [width]
   (apply sorted-set (range 8 width 8)))
@@ -194,6 +200,39 @@
   (let [n (get-param vt 0 1)]
     (move-cursor-to-next-tab vt n)))
 
+(defn clear-line-right [line x char-attrs]
+  (vec (concat (take x line)
+               (repeat (- (count line) x) (empty-cell char-attrs)))))
+
+(defn clear-to-end-of-screen [{{x :x y :y} :cursor width :width height :height char-attrs :char-attrs :as vt}]
+  (update-in vt [:lines] (fn [lines]
+                           (let [top-lines (take y lines)
+                                 curr-line (clear-line-right (nth lines y) x char-attrs)
+                                 bottom-lines (repeat (- height y 1) (empty-line width char-attrs))]
+                             (vec (concat top-lines [curr-line] bottom-lines))))))
+
+(defn clear-line-left [line x char-attrs]
+  (vec (concat (repeat (inc x) (empty-cell char-attrs))
+               (take (- (count line) x 1) line))))
+
+(defn clear-to-beginning-of-screen [{{x :x y :y} :cursor width :width height :height char-attrs :char-attrs :as vt}]
+  (update-in vt [:lines] (fn [lines]
+                           (let [top-lines (repeat y (empty-line width char-attrs))
+                                 curr-line (clear-line-left (nth lines y) x char-attrs)
+                                 bottom-lines (drop (inc y) lines)]
+                             (vec (concat top-lines [curr-line] bottom-lines))))))
+
+(defn clear-screen [{width :width height :height char-attrs :char-attrs :as vt}]
+  (assoc-in vt [:lines] (empty-screen width height char-attrs)))
+
+(defn execute-ed [vt]
+  (let [n (get-param vt 0 0)]
+    (condp = n
+      0 (clear-to-end-of-screen vt)
+      1 (clear-to-beginning-of-screen vt)
+      2 (clear-screen vt)
+      vt)))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -263,6 +302,7 @@
                     0x47 execute-cha
                     0x48 execute-cup
                     0x49 execute-cht
+                    0x50 execute-ed
                     nil)]
     (action vt)
     vt))

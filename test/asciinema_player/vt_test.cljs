@@ -817,7 +817,32 @@
         (is (= y 0)))
       (let [{{x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x33 0x49])]
         (is (= x 40))
-        (is (= y 0))))))
+        (is (= y 0)))))
+
+  (testing "CSI J (ED)"
+    (let [vt (-> (make-vt 4 3)
+                 (feed [0x41 0x41 0x41 0x41
+                        0x42 0x42 0x42 0x42
+                        0x43 0x43])
+                 (move-cursor 1 1))]
+      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x50])]
+        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
+                      [[0x42 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= x 1))
+        (is (= y 1)))
+      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x31 0x50])]
+        (is (= lines [[[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x42 {}] [0x42 {}]]
+                      [[0x43 {}] [0x43 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= x 1))
+        (is (= y 1)))
+      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x50])]
+        (is (= lines [[[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= x 1))
+        (is (= y 1))))))
 
 (deftest get-params-test
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] []))]
