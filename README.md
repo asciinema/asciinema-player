@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/asciinema/asciinema-player.svg?branch=master)](https://travis-ci.org/asciinema/asciinema-player)
 
-The player used on asciinema.org.
+Terminal session player, used on asciinema.org.
 
 ## Keyboard shortcuts
 
