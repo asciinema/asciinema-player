@@ -256,6 +256,14 @@
                                    (repeat n (empty-line width char-attrs))
                                    (take (- height n) lines)))))))
 
+(defn execute-il [{:keys [width height char-attrs] {y :y} :cursor :as vt}]
+  (let [n (get-param vt 0 1)]
+    (update-in vt [:lines] (fn [lines]
+                             (vec (concat
+                                   (take y lines)
+                                   (repeat n (empty-line width char-attrs))
+                                   (take (- height y n) (drop y lines))))))))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -327,6 +335,7 @@
                     0x49 execute-cht
                     0x4a execute-ed
                     0x4b execute-el
+                    0x4c execute-il
                     0x53 execute-su
                     0x54 execute-sd
                     nil)]

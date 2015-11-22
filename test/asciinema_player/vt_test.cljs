@@ -861,6 +861,27 @@
         (is (= x 3))
         (is (= y 0)))))
 
+  (testing "CSI L (IL)"
+    (let [vt (-> (make-vt 4 4)
+                 (feed [0x41 0x42 0x43 0x44
+                        0x45 0x46 0x47 0x48
+                        0x49 0x50])
+                 (move-cursor 2 1))]
+      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x4c])]
+        (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x45 {}] [0x46 {}] [0x47 {}] [0x48 {}]]
+                      [[0x49 {}] [0x50 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= x 2))
+        (is (= y 1)))
+      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x4c])]
+        (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x45 {}] [0x46 {}] [0x47 {}] [0x48 {}]]]))
+        (is (= x 2))
+        (is (= y 1)))))
+
   (testing "CSI S (SU)"
     (let [vt (-> (make-vt 4 3)
                  (feed [0x41 0x42 0x43 0x44
