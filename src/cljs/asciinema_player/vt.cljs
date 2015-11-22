@@ -213,7 +213,7 @@
 
 (defn clear-line-left [line x char-attrs]
   (vec (concat (repeat (inc x) (empty-cell char-attrs))
-               (take (- (count line) x 1) line))))
+               (drop (inc x) line))))
 
 (defn clear-to-beginning-of-screen [{{x :x y :y} :cursor width :width height :height char-attrs :char-attrs :as vt}]
   (update-in vt [:lines] (fn [lines]
@@ -232,6 +232,15 @@
       1 (clear-to-beginning-of-screen vt)
       2 (clear-screen vt)
       vt)))
+
+(defn execute-el [{:keys [width height char-attrs] {:keys [x y]} :cursor :as vt}]
+  (let [n (get-param vt 0 0)]
+    (update-in vt [:lines y] (fn [line]
+                               (condp = n
+                                 0 (clear-line-right line x char-attrs)
+                                 1 (clear-line-left line x char-attrs)
+                                 2 (empty-line width char-attrs)
+                                 line)))))
 
 ;; parser actions
 
@@ -303,6 +312,7 @@
                     0x48 execute-cup
                     0x49 execute-cht
                     0x50 execute-ed
+                    0x51 execute-el
                     nil)]
     (action vt)
     vt))
