@@ -49,7 +49,7 @@
   (update-in vt [:lines] (fn [lines]
                            (conj (vec (drop 1 lines)) (empty-line width)))))
 
-(defn scroll-down [{width :width height :height :as vt}]
+(defn scroll-down [{:keys [width height] :as vt}]
   (update-in vt [:lines] (fn [lines]
                            (vec (conj (take (dec height) lines) (empty-line width))))))
 
@@ -66,7 +66,7 @@
 (defn execute-ht [vt]
   (move-cursor-to-next-tab vt 1))
 
-(defn execute-lf [{height :height {y :y} :cursor :as vt}]
+(defn execute-lf [{:keys [height] {y :y} :cursor :as vt}]
   (if (= height (inc y))
     (-> vt
         scroll-up
@@ -75,7 +75,7 @@
         (assoc-in [:cursor :x] 0)
         (update-in [:cursor :y] inc))))
 
-(defn move-cursor-down [{height :height {y :y} :cursor :as vt}]
+(defn move-cursor-down [{:keys [height] {y :y} :cursor :as vt}]
   (if (= height (inc y))
     (scroll-up vt)
     (update-in vt [:cursor :y] inc)))
@@ -104,7 +104,7 @@
 
 (defn execute-sc
   "http://www.vt100.net/docs/vt510-rm/DECSC"
-  [{{x :x y :y} :cursor char-attrs :char-attrs :as vt}]
+  [{{:keys [x y]} :cursor :keys [char-attrs] :as vt}]
   (assoc vt :saved {:cursor {:x x :y y}
                     :char-attrs char-attrs}))
 
@@ -141,7 +141,7 @@
       default
       v)))
 
-(defn execute-ich [{{x :x y :y} :cursor width :width char-attrs :char-attrs :as vt}]
+(defn execute-ich [{{:keys [x y]} :cursor :keys [width char-attrs] :as vt}]
   (let [n (get-param vt 0 1)]
     (update-in vt [:lines y] (fn [line]
                                (vec (take width (concat (take x line)
@@ -154,19 +154,19 @@
         new-y (if (>= new-y 0) new-y 0)]
     (assoc-in vt [:cursor :y] new-y)))
 
-(defn execute-cud [{{y :y} :cursor height :height :as vt}]
+(defn execute-cud [{{y :y} :cursor :keys [height] :as vt}]
   (let [n (get-param vt 0 1)
         new-y (+ y n)
         new-y (if (< new-y height) new-y (dec height))]
     (assoc-in vt [:cursor :y] new-y)))
 
-(defn execute-cuf [{{x :x} :cursor width :width :as vt}]
+(defn execute-cuf [{{x :x} :cursor :keys [width] :as vt}]
   (let [n (get-param vt 0 1)
         new-x (+ x n)
         new-x (if (< new-x width) new-x (dec width))]
     (assoc-in vt [:cursor :x] new-x)))
 
-(defn execute-cub [{{x :x} :cursor width :width :as vt}]
+(defn execute-cub [{{x :x} :cursor :keys [width] :as vt}]
   (let [n (get-param vt 0 1)
         new-x (- x n)
         new-x (if (>= new-x 0) new-x 0)]
@@ -187,7 +187,7 @@
         new-x (if (<= n width) (dec n) (dec width))]
     (assoc-in vt [:cursor :x] new-x)))
 
-(defn execute-cup [{width :width height :height :as vt}]
+(defn execute-cup [{:keys [width height] :as vt}]
   (let [new-x (get-param vt 1 1)
         new-x (if (<= new-x width) (dec new-x) (dec width))
         new-y (get-param vt 0 1)
@@ -204,7 +204,7 @@
   (vec (concat (take x line)
                (repeat (- (count line) x) (empty-cell char-attrs)))))
 
-(defn clear-to-end-of-screen [{{x :x y :y} :cursor width :width height :height char-attrs :char-attrs :as vt}]
+(defn clear-to-end-of-screen [{{:keys [x y]} :cursor :keys [width height char-attrs] :as vt}]
   (update-in vt [:lines] (fn [lines]
                            (let [top-lines (take y lines)
                                  curr-line (clear-line-right (nth lines y) x char-attrs)
@@ -215,14 +215,14 @@
   (vec (concat (repeat (inc x) (empty-cell char-attrs))
                (drop (inc x) line))))
 
-(defn clear-to-beginning-of-screen [{{x :x y :y} :cursor width :width height :height char-attrs :char-attrs :as vt}]
+(defn clear-to-beginning-of-screen [{{:keys [x y]} :cursor :keys [width height char-attrs] :as vt}]
   (update-in vt [:lines] (fn [lines]
                            (let [top-lines (repeat y (empty-line width char-attrs))
                                  curr-line (clear-line-left (nth lines y) x char-attrs)
                                  bottom-lines (drop (inc y) lines)]
                              (vec (concat top-lines [curr-line] bottom-lines))))))
 
-(defn clear-screen [{width :width height :height char-attrs :char-attrs :as vt}]
+(defn clear-screen [{:keys [width height char-attrs] :as vt}]
   (assoc-in vt [:lines] (empty-screen width height char-attrs)))
 
 (defn execute-ed [vt]
@@ -247,7 +247,7 @@
 (defn ignore [vt input]
   vt)
 
-(defn print [{width :width height :height {x :x y :y} :cursor :as vt} input]
+(defn print [{:keys [width height] {:keys [x y]} :cursor :as vt} input]
   (if (= width (inc x))
     (if (= height (inc y))
       (-> vt
