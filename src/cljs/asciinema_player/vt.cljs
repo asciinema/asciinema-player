@@ -318,8 +318,8 @@
                     0x47 execute-cha
                     0x48 execute-cup
                     0x49 execute-cht
-                    0x50 execute-ed
-                    0x51 execute-el
+                    0x4a execute-ed
+                    0x4b execute-el
                     0x53 execute-su
                     nil)]
     (action vt)

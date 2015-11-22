@@ -825,19 +825,19 @@
                         0x45 0x46 0x47 0x48
                         0x49 0x50])
                  (move-cursor 1 1))]
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x50])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x4a])]
         (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
                       [[0x45 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= x 1))
         (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x31 0x50])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x31 0x4a])]
         (is (= lines [[[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x47 {}] [0x48 {}]]
                       [[0x49 {}] [0x50 {}] [0x20 {}] [0x20 {}]]]))
         (is (= x 1))
         (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x50])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x4a])]
         (is (= lines [[[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
@@ -848,15 +848,15 @@
     (let [vt (-> (make-vt 6 2)
                  (feed [0x41 0x42 0x43 0x44 0x45 0x46])
                  (move-cursor 3 0))]
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x51])]
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x4b])]
         (is (= line0 [[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}] [0x20 {}] [0x20 {}]]))
         (is (= x 3))
         (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x31 0x51])]
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x31 0x4b])]
         (is (= line0 [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}] [0x45 {}] [0x46 {}]]))
         (is (= x 3))
         (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x51])]
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x4b])]
         (is (= line0 [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]))
         (is (= x 3))
         (is (= y 0)))))
