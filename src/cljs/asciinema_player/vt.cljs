@@ -242,6 +242,13 @@
                                  2 (empty-line width char-attrs)
                                  line)))))
 
+(defn execute-su [{:keys [width char-attrs] :as vt}]
+  (let [n (get-param vt 0 1)]
+    (update-in vt [:lines] (fn [lines]
+                             (vec (concat
+                                   (drop n lines)
+                                   (repeat n (empty-line width char-attrs))))))))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -313,6 +320,7 @@
                     0x49 execute-cht
                     0x50 execute-ed
                     0x51 execute-el
+                    0x53 execute-su
                     nil)]
     (action vt)
     vt))
