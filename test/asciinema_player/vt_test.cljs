@@ -377,9 +377,15 @@
     (is (= (-> vt :char-attrs) {}))
     (is (= (-> vt :saved) {:cursor {:x 0 :y 0} :char-attrs {}}))
     (is (= (-> vt :parser :intermediate-chars) []))
-    (is (= (-> vt :parser :param-chars) [])))
+    (is (= (-> vt :parser :param-chars) []))
+    (is (= (-> vt :insert-mode) false)))
   (let [vt (make-vt 20 5)]
     (is (= (:tabs vt) #{8 16}))))
+
+(defn move-cursor [vt x y]
+  (-> vt
+      (assoc-in [:cursor :x] x)
+      (assoc-in [:cursor :y] y)))
 
 (deftest print-test
   (let [vt (make-vt 4 3)]
@@ -390,6 +396,18 @@
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= cursor {:x 3 :y 0 :visible true}))))
+
+    (testing "printing in insert mode"
+      (let [vt (-> vt
+                   (feed [0x41 0x42 0x43])
+                   (move-cursor 1 0)
+                   (feed [0x1b 0x5b 0x34 0x68])
+                   (feed [0x48 0x49]))] ; enable insert mode
+        (let [{:keys [lines cursor]} vt]
+          (is (= lines [[[0x41 {}] [0x48 {}] [0x49 {}] [0x42 {}]]
+                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+          (is (= cursor {:x 3 :y 0 :visible true})))))
 
     (testing "printing on the right edge of the line"
       (let [{:keys [lines cursor]} (feed vt [0x41 0x42 0x43 0x44])]
@@ -407,11 +425,6 @@
                       [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                       [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
         (is (= cursor {:x 2 :y 2 :visible true}))))))
-
-(defn move-cursor [vt x y]
-  (-> vt
-      (assoc-in [:cursor :x] x)
-      (assoc-in [:cursor :y] y)))
 
 (defn test-ind [inputs]
   (let [vt (-> (make-vt 4 3)
@@ -975,7 +988,17 @@
       (let [{:keys [tabs]} (feed vt [0x1b 0x5b 0x67])]
         (is (= tabs #{8 16 32 40})))
       (let [{:keys [tabs]} (feed vt [0x1b 0x5b 0x33 0x67])]
-        (is (= tabs #{}))))))
+        (is (= tabs #{})))))
+
+  (testing "CSI h (SM)"
+    (let [vt (make-vt 4 3)]
+      (let [{:keys [insert-mode]} (feed vt [0x1b 0x5b 0x34 0x68])]
+        (is (= insert-mode true)))))
+
+  (testing "CSI l (RM)"
+    (let [vt (make-vt 4 3)]
+      (let [{:keys [insert-mode]} (feed vt [0x1b 0x5b 0x34 0x6c])]
+        (is (= insert-mode false))))))
 
 (deftest get-params-test
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] []))]

@@ -14,8 +14,11 @@
 (def space 0x20)
 (def default-attrs {})
 
+(defn cell [ch char-attrs]
+  [ch char-attrs])
+
 (defn empty-cell [char-attrs]
-  [space char-attrs])
+  (cell space char-attrs))
 
 (defn empty-line
   ([width] (empty-line width default-attrs))
@@ -40,6 +43,7 @@
    :tabs (default-tabs width)
    :cursor {:x 0 :y 0 :visible true}
    :char-attrs {}
+   :insert-mode false
    :lines (empty-screen width height)
    :saved {:cursor {:x 0 :y 0} :char-attrs {}}})
 
@@ -295,25 +299,48 @@
       3 (update-in vt [:tabs] empty)
       vt)))
 
+(defn execute-sm [vt]
+  (let [n (get-param vt 0 0)]
+    (if (= n 4)
+      (assoc vt :insert-mode true)
+      vt)))
+
+(defn execute-rm [vt]
+  (let [n (get-param vt 0 0)]
+    (if (= n 4)
+      (assoc vt :insert-mode false)
+      vt)))
+
 ;; parser actions
 
 (defn ignore [vt input]
   vt)
 
-(defn print [{:keys [width height] {:keys [x y]} :cursor :as vt} input]
-  (if (= width (inc x))
-    (if (= height (inc y))
-      (-> vt
-          (assoc-in [:lines y x 0] input)
-          (assoc-in [:cursor :x] 0)
-          scroll-up)
-      (-> vt
-          (assoc-in [:lines y x 0] input)
-          (assoc-in [:cursor :x] 0)
-          (update-in [:cursor :y] inc)))
-    (-> vt
-        (assoc-in [:lines y x 0] input)
-        (update-in [:cursor :x] inc))))
+(defn replace-char [line x cell]
+  (assoc-in line [x] cell))
+
+(defn insert-char [line x cell]
+  (vec (concat
+        (take x line)
+        [cell]
+        (take (- (count line) x 1) (drop x line)))))
+
+(defn print [{:keys [width height char-attrs insert-mode] {:keys [x y]} :cursor :as vt} input]
+  (let [cell (cell input char-attrs)]
+    (if (= width (inc x))
+      (if (= height (inc y))
+        (-> vt
+            (assoc-in [:lines y x] cell)
+            (assoc-in [:cursor :x] 0)
+            scroll-up)
+        (-> vt
+            (assoc-in [:lines y x] cell)
+            (assoc-in [:cursor :x] 0)
+            (update-in [:cursor :y] inc)))
+      (let [f (if insert-mode insert-char replace-char)]
+        (-> vt
+            (update-in [:lines y] f x cell)
+            (update-in [:cursor :x] inc))))))
 
 (defn execute [vt input]
   (if-let [action (condp = input
@@ -374,6 +401,8 @@
                     0x58 execute-ech
                     0x66 execute-cup
                     0x67 execute-tbc
+                    0x68 execute-sm
+                    0x6c execute-rm
                     nil)]
     (action vt)
     vt))
