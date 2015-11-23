@@ -280,6 +280,14 @@
                                      (drop (+ x n) line)
                                      (repeat n (empty-cell char-attrs))))))))
 
+(defn execute-ech [{{:keys [x y]} :cursor :keys [char-attrs] :as vt}]
+  (let [n (get-param vt 0 1)]
+    (update-in vt [:lines y] (fn [line]
+                               (vec (concat
+                                     (take x line)
+                                     (repeat n (empty-cell char-attrs))
+                                     (drop (+ x n) line)))))))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -356,6 +364,7 @@
                     0x50 execute-dch
                     0x53 execute-su
                     0x54 execute-sd
+                    0x58 execute-ech
                     nil)]
     (action vt)
     vt))

@@ -953,7 +953,20 @@
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]]))
         (is (= x 2))
-        (is (= y 1))))))
+        (is (= y 1)))))
+
+  (testing "CSI X (ECH)"
+    (let [vt (-> (make-vt 7 1)
+                 (feed [0x41 0x42 0x43 0x44 0x45 0x46])
+                 (move-cursor 2 0))]
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x58])]
+        (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {}] [0x44 {}] [0x45 {}] [0x46 {}] [0x20 {}]]))
+        (is (= x 2))
+        (is (= y 0)))
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x58])]
+        (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {}] [0x20 {}] [0x45 {}] [0x46 {}] [0x20 {}]]))
+        (is (= x 2))
+        (is (= y 0))))))
 
 (deftest get-params-test
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] []))]
