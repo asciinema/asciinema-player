@@ -365,6 +365,7 @@
                     0x53 execute-su
                     0x54 execute-sd
                     0x58 execute-ech
+                    0x66 execute-cup
                     nil)]
     (action vt)
     vt))

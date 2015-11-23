@@ -789,26 +789,27 @@
   (testing "CSI H (CUP)"
     (let [vt (-> (make-vt 5 3)
                  (move-cursor 1 1))]
-      (let [vt (feed vt [0x1b 0x5b 0x48])
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 0)))
-      (let [vt (feed vt [0x1b 0x5b 0x33 0x48])
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 2)))
-      (let [vt (feed vt [0x1b 0x5b 0x3b 0x33 0x48])
-            {{x :x y :y} :cursor} vt]
-        (is (= x 2))
-        (is (= y 0)))
-      (let [vt (feed vt [0x1b 0x5b 0x33 0x3b 0x34 0x48])
-            {{x :x y :y} :cursor} vt]
-        (is (= x 3))
-        (is (= y 2)))
-      (let [vt (feed vt [0x1b 0x5b 0x38 0x3b 0x38 0x48])
-            {{x :x y :y} :cursor} vt]
-        (is (= x 4))
-        (is (= y 2)))))
+      (doseq [ch [0x48 0x66]]
+        (let [vt (feed vt [0x1b 0x5b ch])
+              {{x :x y :y} :cursor} vt]
+          (is (= x 0))
+          (is (= y 0)))
+        (let [vt (feed vt [0x1b 0x5b 0x33 ch])
+              {{x :x y :y} :cursor} vt]
+          (is (= x 0))
+          (is (= y 2)))
+        (let [vt (feed vt [0x1b 0x5b 0x3b 0x33 ch])
+              {{x :x y :y} :cursor} vt]
+          (is (= x 2))
+          (is (= y 0)))
+        (let [vt (feed vt [0x1b 0x5b 0x33 0x3b 0x34 ch])
+              {{x :x y :y} :cursor} vt]
+          (is (= x 3))
+          (is (= y 2)))
+        (let [vt (feed vt [0x1b 0x5b 0x38 0x3b 0x38 ch])
+              {{x :x y :y} :cursor} vt]
+          (is (= x 4))
+          (is (= y 2))))))
 
   (testing "CSI I (CHT)"
     (let [vt (-> (make-vt 80 3) (move-cursor 20 0))]
