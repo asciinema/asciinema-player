@@ -288,6 +288,13 @@
                                      (repeat n (empty-cell char-attrs))
                                      (drop (+ x n) line)))))))
 
+(defn execute-tbc [{{:keys [x]} :cursor :as vt}]
+  (let [n (get-param vt 0 0)]
+    (condp = n
+      0 (update-in vt [:tabs] disj x)
+      3 (update-in vt [:tabs] empty)
+      vt)))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -366,6 +373,7 @@
                     0x54 execute-sd
                     0x58 execute-ech
                     0x66 execute-cup
+                    0x67 execute-tbc
                     nil)]
     (action vt)
     vt))

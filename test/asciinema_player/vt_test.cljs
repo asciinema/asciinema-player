@@ -786,7 +786,7 @@
         (is (= x 4))
         (is (= y 1)))))
 
-  (testing "CSI H (CUP)"
+  (testing "CSI H (CUP), CSI f (HVP)"
     (let [vt (-> (make-vt 5 3)
                  (move-cursor 1 1))]
       (doseq [ch [0x48 0x66]]
@@ -967,7 +967,15 @@
       (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x58])]
         (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {}] [0x20 {}] [0x45 {}] [0x46 {}] [0x20 {}]]))
         (is (= x 2))
-        (is (= y 0))))))
+        (is (= y 0)))))
+
+  (testing "CSI g (TBC)"
+    (let [vt (-> (make-vt 45 24)
+                 (move-cursor 24 0))]
+      (let [{:keys [tabs]} (feed vt [0x1b 0x5b 0x67])]
+        (is (= tabs #{8 16 32 40})))
+      (let [{:keys [tabs]} (feed vt [0x1b 0x5b 0x33 0x67])]
+        (is (= tabs #{}))))))
 
 (deftest get-params-test
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] []))]
