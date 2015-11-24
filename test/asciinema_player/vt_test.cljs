@@ -982,6 +982,16 @@
         (is (= x 2))
         (is (= y 0)))))
 
+  (testing "CSI d (VPA)"
+    (let [vt (-> (make-vt 80 24)
+                 (move-cursor 15 1))]
+      (let [{{:keys [x y]} :cursor} (feed vt [0x1b 0x5b 0x64])]
+        (is (= x 15))
+        (is (= y 0)))
+      (let [{{:keys [x y]} :cursor} (feed vt [0x1b 0x5b 0x35 0x64])]
+        (is (= x 15))
+        (is (= y 4)))))
+
   (testing "CSI g (TBC)"
     (let [vt (-> (make-vt 45 24)
                  (move-cursor 24 0))]
