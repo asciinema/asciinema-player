@@ -998,7 +998,69 @@
   (testing "CSI l (RM)"
     (let [vt (make-vt 4 3)]
       (let [{:keys [insert-mode]} (feed vt [0x1b 0x5b 0x34 0x6c])]
-        (is (= insert-mode false))))))
+        (is (= insert-mode false)))))
+
+  (testing "CSI m (SGR)"
+    (let [vt (make-vt 20 1)
+          vt (reduce feed vt [[0x41] ; print "A"
+                              [0x1b 0x5b 0x31 0x6d] ; turn on bold
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x33 0x6d] ; turn on italic
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x34 0x6d] ; turn on underline
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x35 0x6d] ; turn on blink
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x37 0x6d] ; turn on inverse
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x32 0x31 0x6d] ; turn off bold
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x32 0x33 0x6d] ; turn off italic
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x32 0x34 0x6d] ; turn off underline
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x32 0x35 0x6d] ; turn off blink
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x32 0x37 0x6d] ; turn off inverse
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x33 0x32 0x3b 0x34 0x33 0x6d] ; fg 2, bg 3
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x33 0x39 0x6d] ; default fg
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x34 0x39 0x6d] ; default bg
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x33 0x32 0x3b 0x34 0x33 0x3b 0x31 0x6d] ; fg 2, bg 3, bold
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x30 0x6d] ; reset all attrs (explicit "0" param)
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x33 0x32 0x3b 0x34 0x33 0x3b 0x31 0x6d] ; fg 2, bg 3, bold
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x6d] ; reset all attrs (implicit "0" param)
+                              [0x41] ; print "A"
+                              [0x1b 0x5b 0x31 0x3b 0x33 0x38 0x3b 0x35 0x3b 0x38 0x38 0x3b 0x34 0x38 0x3b 0x35 0x3b 0x39 0x39 0x3b 0x35 0x6d] ; bold, fg 88, bg 99, blink
+                              [0x41]]) ; print "A"
+          {:keys [lines]} vt
+          [line0 & _] lines]
+      (is (= line0 [[0x41 {}]
+                    [0x41 {:bold true}]
+                    [0x41 {:bold true :italic true}]
+                    [0x41 {:bold true :italic true :underline true}]
+                    [0x41 {:bold true :italic true :underline true :blink true}]
+                    [0x41 {:bold true :italic true :underline true :blink true :inverse true}]
+                    [0x41 {:italic true :underline true :blink true :inverse true}]
+                    [0x41 {:underline true :blink true :inverse true}]
+                    [0x41 {:blink true :inverse true}]
+                    [0x41 {:inverse true}]
+                    [0x41 {}]
+                    [0x41 {:fg 2 :bg 3}]
+                    [0x41 {:bg 3}]
+                    [0x41 {}]
+                    [0x41 {:fg 2 :bg 3 :bold true}]
+                    [0x41 {}]
+                    [0x41 {:fg 2 :bg 3 :bold true}]
+                    [0x41 {}]
+                    [0x41 {:fg 88 :bg 99 :bold true :blink true}]
+                    [0x20 {}]])))))
 
 (deftest get-params-test
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] []))]

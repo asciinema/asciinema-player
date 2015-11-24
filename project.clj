@@ -11,6 +11,7 @@
                  [reagent "0.5.0"]
                  [devcards "0.2.0-3"]
                  [org.clojure/test.check "0.8.2"]
+                 [org.clojure/core.match "0.3.0-alpha4"]
                  [cljs-ajax "0.3.11"]]
 
   :plugins [[lein-cljsbuild "1.0.6"]

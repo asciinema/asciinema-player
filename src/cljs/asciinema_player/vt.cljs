@@ -1,6 +1,7 @@
 (ns asciinema-player.vt
   (:refer-clojure :exclude [print])
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [cljs.core.match :refer-macros [match]]))
 
 ;; References:
 ;; http://vt100.net/emu/dec_ansi_parser
@@ -311,6 +312,41 @@
       (assoc vt :insert-mode false)
       vt)))
 
+(defn reset-attrs [vt]
+  (update-in vt [:char-attrs] empty))
+
+(defn set-attr [vt attr-name value]
+  (assoc-in vt [:char-attrs attr-name] value))
+
+(defn unset-attr [vt attr-name]
+  (update-in vt [:char-attrs] dissoc attr-name))
+
+(defn execute-sgr [vt]
+  (let [params (or (seq (get-params vt)) [0])]
+    (loop [vt vt
+           [p1 p2 p3 & _ :as params] params]
+      (if p1
+        (match [p1 p2 p3]
+               [0  _ _] (recur (reset-attrs vt) (rest params))
+               [1  _ _] (recur (set-attr vt :bold true) (rest params))
+               [3  _ _] (recur (set-attr vt :italic true) (rest params))
+               [4  _ _] (recur (set-attr vt :underline true) (rest params))
+               [5  _ _] (recur (set-attr vt :blink true) (rest params))
+               [7  _ _] (recur (set-attr vt :inverse true) (rest params))
+               [21 _ _] (recur (unset-attr vt :bold) (rest params))
+               [23 _ _] (recur (unset-attr vt :italic) (rest params))
+               [24 _ _] (recur (unset-attr vt :underline) (rest params))
+               [25 _ _] (recur (unset-attr vt :blink) (rest params))
+               [27 _ _] (recur (unset-attr vt :inverse) (rest params))
+               [(fg :guard #(<= 30 % 37)) _ _] (recur (set-attr vt :fg (- fg 30)) (rest params))
+               [38 5 (fg :guard some?)] (recur (set-attr vt :fg fg) (drop 3 params))
+               [39 _ _] (recur (unset-attr vt :fg) (rest params))
+               [(bg :guard #(<= 40 % 47)) _ _] (recur (set-attr vt :bg (- bg 40)) (rest params))
+               [48 5 (bg :guard some?)] (recur (set-attr vt :bg bg) (drop 3 params))
+               [49 _ _] (recur (unset-attr vt :bg) (rest params))
+               :else (recur vt (rest params)))
+        vt))))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -403,6 +439,7 @@
                     0x67 execute-tbc
                     0x68 execute-sm
                     0x6c execute-rm
+                    0x6d execute-sgr
                     nil)]
     (action vt)
     vt))
