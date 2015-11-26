@@ -126,7 +126,7 @@
         start-at (:start-at state)
         speed (:speed state)
         frames (-> (:frames state) (next-frames start-at) (frames-at-speed speed))
-        screen-state-chan (coll->chan frames (partial merge-with merge) {})
+        screen-state-chan (coll->chan frames)
         timer-chan (coll->chan (repeat [0.3 true]))
         stop-playback-chan (chan)
         elapsed-time #(* (elapsed-time-since start) speed)
