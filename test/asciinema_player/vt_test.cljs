@@ -378,7 +378,9 @@
     (is (= (-> vt :saved) {:cursor {:x 0 :y 0} :char-attrs {}}))
     (is (= (-> vt :parser :intermediate-chars) []))
     (is (= (-> vt :parser :param-chars) []))
-    (is (= (-> vt :insert-mode) false)))
+    (is (= (-> vt :insert-mode) false))
+    (is (= (-> vt :top-margin) 0))
+    (is (= (-> vt :bottom-margin) 23)))
   (let [vt (make-vt 20 5)]
     (is (= (:tabs vt) #{8 16}))))
 
@@ -427,29 +429,58 @@
         (is (= cursor {:x 2 :y 2 :visible true}))))))
 
 (defn test-ind [inputs]
-  (let [vt (-> (make-vt 4 3)
+  (let [vt (-> (make-vt 4 7)
                (feed [0x41 0x41 0x41 0x41
                       0x42 0x42 0x42 0x42
                       0x43 0x43 0x43 0x43
-                      0x44 0x44]))]
+                      0x44 0x44 0x44 0x44
+                      0x45 0x45 0x45 0x45
+                      0x46 0x46 0x46 0x46
+                      0x47]))]
     (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) (feed inputs))]
-      (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
+                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
+                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
+                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
+                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
+                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 0))
       (is (= y 1)))
     (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) (feed inputs))]
-      (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
+                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
+                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
+                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
+                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
+                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 1))
       (is (= y 2)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) (feed inputs))]
-      (is (= lines [[[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 6) (feed inputs))]
+      (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
+                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
+                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
+                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                     [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 2))
-      (is (= y 2)))))
+      (is (= y 6)))
+    (let [vt (-> vt
+                 (move-cursor 2 6)
+                 (feed [0x1b 0x5b 0x33 0x3b 0x35 0x72]) ; set scroll region 3-5
+                 (feed inputs))
+          {lines :lines {x :x y :y} :cursor} vt]
+      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
+                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
+                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
+                    [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
+                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= x 2))
+      (is (= y 6)))))
 
 (defn test-nel [inputs]
   (let [vt (-> (make-vt 4 3)
@@ -488,20 +519,56 @@
       (is (= tabs #{8 16 19})))))
 
 (defn test-ri [inputs]
-  (let [vt (-> (make-vt 4 3)
+  (let [vt (-> (make-vt 4 7)
                (feed [0x41 0x41 0x41 0x41
                       0x42 0x42 0x42 0x42
-                      0x43 0x43]))]
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 1) (feed inputs))]
+                      0x43 0x43 0x43 0x43
+                      0x44 0x44 0x44 0x44
+                      0x45 0x45 0x45 0x45
+                      0x46 0x46 0x46 0x46
+                      0x47]))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 6) (feed inputs))]
       (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
                     [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                    [[0x43 {}] [0x43 {}] [0x20 {}] [0x20 {}]]]))
-      (is (= x 2))
-      (is (= y 0)))
+                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
+                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
+                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
+                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= x 0))
+      (is (= y 5)))
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 5) (feed inputs))]
+      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
+                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
+                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
+                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
+                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= x 1))
+      (is (= y 4)))
     (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 0) (feed inputs))]
       (is (= lines [[[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                     [[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]]))
+                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
+                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
+                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]]))
+      (is (= x 2))
+      (is (= y 0)))
+    (let [vt (-> vt
+                 (move-cursor 2 0)
+                 (feed [0x1b 0x5b 0x33 0x3b 0x35 0x72]) ; set scroll region 3-5
+                 (feed inputs))
+          {lines :lines {x :x y :y} :cursor} vt]
+      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
+                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
+                    [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
+                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
+                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
+                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 2))
       (is (= y 0)))))
 
@@ -1070,7 +1137,20 @@
                     [0x41 {:fg 2 :bg 3 :bold true}]
                     [0x41 {}]
                     [0x41 {:fg 88 :bg 99 :bold true :blink true}]
-                    [0x20 {}]])))))
+                    [0x20 {}]]))))
+
+  (testing "CSI r (DECSTBM)"
+    (let [vt (make-vt 80 24)]
+      (let [{:keys [top-margin bottom-margin] {:keys [x y]} :cursor} (feed vt [0x1b 0x5b 0x72])]
+        (is (= top-margin 0))
+        (is (= bottom-margin 23))
+        (is (= x 0))
+        (is (= y 0)))
+      (let [{:keys [top-margin bottom-margin] {:keys [x y]} :cursor} (feed vt [0x1b 0x5b 0x35 0x3b 0x31 0x35 0x72])]
+        (is (= top-margin 4))
+        (is (= bottom-margin 14))
+        (is (= x 0))
+        (is (= y 0))))))
 
 (deftest get-params-test
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] []))]

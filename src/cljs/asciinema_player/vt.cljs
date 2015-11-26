@@ -38,6 +38,8 @@
 (defn make-vt [width height]
   {:width width
    :height height
+   :top-margin 0
+   :bottom-margin (dec height)
    :parser {:state :ground
             :intermediate-chars []
             :param-chars []}
@@ -50,13 +52,21 @@
 
 ;; control functions
 
-(defn scroll-up [{width :width :as vt}]
+(defn scroll-up [{:keys [width top-margin bottom-margin] :as vt}]
   (update-in vt [:lines] (fn [lines]
-                           (conj (vec (drop 1 lines)) (empty-line width)))))
+                           (vec (concat
+                                 (take top-margin lines)
+                                 (subvec lines (inc top-margin) (inc bottom-margin))
+                                 [(empty-line width)]
+                                 (drop (inc bottom-margin) lines))))))
 
-(defn scroll-down [{:keys [width height] :as vt}]
+(defn scroll-down [{:keys [width top-margin bottom-margin] :as vt}]
   (update-in vt [:lines] (fn [lines]
-                           (vec (conj (take (dec height) lines) (empty-line width))))))
+                           (vec (concat
+                                 (take top-margin lines)
+                                 [(empty-line width)]
+                                 (subvec lines top-margin bottom-margin)
+                                 (drop (inc bottom-margin) lines))))))
 
 (defn execute-bs [vt]
   (update-in vt [:cursor :x] (fn [x]
@@ -351,6 +361,13 @@
   (let [n (get-param vt 0 1)]
     (assoc-in vt [:cursor :y] (dec n))))
 
+(defn execute-decstbm [{:keys [height] :as vt}]
+  (let [top (dec (get-param vt 0 1))
+        bottom (dec (get-param vt 1 height))]
+    (if (< -1 top bottom height)
+      (assoc vt :top-margin top :bottom-margin bottom)
+      vt)))
+
 ;; parser actions
 
 (defn ignore [vt input]
@@ -445,6 +462,7 @@
                     0x68 execute-sm
                     0x6c execute-rm
                     0x6d execute-sgr
+                    0x72 execute-decstbm
                     nil)]
     (action vt)
     vt))
