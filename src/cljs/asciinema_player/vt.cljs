@@ -52,19 +52,19 @@
 
 ;; control functions
 
-(defn scroll-up [{:keys [width top-margin bottom-margin] :as vt}]
+(defn scroll-up [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
   (update-in vt [:lines] (fn [lines]
                            (vec (concat
                                  (take top-margin lines)
                                  (subvec lines (inc top-margin) (inc bottom-margin))
-                                 [(empty-line width)]
+                                 [(empty-line width char-attrs)]
                                  (drop (inc bottom-margin) lines))))))
 
-(defn scroll-down [{:keys [width top-margin bottom-margin] :as vt}]
+(defn scroll-down [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
   (update-in vt [:lines] (fn [lines]
                            (vec (concat
                                  (take top-margin lines)
-                                 [(empty-line width)]
+                                 [(empty-line width char-attrs)]
                                  (subvec lines top-margin bottom-margin)
                                  (drop (inc bottom-margin) lines))))))
 
