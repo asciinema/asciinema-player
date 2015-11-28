@@ -296,6 +296,14 @@
                                      (drop (+ x n) line)
                                      (repeat n (empty-cell char-attrs))))))))
 
+(defn execute-ctc [{{:keys [x]} :cursor :as vt}]
+  (let [n (get-param vt 0 0)]
+    (condp = n
+      0 (update-in vt [:tabs] conj x)
+      2 (update-in vt [:tabs] disj x)
+      5 (update-in vt [:tabs] empty)
+      vt)))
+
 (defn execute-ech [{{:keys [x y]} :cursor :keys [char-attrs] :as vt}]
   (let [n (get-param vt 0 1)]
     (update-in vt [:lines y] (fn [line]
@@ -456,6 +464,7 @@
                     0x50 execute-dch
                     0x53 execute-su
                     0x54 execute-sd
+                    0x57 execute-ctc
                     0x58 execute-ech
                     0x64 execute-vpa
                     0x65 execute-cuu

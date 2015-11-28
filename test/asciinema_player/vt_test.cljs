@@ -1058,6 +1058,17 @@
         (is (= x 2))
         (is (= y 1)))))
 
+  (testing "CSI W (CTC)"
+    (let [vt (-> (make-vt 30 24))]
+      (let [{:keys [tabs]} (-> vt (move-cursor 5 0) (feed [0x1b 0x5b 0x57]))]
+        (is (= tabs #{5 8 16 24})))
+      (let [{:keys [tabs]} (-> vt (move-cursor 5 0) (feed [0x1b 0x5b 0x30 0x57]))]
+        (is (= tabs #{5 8 16 24})))
+      (let [{:keys [tabs]} (-> vt (move-cursor 16 0) (feed [0x1b 0x5b 0x32 0x57]))]
+        (is (= tabs #{8 24})))
+      (let [{:keys [tabs]} (-> vt (feed [0x1b 0x5b 0x35 0x57]))]
+        (is (= tabs #{})))))
+
   (testing "CSI X (ECH)"
     (let [vt (-> (make-vt 7 1)
                  (feed [0x41 0x42 0x43 0x44 0x45 0x46])
