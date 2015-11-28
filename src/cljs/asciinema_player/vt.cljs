@@ -457,6 +457,7 @@
                     0x54 execute-sd
                     0x58 execute-ech
                     0x64 execute-vpa
+                    0x65 execute-cuu
                     0x66 execute-cup
                     0x67 execute-tbc
                     0x68 execute-sm

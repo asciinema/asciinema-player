@@ -740,26 +740,27 @@
         (is (= y 0))
         (is (= line0 [[0x41 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x42 {}] [0x43 {}]])))))
 
-  (testing "CSI A (CUU)"
+  (testing "CSI A (CUU), CSI e (VPR)"
     (let [vt (make-vt 5 3)]
-      (let [vt (-> vt
-                   (move-cursor 1 0)
-                   (feed [0x1b 0x5b 0x41]))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 1))
-        (is (= y 0)))
-      (let [vt (-> vt
-                   (move-cursor 1 2)
-                   (feed [0x1b 0x5b 0x41]))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 1))
-        (is (= y 1)))
-      (let [vt (-> vt
-                   (move-cursor 1 2)
-                   (feed [0x1b 0x5b 0x34 0x41]))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 1))
-        (is (= y 0)))))
+      (doseq [ch [0x41 0x65]]
+        (let [vt (-> vt
+                     (move-cursor 1 0)
+                     (feed [0x1b 0x5b ch]))
+              {{x :x y :y} :cursor} vt]
+          (is (= x 1))
+          (is (= y 0)))
+        (let [vt (-> vt
+                     (move-cursor 1 2)
+                     (feed [0x1b 0x5b ch]))
+              {{x :x y :y} :cursor} vt]
+          (is (= x 1))
+          (is (= y 1)))
+        (let [vt (-> vt
+                     (move-cursor 1 2)
+                     (feed [0x1b 0x5b 0x34 ch]))
+              {{x :x y :y} :cursor} vt]
+          (is (= x 1))
+          (is (= y 0))))))
 
   (testing "CSI B (CUD)"
     (let [vt (make-vt 5 3)]
