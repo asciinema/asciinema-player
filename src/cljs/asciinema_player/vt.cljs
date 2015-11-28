@@ -4,12 +4,13 @@
             [cljs.core.match :refer-macros [match]]))
 
 ;; References:
-;; http://vt100.net/emu/dec_ansi_parser
+;; http://www.inwap.com/pdp10/ansicode.txt
+;; http://manpages.ubuntu.com/manpages/lucid/man7/urxvt.7.html
 ;; http://en.wikipedia.org/wiki/ANSI_escape_code
+;; http://vt100.net/emu/dec_ansi_parser
 ;; http://ttssh2.sourceforge.jp/manual/en/about/ctrlseq.html
 ;; http://real-world-systems.com/docs/ANSIcode.html
 ;; http://www.shaels.net/index.php/propterm/documents
-;; http://manpages.ubuntu.com/manpages/lucid/man7/urxvt.7.html
 ;; http://vt100.net/docs/vt102-ug/chapter5.html
 
 (def space 0x20)
