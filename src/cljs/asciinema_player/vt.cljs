@@ -662,3 +662,7 @@
 
 (defn feed [vt inputs]
   (reduce (fn [vt input] (feed-one vt input)) vt inputs))
+
+(defn feed-str [vt str]
+  (let [codes (map #(.charCodeAt % 0) str)]
+    (feed vt codes)))

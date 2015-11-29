@@ -5,7 +5,7 @@
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop :include-macros true]
-            [asciinema-player.vt :as vt :refer [parse make-vt feed feed-one get-params]]))
+            [asciinema-player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params]]))
 
 (defn test-event [initial-state input expected-state expected-actions]
   (is (= (parse initial-state input) [expected-state expected-actions])))
@@ -384,19 +384,24 @@
   (let [vt (make-vt 20 5)]
     (is (= (:tabs vt) #{8 16}))))
 
+(defn feed-esc [vt str]
+  (let [codes (map #(.charCodeAt % 0) str)]
+    (feed vt (list* 0x1b codes))))
+
+(defn feed-csi [vt & strs]
+  (feed-esc vt (apply str (list* "[" strs))))
+
 (defn move-cursor [vt x y]
-  (-> vt
-      (assoc-in [:cursor :x] x)
-      (assoc-in [:cursor :y] y)))
+  (feed-csi vt (str (inc y) ";" (inc x) "H")))
 
 (defn set-fg [vt fg]
-  (feed vt [0x1b 0x5b 0x33 (+ 0x30 fg) 0x6d]))
+  (feed-csi vt (str "3" fg "m")))
 
 (defn set-bg [vt bg]
-  (feed vt [0x1b 0x5b 0x34 (+ 0x30 bg) 0x6d]))
+  (feed-csi vt (str "4" bg "m")))
 
 (defn set-bold [vt]
-  (feed vt [0x1b 0x5b 0x31 0x6d]))
+  (feed-csi vt "1m"))
 
 (deftest print-test
   (let [vt (-> (make-vt 4 3)
@@ -404,7 +409,7 @@
                (set-fg 1))]
 
     (testing "printing within single line"
-      (let [{:keys [lines cursor]} (feed vt [0x41 0x42 0x43])]
+      (let [{:keys [lines cursor]} (feed-str vt "ABC")]
         (is (= lines [[[0x41 {:fg 1 :bold true}] [0x42 {:fg 1 :bold true}] [0x43 {:fg 1 :bold true}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
@@ -412,11 +417,11 @@
 
     (testing "printing in insert mode"
       (let [vt (-> vt
-                   (feed [0x41 0x42 0x43])
+                   (feed-str "ABC")
                    (move-cursor 1 0)
-                   (feed [0x1b 0x5b 0x34 0x68]) ; enable insert mode
+                   (feed-csi "4h") ; enable insert mode
                    (set-fg 2)
-                   (feed [0x48 0x49]))]
+                   (feed-str "HI"))]
         (let [{:keys [lines cursor]} vt]
           (is (= lines [[[0x41 {:fg 1 :bold true}] [0x48 {:fg 2 :bold true}] [0x49 {:fg 2 :bold true}] [0x42 {:fg 1 :bold true}]]
                         [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
@@ -424,33 +429,24 @@
           (is (= cursor {:x 3 :y 0 :visible true})))))
 
     (testing "printing on the right edge of the line"
-      (let [{:keys [lines cursor]} (feed vt [0x41 0x42 0x43 0x44])]
+      (let [{:keys [lines cursor]} (feed-str vt "ABCD")]
         (is (= lines [[[0x41 {:fg 1 :bold true}] [0x42 {:fg 1 :bold true}] [0x43 {:fg 1 :bold true}] [0x44 {:fg 1 :bold true}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= cursor {:x 0 :y 1 :visible true}))))
 
     (testing "printing on the bottom right edge of the screen"
-      (let [{:keys [lines cursor]} (feed vt [0x41 0x41 0x41 0x41
-                                             0x42 0x42 0x42 0x42
-                                             0x43 0x43 0x43 0x43
-                                             0x44 0x44])]
+      (let [{:keys [lines cursor]} (feed-str vt "AAAABBBBCCCCDD")]
         (is (= lines [[[0x42 {:fg 1 :bold true}] [0x42 {:fg 1 :bold true}] [0x42 {:fg 1 :bold true}] [0x42 {:fg 1 :bold true}]]
                       [[0x43 {:fg 1 :bold true}] [0x43 {:fg 1 :bold true}] [0x43 {:fg 1 :bold true}] [0x43 {:fg 1 :bold true}]]
                       [[0x44 {:fg 1 :bold true}] [0x44 {:fg 1 :bold true}] [0x20 {:fg 1 :bold true}] [0x20 {:fg 1 :bold true}]]]))
         (is (= cursor {:x 2 :y 2 :visible true}))))))
 
-(defn test-ind [inputs]
+(defn test-ind [f]
   (let [vt (-> (make-vt 4 7)
-               (feed [0x41 0x41 0x41 0x41
-                      0x42 0x42 0x42 0x42
-                      0x43 0x43 0x43 0x43
-                      0x44 0x44 0x44 0x44
-                      0x45 0x45 0x45 0x45
-                      0x46 0x46 0x46 0x46
-                      0x47])
+               (feed-str "AAAABBBBCCCCDDDDEEEEFFFFG")
                (set-bg 3))]
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) (feed inputs))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) f)]
       (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
                     [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
@@ -460,7 +456,7 @@
                     [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 0))
       (is (= y 1)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) (feed inputs))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) f)]
       (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
                     [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
@@ -470,7 +466,7 @@
                     [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 1))
       (is (= y 2)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 6) (feed inputs))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 6) f)]
       (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                     [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
@@ -482,8 +478,8 @@
       (is (= y 6)))
     (let [vt (-> vt
                  (move-cursor 2 6)
-                 (feed [0x1b 0x5b 0x33 0x3b 0x35 0x72]) ; set scroll region 3-5
-                 (feed inputs))
+                 (feed-csi "3;5r") ; set scroll region 3-5
+                 f)
           {lines :lines {x :x y :y} :cursor} vt]
       (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
                     [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
@@ -495,54 +491,45 @@
       (is (= x 2))
       (is (= y 6)))))
 
-(defn test-nel [inputs]
+(defn test-nel [f]
   (let [vt (-> (make-vt 4 3)
-               (feed [0x41 0x41 0x41 0x41
-                      0x42 0x42 0x42 0x42
-                      0x43 0x43 0x43 0x43
-                      0x44 0x44])
+               (feed-str "AAAABBBBCCCCDD")
                (set-bg 3))]
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) (feed inputs))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) f)]
       (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                     [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 0))
       (is (= y 1)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) (feed inputs))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) f)]
       (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                     [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 0))
       (is (= y 2)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) (feed inputs))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 2) f)]
       (is (= lines [[[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
                     [[0x44 {}] [0x44 {}] [0x20 {}] [0x20 {}]]
                     [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
       (is (= x 0))
       (is (= y 2)))))
 
-(defn test-hts [inputs]
+(defn test-hts [f]
   (let [vt (make-vt 20 3)]
-    (let [{tabs :tabs} (-> vt (move-cursor 0 0) (feed inputs))]
+    (let [{tabs :tabs} (-> vt (move-cursor 0 0) f)]
       (is (= tabs #{8 16})))
-    (let [{tabs :tabs} (-> vt (move-cursor 1 0) (feed inputs))]
+    (let [{tabs :tabs} (-> vt (move-cursor 1 0) f)]
       (is (= tabs #{1 8 16})))
-    (let [{tabs :tabs} (-> vt (move-cursor 11 0) (feed inputs))]
+    (let [{tabs :tabs} (-> vt (move-cursor 11 0) f)]
       (is (= tabs #{8 11 16})))
-    (let [{tabs :tabs} (-> vt (move-cursor 19 0) (feed inputs))]
+    (let [{tabs :tabs} (-> vt (move-cursor 19 0) f)]
       (is (= tabs #{8 16 19})))))
 
-(defn test-ri [inputs]
+(defn test-ri [f]
   (let [vt (-> (make-vt 4 7)
-               (feed [0x41 0x41 0x41 0x41
-                      0x42 0x42 0x42 0x42
-                      0x43 0x43 0x43 0x43
-                      0x44 0x44 0x44 0x44
-                      0x45 0x45 0x45 0x45
-                      0x46 0x46 0x46 0x46
-                      0x47])
+               (feed-str "AAAABBBBCCCCDDDDEEEEFFFFG")
                (set-bg 3))]
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 6) (feed inputs))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 6) f)]
       (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
                     [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
@@ -552,7 +539,7 @@
                     [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 0))
       (is (= y 5)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 5) (feed inputs))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 5) f)]
       (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
                     [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
                     [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
@@ -562,7 +549,7 @@
                     [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
       (is (= x 1))
       (is (= y 4)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 0) (feed inputs))]
+    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 0) f)]
       (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                     [[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
                     [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
@@ -574,8 +561,8 @@
       (is (= y 0)))
     (let [vt (-> vt
                  (move-cursor 2 0)
-                 (feed [0x1b 0x5b 0x33 0x3b 0x35 0x72]) ; set scroll region 3-5
-                 (feed inputs))
+                 (feed-csi "3;5r") ; set scroll region 3-5
+                 f)
           {lines :lines {x :x y :y} :cursor} vt]
       (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
                     [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
@@ -647,11 +634,11 @@
 
     (testing "0x0a (LF), 0x85 (NEL)"
       (doseq [ch [0x0a 0x85]]
-        (test-nel [ch])))
+        (test-nel #(feed-one % ch))))
 
     (testing "0x0b (VT), 0x0c (FF), 0x84 (IND)"
       (doseq [ch [0x0b 0x0c 0x84]]
-        (test-ind [ch])))
+        (test-ind #(feed-one % ch))))
 
     (testing "0x0d (CR)"
       (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 1) (feed-one 0x0d))]
@@ -662,28 +649,28 @@
         (is (= y 1))))
 
     (testing "0x88 (HTS)"
-      (test-hts [0x88]))
+      (test-hts #(feed-one % 0x88)))
 
     (testing "0x8d (RI)"
-      (test-ri [0x8d]))))
+      (test-ri #(feed-one % 0x8d)))))
 
 (deftest esc-sequence-test
   (testing "ESC D (IND)"
-    (test-ind [0x1b 0x44]))
+    (test-ind #(feed-esc % "D")))
 
   (testing "ESC E (NEL)"
-    (test-nel [0x1b 0x45]))
+    (test-nel #(feed-esc % "E")))
 
   (testing "ESC H (HTS)"
-    (test-hts [0x1b 0x48]))
+    (test-hts #(feed-esc % "H")))
 
   (testing "ESC M (RI)"
-    (test-ri [0x1b 0x4d]))
+    (test-ri #(feed-esc % "M")))
 
   (testing "ESC #8 (DECALN)"
     (let [vt (-> (make-vt 4 3)
                  (move-cursor 2 1)
-                 (feed [0x1b 0x23 0x38]))
+                 (feed-esc "#8"))
           {lines :lines {x :x y :y} :cursor} vt]
       (is (= lines [[[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
                     [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
@@ -694,7 +681,7 @@
   (testing "ESC 7 (SC)"
     (let [vt (-> (make-vt 4 3)
                  (move-cursor 2 1)
-                 (feed [0x1b 0x37]))
+                 (feed-esc "7"))
           {{{x :x y :y} :cursor} :saved} vt]
       (is (= x 2))
       (is (= y 1))))
@@ -703,15 +690,15 @@
     (let [vt (make-vt 4 3)]
       (let [vt (-> vt
                    (move-cursor 2 1)
-                   (feed [0x1b 0x38]))
+                   (feed-esc "8"))
             {{x :x y :y} :cursor} vt]
         (is (= x 0))
         (is (= y 0)))
       (let [vt (-> vt
                    (move-cursor 2 1)
-                   (feed [0x1b 0x37])
+                   (feed-esc "7")
                    (move-cursor 3 2)
-                   (feed [0x1b 0x38]))
+                   (feed-esc "8"))
             {{x :x y :y} :cursor} vt]
         (is (= x 2))
         (is (= y 1)))))
@@ -719,22 +706,23 @@
   (testing "ESC c (RIS)"
     (let [initial-vt (make-vt 4 3)
           new-vt (-> initial-vt
-                     (feed [0x41 0x42 0x1b 0x48]) ; print, set tab
-                     (feed [0x1b 0x63]))] ; reset
+                     (feed-str "AB")
+                     (feed-esc "H") ; set tab
+                     (feed-esc "c"))] ; reset
       (is (= initial-vt new-vt)))))
 
 (deftest control-sequence-test
   (testing "CSI @ (ICH)"
     (let [vt (-> (make-vt 5 3)
-                 (feed [0x41 0x42 0x43 0x44])
+                 (feed-str "ABCD")
                  (set-bg 3)
                  (move-cursor 1 0))]
-      (let [vt (feed vt [0x1b 0x5b 0x40])
+      (let [vt (feed-csi vt "@")
             {{x :x y :y} :cursor [line0 & _] :lines} vt]
         (is (= x 1))
         (is (= y 0))
         (is (= line0 [[0x41 {}] [0x20 {:bg 3}] [0x42 {}] [0x43 {}] [0x44 {}]])))
-      (let [vt (feed vt [0x1b 0x5b 0x32 0x40])
+      (let [vt (feed-csi vt "2@")
             {{x :x y :y} :cursor [line0 & _] :lines} vt]
         (is (= x 1))
         (is (= y 0))
@@ -742,22 +730,22 @@
 
   (testing "CSI A (CUU), CSI e (VPR)"
     (let [vt (make-vt 5 3)]
-      (doseq [ch [0x41 0x65]]
+      (doseq [ch ["A" "e"]]
         (let [vt (-> vt
                      (move-cursor 1 0)
-                     (feed [0x1b 0x5b ch]))
+                     (feed-csi ch))
               {{x :x y :y} :cursor} vt]
           (is (= x 1))
           (is (= y 0)))
         (let [vt (-> vt
                      (move-cursor 1 2)
-                     (feed [0x1b 0x5b ch]))
+                     (feed-csi ch))
               {{x :x y :y} :cursor} vt]
           (is (= x 1))
           (is (= y 1)))
         (let [vt (-> vt
                      (move-cursor 1 2)
-                     (feed [0x1b 0x5b 0x34 ch]))
+                     (feed-csi "4" ch))
               {{x :x y :y} :cursor} vt]
           (is (= x 1))
           (is (= y 0))))))
@@ -766,19 +754,19 @@
     (let [vt (make-vt 5 3)]
       (let [vt (-> vt
                    (move-cursor 1 0)
-                   (feed [0x1b 0x5b 0x42]))
+                   (feed-csi "B"))
             {{x :x y :y} :cursor} vt]
         (is (= x 1))
         (is (= y 1)))
       (let [vt (-> vt
                    (move-cursor 1 2)
-                   (feed [0x1b 0x5b 0x42]))
+                   (feed-csi "B"))
             {{x :x y :y} :cursor} vt]
         (is (= x 1))
         (is (= y 2)))
       (let [vt (-> vt
                    (move-cursor 1 1)
-                   (feed [0x1b 0x5b 0x34 0x42]))
+                   (feed-csi "4B"))
             {{x :x y :y} :cursor} vt]
         (is (= x 1))
         (is (= y 2)))))
@@ -787,19 +775,19 @@
     (let [vt (make-vt 5 3)]
       (let [vt (-> vt
                    (move-cursor 1 0)
-                   (feed [0x1b 0x5b 0x43]))
+                   (feed-csi "C"))
             {{x :x y :y} :cursor} vt]
         (is (= x 2))
         (is (= y 0)))
       (let [vt (-> vt
                    (move-cursor 4 0)
-                   (feed [0x1b 0x5b 0x43]))
+                   (feed-csi "C"))
             {{x :x y :y} :cursor} vt]
         (is (= x 4))
         (is (= y 0)))
       (let [vt (-> vt
                    (move-cursor 2 1)
-                   (feed [0x1b 0x5b 0x34 0x43]))
+                   (feed-csi "4C"))
             {{x :x y :y} :cursor} vt]
         (is (= x 4))
         (is (= y 1)))))
@@ -808,19 +796,19 @@
     (let [vt (make-vt 5 3)]
       (let [vt (-> vt
                    (move-cursor 3 0)
-                   (feed [0x1b 0x5b 0x44]))
+                   (feed-csi "D"))
             {{x :x y :y} :cursor} vt]
         (is (= x 2))
         (is (= y 0)))
       (let [vt (-> vt
                    (move-cursor 0 1)
-                   (feed [0x1b 0x5b 0x44]))
+                   (feed-csi "D"))
             {{x :x y :y} :cursor} vt]
         (is (= x 0))
         (is (= y 1)))
       (let [vt (-> vt
                    (move-cursor 2 1)
-                   (feed [0x1b 0x5b 0x34 0x44]))
+                   (feed-csi "4D"))
             {{x :x y :y} :cursor} vt]
         (is (= x 0))
         (is (= y 1)))))
@@ -829,19 +817,19 @@
     (let [vt (make-vt 5 3)]
       (let [vt (-> vt
                    (move-cursor 1 0)
-                   (feed [0x1b 0x5b 0x45]))
+                   (feed-csi "E"))
             {{x :x y :y} :cursor} vt]
         (is (= x 0))
         (is (= y 1)))
       (let [vt (-> vt
                    (move-cursor 1 2)
-                   (feed [0x1b 0x5b 0x45]))
+                   (feed-csi "E"))
             {{x :x y :y} :cursor} vt]
         (is (= x 0))
         (is (= y 2)))
       (let [vt (-> vt
                    (move-cursor 1 1)
-                   (feed [0x1b 0x5b 0x34 0x45]))
+                   (feed-csi "4E"))
             {{x :x y :y} :cursor} vt]
         (is (= x 0))
         (is (= y 2)))))
@@ -850,19 +838,19 @@
     (let [vt (make-vt 5 3)]
       (let [vt (-> vt
                    (move-cursor 1 0)
-                   (feed [0x1b 0x5b 0x46]))
+                   (feed-csi "F"))
             {{x :x y :y} :cursor} vt]
         (is (= x 0))
         (is (= y 0)))
       (let [vt (-> vt
                    (move-cursor 1 2)
-                   (feed [0x1b 0x5b 0x46]))
+                   (feed-csi "F"))
             {{x :x y :y} :cursor} vt]
         (is (= x 0))
         (is (= y 1)))
       (let [vt (-> vt
                    (move-cursor 1 2)
-                   (feed [0x1b 0x5b 0x34 0x46]))
+                   (feed-csi "4F"))
             {{x :x y :y} :cursor} vt]
         (is (= x 0))
         (is (= y 0)))))
@@ -870,16 +858,16 @@
   (testing "CSI G (CHA), CSI ` (HPA)"
     (let [vt (-> (make-vt 5 3)
                  (move-cursor 1 1))]
-      (doseq [ch [0x47 0x60]]
-        (let [vt (feed vt [0x1b 0x5b ch])
+      (doseq [ch ["G" "`"]]
+        (let [vt (feed-csi vt ch)
               {{x :x y :y} :cursor} vt]
           (is (= x 0))
           (is (= y 1)))
-        (let [vt (feed vt [0x1b 0x5b 0x33 ch])
+        (let [vt (feed-csi vt "3" ch)
               {{x :x y :y} :cursor} vt]
           (is (= x 2))
           (is (= y 1)))
-        (let [vt (feed vt [0x1b 0x5b 0x38 ch])
+        (let [vt (feed-csi vt "8" ch)
               {{x :x y :y} :cursor} vt]
           (is (= x 4))
           (is (= y 1))))))
@@ -887,57 +875,55 @@
   (testing "CSI H (CUP), CSI f (HVP)"
     (let [vt (-> (make-vt 5 3)
                  (move-cursor 1 1))]
-      (doseq [ch [0x48 0x66]]
-        (let [vt (feed vt [0x1b 0x5b ch])
+      (doseq [ch ["H" "f"]]
+        (let [vt (feed-csi vt ch)
               {{x :x y :y} :cursor} vt]
           (is (= x 0))
           (is (= y 0)))
-        (let [vt (feed vt [0x1b 0x5b 0x33 ch])
+        (let [vt (feed-csi vt "3" ch)
               {{x :x y :y} :cursor} vt]
           (is (= x 0))
           (is (= y 2)))
-        (let [vt (feed vt [0x1b 0x5b 0x3b 0x33 ch])
+        (let [vt (feed-csi vt ";3" ch)
               {{x :x y :y} :cursor} vt]
           (is (= x 2))
           (is (= y 0)))
-        (let [vt (feed vt [0x1b 0x5b 0x33 0x3b 0x34 ch])
+        (let [vt (feed-csi vt "3;4" ch)
               {{x :x y :y} :cursor} vt]
           (is (= x 3))
           (is (= y 2)))
-        (let [vt (feed vt [0x1b 0x5b 0x38 0x3b 0x38 ch])
+        (let [vt (feed-csi vt "8;8" ch)
               {{x :x y :y} :cursor} vt]
           (is (= x 4))
           (is (= y 2))))))
 
   (testing "CSI I (CHT)"
     (let [vt (-> (make-vt 80 3) (move-cursor 20 0))]
-      (let [{{x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x49])]
+      (let [{{x :x y :y} :cursor} (feed-csi vt "I")]
         (is (= x 24))
         (is (= y 0)))
-      (let [{{x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x33 0x49])]
+      (let [{{x :x y :y} :cursor} (feed-csi vt "3I")]
         (is (= x 40))
         (is (= y 0)))))
 
   (testing "CSI J (ED)"
     (let [vt (-> (make-vt 4 3)
-                 (feed [0x41 0x42 0x43 0x44
-                        0x45 0x46 0x47 0x48
-                        0x49 0x50])
+                 (feed-str "ABCDEFGHIJ")
                  (set-bg 3)
                  (move-cursor 1 1))]
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x4a])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "J")]
         (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
                       [[0x45 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
         (is (= x 1))
         (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x31 0x4a])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "1J")]
         (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x47 {}] [0x48 {}]]
-                      [[0x49 {}] [0x50 {}] [0x20 {}] [0x20 {}]]]))
+                      [[0x49 {}] [0x4a {}] [0x20 {}] [0x20 {}]]]))
         (is (= x 1))
         (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x4a])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2J")]
         (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
@@ -946,37 +932,35 @@
 
   (testing "CSI K (EL)"
     (let [vt (-> (make-vt 6 2)
-                 (feed [0x41 0x42 0x43 0x44 0x45 0x46])
+                 (feed-str "ABCDEF")
                  (set-bg 3)
                  (move-cursor 3 0))]
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x4b])]
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "K")]
         (is (= line0 [[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]))
         (is (= x 3))
         (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x31 0x4b])]
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "1K")]
         (is (= line0 [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x45 {}] [0x46 {}]]))
         (is (= x 3))
         (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x4b])]
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "2K")]
         (is (= line0 [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]))
         (is (= x 3))
         (is (= y 0)))))
 
   (testing "CSI L (IL)"
     (let [vt (-> (make-vt 4 4)
-                 (feed [0x41 0x42 0x43 0x44
-                        0x45 0x46 0x47 0x48
-                        0x49 0x50])
+                 (feed-str "ABCDEFGHIJ")
                  (set-bg 3)
                  (move-cursor 2 1))]
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x4c])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "L")]
         (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x45 {}] [0x46 {}] [0x47 {}] [0x48 {}]]
-                      [[0x49 {}] [0x50 {}] [0x20 {}] [0x20 {}]]]))
+                      [[0x49 {}] [0x4a {}] [0x20 {}] [0x20 {}]]]))
         (is (= x 2))
         (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x4c])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2L")]
         (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
@@ -986,21 +970,18 @@
 
   (testing "CSI M (DL)"
     (let [vt (-> (make-vt 4 4)
-                 (feed [0x41 0x42 0x43 0x44
-                        0x45 0x46 0x47 0x48
-                        0x49 0x50 0x51 0x52
-                        0x53])
+                 (feed-str "ABCDEFGHIJKLM")
                  (move-cursor 2 1))]
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x4d])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "M")]
         (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
-                      [[0x49 {}] [0x50 {}] [0x51 {}] [0x52 {}]]
-                      [[0x53 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x49 {}] [0x4a {}] [0x4b {}] [0x4c {}]]
+                      [[0x4d {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= x 2))
         (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x4d])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2M")]
         (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
-                      [[0x53 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x4d {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= x 2))
@@ -1008,32 +989,30 @@
 
   (testing "CSI P (DCH)"
     (let [vt (-> (make-vt 7 1)
-                 (feed [0x41 0x42 0x43 0x44 0x45 0x46])
+                 (feed-str "ABCDEF")
                  (move-cursor 2 0))]
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x50])]
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "P")]
         (is (= line0 [[0x41 {}] [0x42 {}] [0x44 {}] [0x45 {}] [0x46 {}] [0x20 {}] [0x20 {}]]))
         (is (= x 2))
         (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x50])]
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "2P")]
         (is (= line0 [[0x41 {}] [0x42 {}] [0x45 {}] [0x46 {}] [0x20 {}] [0x20 {}] [0x20 {}]]))
         (is (= x 2))
         (is (= y 0)))))
 
   (testing "CSI S (SU)"
     (let [vt (-> (make-vt 4 3)
-                 (feed [0x41 0x42 0x43 0x44
-                        0x45 0x46 0x47 0x48
-                        0x49 0x50])
+                 (feed-str "ABCDEFGHIJ")
                  (set-bg 3)
                  (move-cursor 2 1))]
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x53])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "S")]
         (is (= lines [[[0x45 {}] [0x46 {}] [0x47 {}] [0x48 {}]]
-                      [[0x49 {}] [0x50 {}] [0x20 {}] [0x20 {}]]
+                      [[0x49 {}] [0x4a {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
         (is (= x 2))
         (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x53])]
-        (is (= lines [[[0x49 {}] [0x50 {}] [0x20 {}] [0x20 {}]]
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2S")]
+        (is (= lines [[[0x49 {}] [0x4a {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
         (is (= x 2))
@@ -1041,18 +1020,16 @@
 
   (testing "CSI T (SD)"
     (let [vt (-> (make-vt 4 3)
-                 (feed [0x41 0x42 0x43 0x44
-                        0x45 0x46 0x47 0x48
-                        0x49 0x50])
+                 (feed-str "ABCDEFGHIJ")
                  (set-bg 3)
                  (move-cursor 2 1))]
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x54])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "T")]
         (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
                       [[0x45 {}] [0x46 {}] [0x47 {}] [0x48 {}]]]))
         (is (= x 2))
         (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x54])]
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2T")]
         (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]]))
@@ -1061,114 +1038,96 @@
 
   (testing "CSI W (CTC)"
     (let [vt (-> (make-vt 30 24))]
-      (let [{:keys [tabs]} (-> vt (move-cursor 5 0) (feed [0x1b 0x5b 0x57]))]
+      (let [{:keys [tabs]} (-> vt (move-cursor 5 0) (feed-csi "W"))]
         (is (= tabs #{5 8 16 24})))
-      (let [{:keys [tabs]} (-> vt (move-cursor 5 0) (feed [0x1b 0x5b 0x30 0x57]))]
+      (let [{:keys [tabs]} (-> vt (move-cursor 5 0) (feed-csi "0W"))]
         (is (= tabs #{5 8 16 24})))
-      (let [{:keys [tabs]} (-> vt (move-cursor 16 0) (feed [0x1b 0x5b 0x32 0x57]))]
+      (let [{:keys [tabs]} (-> vt (move-cursor 16 0) (feed-csi "2W"))]
         (is (= tabs #{8 24})))
-      (let [{:keys [tabs]} (-> vt (feed [0x1b 0x5b 0x35 0x57]))]
+      (let [{:keys [tabs]} (-> vt (feed-csi "5W"))]
         (is (= tabs #{})))))
 
   (testing "CSI X (ECH)"
     (let [vt (-> (make-vt 7 1)
-                 (feed [0x41 0x42 0x43 0x44 0x45 0x46])
+                 (feed-str "ABCDEF")
                  (set-bg 3)
                  (move-cursor 2 0))]
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x58])]
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "X")]
         (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {:bg 3}] [0x44 {}] [0x45 {}] [0x46 {}] [0x20 {}]]))
         (is (= x 2))
         (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed vt [0x1b 0x5b 0x32 0x58])]
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "2X")]
         (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x45 {}] [0x46 {}] [0x20 {}]]))
         (is (= x 2))
         (is (= y 0)))))
 
   (testing "CSI Z"
     (let [vt (make-vt 20 3)]
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (feed [0x1b 0x5b 0x5a]))]
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (feed-csi "Z"))]
         (is (= x 0))
         (is (= y 0)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (feed [0x1b 0x5b 0x32 0x5a]))]
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (feed-csi "2Z"))]
         (is (= x 0))
         (is (= y 0)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 8 1) (feed [0x1b 0x5b 0x5a]))]
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 8 1) (feed-csi "Z"))]
         (is (= x 0))
         (is (= y 1)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 9 1) (feed [0x1b 0x5b 0x5a]))]
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 9 1) (feed-csi "Z"))]
         (is (= x 8))
         (is (= y 1)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 18 1) (feed [0x1b 0x5b 0x32 0x5a]))]
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 18 1) (feed-csi "2Z"))]
         (is (= x 8))
         (is (= y 1)))))
 
   (testing "CSI d (VPA)"
     (let [vt (-> (make-vt 80 24)
                  (move-cursor 15 1))]
-      (let [{{:keys [x y]} :cursor} (feed vt [0x1b 0x5b 0x64])]
+      (let [{{:keys [x y]} :cursor} (feed-csi vt "d")]
         (is (= x 15))
         (is (= y 0)))
-      (let [{{:keys [x y]} :cursor} (feed vt [0x1b 0x5b 0x35 0x64])]
+      (let [{{:keys [x y]} :cursor} (feed-csi vt "5d")]
         (is (= x 15))
         (is (= y 4)))))
 
   (testing "CSI g (TBC)"
     (let [vt (-> (make-vt 45 24)
                  (move-cursor 24 0))]
-      (let [{:keys [tabs]} (feed vt [0x1b 0x5b 0x67])]
+      (let [{:keys [tabs]} (feed-csi vt "g")]
         (is (= tabs #{8 16 32 40})))
-      (let [{:keys [tabs]} (feed vt [0x1b 0x5b 0x33 0x67])]
+      (let [{:keys [tabs]} (feed-csi vt "3g")]
         (is (= tabs #{})))))
 
   (testing "CSI h (SM)"
     (let [vt (make-vt 4 3)]
-      (let [{:keys [insert-mode]} (feed vt [0x1b 0x5b 0x34 0x68])]
+      (let [{:keys [insert-mode]} (feed-csi vt "4h")]
         (is (= insert-mode true)))))
 
   (testing "CSI l (RM)"
     (let [vt (make-vt 4 3)]
-      (let [{:keys [insert-mode]} (feed vt [0x1b 0x5b 0x34 0x6c])]
+      (let [{:keys [insert-mode]} (feed-csi vt "4l")]
         (is (= insert-mode false)))))
 
   (testing "CSI m (SGR)"
     (let [vt (make-vt 20 1)
-          vt (reduce feed vt [[0x41] ; print "A"
-                              [0x1b 0x5b 0x31 0x6d] ; turn on bold
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x33 0x6d] ; turn on italic
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x34 0x6d] ; turn on underline
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x35 0x6d] ; turn on blink
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x37 0x6d] ; turn on inverse
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x32 0x31 0x6d] ; turn off bold
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x32 0x33 0x6d] ; turn off italic
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x32 0x34 0x6d] ; turn off underline
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x32 0x35 0x6d] ; turn off blink
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x32 0x37 0x6d] ; turn off inverse
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x33 0x32 0x3b 0x34 0x33 0x6d] ; fg 2, bg 3
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x33 0x39 0x6d] ; default fg
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x34 0x39 0x6d] ; default bg
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x33 0x32 0x3b 0x34 0x33 0x3b 0x31 0x6d] ; fg 2, bg 3, bold
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x30 0x6d] ; reset all attrs (explicit "0" param)
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x33 0x32 0x3b 0x34 0x33 0x3b 0x31 0x6d] ; fg 2, bg 3, bold
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x6d] ; reset all attrs (implicit "0" param)
-                              [0x41] ; print "A"
-                              [0x1b 0x5b 0x31 0x3b 0x33 0x38 0x3b 0x35 0x3b 0x38 0x38 0x3b 0x34 0x38 0x3b 0x35 0x3b 0x39 0x39 0x3b 0x35 0x6d] ; bold, fg 88, bg 99, blink
-                              [0x41]]) ; print "A"
+          vt (reduce feed-csi vt ["0mA"
+                                  "1mA" ; turn on bold
+                                  "3mA" ; turn on italic
+                                  "4mA" ; turn on underline
+                                  "5mA" ; turn on blink
+                                  "7mA" ; turn on inverse
+                                  "21mA" ; turn off bold
+                                  "23mA" ; turn off italic
+                                  "24mA" ; turn off underline
+                                  "25mA" ; turn off blink
+                                  "27mA" ; turn off inverse
+                                  "32;43mA" ; fg 2, bg 3
+                                  "39mA" ; default fg
+                                  "49mA" ; default bg
+                                  "32;43;1mA" ; fg 2, bg 3, bold
+                                  "0mA" ; reset all attrs (explicit "0" param)
+                                  "32;43;1mA" ; fg 2, bg 3, bold
+                                  "mA" ; reset all attrs (implicit "0" param)
+                                  "1;38;5;88;48;5;99;5mA"]) ; bold, fg 88, bg 99, blink
           {:keys [lines]} vt
           [line0 & _] lines]
       (is (= line0 [[0x41 {}]
@@ -1194,12 +1153,12 @@
 
   (testing "CSI r (DECSTBM)"
     (let [vt (make-vt 80 24)]
-      (let [{:keys [top-margin bottom-margin] {:keys [x y]} :cursor} (feed vt [0x1b 0x5b 0x72])]
+      (let [{:keys [top-margin bottom-margin] {:keys [x y]} :cursor} (feed-csi vt "r")]
         (is (= top-margin 0))
         (is (= bottom-margin 23))
         (is (= x 0))
         (is (= y 0)))
-      (let [{:keys [top-margin bottom-margin] {:keys [x y]} :cursor} (feed vt [0x1b 0x5b 0x35 0x3b 0x31 0x35 0x72])]
+      (let [{:keys [top-margin bottom-margin] {:keys [x y]} :cursor} (feed-csi vt "5;15r")]
         (is (= top-margin 4))
         (is (= bottom-margin 14))
         (is (= x 0))
