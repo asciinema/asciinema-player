@@ -478,6 +478,7 @@
                     0x57 execute-ctc
                     0x58 execute-ech
                     0x5a execute-cbt
+                    0x60 execute-cha
                     0x64 execute-vpa
                     0x65 execute-cuu
                     0x66 execute-cup

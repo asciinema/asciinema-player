@@ -867,21 +867,22 @@
         (is (= x 0))
         (is (= y 0)))))
 
-  (testing "CSI G (CHA)"
+  (testing "CSI G (CHA), CSI ` (HPA)"
     (let [vt (-> (make-vt 5 3)
                  (move-cursor 1 1))]
-      (let [vt (feed vt [0x1b 0x5b 0x47])
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 1)))
-      (let [vt (feed vt [0x1b 0x5b 0x33 0x47])
-            {{x :x y :y} :cursor} vt]
-        (is (= x 2))
-        (is (= y 1)))
-      (let [vt (feed vt [0x1b 0x5b 0x38 0x47])
-            {{x :x y :y} :cursor} vt]
-        (is (= x 4))
-        (is (= y 1)))))
+      (doseq [ch [0x47 0x60]]
+        (let [vt (feed vt [0x1b 0x5b ch])
+              {{x :x y :y} :cursor} vt]
+          (is (= x 0))
+          (is (= y 1)))
+        (let [vt (feed vt [0x1b 0x5b 0x33 ch])
+              {{x :x y :y} :cursor} vt]
+          (is (= x 2))
+          (is (= y 1)))
+        (let [vt (feed vt [0x1b 0x5b 0x38 ch])
+              {{x :x y :y} :cursor} vt]
+          (is (= x 4))
+          (is (= y 1))))))
 
   (testing "CSI H (CUP), CSI f (HVP)"
     (let [vt (-> (make-vt 5 3)
