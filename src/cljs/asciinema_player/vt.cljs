@@ -153,6 +153,9 @@
         components (map * (reverse digits) (iterate (partial * 10) 1))]
     (reduce + 0 components)))
 
+(defn get-intermediate [vt n]
+  (get-in vt [:parser :intermediate-chars n]))
+
 (defn get-params [vt]
   (let [chars (get-in vt [:parser :param-chars])
         groups (split-coll 0x3b chars)]
@@ -331,16 +334,20 @@
       vt)))
 
 (defn execute-sm [vt]
-  (let [n (get-param vt 0 0)]
-    (if (= n 4)
-      (assoc vt :insert-mode true)
-      vt)))
+  (let [i (get-intermediate vt 0)
+        n (get-param vt 0 0)]
+    (match [i n]
+           [nil 4] (assoc vt :insert-mode true)
+           [0x3f 25] (assoc-in vt [:cursor :visible] true)
+           :else vt)))
 
 (defn execute-rm [vt]
-  (let [n (get-param vt 0 0)]
-    (if (= n 4)
-      (assoc vt :insert-mode false)
-      vt)))
+  (let [i (get-intermediate vt 0)
+        n (get-param vt 0 0)]
+    (match [i n]
+           [nil 4] (assoc vt :insert-mode false)
+           [0x3f 25] (assoc-in vt [:cursor :visible] false)
+           :else vt)))
 
 (defn reset-attrs [vt]
   (update-in vt [:char-attrs] empty))
@@ -449,9 +456,9 @@
     (execute vt (+ input 0x40))
     (condp = input
       0x37 (execute-sc vt)
-      0x38 (condp = (get-in vt [:parser :intermediate-chars])
-             [] (execute-rc vt)
-             [0x23] (execute-decaln vt)
+      0x38 (condp = (get-intermediate vt 0)
+             nil (execute-rc vt)
+             0x23 (execute-decaln vt)
              vt)
       0x63 (make-vt (:width vt) (:height vt))
       vt)))

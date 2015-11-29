@@ -403,6 +403,9 @@
 (defn set-bold [vt]
   (feed-csi vt "1m"))
 
+(defn hide-cursor [vt]
+  (assoc-in vt [:cursor :visible] false))
+
 (deftest print-test
   (let [vt (-> (make-vt 4 3)
                set-bold
@@ -1102,10 +1105,21 @@
       (let [{:keys [insert-mode]} (feed-csi vt "4h")]
         (is (= insert-mode true)))))
 
+  (testing "CSI ?h (DECSM)"
+    (let [vt (-> (make-vt 4 3)
+                 hide-cursor)]
+      (let [{{:keys [visible]} :cursor} (feed-csi vt "?25h")]
+        (is (= visible true)))))
+
   (testing "CSI l (RM)"
     (let [vt (make-vt 4 3)]
       (let [{:keys [insert-mode]} (feed-csi vt "4l")]
         (is (= insert-mode false)))))
+
+  (testing "CSI ?l (DECRM)"
+    (let [vt (make-vt 4 3)]
+      (let [{{:keys [visible]} :cursor} (feed-csi vt "?25l")]
+        (is (= visible false)))))
 
   (testing "CSI m (SGR)"
     (let [vt (make-vt 20 1)
