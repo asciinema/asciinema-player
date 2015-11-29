@@ -1083,6 +1083,24 @@
         (is (= x 2))
         (is (= y 0)))))
 
+  (testing "CSI Z"
+    (let [vt (make-vt 20 3)]
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (feed [0x1b 0x5b 0x5a]))]
+        (is (= x 0))
+        (is (= y 0)))
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (feed [0x1b 0x5b 0x32 0x5a]))]
+        (is (= x 0))
+        (is (= y 0)))
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 8 1) (feed [0x1b 0x5b 0x5a]))]
+        (is (= x 0))
+        (is (= y 1)))
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 9 1) (feed [0x1b 0x5b 0x5a]))]
+        (is (= x 8))
+        (is (= y 1)))
+      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 18 1) (feed [0x1b 0x5b 0x32 0x5a]))]
+        (is (= x 8))
+        (is (= y 1)))))
+
   (testing "CSI d (VPA)"
     (let [vt (-> (make-vt 80 24)
                  (move-cursor 15 1))]

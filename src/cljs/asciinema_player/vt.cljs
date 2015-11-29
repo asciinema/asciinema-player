@@ -77,7 +77,14 @@
   (let [n (dec n)
         right-margin (dec width)]
     (update-in vt [:cursor :x] (fn [x]
-                                 (nth (drop-while (partial >= x) tabs) n right-margin)))))
+                                 (let [next-tabs (drop-while (partial >= x) tabs)]
+                                   (nth next-tabs n right-margin))))))
+
+(defn move-cursor-to-prev-tab [{:keys [tabs width] :as vt} n]
+  (let [n (dec n)]
+    (update-in vt [:cursor :x] (fn [x]
+                                 (let [prev-tabs (take-while (partial > x) tabs)]
+                                   (nth (reverse prev-tabs) n 0))))))
 
 (defn execute-ht [vt]
   (move-cursor-to-next-tab vt 1))
@@ -312,6 +319,10 @@
                                      (repeat n (empty-cell char-attrs))
                                      (drop (+ x n) line)))))))
 
+(defn execute-cbt [vt]
+  (let [n (get-param vt 0 1)]
+    (move-cursor-to-prev-tab vt n)))
+
 (defn execute-tbc [{{:keys [x]} :cursor :as vt}]
   (let [n (get-param vt 0 0)]
     (condp = n
@@ -466,6 +477,7 @@
                     0x54 execute-sd
                     0x57 execute-ctc
                     0x58 execute-ech
+                    0x5a execute-cbt
                     0x64 execute-vpa
                     0x65 execute-cuu
                     0x66 execute-cup
