@@ -176,16 +176,18 @@
                                                         (repeat n [space char-attrs])
                                                         (drop x line))))))))
 
-(defn execute-cuu [{{y :y} :cursor :as vt}]
+(defn execute-cuu [{:keys [top-margin] {:keys [y]} :cursor :as vt}]
   (let [n (get-param vt 0 1)
-        new-y (- y n)
-        new-y (if (>= new-y 0) new-y 0)]
+        new-y (if (< y top-margin)
+                (max 0 (- y n))
+                (max top-margin (- y n)))]
     (assoc-in vt [:cursor :y] new-y)))
 
-(defn execute-cud [{{y :y} :cursor :keys [height] :as vt}]
+(defn execute-cud [{{y :y} :cursor :keys [bottom-margin height] :as vt}]
   (let [n (get-param vt 0 1)
-        new-y (+ y n)
-        new-y (if (< new-y height) new-y (dec height))]
+        new-y (if (> y bottom-margin)
+                (min (dec height) (+ y n))
+                (min bottom-margin (+ y n)))]
     (assoc-in vt [:cursor :y] new-y)))
 
 (defn execute-cuf [{{x :x} :cursor :keys [width] :as vt}]

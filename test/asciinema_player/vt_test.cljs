@@ -733,7 +733,7 @@
         (is (= line0 [[0x41 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x42 {}] [0x43 {}]])))))
 
   (testing "CSI A (CUU), CSI e (VPR)"
-    (let [vt (make-vt 5 3)]
+    (let [vt (make-vt 5 10)]
       (doseq [ch ["A" "e"]]
         (let [vt (-> vt
                      (move-cursor 1 0)
@@ -752,10 +752,26 @@
                      (feed-csi "4" ch))
               {{x :x y :y} :cursor} vt]
           (is (= x 1))
-          (is (= y 0))))))
+          (is (= y 0)))
+        (let [vt (feed-csi vt "4;8r")] ; set scroll region
+          (let [vt (-> vt
+                       (move-cursor 1 2)
+                       (feed-csi ch))
+                {{y :y} :cursor} vt]
+            (is (= y 1)))
+          (let [vt (-> vt
+                       (move-cursor 1 6)
+                       (feed-csi "5" ch))
+                {{y :y} :cursor} vt]
+            (is (= y 3)))
+          (let [vt (-> vt
+                       (move-cursor 1 9)
+                       (feed-csi "9" ch))
+                {{y :y} :cursor} vt]
+            (is (= y 3)))))))
 
   (testing "CSI B (CUD)"
-    (let [vt (make-vt 5 3)]
+    (let [vt (make-vt 5 10)]
       (let [vt (-> vt
                    (move-cursor 1 0)
                    (feed-csi "B"))
@@ -763,17 +779,33 @@
         (is (= x 1))
         (is (= y 1)))
       (let [vt (-> vt
-                   (move-cursor 1 2)
+                   (move-cursor 1 9)
                    (feed-csi "B"))
             {{x :x y :y} :cursor} vt]
         (is (= x 1))
-        (is (= y 2)))
+        (is (= y 9)))
       (let [vt (-> vt
-                   (move-cursor 1 1)
+                   (move-cursor 1 7)
                    (feed-csi "4B"))
             {{x :x y :y} :cursor} vt]
         (is (= x 1))
-        (is (= y 2)))))
+        (is (= y 9)))
+      (let [vt (feed-csi vt "4;8r")] ; set scroll region
+        (let [vt (-> vt
+                     (move-cursor 1 1)
+                     (feed-csi "20B"))
+              {{y :y} :cursor} vt]
+          (is (= y 7)))
+        (let [vt (-> vt
+                     (move-cursor 1 6)
+                     (feed-csi "5B"))
+              {{y :y} :cursor} vt]
+          (is (= y 7)))
+        (let [vt (-> vt
+                     (move-cursor 1 8)
+                     (feed-csi "B"))
+              {{y :y} :cursor} vt]
+          (is (= y 9))))))
 
   (testing "CSI C (CUF)"
     (let [vt (make-vt 5 3)]
