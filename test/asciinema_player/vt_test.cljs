@@ -380,7 +380,8 @@
     (is (= (-> vt :parser :param-chars) []))
     (is (= (-> vt :insert-mode) false))
     (is (= (-> vt :top-margin) 0))
-    (is (= (-> vt :bottom-margin) 23)))
+    (is (= (-> vt :bottom-margin) 23))
+    (is (= (-> vt :origin-mode) false)))
   (let [vt (make-vt 20 5)]
     (is (= (:tabs vt) #{8 16}))))
 
@@ -480,8 +481,8 @@
       (is (= x 2))
       (is (= y 6)))
     (let [vt (-> vt
-                 (move-cursor 2 6)
                  (feed-csi "3;5r") ; set scroll region 3-5
+                 (move-cursor 2 6)
                  f)
           {lines :lines {x :x y :y} :cursor} vt]
       (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
@@ -563,8 +564,8 @@
       (is (= x 2))
       (is (= y 0)))
     (let [vt (-> vt
-                 (move-cursor 2 0)
                  (feed-csi "3;5r") ; set scroll region 3-5
+                 (move-cursor 2 0)
                  f)
           {lines :lines {x :x y :y} :cursor} vt]
       (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
@@ -876,7 +877,7 @@
           (is (= y 1))))))
 
   (testing "CSI H (CUP), CSI f (HVP)"
-    (let [vt (-> (make-vt 5 3)
+    (let [vt (-> (make-vt 20 10)
                  (move-cursor 1 1))]
       (doseq [ch ["H" "f"]]
         (let [vt (feed-csi vt ch)
@@ -895,10 +896,32 @@
               {{x :x y :y} :cursor} vt]
           (is (= x 3))
           (is (= y 2)))
-        (let [vt (feed-csi vt "8;8" ch)
+        (let [vt (feed-csi vt "15;25" ch)
               {{x :x y :y} :cursor} vt]
-          (is (= x 4))
-          (is (= y 2))))))
+          (is (= x 19))
+          (is (= y 9)))
+        (let [vt (feed-csi vt "4;6r")] ; set scroll region
+          (let [vt (feed-csi vt "3;8" ch)
+                {{x :x y :y} :cursor} vt]
+            (is (= x 7))
+            (is (= y 2)))
+          (let [vt (feed-csi vt "5;8" ch)
+                {{x :x y :y} :cursor} vt]
+            (is (= x 7))
+            (is (= y 4)))
+          (let [vt (feed-csi vt "15;25" ch)
+                {{x :x y :y} :cursor} vt]
+            (is (= x 19))
+            (is (= y 9)))
+          (let [vt (feed-csi vt "?6h")] ; set origin mode
+            (let [vt (feed-csi vt "2;7" ch)
+                  {{x :x y :y} :cursor} vt]
+              (is (= x 6))
+              (is (= y 4)))
+            (let [vt (feed-csi vt "15;25" ch)
+                  {{x :x y :y} :cursor} vt]
+              (is (= x 19))
+              (is (= y 5))))))))
 
   (testing "CSI I (CHT)"
     (let [vt (-> (make-vt 80 3) (move-cursor 20 0))]
@@ -1090,7 +1113,15 @@
         (is (= y 0)))
       (let [{{:keys [x y]} :cursor} (feed-csi vt "5d")]
         (is (= x 15))
-        (is (= y 4)))))
+        (is (= y 4)))
+      (let [vt (feed-csi vt "10;15r")] ; set scroll region
+        (let [{{:keys [x y]} :cursor} (feed-csi vt "5d")]
+          (is (= y 4)))
+        (let [vt (feed-csi vt "?6h")] ; set origin mode
+          (let [{{:keys [x y]} :cursor} (feed-csi vt "3d")]
+            (is (= y 11)))
+          (let [{{:keys [x y]} :cursor} (feed-csi vt "8d")]
+            (is (= y 14)))))))
 
   (testing "CSI g (TBC)"
     (let [vt (-> (make-vt 45 24)
@@ -1106,10 +1137,21 @@
         (is (= insert-mode true)))))
 
   (testing "CSI ?h (DECSM)"
-    (let [vt (-> (make-vt 4 3)
-                 hide-cursor)]
-      (let [{{:keys [visible]} :cursor} (feed-csi vt "?25h")]
-        (is (= visible true)))))
+    (let [vt (make-vt 20 10)]
+      (let [vt (-> vt
+                   hide-cursor
+                   (feed-csi "?25h")) ; show cursor
+            {{:keys [visible]} :cursor} vt]
+        (is (= visible true)))
+      (let [vt (-> vt
+                   (feed-csi "3;5r") ; set scroll region
+                   (move-cursor 1 1)
+                   (feed-csi "?6h")) ; set origin mode
+            {:keys [origin-mode] {:keys [x y]} :cursor} vt]
+
+        (is (= origin-mode true))
+        (is (= x 0))
+        (is (= y 2)))))
 
   (testing "CSI l (RM)"
     (let [vt (make-vt 4 3)]
@@ -1118,8 +1160,18 @@
 
   (testing "CSI ?l (DECRM)"
     (let [vt (make-vt 4 3)]
-      (let [{{:keys [visible]} :cursor} (feed-csi vt "?25l")]
-        (is (= visible false)))))
+      (let [vt (feed-csi vt "?25l"); hide cursor
+            {{:keys [visible]} :cursor} vt]
+        (is (= visible false)))
+      (let [vt (-> vt
+                   (feed-csi "3;5r") ; set scroll region
+                   (feed-csi "?6h") ; set origin mode
+                   (move-cursor 1 1)
+                   (feed-csi "?6l")) ; reset origin mode
+            {:keys [origin-mode] {:keys [x y]} :cursor} vt]
+        (is (= origin-mode false))
+        (is (= x 0))
+        (is (= y 0)))))
 
   (testing "CSI m (SGR)"
     (let [vt (make-vt 20 1)
@@ -1172,11 +1224,21 @@
         (is (= bottom-margin 23))
         (is (= x 0))
         (is (= y 0)))
-      (let [{:keys [top-margin bottom-margin] {:keys [x y]} :cursor} (feed-csi vt "5;15r")]
+      (let [vt (-> vt
+                   (move-cursor 20 10)
+                   (feed-csi "5;15r"))
+            {:keys [top-margin bottom-margin] {:keys [x y]} :cursor} vt]
         (is (= top-margin 4))
         (is (= bottom-margin 14))
         (is (= x 0))
-        (is (= y 0))))))
+        (is (= y 0)))
+      (let [vt (-> vt
+                   (feed-csi "?6h") ; set origin mode
+                   (move-cursor 20 10)
+                   (feed-csi "5;15r")) ; set scroll region
+            {{:keys [x y]} :cursor} vt]
+        (is (= x 0))
+        (is (= y 4))))))
 
 (deftest get-params-test
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] []))]

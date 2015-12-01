@@ -1,6 +1,7 @@
 (ns asciinema-player.vt
   (:refer-clojure :exclude [print])
-  (:require [clojure.string :as string]
+  (:require [asciinema-player.util :refer [adjust-to-range]]
+            [clojure.string :as string]
             [cljs.core.match :refer-macros [match]]))
 
 ;; References:
@@ -48,6 +49,7 @@
    :cursor {:x 0 :y 0 :visible true}
    :char-attrs {}
    :insert-mode false
+   :origin-mode false
    :lines (empty-screen width height)
    :saved {:cursor {:x 0 :y 0} :char-attrs {}}})
 
@@ -213,11 +215,22 @@
         new-x (if (<= n width) (dec n) (dec width))]
     (assoc-in vt [:cursor :x] new-x)))
 
+(defn top-limit [{:keys [origin-mode top-margin] :as vt}]
+  (if origin-mode top-margin 0))
+
+(defn bottom-limit [{:keys [origin-mode bottom-margin height] :as vt}]
+  (if origin-mode bottom-margin (dec height)))
+
+(defn adjust-y-to-limits [vt y]
+  (let [top (top-limit vt)
+        bottom (bottom-limit vt)]
+    (adjust-to-range (+ top y) top bottom)))
+
 (defn execute-cup [{:keys [width height] :as vt}]
-  (let [new-x (get-param vt 1 1)
-        new-x (if (<= new-x width) (dec new-x) (dec width))
-        new-y (get-param vt 0 1)
-        new-y (if (<= new-y height) (dec new-y) (dec height))]
+  (let [ps1 (get-param vt 0 1)
+        ps2 (get-param vt 1 1)
+        new-x (adjust-to-range (dec ps2) 0 (dec width))
+        new-y (adjust-y-to-limits vt (dec ps1))]
     (-> vt
         (assoc-in [:cursor :x] new-x)
         (assoc-in [:cursor :y] new-y))))
@@ -333,11 +346,18 @@
       3 (update-in vt [:tabs] empty)
       vt)))
 
+(defn move-cursor-to-home [{:keys [origin-mode top-margin] :as vt}]
+  (let [top (if origin-mode top-margin 0)]
+    (-> vt
+        (assoc-in [:cursor :x] 0)
+        (assoc-in [:cursor :y] top))))
+
 (defn execute-sm [vt]
   (let [i (get-intermediate vt 0)
         n (get-param vt 0 0)]
     (match [i n]
            [nil 4] (assoc vt :insert-mode true)
+           [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
            [0x3f 25] (assoc-in vt [:cursor :visible] true)
            :else vt)))
 
@@ -346,6 +366,7 @@
         n (get-param vt 0 0)]
     (match [i n]
            [nil 4] (assoc vt :insert-mode false)
+           [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
            [0x3f 25] (assoc-in vt [:cursor :visible] false)
            :else vt)))
 
@@ -385,14 +406,17 @@
         vt))))
 
 (defn execute-vpa [vt]
-  (let [n (get-param vt 0 1)]
-    (assoc-in vt [:cursor :y] (dec n))))
+  (let [n (get-param vt 0 1)
+        new-y (adjust-y-to-limits vt (dec n))]
+    (assoc-in vt [:cursor :y] new-y)))
 
 (defn execute-decstbm [{:keys [height] :as vt}]
   (let [top (dec (get-param vt 0 1))
         bottom (dec (get-param vt 1 height))]
     (if (< -1 top bottom height)
-      (assoc vt :top-margin top :bottom-margin bottom)
+      (-> vt
+          (assoc :top-margin top :bottom-margin bottom)
+          move-cursor-to-home)
       vt)))
 
 ;; parser actions
