@@ -1,7 +1,7 @@
 (ns asciinema-player.util)
 
 (defn adjust-to-range [value min-value max-value]
-  (.min js/Math max-value (.max js/Math value min-value)))
+  (min max-value (max value min-value)))
 
 ; Optimized js->clj implementation by Darrick Wiebe (http://dev.clojure.org/jira/browse/CLJS-844)
 (defn faster-js->clj
