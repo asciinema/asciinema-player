@@ -100,21 +100,16 @@
 (defn execute-ht [vt]
   (move-cursor-to-next-tab vt 1))
 
-(defn execute-lf [{:keys [height] {y :y} :cursor :as vt}]
-  (if (= height (inc y))
-    (-> vt
-        scroll-up
-        (assoc-in [:cursor :x] 0))
-    (-> vt
-        (assoc-in [:cursor :x] 0)
-        (update-in [:cursor :y] inc))))
-
-(def execute-vt move-cursor-down)
-(def execute-ff move-cursor-down)
-
 (defn execute-cr [vt]
   (assoc-in vt [:cursor :x] 0))
 
+(defn execute-lf [{:keys [height] {y :y} :cursor :as vt}]
+  (-> vt
+      move-cursor-down
+      execute-cr))
+
+(def execute-vt move-cursor-down)
+(def execute-ff move-cursor-down)
 (def execute-ind move-cursor-down)
 (def execute-nel execute-lf)
 
