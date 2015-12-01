@@ -53,7 +53,7 @@
    :lines (empty-screen width height)
    :saved {:cursor {:x 0 :y 0} :char-attrs {}}})
 
-;; control functions
+;; helper functions
 
 (defn scroll-up [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
   (update-in vt [:lines] (fn [lines]
@@ -62,6 +62,15 @@
                                  (subvec lines (inc top-margin) (inc bottom-margin))
                                  [(empty-line width char-attrs)]
                                  (drop (inc bottom-margin) lines))))))
+
+(defn move-cursor-down [{:keys [bottom-margin height] {y :y} :cursor :as vt}]
+  (let [last-row (dec height)]
+    (cond (< y bottom-margin) (assoc-in vt [:cursor :y] (inc y))
+          (= y bottom-margin) (scroll-up vt)
+          (< y last-row) (assoc-in vt [:cursor :y] (inc y))
+          :else vt)))
+
+;; control functions
 
 (defn scroll-down [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
   (update-in vt [:lines] (fn [lines]
@@ -99,11 +108,6 @@
     (-> vt
         (assoc-in [:cursor :x] 0)
         (update-in [:cursor :y] inc))))
-
-(defn move-cursor-down [{:keys [height] {y :y} :cursor :as vt}]
-  (if (= height (inc y))
-    (scroll-up vt)
-    (update-in vt [:cursor :y] inc)))
 
 (def execute-vt move-cursor-down)
 (def execute-ff move-cursor-down)
