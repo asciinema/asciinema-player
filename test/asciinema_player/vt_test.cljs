@@ -1392,8 +1392,34 @@
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] [0x3b 0x3b 0x31 0x32 0x3b 0x3b 0x32 0x33 0x3b 0x31 0x3b]))]
     (is (= (get-params vt) [0 0 12 0 23 1]))))
 
-(defspec feeding-rubbish
+(def gen-rubbish (gen/vector (gen/choose 0 0x9f) 1 100))
+
+(defspec test-parser-state-for-random-input
   100
-  (let [vt (make-vt 80 24)]
-    (prop/for-all [rubbish (gen/vector (gen/choose 0 0x7f) 1 100)]
-                  (not= nil (-> vt (feed rubbish) :parser :state)))))
+  (prop/for-all [rubbish gen-rubbish]
+                (let [vt (-> (make-vt 80 24) (feed rubbish))]
+                  (keyword? (-> vt :parser :state)))))
+
+(defspec test-cursor-position-for-random-input
+  100
+  (prop/for-all [x (gen/choose 0 19)
+                 y (gen/choose 0 9)
+                 rubbish gen-rubbish]
+                (let [vt (-> (make-vt 20 10)
+                             (move-cursor x y)
+                             (feed rubbish))
+                      {{:keys [x y]} :cursor} vt]
+                  (and (< -1 x 20)
+                       (< -1 y 10)))))
+
+(defspec test-row-and-column-count-for-random-input
+  100
+  (prop/for-all [x (gen/choose 0 19)
+                 y (gen/choose 0 9)
+                 rubbish gen-rubbish]
+                (let [vt (-> (make-vt 20 10)
+                             (move-cursor x y)
+                             (feed rubbish))
+                      {:keys [lines]} vt]
+                  (and (= 10 (count lines))
+                       (every? #(= 20 (count %)) lines)))))
