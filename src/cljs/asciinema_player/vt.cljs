@@ -128,14 +128,17 @@
 
 (defn execute-sc
   "http://www.vt100.net/docs/vt510-rm/DECSC"
-  [{{:keys [x y]} :cursor :keys [char-attrs] :as vt}]
+  [{{:keys [x y]} :cursor :keys [char-attrs origin-mode] :as vt}]
   (assoc vt :saved {:cursor {:x x :y y}
-                    :char-attrs char-attrs}))
+                    :char-attrs char-attrs
+                    :origin-mode origin-mode}))
 
 (defn execute-rc
   "http://www.vt100.net/docs/vt510-rm/DECRC"
-  [{saved :saved :as vt}]
-  (merge-with merge vt saved))
+  [{{:keys [cursor char-attrs origin-mode]} :saved :as vt}]
+  (-> vt
+      (assoc :char-attrs char-attrs :origin-mode origin-mode)
+      (update-in [:cursor] merge cursor)))
 
 (defn split-coll [elem coll]
   (loop [coll coll

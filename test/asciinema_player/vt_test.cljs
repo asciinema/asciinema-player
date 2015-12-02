@@ -793,29 +793,31 @@
       (is (= y 1))))
 
   (testing "ESC 7 (SC)"
-    (let [vt (-> (make-vt 4 3)
+    (let [vt (-> (make-vt 80 24)
                  (move-cursor 2 1)
+                 (set-fg 1)
+                 (feed-csi "?6h") ; set origin mode
+                 (move-cursor 4 5)
                  (feed-esc "7"))
-          {{{x :x y :y} :cursor} :saved} vt]
-      (is (= x 2))
-      (is (= y 1))))
+          {:keys [saved]} vt]
+      (is (= saved {:cursor {:x 4 :y 5} :char-attrs {:fg 1} :origin-mode true}))))
 
   (testing "ESC 8 (RC)"
-    (let [vt (make-vt 4 3)]
-      (let [vt (-> vt
-                   (move-cursor 2 1)
-                   (feed-esc "8"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 0)))
-      (let [vt (-> vt
-                   (move-cursor 2 1)
-                   (feed-esc "7")
-                   (move-cursor 3 2)
-                   (feed-esc "8"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 2))
-        (is (= y 1)))))
+    (let [vt (-> (make-vt 80 24)
+                 (move-cursor 2 1)
+                 (set-fg 1)
+                 (feed-csi "?6h") ; set origin mode
+                 (move-cursor 4 5)
+                 (feed-esc "7") ; save cursor
+                 (feed-csi "?6l") ; reset origin mode
+                 (feed-csi "m") ; reset char attrs
+                 (feed-csi "42m") ; set bg=2
+                 (feed-esc "8"))
+          {{:keys [x y]} :cursor :keys [char-attrs origin-mode]} vt] ; restore cursor
+      (is (= x 4))
+      (is (= y 5))
+      (is (= char-attrs {:fg 1}))
+      (is (= origin-mode true))))
 
   (testing "ESC c (RIS)"
     (let [initial-vt (make-vt 4 3)
