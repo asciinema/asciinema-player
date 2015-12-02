@@ -285,34 +285,34 @@
                                  2 (empty-line width char-attrs)
                                  line)))))
 
-(defn execute-su [{:keys [width char-attrs] :as vt}]
-  (let [n (get-param vt 0 1)]
+(defn execute-su [{:keys [width height char-attrs] :as vt}]
+  (let [n (min (get-param vt 0 1) height)]
     (update-in vt [:lines] (fn [lines]
                              (vec (concat
                                    (drop n lines)
                                    (repeat n (empty-line width char-attrs))))))))
 
 (defn execute-sd [{:keys [width height char-attrs] :as vt}]
-  (let [n (get-param vt 0 1)]
+  (let [n (min (get-param vt 0 1) height)]
     (update-in vt [:lines] (fn [lines]
                              (vec (concat
                                    (repeat n (empty-line width char-attrs))
                                    (take (- height n) lines)))))))
 
 (defn execute-il [{:keys [width height char-attrs] {y :y} :cursor :as vt}]
-  (let [n (get-param vt 0 1)]
+  (let [n (min (get-param vt 0 1) (- height y))]
     (update-in vt [:lines] (fn [lines]
-                             (vec (concat
-                                   (take y lines)
-                                   (repeat n (empty-line width char-attrs))
-                                   (take (- height y n) (drop y lines))))))))
+                             (vec (take height (concat
+                                                (take y lines)
+                                                (repeat n (empty-line width char-attrs))
+                                                (drop y lines))))))))
 
 (defn execute-dl [{:keys [width height char-attrs] {y :y} :cursor :as vt}]
-  (let [n (get-param vt 0 1)]
+  (let [n (min (get-param vt 0 1) (- height y))]
     (update-in vt [:lines] (fn [lines]
                              (vec (concat
                                    (take y lines)
-                                   (take (- height y n) (drop (+ y n) lines))
+                                   (drop (+ y n) lines)
                                    (repeat n (empty-line width char-attrs))))))))
 
 (defn execute-dch [{{:keys [x y]} :cursor :keys [char-attrs] :as vt}]
@@ -331,8 +331,8 @@
       5 (update-in vt [:tabs] empty)
       vt)))
 
-(defn execute-ech [{{:keys [x y]} :cursor :keys [char-attrs] :as vt}]
-  (let [n (get-param vt 0 1)]
+(defn execute-ech [{{:keys [x y]} :cursor :keys [width char-attrs] :as vt}]
+  (let [n (min (get-param vt 0 1) (- width x))]
     (update-in vt [:lines y] (fn [line]
                                (vec (concat
                                      (take x line)

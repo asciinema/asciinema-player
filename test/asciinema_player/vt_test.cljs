@@ -1136,6 +1136,13 @@
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x45 {}] [0x46 {}] [0x47 {}] [0x48 {}]]]))
         (is (= x 2))
+        (is (= y 1)))
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10L")]
+        (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
+                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
+                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
+                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
+        (is (= x 2))
         (is (= y 1)))))
 
   (testing "CSI M (DL)"
@@ -1152,6 +1159,13 @@
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2M")]
         (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
                       [[0x4d {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= x 2))
+        (is (= y 1)))
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10M")]
+        (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= x 2))
@@ -1186,6 +1200,12 @@
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
         (is (= x 2))
+        (is (= y 1)))
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10S")]
+        (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
+                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
+                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
+        (is (= x 2))
         (is (= y 1)))))
 
   (testing "CSI T (SD)"
@@ -1203,6 +1223,12 @@
         (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
                       [[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]]))
+        (is (= x 2))
+        (is (= y 1)))
+      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10T")]
+        (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
+                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
+                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
         (is (= x 2))
         (is (= y 1)))))
 
@@ -1229,7 +1255,12 @@
       (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "2X")]
         (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x45 {}] [0x46 {}] [0x20 {}]]))
         (is (= x 2))
-        (is (= y 0)))))
+        (is (= y 0)))
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "100X")]
+        (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]))
+        (is (= x 2))
+        (is (= y 0)))
+      ))
 
   (testing "CSI Z"
     (let [vt (make-vt 20 3)]
@@ -1413,7 +1444,7 @@
                        (< -1 y 10)))))
 
 (defspec test-row-and-column-count-for-random-input
-  100
+  {:num-test 100}
   (prop/for-all [x (gen/choose 0 19)
                  y (gen/choose 0 9)
                  rubbish gen-rubbish]
