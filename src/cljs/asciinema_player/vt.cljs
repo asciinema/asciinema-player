@@ -49,6 +49,8 @@
    :cursor {:x 0 :y 0 :visible true}
    :char-attrs {}
    :insert-mode false
+   :auto-wrap-mode true
+   :next-print-wraps false
    :origin-mode false
    :lines (empty-screen width height)
    :saved {:cursor {:x 0 :y 0} :char-attrs {}}})
@@ -362,6 +364,7 @@
     (match [i n]
            [nil 4] (assoc vt :insert-mode true)
            [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
+           [0x3f 7] (assoc vt :auto-wrap-mode true)
            [0x3f 25] (assoc-in vt [:cursor :visible] true)
            :else vt)))
 
@@ -371,6 +374,7 @@
     (match [i n]
            [nil 4] (assoc vt :insert-mode false)
            [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
+           [0x3f 7] (assoc vt :auto-wrap-mode false)
            [0x3f 25] (assoc-in vt [:cursor :visible] false)
            :else vt)))
 
@@ -437,22 +441,27 @@
         [cell]
         (take (- (count line) x 1) (drop x line)))))
 
-(defn print [{:keys [width height char-attrs insert-mode] {:keys [x y]} :cursor :as vt} input]
+(defn wrap [{{:keys [y]} :cursor :keys [height] :as vt}]
+  (let [vt (assoc-in vt [:cursor :x] 0)]
+    (if (= height (inc y))
+      (scroll-up vt)
+      (update-in vt [:cursor :y] inc))))
+
+(defn do-print [{:keys [width height char-attrs insert-mode] {:keys [x y]} :cursor :as vt} input]
   (let [cell (cell input char-attrs)]
     (if (= width (inc x))
-      (if (= height (inc y))
-        (-> vt
-            (assoc-in [:lines y x] cell)
-            (assoc-in [:cursor :x] 0)
-            scroll-up)
-        (-> vt
-            (assoc-in [:lines y x] cell)
-            (assoc-in [:cursor :x] 0)
-            (update-in [:cursor :y] inc)))
+      (-> vt
+          (assoc-in [:lines y x] cell)
+          (assoc :next-print-wraps true))
       (let [f (if insert-mode insert-char replace-char)]
         (-> vt
             (update-in [:lines y] f x cell)
             (update-in [:cursor :x] inc))))))
+
+(defn print [{:keys [auto-wrap-mode next-print-wraps] :as vt} input]
+  (if (and auto-wrap-mode next-print-wraps)
+    (do-print (wrap vt) input)
+    (do-print vt input)))
 
 (defn execute [vt input]
   (if-let [action (condp = input
@@ -688,12 +697,20 @@
 (defn execute-actions [vt actions input]
   (reduce (fn [vt f] (f vt input)) vt actions))
 
+(defn clear-wrap-flag [old-vt new-vt]
+  (let [{{old-x :x old-y :y} :cursor} old-vt
+        {{new-x :x new-y :y} :cursor} new-vt]
+    (if (or (not= old-x new-x) (not= old-y new-y))
+      (assoc new-vt :next-print-wraps false)
+      new-vt)))
+
 (defn feed-one [vt input]
-  (let [current-state (get-in vt [:parser :state])
-        [new-state actions] (parse current-state input)]
-    (-> vt
-        (assoc-in [:parser :state] new-state)
-        (execute-actions actions input))))
+  (let [{{old-state :state} :parser} vt
+        [new-state actions] (parse old-state input)
+        new-vt (-> vt
+                   (assoc-in [:parser :state] new-state)
+                   (execute-actions actions input))]
+    (clear-wrap-flag vt new-vt)))
 
 (defn feed [vt inputs]
   (reduce (fn [vt input] (feed-one vt input)) vt inputs))

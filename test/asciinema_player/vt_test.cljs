@@ -379,6 +379,7 @@
     (is (= (-> vt :parser :intermediate-chars) []))
     (is (= (-> vt :parser :param-chars) []))
     (is (= (-> vt :insert-mode) false))
+    (is (= (-> vt :auto-wrap-mode) true))
     (is (= (-> vt :top-margin) 0))
     (is (= (-> vt :bottom-margin) 23))
     (is (= (-> vt :origin-mode) false)))
@@ -409,12 +410,11 @@
 
 (deftest print-test
   (let [vt (-> (make-vt 4 3)
-               set-bold
                (set-fg 1))]
 
     (testing "printing within single line"
       (let [{:keys [lines cursor]} (feed-str vt "ABC")]
-        (is (= lines [[[0x41 {:fg 1 :bold true}] [0x42 {:fg 1 :bold true}] [0x43 {:fg 1 :bold true}] [0x20 {}]]
+        (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= cursor {:x 3 :y 0 :visible true}))))
@@ -427,24 +427,59 @@
                    (set-fg 2)
                    (feed-str "HI"))]
         (let [{:keys [lines cursor]} vt]
-          (is (= lines [[[0x41 {:fg 1 :bold true}] [0x48 {:fg 2 :bold true}] [0x49 {:fg 2 :bold true}] [0x42 {:fg 1 :bold true}]]
+          (is (= lines [[[0x41 {:fg 1}] [0x48 {:fg 2}] [0x49 {:fg 2}] [0x42 {:fg 1}]]
                         [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                         [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
           (is (= cursor {:x 3 :y 0 :visible true})))))
 
     (testing "printing on the right edge of the line"
-      (let [{:keys [lines cursor]} (feed-str vt "ABCD")]
-        (is (= lines [[[0x41 {:fg 1 :bold true}] [0x42 {:fg 1 :bold true}] [0x43 {:fg 1 :bold true}] [0x44 {:fg 1 :bold true}]]
+      (let [vt (feed-str vt "ABCD")
+            {:keys [lines cursor]} vt]
+        (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x44 {:fg 1}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-        (is (= cursor {:x 0 :y 1 :visible true}))))
+        (is (= cursor {:x 3 :y 0 :visible true}))
+        (let [vt (feed-str vt "EF")
+              {:keys [lines cursor]} vt]
+          (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x44 {:fg 1}]]
+                        [[0x45 {:fg 1}] [0x46 {:fg 1}] [0x20 {}] [0x20 {}]]
+                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+          (is (= cursor {:x 2 :y 1 :visible true})))))
+
+    (testing "printing on the right edge of the line (auto-wrap off)"
+      (let [vt (-> vt
+                   (feed-csi "?7l") ; reset auto-wrap
+                   (feed-str "ABCDEF"))
+            {:keys [lines cursor]} vt]
+        (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x46 {:fg 1}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= cursor {:x 3 :y 0 :visible true}))))
 
     (testing "printing on the bottom right edge of the screen"
-      (let [{:keys [lines cursor]} (feed-str vt "AAAABBBBCCCCDD")]
-        (is (= lines [[[0x42 {:fg 1 :bold true}] [0x42 {:fg 1 :bold true}] [0x42 {:fg 1 :bold true}] [0x42 {:fg 1 :bold true}]]
-                      [[0x43 {:fg 1 :bold true}] [0x43 {:fg 1 :bold true}] [0x43 {:fg 1 :bold true}] [0x43 {:fg 1 :bold true}]]
-                      [[0x44 {:fg 1 :bold true}] [0x44 {:fg 1 :bold true}] [0x20 {:fg 1 :bold true}] [0x20 {:fg 1 :bold true}]]]))
-        (is (= cursor {:x 2 :y 2 :visible true}))))))
+      (let [vt (feed-str vt "AAAABBBBCCCC")
+            {:keys [lines cursor]} vt]
+        (is (= lines [[[0x41 {:fg 1}] [0x41 {:fg 1}] [0x41 {:fg 1}] [0x41 {:fg 1}]]
+                      [[0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}]]
+                      [[0x43 {:fg 1}] [0x43 {:fg 1}] [0x43 {:fg 1}] [0x43 {:fg 1}]]]))
+        (is (= cursor {:x 3 :y 2 :visible true}))
+        (let [vt (feed-str vt "DD")
+              {:keys [lines cursor]} vt]
+          (is (= lines [[[0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}]]
+                        [[0x43 {:fg 1}] [0x43 {:fg 1}] [0x43 {:fg 1}] [0x43 {:fg 1}]]
+                        [[0x44 {:fg 1}] [0x44 {:fg 1}] [0x20 {:fg 1}] [0x20 {:fg 1}]]]))
+          (is (= cursor {:x 2 :y 2 :visible true})))))
+
+    (testing "printing on the bottom right edge of the screen (auto-wrap off)"
+      (let [vt (-> vt
+                   (feed-str "AAAABBBBCC")
+                   (feed-csi "?7l") ; reset auto-wrap
+                   (feed-str "DDEFGH"))
+            {:keys [lines cursor]} vt]
+        (is (= lines [[[0x41 {:fg 1}] [0x41 {:fg 1}] [0x41 {:fg 1}] [0x41 {:fg 1}]]
+                      [[0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}]]
+                      [[0x43 {:fg 1}] [0x43 {:fg 1}] [0x44 {:fg 1}] [0x48 {:fg 1}]]]))
+        (is (= cursor {:x 3 :y 2 :visible true}))))))
 
 (defn test-ind [f]
   (let [vt (-> (make-vt 4 7)
@@ -1323,10 +1358,12 @@
                    (move-cursor 1 1)
                    (feed-csi "?6h")) ; set origin mode
             {:keys [origin-mode] {:keys [x y]} :cursor} vt]
-
         (is (= origin-mode true))
         (is (= x 0))
-        (is (= y 2)))))
+        (is (= y 2)))
+      (let [vt (feed-csi vt "?7h")
+            {:keys [auto-wrap-mode]} vt]
+        (is (= auto-wrap-mode true)))))
 
   (testing "CSI l (RM)"
     (let [vt (make-vt 4 3)]
@@ -1346,7 +1383,10 @@
             {:keys [origin-mode] {:keys [x y]} :cursor} vt]
         (is (= origin-mode false))
         (is (= x 0))
-        (is (= y 0)))))
+        (is (= y 0)))
+      (let [vt (feed-csi vt "?7l")
+            {:keys [auto-wrap-mode]} vt]
+        (is (= auto-wrap-mode false)))))
 
   (testing "CSI m (SGR)"
     (let [vt (make-vt 20 1)
@@ -1444,7 +1484,7 @@
                        (< -1 y 10)))))
 
 (defspec test-row-and-column-count-for-random-input
-  {:num-test 100}
+  {:num-tests 100}
   (prop/for-all [x (gen/choose 0 19)
                  y (gen/choose 0 9)
                  rubbish gen-rubbish]
@@ -1454,3 +1494,13 @@
                       {:keys [lines]} vt]
                   (and (= 10 (count lines))
                        (every? #(= 20 (count %)) lines)))))
+
+(defspec test-no-wrapping-after-moved-from-right-margin
+  {:num-tests 100}
+  (prop/for-all [y (gen/choose 0 9)
+                 rubbish gen-rubbish]
+                (let [vt (-> (make-vt 20 10)
+                             (move-cursor 19 y)
+                             (feed rubbish))
+                      {{new-x :x new-y :y} :cursor :keys [next-print-wraps]} vt]
+                  (not (and next-print-wraps (not= new-x 19))))))
