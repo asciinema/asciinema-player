@@ -212,14 +212,12 @@
 
 (defn execute-cuf [{{x :x} :cursor :keys [width] :as vt}]
   (let [n (get-param vt 0 1)
-        new-x (+ x n)
-        new-x (if (< new-x width) new-x (dec width))]
+        new-x (min (+ x n) (dec width))]
     (assoc-in vt [:cursor :x] new-x)))
 
 (defn execute-cub [{{x :x} :cursor :keys [width] :as vt}]
   (let [n (get-param vt 0 1)
-        new-x (- x n)
-        new-x (if (>= new-x 0) new-x 0)]
+        new-x (max (- x n) 0)]
     (assoc-in vt [:cursor :x] new-x)))
 
 (defn execute-cnl [vt]
