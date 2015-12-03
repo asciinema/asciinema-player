@@ -37,6 +37,11 @@
 (defn default-tabs [width]
   (apply sorted-set (range 8 width 8)))
 
+(def initial-saved-cursor {:cursor {:x 0 :y 0}
+                           :char-attrs {}
+                           :origin-mode false
+                           :auto-wrap-mode true})
+
 (defn make-vt [width height]
   {:width width
    :height height
@@ -53,10 +58,7 @@
    :next-print-wraps false
    :origin-mode false
    :lines (empty-screen width height)
-   :saved {:cursor {:x 0 :y 0}
-           :char-attrs {}
-           :origin-mode false
-           :auto-wrap-mode true}})
+   :saved initial-saved-cursor})
 
 ;; helper functions
 
@@ -424,6 +426,18 @@
         new-y (adjust-y-to-limits vt (dec n))]
     (assoc-in vt [:cursor :y] new-y)))
 
+(defn execute-decstr [{:keys [height] :as vt}]
+  (if (= (get-intermediate vt 0) 0x21)
+    (-> vt
+        (assoc :insert-mode false
+               :origin-mode false
+               :char-attrs {}
+               :top-margin 0
+               :bottom-margin (dec height)
+               :saved initial-saved-cursor)
+        (assoc-in [:cursor :visible] true))
+    vt))
+
 (defn execute-decstbm [{:keys [height] :as vt}]
   (let [top (dec (get-param vt 0 1))
         bottom (dec (get-param vt 1 height))]
@@ -536,6 +550,7 @@
                     0x68 execute-sm
                     0x6c execute-rm
                     0x6d execute-sgr
+                    0x70 execute-decstr
                     0x72 execute-decstbm
                     nil)]
     (action vt)

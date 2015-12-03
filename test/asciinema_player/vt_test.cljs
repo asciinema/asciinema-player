@@ -5,7 +5,7 @@
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop :include-macros true]
-            [asciinema-player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params]]))
+            [asciinema-player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor]]))
 
 (defn test-event [initial-state input expected-state expected-actions]
   (is (= (parse initial-state input) [expected-state expected-actions])))
@@ -1452,6 +1452,29 @@
                     [0x41 {}]
                     [0x41 {:fg 88 :bg 99 :bold true :blink true}]
                     [0x20 {}]]))))
+
+  (testing "CSI !p (DECSTR)"
+    (let [vt (-> (make-vt 4 4)
+                 (feed-str "ABCDEFGHI")
+                 (feed-csi "2;3r") ; set scroll region
+                 (feed-csi "?6h") ; set origin mode
+                 (feed-csi "4h") ; set insert mode
+                 (feed-csi "?25l") ; hide cursor
+                 (move-cursor 2 1) ; this will be relative to top margin
+                 (set-fg 1)
+                 (feed-esc "7") ; save cursor
+                 (feed-csi "!p"))] ; soft reset
+      (is (= (:lines vt) [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
+                          [[0x45 {}] [0x46 {}] [0x47 {}] [0x48 {}]]
+                          [[0x49 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= (:cursor vt) {:x 2 :y 2 :visible true}))
+      (is (= (:char-attrs vt) {}))
+      (is (= (:insert-mode vt) false))
+      (is (= (:origin-mode vt) false))
+      (is (= (:top-margin vt) 0))
+      (is (= (:bottom-margin vt) 3))
+      (is (= (:saved vt) initial-saved-cursor))))
 
   (testing "CSI r (DECSTBM)"
     (let [vt (make-vt 80 24)]
