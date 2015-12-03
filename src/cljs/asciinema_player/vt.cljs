@@ -53,7 +53,10 @@
    :next-print-wraps false
    :origin-mode false
    :lines (empty-screen width height)
-   :saved {:cursor {:x 0 :y 0} :char-attrs {}}})
+   :saved {:cursor {:x 0 :y 0}
+           :char-attrs {}
+           :origin-mode false
+           :auto-wrap-mode true}})
 
 ;; helper functions
 
@@ -130,16 +133,19 @@
 
 (defn execute-sc
   "http://www.vt100.net/docs/vt510-rm/DECSC"
-  [{{:keys [x y]} :cursor :keys [char-attrs origin-mode] :as vt}]
+  [{{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode] :as vt}]
   (assoc vt :saved {:cursor {:x x :y y}
                     :char-attrs char-attrs
-                    :origin-mode origin-mode}))
+                    :origin-mode origin-mode
+                    :auto-wrap-mode auto-wrap-mode}))
 
 (defn execute-rc
   "http://www.vt100.net/docs/vt510-rm/DECRC"
-  [{{:keys [cursor char-attrs origin-mode]} :saved :as vt}]
+  [{{:keys [cursor char-attrs origin-mode auto-wrap-mode]} :saved :as vt}]
   (-> vt
-      (assoc :char-attrs char-attrs :origin-mode origin-mode)
+      (assoc :char-attrs char-attrs
+             :origin-mode origin-mode
+             :auto-wrap-mode auto-wrap-mode)
       (update-in [:cursor] merge cursor)))
 
 (defn split-coll [elem coll]

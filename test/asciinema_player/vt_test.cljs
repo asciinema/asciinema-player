@@ -375,7 +375,10 @@
   (let [vt (make-vt 80 24)]
     (is (= (:tabs vt) #{8 16 24 32 40 48 56 64 72}))
     (is (= (-> vt :char-attrs) {}))
-    (is (= (-> vt :saved) {:cursor {:x 0 :y 0} :char-attrs {}}))
+    (is (= (-> vt :saved) {:cursor {:x 0 :y 0}
+                           :char-attrs {}
+                           :auto-wrap-mode true
+                           :origin-mode false}))
     (is (= (-> vt :parser :intermediate-chars) []))
     (is (= (-> vt :parser :param-chars) []))
     (is (= (-> vt :insert-mode) false))
@@ -832,27 +835,45 @@
                  (move-cursor 2 1)
                  (set-fg 1)
                  (feed-csi "?6h") ; set origin mode
+                 (feed-csi "?7l") ; reset auto-wrap mode
                  (move-cursor 4 5)
                  (feed-esc "7"))
           {:keys [saved]} vt]
-      (is (= saved {:cursor {:x 4 :y 5} :char-attrs {:fg 1} :origin-mode true}))))
+      (is (= saved {:cursor {:x 4 :y 5}
+                    :char-attrs {:fg 1}
+                    :origin-mode true
+                    :auto-wrap-mode false}))))
 
   (testing "ESC 8 (RC)"
     (let [vt (-> (make-vt 80 24)
-                 (move-cursor 2 1)
                  (set-fg 1)
                  (feed-csi "?6h") ; set origin mode
+                 (feed-csi "?7l") ; reset auto-wrap mode
+                 (move-cursor 4 5)
+                 (feed-esc "8")) ; restore cursor, there was no save (SC) so far
+          {{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode]} vt]
+      (is (= x 0))
+      (is (= y 0))
+      (is (= char-attrs {}))
+      (is (= origin-mode false))
+      (is (= auto-wrap-mode true)))
+    (let [vt (-> (make-vt 80 24)
+                 (set-fg 1)
+                 (feed-csi "?6h") ; set origin mode
+                 (feed-csi "?7l") ; reset auto-wrap mode
                  (move-cursor 4 5)
                  (feed-esc "7") ; save cursor
                  (feed-csi "?6l") ; reset origin mode
+                 (feed-csi "?7h") ; set auto-wrap mode
                  (feed-csi "m") ; reset char attrs
                  (feed-csi "42m") ; set bg=2
-                 (feed-esc "8"))
-          {{:keys [x y]} :cursor :keys [char-attrs origin-mode]} vt] ; restore cursor
+                 (feed-esc "8")) ; restore cursor
+          {{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode]} vt]
       (is (= x 4))
       (is (= y 5))
       (is (= char-attrs {:fg 1}))
-      (is (= origin-mode true))))
+      (is (= origin-mode true))
+      (is (= auto-wrap-mode false))))
 
   (testing "ESC c (RIS)"
     (let [initial-vt (make-vt 4 3)
