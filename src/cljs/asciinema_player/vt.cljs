@@ -62,6 +62,14 @@
 
 ;; helper functions
 
+(defn show-cursor
+  ([vt] (show-cursor vt true))
+  ([vt show?]
+   (assoc-in vt [:cursor :visible] show?)))
+
+(defn set-margin [vt top bottom]
+  (assoc vt :top-margin top :bottom-margin bottom))
+
 (defn scroll-up [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
   (update-in vt [:lines] (fn [lines]
                            (vec (concat
@@ -373,7 +381,7 @@
            [nil 4] (assoc vt :insert-mode true)
            [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
            [0x3f 7] (assoc vt :auto-wrap-mode true)
-           [0x3f 25] (assoc-in vt [:cursor :visible] true)
+           [0x3f 25] (show-cursor vt)
            :else vt)))
 
 (defn execute-rm [vt]
@@ -383,7 +391,7 @@
            [nil 4] (assoc vt :insert-mode false)
            [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
            [0x3f 7] (assoc vt :auto-wrap-mode false)
-           [0x3f 25] (assoc-in vt [:cursor :visible] false)
+           [0x3f 25] (show-cursor vt false)
            :else vt)))
 
 (defn reset-attrs [vt]
@@ -429,13 +437,12 @@
 (defn execute-decstr [{:keys [height] :as vt}]
   (if (= (get-intermediate vt 0) 0x21)
     (-> vt
+        show-cursor
+        (set-margin 0 (dec height))
         (assoc :insert-mode false
                :origin-mode false
                :char-attrs {}
-               :top-margin 0
-               :bottom-margin (dec height)
-               :saved initial-saved-cursor)
-        (assoc-in [:cursor :visible] true))
+               :saved initial-saved-cursor))
     vt))
 
 (defn execute-decstbm [{:keys [height] :as vt}]
@@ -443,7 +450,7 @@
         bottom (dec (get-param vt 1 height))]
     (if (< -1 top bottom height)
       (-> vt
-          (assoc :top-margin top :bottom-margin bottom)
+          (set-margin top bottom)
           move-cursor-to-home)
       vt)))
 
