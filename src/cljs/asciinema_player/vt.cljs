@@ -148,10 +148,11 @@
     (update-in vt [:tabs] conj x)
     vt))
 
-(defn execute-ri [{{y :y} :cursor :as vt}]
-  (if (zero? y)
-    (scroll-down vt)
-    (update-in vt [:cursor :y] dec)))
+(defn execute-ri [{:keys [top-margin] {y :y} :cursor :as vt}]
+  (cond (> y top-margin) (move-cursor-to-row vt (dec y))
+        (= y top-margin) (scroll-down vt)
+        (> y 0) (move-cursor-to-row vt (dec y))
+        :else vt))
 
 (defn execute-decaln [{:keys [width height] :as vt}]
   (assoc vt :lines (vec (repeat height (vec (repeat width [0x45 {}]))))))
