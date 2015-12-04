@@ -78,11 +78,27 @@
                                  [(empty-line width char-attrs)]
                                  (drop (inc bottom-margin) lines))))))
 
+(defn move-cursor-to-col [vt x]
+  (-> vt
+      (assoc-in [:cursor :x] x)
+      (assoc :next-print-wraps false)))
+
+(defn move-cursor-to-row [vt y]
+  (-> vt
+      (assoc-in [:cursor :y] y)
+      (assoc :next-print-wraps false)))
+
+(defn move-cursor-to-home [{:keys [origin-mode top-margin] :as vt}]
+  (let [top (if origin-mode top-margin 0)]
+    (-> vt
+        (move-cursor-to-col 0)
+        (move-cursor-to-row top))))
+
 (defn move-cursor-down [{:keys [bottom-margin height] {y :y} :cursor :as vt}]
   (let [last-row (dec height)]
-    (cond (< y bottom-margin) (assoc-in vt [:cursor :y] (inc y))
+    (cond (< y bottom-margin) (move-cursor-to-row vt (inc y))
           (= y bottom-margin) (scroll-up vt)
-          (< y last-row) (assoc-in vt [:cursor :y] (inc y))
+          (< y last-row) (move-cursor-to-row vt (inc y))
           :else vt)))
 
 ;; control functions
@@ -95,28 +111,27 @@
                                  (subvec lines top-margin bottom-margin)
                                  (drop (inc bottom-margin) lines))))))
 
-(defn execute-bs [vt]
-  (update-in vt [:cursor :x] (fn [x]
-                               (if (pos? x) (dec x) x))))
+(defn execute-bs [{{:keys [x]} :cursor :as vt}]
+  (move-cursor-to-col vt (max (dec x) 0)))
 
-(defn move-cursor-to-next-tab [{:keys [tabs width] :as vt} n]
+(defn move-cursor-to-next-tab [{{:keys [x]} :cursor :keys [tabs width] :as vt} n]
   (let [n (dec n)
-        right-margin (dec width)]
-    (update-in vt [:cursor :x] (fn [x]
-                                 (let [next-tabs (drop-while (partial >= x) tabs)]
-                                   (nth next-tabs n right-margin))))))
+        right-margin (dec width)
+        next-tabs (drop-while (partial >= x) tabs)
+        new-x (nth next-tabs n right-margin)]
+    (move-cursor-to-col vt new-x)))
 
-(defn move-cursor-to-prev-tab [{:keys [tabs width] :as vt} n]
-  (let [n (dec n)]
-    (update-in vt [:cursor :x] (fn [x]
-                                 (let [prev-tabs (take-while (partial > x) tabs)]
-                                   (nth (reverse prev-tabs) n 0))))))
+(defn move-cursor-to-prev-tab [{{:keys [x]} :cursor :keys [tabs width] :as vt} n]
+  (let [n (dec n)
+        prev-tabs (take-while (partial > x) tabs)
+        new-x (nth (reverse prev-tabs) n 0)]
+    (move-cursor-to-col vt new-x)))
 
 (defn execute-ht [vt]
   (move-cursor-to-next-tab vt 1))
 
 (defn execute-cr [vt]
-  (assoc-in vt [:cursor :x] 0))
+  (move-cursor-to-col vt 0))
 
 (defn execute-lf [{:keys [height] {y :y} :cursor :as vt}]
   (-> vt
@@ -201,39 +216,39 @@
         new-y (if (< y top-margin)
                 (max 0 (- y n))
                 (max top-margin (- y n)))]
-    (assoc-in vt [:cursor :y] new-y)))
+    (move-cursor-to-row vt new-y)))
 
 (defn execute-cud [{{y :y} :cursor :keys [bottom-margin height] :as vt}]
   (let [n (get-param vt 0 1)
         new-y (if (> y bottom-margin)
                 (min (dec height) (+ y n))
                 (min bottom-margin (+ y n)))]
-    (assoc-in vt [:cursor :y] new-y)))
+    (move-cursor-to-row vt new-y)))
 
 (defn execute-cuf [{{x :x} :cursor :keys [width] :as vt}]
   (let [n (get-param vt 0 1)
         new-x (min (+ x n) (dec width))]
-    (assoc-in vt [:cursor :x] new-x)))
+    (move-cursor-to-col vt new-x)))
 
 (defn execute-cub [{{x :x} :cursor :keys [width] :as vt}]
   (let [n (get-param vt 0 1)
         new-x (max (- x n) 0)]
-    (assoc-in vt [:cursor :x] new-x)))
+    (move-cursor-to-col vt new-x)))
 
 (defn execute-cnl [vt]
   (-> vt
       execute-cud
-      (assoc-in [:cursor :x] 0)))
+      (move-cursor-to-col 0)))
 
 (defn execute-cpl [vt]
   (-> vt
       execute-cuu
-      (assoc-in [:cursor :x] 0)))
+      (move-cursor-to-col 0)))
 
 (defn execute-cha [{width :width :as vt}]
   (let [n (get-param vt 0 1)
         new-x (if (<= n width) (dec n) (dec width))]
-    (assoc-in vt [:cursor :x] new-x)))
+    (move-cursor-to-col vt new-x)))
 
 (defn top-limit [{:keys [origin-mode top-margin] :as vt}]
   (if origin-mode top-margin 0))
@@ -252,8 +267,9 @@
         new-x (adjust-to-range (dec ps2) 0 (dec width))
         new-y (adjust-y-to-limits vt (dec ps1))]
     (-> vt
-        (assoc-in [:cursor :x] new-x)
-        (assoc-in [:cursor :y] new-y))))
+        (assoc :next-print-wraps false)
+        (move-cursor-to-col new-x)
+        (move-cursor-to-row new-y))))
 
 (defn execute-cht [vt]
   (let [n (get-param vt 0 1)]
@@ -366,12 +382,6 @@
       3 (update-in vt [:tabs] empty)
       vt)))
 
-(defn move-cursor-to-home [{:keys [origin-mode top-margin] :as vt}]
-  (let [top (if origin-mode top-margin 0)]
-    (-> vt
-        (assoc-in [:cursor :x] 0)
-        (assoc-in [:cursor :y] top))))
-
 (defn execute-sm [vt]
   (let [i (get-intermediate vt 0)
         n (get-param vt 0 0)]
@@ -430,7 +440,7 @@
 (defn execute-vpa [vt]
   (let [n (get-param vt 0 1)
         new-y (adjust-y-to-limits vt (dec n))]
-    (assoc-in vt [:cursor :y] new-y)))
+    (move-cursor-to-row vt new-y)))
 
 (defn execute-decstr [{:keys [height] :as vt}]
   (if (= (get-intermediate vt 0) 0x21)
@@ -467,10 +477,10 @@
         (take (- (count line) x 1) (drop x line)))))
 
 (defn wrap [{{:keys [y]} :cursor :keys [height] :as vt}]
-  (let [vt (assoc-in vt [:cursor :x] 0)]
+  (let [vt (move-cursor-to-col vt 0)]
     (if (= height (inc y))
       (scroll-up vt)
-      (update-in vt [:cursor :y] inc))))
+      (move-cursor-to-row vt (inc y)))))
 
 (defn do-print [{:keys [width height char-attrs insert-mode] {:keys [x y]} :cursor :as vt} input]
   (let [cell (cell input char-attrs)]
@@ -481,7 +491,7 @@
       (let [f (if insert-mode insert-char replace-char)]
         (-> vt
             (update-in [:lines y] f x cell)
-            (update-in [:cursor :x] inc))))))
+            (move-cursor-to-col (inc x)))))))
 
 (defn print [{:keys [auto-wrap-mode next-print-wraps] :as vt} input]
   (if (and auto-wrap-mode next-print-wraps)
@@ -723,20 +733,10 @@
 (defn execute-actions [vt actions input]
   (reduce (fn [vt f] (f vt input)) vt actions))
 
-(defn clear-wrap-flag [old-vt new-vt]
-  (let [{{old-x :x old-y :y} :cursor} old-vt
-        {{new-x :x new-y :y} :cursor} new-vt]
-    (if (or (not= old-x new-x) (not= old-y new-y))
-      (assoc new-vt :next-print-wraps false)
-      new-vt)))
-
-(defn feed-one [vt input]
-  (let [{{old-state :state} :parser} vt
-        [new-state actions] (parse old-state input)
-        new-vt (-> vt
-                   (assoc-in [:parser :state] new-state)
-                   (execute-actions actions input))]
-    (clear-wrap-flag vt new-vt)))
+(defn feed-one [{{old-state :state} :parser :as vt} input]
+  (let [[new-state actions] (parse old-state input)]
+    (-> vt (assoc-in [:parser :state] new-state)
+        (execute-actions actions input))))
 
 (defn feed [vt inputs]
   (reduce (fn [vt input] (feed-one vt input)) vt inputs))

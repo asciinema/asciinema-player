@@ -447,7 +447,15 @@
           (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x44 {:fg 1}]]
                         [[0x45 {:fg 1}] [0x46 {:fg 1}] [0x20 {}] [0x20 {}]]
                         [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-          (is (= cursor {:x 2 :y 1 :visible true})))))
+          (is (= cursor {:x 2 :y 1 :visible true})))
+        (let [vt (-> vt
+                     (feed-csi "1;4H") ; move to the current position (in place)
+                     (feed-str "EF"))  ; next-print-wraps should have been reset above
+              {:keys [lines cursor]} vt]
+          (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x45 {:fg 1}]]
+                        [[0x46 {:fg 1}] [0x20 {}] [0x20 {}] [0x20 {}]]
+                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+          (is (= cursor {:x 1 :y 1 :visible true})))))
 
     (testing "printing on the right edge of the line (auto-wrap off)"
       (let [vt (-> vt
