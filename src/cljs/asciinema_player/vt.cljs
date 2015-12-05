@@ -388,6 +388,7 @@
          [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
          [0x3f 7] (assoc vt :auto-wrap-mode true)
          [0x3f 25] (show-cursor vt)
+         [0x3f 1048] (execute-sc vt)
          :else vt))
 
 (defn execute-sm [vt]
@@ -400,6 +401,7 @@
          [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
          [0x3f 7] (assoc vt :auto-wrap-mode false)
          [0x3f 25] (show-cursor vt false)
+         [0x3f 1048] (execute-rc vt)
          :else vt))
 
 (defn execute-rm [vt]

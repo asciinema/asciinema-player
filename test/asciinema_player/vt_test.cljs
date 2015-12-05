@@ -880,50 +880,47 @@
       (is (= x 2))
       (is (= y 1))))
 
-  (testing "ESC 7 (SC)"
+  (testing "ESC 7 (SC), CSI ?1048h"
     (let [vt (-> (make-vt 80 24)
                  (move-cursor 2 1)
                  (set-fg 1)
                  (feed-csi "?6h") ; set origin mode
                  (feed-csi "?7l") ; reset auto-wrap mode
-                 (move-cursor 4 5)
-                 (feed-esc "7"))
-          {:keys [saved]} vt]
-      (is (= saved {:cursor {:x 4 :y 5}
-                    :char-attrs {:fg 1}
-                    :origin-mode true
-                    :auto-wrap-mode false}))))
+                 (move-cursor 4 5))]
+      (doseq [f [#(feed-esc % "7") #(feed-csi % "?1048h")]]
+        (let [{:keys [saved]} (f vt)]
+          (is (= saved {:cursor {:x 4 :y 5}
+                        :char-attrs {:fg 1}
+                        :origin-mode true
+                        :auto-wrap-mode false}))))))
 
-  (testing "ESC 8 (RC)"
+  (testing "ESC 8 (RC), CSI ?1048l"
     (let [vt (-> (make-vt 80 24)
                  (set-fg 1)
                  (feed-csi "?6h") ; set origin mode
                  (feed-csi "?7l") ; reset auto-wrap mode
-                 (move-cursor 4 5)
-                 (feed-esc "8")) ; restore cursor, there was no save (SC) so far
-          {{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode]} vt]
-      (is (= x 0))
-      (is (= y 0))
-      (is (= char-attrs {}))
-      (is (= origin-mode false))
-      (is (= auto-wrap-mode true)))
-    (let [vt (-> (make-vt 80 24)
-                 (set-fg 1)
-                 (feed-csi "?6h") ; set origin mode
-                 (feed-csi "?7l") ; reset auto-wrap mode
-                 (move-cursor 4 5)
-                 (feed-esc "7") ; save cursor
-                 (feed-csi "?6l") ; reset origin mode
-                 (feed-csi "?7h") ; set auto-wrap mode
-                 (feed-csi "m") ; reset char attrs
-                 (feed-csi "42m") ; set bg=2
-                 (feed-esc "8")) ; restore cursor
-          {{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode]} vt]
-      (is (= x 4))
-      (is (= y 5))
-      (is (= char-attrs {:fg 1}))
-      (is (= origin-mode true))
-      (is (= auto-wrap-mode false))))
+                 (move-cursor 4 5))]
+      (doseq [f [#(feed-esc % "8") #(feed-csi % "?1048l")]]
+        (let [vt (f vt) ; restore cursor, there was no save (SC) so far
+              {{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode]} vt]
+          (is (= x 0))
+          (is (= y 0))
+          (is (= char-attrs {}))
+          (is (false? origin-mode))
+          (is (true? auto-wrap-mode)))
+        (let [vt (-> vt
+                     (feed-esc "7") ; save cursor
+                     (feed-csi "?6l") ; reset origin mode
+                     (feed-csi "?7h") ; set auto-wrap mode
+                     (feed-csi "m") ; reset char attrs
+                     (feed-csi "42m") ; set bg=2
+                     f) ; restore cursor
+              {{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode]} vt]
+          (is (= x 4))
+          (is (= y 5))
+          (is (= char-attrs {:fg 1}))
+          (is (true? origin-mode))
+          (is (false? auto-wrap-mode))))))
 
   (testing "ESC c (RIS)"
     (let [initial-vt (make-vt 4 3)
