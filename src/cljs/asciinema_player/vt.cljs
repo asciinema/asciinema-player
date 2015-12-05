@@ -96,8 +96,7 @@
 
 (defn move-cursor-down [{:keys [bottom-margin height] {y :y} :cursor :as vt}]
   (let [last-row (dec height)]
-    (cond (< y bottom-margin) (move-cursor-to-row vt (inc y))
-          (= y bottom-margin) (scroll-up vt)
+    (cond (= y bottom-margin) (scroll-up vt)
           (< y last-row) (move-cursor-to-row vt (inc y))
           :else vt)))
 
@@ -149,8 +148,7 @@
     vt))
 
 (defn execute-ri [{:keys [top-margin] {y :y} :cursor :as vt}]
-  (cond (> y top-margin) (move-cursor-to-row vt (dec y))
-        (= y top-margin) (scroll-down vt)
+  (cond (= y top-margin) (scroll-down vt)
         (> y 0) (move-cursor-to-row vt (dec y))
         :else vt))
 
