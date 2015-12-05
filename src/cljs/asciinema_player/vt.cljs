@@ -383,25 +383,29 @@
       3 (update-in vt [:tabs] empty)
       vt)))
 
+(defn set-mode [vt intermediate param]
+  (match [intermediate param]
+         [nil 4] (assoc vt :insert-mode true)
+         [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
+         [0x3f 7] (assoc vt :auto-wrap-mode true)
+         [0x3f 25] (show-cursor vt)
+         :else vt))
+
 (defn execute-sm [vt]
-  (let [i (get-intermediate vt 0)
-        n (get-param vt 0 0)]
-    (match [i n]
-           [nil 4] (assoc vt :insert-mode true)
-           [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
-           [0x3f 7] (assoc vt :auto-wrap-mode true)
-           [0x3f 25] (show-cursor vt)
-           :else vt)))
+  (let [intermediate (get-intermediate vt 0)]
+    (reduce #(set-mode %1 intermediate %2) vt (get-params vt))))
+
+(defn reset-mode [vt intermediate param]
+  (match [intermediate param]
+         [nil 4] (assoc vt :insert-mode false)
+         [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
+         [0x3f 7] (assoc vt :auto-wrap-mode false)
+         [0x3f 25] (show-cursor vt false)
+         :else vt))
 
 (defn execute-rm [vt]
-  (let [i (get-intermediate vt 0)
-        n (get-param vt 0 0)]
-    (match [i n]
-           [nil 4] (assoc vt :insert-mode false)
-           [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
-           [0x3f 7] (assoc vt :auto-wrap-mode false)
-           [0x3f 25] (show-cursor vt false)
-           :else vt)))
+  (let [intermediate (get-intermediate vt 0)]
+    (reduce #(reset-mode %1 intermediate %2) vt (get-params vt))))
 
 (defn reset-attrs [vt]
   (update-in vt [:char-attrs] empty))

@@ -1419,22 +1419,31 @@
 
   (testing "CSI ?h (DECSM)"
     (let [vt (make-vt 20 10)]
-      (let [vt (-> vt
-                   hide-cursor
-                   (feed-csi "?25h")) ; show cursor
-            {{:keys [visible]} :cursor} vt]
-        (is (= visible true)))
-      (let [vt (-> vt
-                   (feed-csi "3;5r") ; set scroll region
-                   (move-cursor 1 1)
-                   (feed-csi "?6h")) ; set origin mode
-            {:keys [origin-mode] {:keys [x y]} :cursor} vt]
-        (is (= origin-mode true))
-        (is (= x 0))
-        (is (= y 2)))
-      (let [vt (feed-csi vt "?7h")
-            {:keys [auto-wrap-mode]} vt]
-        (is (= auto-wrap-mode true)))))
+      (testing "showing cursor"
+        (let [vt (-> vt
+                     hide-cursor
+                     (feed-csi "?25h")) ; show cursor
+              {{:keys [visible]} :cursor} vt]
+          (is (= visible true))))
+      (testing "setting origin mode"
+        (let [vt (-> vt
+                     (feed-csi "3;5r") ; set scroll region
+                     (move-cursor 1 1)
+                     (feed-csi "?6h")) ; set origin mode
+              {:keys [origin-mode] {:keys [x y]} :cursor} vt]
+          (is (= origin-mode true))
+          (is (= x 0))
+          (is (= y 2))))
+      (testing "setting auto-wrap mode"
+        (let [vt (feed-csi vt "?7h")
+              {:keys [auto-wrap-mode]} vt]
+          (is (= auto-wrap-mode true))))
+      (testing "setting multiple modes"
+        (let [vt (feed-csi vt "?6;7;25h")
+              {:keys [origin-mode auto-wrap-mode] {cursor-visible :visible} :cursor} vt]
+          (is (true? origin-mode))
+          (is (true? auto-wrap-mode))
+          (is (true? cursor-visible))))))
 
   (testing "CSI l (RM)"
     (let [vt (make-vt 4 3)]
@@ -1443,21 +1452,30 @@
 
   (testing "CSI ?l (DECRM)"
     (let [vt (make-vt 4 3)]
-      (let [vt (feed-csi vt "?25l"); hide cursor
-            {{:keys [visible]} :cursor} vt]
-        (is (= visible false)))
-      (let [vt (-> vt
-                   (feed-csi "3;5r") ; set scroll region
-                   (feed-csi "?6h") ; set origin mode
-                   (move-cursor 1 1)
-                   (feed-csi "?6l")) ; reset origin mode
-            {:keys [origin-mode] {:keys [x y]} :cursor} vt]
-        (is (= origin-mode false))
-        (is (= x 0))
-        (is (= y 0)))
-      (let [vt (feed-csi vt "?7l")
-            {:keys [auto-wrap-mode]} vt]
-        (is (= auto-wrap-mode false)))))
+      (testing "hiding cursor"
+        (let [vt (feed-csi vt "?25l"); hide cursor
+              {{:keys [visible]} :cursor} vt]
+          (is (= visible false))))
+      (testing "resetting origin mode"
+        (let [vt (-> vt
+                     (feed-csi "3;5r") ; set scroll region
+                     (feed-csi "?6h") ; set origin mode
+                     (move-cursor 1 1)
+                     (feed-csi "?6l")) ; reset origin mode
+              {:keys [origin-mode] {:keys [x y]} :cursor} vt]
+          (is (= origin-mode false))
+          (is (= x 0))
+          (is (= y 0))))
+      (testing "resetting auto-wrap mode"
+        (let [vt (feed-csi vt "?7l")
+              {:keys [auto-wrap-mode]} vt]
+          (is (= auto-wrap-mode false))))
+      (testing "resetting multiple modes"
+        (let [vt (feed-csi vt "?6;7;25l")
+              {:keys [origin-mode auto-wrap-mode] {cursor-visible :visible} :cursor} vt]
+          (is (false? origin-mode))
+          (is (false? auto-wrap-mode))
+          (is (false? cursor-visible))))))
 
   (testing "CSI m (SGR)"
     (let [vt (make-vt 20 1)
