@@ -104,6 +104,38 @@
 (defn switch-to-alternate-buffer [{:keys [width height char-attrs] :as vt}]
   (assoc vt :lines (empty-screen width height char-attrs)))
 
+(defn save-cursor [{{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode] :as vt}]
+  (assoc vt :saved {:cursor {:x x :y y}
+                    :char-attrs char-attrs
+                    :origin-mode origin-mode
+                    :auto-wrap-mode auto-wrap-mode}))
+
+(defn restore-cursor [{{:keys [cursor char-attrs origin-mode auto-wrap-mode]} :saved :as vt}]
+  (-> vt
+      (assoc :char-attrs char-attrs
+             :origin-mode origin-mode
+             :auto-wrap-mode auto-wrap-mode)
+      (update-in [:cursor] merge cursor)))
+
+(defn set-mode [vt intermediate param]
+  (match [intermediate param]
+         [nil 4] (assoc vt :insert-mode true)
+         [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
+         [0x3f 7] (assoc vt :auto-wrap-mode true)
+         [0x3f 25] (show-cursor vt)
+         [0x3f 1047] (switch-to-alternate-buffer vt)
+         [0x3f 1048] (save-cursor vt)
+         :else vt))
+
+(defn reset-mode [vt intermediate param]
+  (match [intermediate param]
+         [nil 4] (assoc vt :insert-mode false)
+         [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
+         [0x3f 7] (assoc vt :auto-wrap-mode false)
+         [0x3f 25] (show-cursor vt false)
+         [0x3f 1048] (restore-cursor vt)
+         :else vt))
+
 ;; control functions
 
 (defn scroll-down [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
@@ -159,22 +191,11 @@
 (defn execute-decaln [{:keys [width height] :as vt}]
   (assoc vt :lines (vec (repeat height (vec (repeat width [0x45 {}]))))))
 
-(defn execute-sc
-  "http://www.vt100.net/docs/vt510-rm/DECSC"
-  [{{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode] :as vt}]
-  (assoc vt :saved {:cursor {:x x :y y}
-                    :char-attrs char-attrs
-                    :origin-mode origin-mode
-                    :auto-wrap-mode auto-wrap-mode}))
+(defn execute-sc [vt]
+  (save-cursor vt))
 
-(defn execute-rc
-  "http://www.vt100.net/docs/vt510-rm/DECRC"
-  [{{:keys [cursor char-attrs origin-mode auto-wrap-mode]} :saved :as vt}]
-  (-> vt
-      (assoc :char-attrs char-attrs
-             :origin-mode origin-mode
-             :auto-wrap-mode auto-wrap-mode)
-      (update-in [:cursor] merge cursor)))
+(defn execute-rc [vt]
+  (restore-cursor vt))
 
 (defn split-coll [elem coll]
   (loop [coll coll
@@ -385,28 +406,9 @@
       3 (update-in vt [:tabs] empty)
       vt)))
 
-(defn set-mode [vt intermediate param]
-  (match [intermediate param]
-         [nil 4] (assoc vt :insert-mode true)
-         [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
-         [0x3f 7] (assoc vt :auto-wrap-mode true)
-         [0x3f 25] (show-cursor vt)
-         [0x3f 1047] (switch-to-alternate-buffer vt)
-         [0x3f 1048] (execute-sc vt)
-         :else vt))
-
 (defn execute-sm [vt]
   (let [intermediate (get-intermediate vt 0)]
     (reduce #(set-mode %1 intermediate %2) vt (get-params vt))))
-
-(defn reset-mode [vt intermediate param]
-  (match [intermediate param]
-         [nil 4] (assoc vt :insert-mode false)
-         [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
-         [0x3f 7] (assoc vt :auto-wrap-mode false)
-         [0x3f 25] (show-cursor vt false)
-         [0x3f 1048] (execute-rc vt)
-         :else vt))
 
 (defn execute-rm [vt]
   (let [intermediate (get-intermediate vt 0)]
