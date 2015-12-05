@@ -1441,7 +1441,19 @@
               {:keys [origin-mode auto-wrap-mode] {cursor-visible :visible} :cursor} vt]
           (is (true? origin-mode))
           (is (true? auto-wrap-mode))
-          (is (true? cursor-visible))))))
+          (is (true? cursor-visible)))))
+    (let [vt (make-vt 4 3)]
+      (testing "setting alternate screen mode"
+        (let [vt (-> vt
+                     (feed-str "ABC\nDE")
+                     (set-bg 2)
+                     (feed-csi "?1047h"))
+              {:keys [lines] {:keys [x y]} :cursor} vt]
+          (is (= x 2))
+          (is (= y 1))
+          (is (= lines [[[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
+                        [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
+                        [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]]))))))
 
   (testing "CSI l (RM)"
     (let [vt (make-vt 4 3)]

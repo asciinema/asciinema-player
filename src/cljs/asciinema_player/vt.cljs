@@ -101,6 +101,9 @@
           (< y last-row) (move-cursor-to-row vt (inc y))
           :else vt)))
 
+(defn switch-to-alternate-buffer [{:keys [width height char-attrs] :as vt}]
+  (assoc vt :lines (empty-screen width height char-attrs)))
+
 ;; control functions
 
 (defn scroll-down [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
@@ -388,6 +391,7 @@
          [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
          [0x3f 7] (assoc vt :auto-wrap-mode true)
          [0x3f 25] (show-cursor vt)
+         [0x3f 1047] (switch-to-alternate-buffer vt)
          [0x3f 1048] (execute-sc vt)
          :else vt))
 
