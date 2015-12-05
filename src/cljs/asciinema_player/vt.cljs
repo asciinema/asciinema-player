@@ -101,8 +101,19 @@
           (< y last-row) (move-cursor-to-row vt (inc y))
           :else vt)))
 
-(defn switch-to-alternate-buffer [{:keys [width height char-attrs] :as vt}]
-  (assoc vt :lines (empty-screen width height char-attrs)))
+(defn switch-to-alternate-buffer [{:keys [primary-buffer width height char-attrs] :as vt}]
+  (if-not primary-buffer
+    (assoc vt
+           :primary-buffer (:lines vt)
+           :lines (empty-screen width height char-attrs))
+    vt))
+
+(defn switch-to-primary-buffer [{:keys [primary-buffer] :as vt}]
+  (if primary-buffer
+    (-> vt
+        (assoc :lines primary-buffer)
+        (dissoc :primary-buffer))
+    vt))
 
 (defn save-cursor [{{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode] :as vt}]
   (assoc vt :saved {:cursor {:x x :y y}
@@ -133,6 +144,7 @@
          [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
          [0x3f 7] (assoc vt :auto-wrap-mode false)
          [0x3f 25] (show-cursor vt false)
+         [0x3f 1047] (switch-to-primary-buffer vt)
          [0x3f 1048] (restore-cursor vt)
          :else vt))
 

@@ -1444,16 +1444,28 @@
           (is (true? cursor-visible)))))
     (let [vt (make-vt 4 3)]
       (testing "setting alternate screen mode"
-        (let [vt (-> vt
-                     (feed-str "ABC\nDE")
-                     (set-bg 2)
-                     (feed-csi "?1047h"))
-              {:keys [lines] {:keys [x y]} :cursor} vt]
-          (is (= x 2))
-          (is (= y 1))
-          (is (= lines [[[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
-                        [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
-                        [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]]))))))
+        (testing "when in primary buffer"
+          (let [vt (-> vt
+                       (feed-str "ABC\nDE")
+                       (set-bg 2)
+                       (feed-csi "?1047h"))
+                {:keys [lines] {:keys [x y]} :cursor} vt]
+            (is (= x 2))
+            (is (= y 1))
+            (is (= lines [[[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
+                          [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
+                          [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]]))))
+        (testing "when in alternate buffer"
+          (let [vt (-> vt
+                       (feed-csi "?1047h")
+                       (feed-str "ABC\nDE")
+                       (feed-csi "?1047h"))
+                {:keys [lines] {:keys [x y]} :cursor} vt]
+            (is (= x 2))
+            (is (= y 1))
+            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
+                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
+                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]])))))))
 
   (testing "CSI l (RM)"
     (let [vt (make-vt 4 3)]
@@ -1485,7 +1497,32 @@
               {:keys [origin-mode auto-wrap-mode] {cursor-visible :visible} :cursor} vt]
           (is (false? origin-mode))
           (is (false? auto-wrap-mode))
-          (is (false? cursor-visible))))))
+          (is (false? cursor-visible)))))
+    (let [vt (make-vt 4 3)]
+      (testing "resetting alternate screen mode"
+        (testing "when in primary buffer"
+          (let [vt (-> vt
+                       (feed-str "ABC\nDE")
+                       (feed-csi "?1047l")) ; set primary buffer
+                {:keys [lines] {:keys [x y]} :cursor} vt]
+            (is (= x 2))
+            (is (= y 1))
+            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
+                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
+                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))
+        (testing "when in alternate buffer"
+          (let [vt (-> vt
+                       (feed-str "ABC\nDE")
+                       (set-bg 2)
+                       (feed-csi "?1047h") ; set alternate buffer
+                       (feed-str "\nX")
+                       (feed-csi "?1047l")) ; set primary buffer
+                {:keys [lines] {:keys [x y]} :cursor} vt]
+            (is (= x 1))
+            (is (= y 2))
+            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
+                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
+                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]])))))))
 
   (testing "CSI m (SGR)"
     (let [vt (make-vt 20 1)
