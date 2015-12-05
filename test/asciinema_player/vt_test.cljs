@@ -1025,26 +1025,27 @@
               {{y :y} :cursor} vt]
           (is (= y 9))))))
 
-  (testing "CSI C (CUF)"
+  (testing "CSI C (CUF), CSI a (HPR)"
     (let [vt (make-vt 5 3)]
-      (let [vt (-> vt
-                   (move-cursor 1 0)
-                   (feed-csi "C"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 2))
-        (is (= y 0)))
-      (let [vt (-> vt
-                   (move-cursor 4 0)
-                   (feed-csi "C"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 4))
-        (is (= y 0)))
-      (let [vt (-> vt
-                   (move-cursor 2 1)
-                   (feed-csi "4C"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 4))
-        (is (= y 1)))))
+      (doseq [ch ["C" "a"]]
+        (let [vt (-> vt
+                     (move-cursor 1 0)
+                     (feed-csi ch))
+              {{x :x y :y} :cursor} vt]
+          (is (= x 2))
+          (is (= y 0)))
+        (let [vt (-> vt
+                     (move-cursor 4 0)
+                     (feed-csi ch))
+              {{x :x y :y} :cursor} vt]
+          (is (= x 4))
+          (is (= y 0)))
+        (let [vt (-> vt
+                     (move-cursor 2 1)
+                     (feed-csi "4" ch))
+              {{x :x y :y} :cursor} vt]
+          (is (= x 4))
+          (is (= y 1))))))
 
   (testing "CSI D (CUB)"
     (let [vt (make-vt 5 3)]
