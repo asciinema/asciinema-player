@@ -5,6 +5,7 @@
             [cljs.core.match :refer-macros [match]]))
 
 ;; References:
+;; http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
 ;; http://www.inwap.com/pdp10/ansicode.txt
 ;; http://manpages.ubuntu.com/manpages/lucid/man7/urxvt.7.html
 ;; http://en.wikipedia.org/wiki/ANSI_escape_code
