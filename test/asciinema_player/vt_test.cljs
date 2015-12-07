@@ -1410,119 +1410,129 @@
       (let [{:keys [tabs]} (feed-csi vt "3g")]
         (is (= tabs #{})))))
 
-  (testing "CSI h (SM)"
-    (let [vt (make-vt 4 3)]
-      (let [{:keys [insert-mode]} (feed-csi vt "4h")]
-        (is (= insert-mode true)))))
+  (testing "CSI 4h (SM)"
+    (let [vt (make-vt 80 24)
+          {:keys [insert-mode]} (feed-csi vt "4h")]
+      (is (= insert-mode true))))
 
-  (testing "CSI ?h (DECSM)"
-    (let [vt (make-vt 20 10)]
-      (testing "showing cursor"
-        (let [vt (-> vt
-                     hide-cursor
-                     (feed-csi "?25h")) ; show cursor
-              {{:keys [visible]} :cursor} vt]
-          (is (= visible true))))
-      (testing "setting origin mode"
-        (let [vt (-> vt
-                     (feed-csi "3;5r") ; set scroll region
-                     (move-cursor 1 1)
-                     (feed-csi "?6h")) ; set origin mode
-              {:keys [origin-mode] {:keys [x y]} :cursor} vt]
-          (is (= origin-mode true))
-          (is (= x 0))
-          (is (= y 2))))
-      (testing "setting auto-wrap mode"
-        (let [vt (feed-csi vt "?7h")
-              {:keys [auto-wrap-mode]} vt]
-          (is (= auto-wrap-mode true))))
-      (testing "setting multiple modes"
-        (let [vt (feed-csi vt "?6;7;25h")
-              {:keys [origin-mode auto-wrap-mode] {cursor-visible :visible} :cursor} vt]
-          (is (true? origin-mode))
-          (is (true? auto-wrap-mode))
-          (is (true? cursor-visible)))))
-    (let [vt (make-vt 4 3)]
-      (testing "setting alternate screen mode"
-        (testing "when in primary buffer"
-          (let [vt (-> vt
-                       (feed-str "ABC\nDE")
-                       (set-bg 2)
-                       (feed-csi "?1047h"))
-                {:keys [lines] {:keys [x y]} :cursor} vt]
-            (is (= x 2))
-            (is (= y 1))
-            (is (= lines [[[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
-                          [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
-                          [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]]))))
-        (testing "when in alternate buffer"
-          (let [vt (-> vt
-                       (feed-csi "?1047h")
-                       (feed-str "ABC\nDE")
-                       (feed-csi "?1047h"))
-                {:keys [lines] {:keys [x y]} :cursor} vt]
-            (is (= x 2))
-            (is (= y 1))
-            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
-                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
-                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]])))))))
+  (testing "CSI ?6h (DECSM)" ; set origin mode
+    (let [vt (-> (make-vt 80 24)
+                 (feed-csi "3;5r") ; set scroll region
+                 (move-cursor 1 1)
+                 (feed-csi "?6h"))
+          {:keys [origin-mode] {:keys [x y]} :cursor} vt]
+      (is (= origin-mode true))
+      (is (= x 0))
+      (is (= y 2))))
 
-  (testing "CSI l (RM)"
-    (let [vt (make-vt 4 3)]
-      (let [{:keys [insert-mode]} (feed-csi vt "4l")]
-        (is (= insert-mode false)))))
+  (testing "CSI ?7h (DECSM)" ; set auto-wrap mode
+    (let [vt (-> (make-vt 80 24)
+                 (feed-csi "?7h"))
+          {:keys [auto-wrap-mode]} vt]
+      (is (= auto-wrap-mode true))))
 
-  (testing "CSI ?l (DECRM)"
+  (testing "CSI ?25h (DECSM)" ; show cursor
+    (let [vt (-> (make-vt 80 24)
+                 hide-cursor
+                 (feed-csi "?25h")) ; show cursor
+          {{:keys [visible]} :cursor} vt]
+      (is (= visible true))))
+
+  (testing "CSI ?1047h (DECSM)"
     (let [vt (make-vt 4 3)]
-      (testing "hiding cursor"
-        (let [vt (feed-csi vt "?25l"); hide cursor
-              {{:keys [visible]} :cursor} vt]
-          (is (= visible false))))
-      (testing "resetting origin mode"
+      (testing "when in primary buffer"
         (let [vt (-> vt
-                     (feed-csi "3;5r") ; set scroll region
-                     (feed-csi "?6h") ; set origin mode
-                     (move-cursor 1 1)
-                     (feed-csi "?6l")) ; reset origin mode
-              {:keys [origin-mode] {:keys [x y]} :cursor} vt]
-          (is (= origin-mode false))
-          (is (= x 0))
-          (is (= y 0))))
-      (testing "resetting auto-wrap mode"
-        (let [vt (feed-csi vt "?7l")
-              {:keys [auto-wrap-mode]} vt]
-          (is (= auto-wrap-mode false))))
+                     (feed-str "ABC\nDE")
+                     (set-bg 2)
+                     (feed-csi "?1047h"))
+              {:keys [lines] {:keys [x y]} :cursor} vt]
+          (is (= x 2))
+          (is (= y 1))
+          (is (= lines [[[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
+                        [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
+                        [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]]))))
+      (testing "when in alternate buffer"
+        (let [vt (-> vt
+                     (feed-csi "?1047h")
+                     (feed-str "ABC\nDE")
+                     (feed-csi "?1047h"))
+              {:keys [lines] {:keys [x y]} :cursor} vt]
+          (is (= x 2))
+          (is (= y 1))
+          (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
+                        [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
+                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))))
+
+  (testing "CSI ?h (DECSM)" ; set multiple modes
+    (let [vt (-> (make-vt 80 24)
+                 (feed-csi "?6;7;25h"))
+          {:keys [origin-mode auto-wrap-mode] {cursor-visible :visible} :cursor} vt]
+      (is (true? origin-mode))
+      (is (true? auto-wrap-mode))
+      (is (true? cursor-visible))))
+
+  (testing "CSI 4l (RM)"
+    (let [vt (make-vt 80 24)
+          {:keys [insert-mode]} (feed-csi vt "4l")]
+      (is (= insert-mode false))))
+
+  (testing "CSI ?6l (DECRM)" ; reset origin mode
+    (let [vt (-> (make-vt 20 10)
+                 (feed-csi "3;5r") ; set scroll region
+                 (feed-csi "?6h") ; set origin mode
+                 (move-cursor 1 1)
+                 (feed-csi "?6l"))
+          {:keys [origin-mode] {:keys [x y]} :cursor} vt]
+      (is (= origin-mode false))
+      (is (= x 0))
+      (is (= y 0))))
+
+  (testing "CSI ?7l (DECRM)"
+    (let [vt (-> (make-vt 80 24)
+                 (feed-csi "?7l"))
+          {:keys [auto-wrap-mode]} vt]
+      (is (= auto-wrap-mode false))))
+
+  (testing "CSI ?25l (DECRM)" ; hide cursor
+    (let [vt (-> (make-vt 80 24)
+                 (feed-csi "?25l"))
+          {{:keys [visible]} :cursor} vt]
+      (is (= visible false))))
+
+  (testing "CSI ?1047l (DECRM)" ; switch to primary buffer
+    (let [vt (make-vt 4 3)]
+      (testing "when in primary buffer"
+        (let [vt (-> vt
+                     (feed-str "ABC\nDE")
+                     (feed-csi "?1047l")) ; set primary buffer
+              {:keys [lines] {:keys [x y]} :cursor} vt]
+          (is (= x 2))
+          (is (= y 1))
+          (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
+                        [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
+                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))
+      (testing "when in alternate buffer"
+        (let [vt (-> vt
+                     (feed-str "ABC\nDE")
+                     (set-bg 2)
+                     (feed-csi "?1047h") ; set alternate buffer
+                     (feed-str "\nX")
+                     (feed-csi "?1047l")) ; set primary buffer
+              {:keys [lines] {:keys [x y]} :cursor} vt]
+          (is (= x 1))
+          (is (= y 2))
+          (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
+                        [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
+                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))))
+
+  (testing "CSI ?l (DECRM)" ; reset multiple modes
+    (let [vt (make-vt 80 24)]
       (testing "resetting multiple modes"
         (let [vt (feed-csi vt "?6;7;25l")
               {:keys [origin-mode auto-wrap-mode] {cursor-visible :visible} :cursor} vt]
           (is (false? origin-mode))
           (is (false? auto-wrap-mode))
-          (is (false? cursor-visible)))))
-    (let [vt (make-vt 4 3)]
-      (testing "resetting alternate screen mode"
-        (testing "when in primary buffer"
-          (let [vt (-> vt
-                       (feed-str "ABC\nDE")
-                       (feed-csi "?1047l")) ; set primary buffer
-                {:keys [lines] {:keys [x y]} :cursor} vt]
-            (is (= x 2))
-            (is (= y 1))
-            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
-                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
-                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))
-        (testing "when in alternate buffer"
-          (let [vt (-> vt
-                       (feed-str "ABC\nDE")
-                       (set-bg 2)
-                       (feed-csi "?1047h") ; set alternate buffer
-                       (feed-str "\nX")
-                       (feed-csi "?1047l")) ; set primary buffer
-                {:keys [lines] {:keys [x y]} :cursor} vt]
-            (is (= x 1))
-            (is (= y 2))
-            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
-                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
-                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]])))))))
+          (is (false? cursor-visible))))))
 
   (testing "CSI m (SGR)"
     (let [vt (make-vt 20 1)
