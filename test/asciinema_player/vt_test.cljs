@@ -1438,13 +1438,39 @@
           {{:keys [visible]} :cursor} vt]
       (is (= visible true))))
 
-  (testing "CSI ?1047h (DECSM)"
+  (testing "CSI ?47h, CSI ?1047h (DECSM)" ; switch to alternate buffer
+    (let [vt (make-vt 4 3)]
+      (doseq [cseq ["?47h" "?1047h"]]
+        (testing "when in primary buffer"
+          (let [vt (-> vt
+                       (feed-str "ABC\nDE")
+                       (set-bg 2)
+                       (feed-csi cseq))
+                {:keys [lines] {:keys [x y]} :cursor} vt]
+            (is (= x 2))
+            (is (= y 1))
+            (is (= lines [[[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
+                          [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
+                          [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]]))))
+        (testing "when in alternate buffer"
+          (let [vt (-> vt
+                       (feed-csi cseq)
+                       (feed-str "ABC\nDE")
+                       (feed-csi cseq))
+                {:keys [lines] {:keys [x y]} :cursor} vt]
+            (is (= x 2))
+            (is (= y 1))
+            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
+                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
+                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]])))))))
+
+  (testing "CSI ?1049h (DECSM)" ; save cursor and switch to alternate buffer
     (let [vt (make-vt 4 3)]
       (testing "when in primary buffer"
         (let [vt (-> vt
                      (feed-str "ABC\nDE")
                      (set-bg 2)
-                     (feed-csi "?1047h"))
+                     (feed-csi "?1049h"))
               {:keys [lines] {:keys [x y]} :cursor} vt]
           (is (= x 2))
           (is (= y 1))
@@ -1453,9 +1479,9 @@
                         [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]]))))
       (testing "when in alternate buffer"
         (let [vt (-> vt
-                     (feed-csi "?1047h")
+                     (feed-csi "?1049h")
                      (feed-str "ABC\nDE")
-                     (feed-csi "?1047h"))
+                     (feed-csi "?1049h"))
               {:keys [lines] {:keys [x y]} :cursor} vt]
           (is (= x 2))
           (is (= y 1))
@@ -1499,15 +1525,42 @@
           {{:keys [visible]} :cursor} vt]
       (is (= visible false))))
 
-  (testing "CSI ?1047l (DECRM)" ; switch to primary buffer
+  (testing "CSI ?47l, ?1047l (DECRM)" ; switch back to primary buffer
+    (let [vt (make-vt 4 3)]
+      (doseq [cseq ["?1047l"]]
+        (testing "when in primary buffer"
+          (let [vt (-> vt
+                       (feed-str "ABC\nDE")
+                       (feed-csi cseq))
+                {:keys [lines] {:keys [x y]} :cursor} vt]
+            (is (= x 2))
+            (is (= y 1))
+            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
+                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
+                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))
+        (testing "when in alternate buffer"
+          (let [vt (-> vt
+                       (feed-str "ABC\nDE")
+                       (set-bg 2)
+                       (feed-csi "?1047h") ; set alternate buffer
+                       (feed-str "\nX")
+                       (feed-csi cseq))
+                {:keys [lines] {:keys [x y]} :cursor} vt]
+            (is (= x 1))
+            (is (= y 2))
+            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
+                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
+                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]])))))))
+
+  (testing "CSI ?1049l (DECRM)" ; switch back to primary buffer and restore cursor
     (let [vt (make-vt 4 3)]
       (testing "when in primary buffer"
         (let [vt (-> vt
                      (feed-str "ABC\nDE")
-                     (feed-csi "?1047l")) ; set primary buffer
+                     (feed-csi "?1049l"))
               {:keys [lines] {:keys [x y]} :cursor} vt]
-          (is (= x 2))
-          (is (= y 1))
+          (is (= x 0))
+          (is (= y 0))
           (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
                         [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
                         [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))
@@ -1515,12 +1568,12 @@
         (let [vt (-> vt
                      (feed-str "ABC\nDE")
                      (set-bg 2)
-                     (feed-csi "?1047h") ; set alternate buffer
+                     (feed-csi "?1049h")
                      (feed-str "\nX")
-                     (feed-csi "?1047l")) ; set primary buffer
+                     (feed-csi "?1049l"))
               {:keys [lines] {:keys [x y]} :cursor} vt]
-          (is (= x 1))
-          (is (= y 2))
+          (is (= x 2))
+          (is (= y 1))
           (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
                         [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
                         [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))))

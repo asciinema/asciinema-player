@@ -134,8 +134,10 @@
          [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
          [0x3f 7] (assoc vt :auto-wrap-mode true)
          [0x3f 25] (show-cursor vt)
+         [0x3f 47] (switch-to-alternate-buffer vt)
          [0x3f 1047] (switch-to-alternate-buffer vt)
          [0x3f 1048] (save-cursor vt)
+         [0x3f 1049] (-> vt save-cursor switch-to-alternate-buffer)
          :else vt))
 
 (defn reset-mode [vt intermediate param]
@@ -144,8 +146,10 @@
          [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
          [0x3f 7] (assoc vt :auto-wrap-mode false)
          [0x3f 25] (show-cursor vt false)
+         [0x3f 47] (switch-to-primary-buffer vt)
          [0x3f 1047] (switch-to-primary-buffer vt)
          [0x3f 1048] (restore-cursor vt)
+         [0x3f 1049] (-> vt switch-to-primary-buffer restore-cursor)
          :else vt))
 
 ;; control functions
