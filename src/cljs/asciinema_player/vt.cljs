@@ -1,8 +1,9 @@
 (ns asciinema-player.vt
   (:refer-clojure :exclude [print])
+  (:require-macros [asciinema-player.vt :refer [events]])
   (:require [asciinema-player.util :refer [adjust-to-range]]
-            [clojure.string :as string]
             [cljs.core.match :refer-macros [match]]))
+
 
 ;; References:
 ;; http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
@@ -619,17 +620,6 @@
   vt)
 
 ;; end actions
-
-(defn- event-seq [event]
-  (if (keyword? event)
-    (let [[low high] (string/split (name event) "-")
-          low (js/parseInt low 16)
-          high (js/parseInt high 16)]
-      (range low (inc high)))
-    [event]))
-
-(defn- events [& items]
-  (set (mapcat event-seq items)))
 
 (def c0-prime? (events :0x00-0x17 0x19 :0x1C-0x1F))
 
