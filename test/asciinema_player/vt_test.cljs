@@ -422,6 +422,13 @@
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= cursor {:x 3 :y 0 :visible true}))))
 
+    (testing "printing non-ASCII characters"
+      (let [{:keys [lines cursor]} (feed-str vt "ABCżÓłĆ")]
+        (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x017c {:fg 1}]]
+                      [[0xd3 {:fg 1}] [0x0142 {:fg 1}] [0x0106 {:fg 1}] [0x20 {}]]
+                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= cursor {:x 3 :y 1 :visible true}))))
+
     (testing "printing in insert mode"
       (let [vt (-> vt
                    (feed-str "ABC")
@@ -1685,11 +1692,12 @@
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] [0x3b 0x3b 0x31 0x32 0x3b 0x3b 0x32 0x33 0x3b 0x31 0x3b]))]
     (is (= (get-params vt) [0 0 12 0 23 1]))))
 
-(def gen-rubbish (gen/vector (gen/choose 0 0x9f) 1 100))
+(def gen-ascii-rubbish (gen/vector (gen/choose 0 0x9f) 1 100))
+(def gen-unicode-rubbish (gen/vector (gen/choose 0 0x10ffff) 1 100))
 
 (defspec test-parser-state-for-random-input
   100
-  (prop/for-all [rubbish gen-rubbish]
+  (prop/for-all [rubbish gen-unicode-rubbish]
                 (let [vt (-> (make-vt 80 24) (feed rubbish))]
                   (keyword? (-> vt :parser :state)))))
 
@@ -1697,7 +1705,7 @@
   100
   (prop/for-all [x (gen/choose 0 19)
                  y (gen/choose 0 9)
-                 rubbish gen-rubbish]
+                 rubbish gen-ascii-rubbish]
                 (let [vt (-> (make-vt 20 10)
                              (move-cursor x y)
                              (feed rubbish))
@@ -1709,7 +1717,7 @@
   {:num-tests 100}
   (prop/for-all [x (gen/choose 0 19)
                  y (gen/choose 0 9)
-                 rubbish gen-rubbish]
+                 rubbish gen-ascii-rubbish]
                 (let [vt (-> (make-vt 20 10)
                              (move-cursor x y)
                              (feed rubbish))
@@ -1720,7 +1728,7 @@
 (defspec test-no-wrapping-after-moved-from-right-margin
   {:num-tests 100}
   (prop/for-all [y (gen/choose 0 9)
-                 rubbish gen-rubbish]
+                 rubbish gen-ascii-rubbish]
                 (let [vt (-> (make-vt 20 10)
                              (move-cursor 19 y)
                              (feed rubbish))

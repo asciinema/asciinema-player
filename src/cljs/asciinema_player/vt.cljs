@@ -748,7 +748,8 @@
 
 (defn parse [current-state input]
   (let [current-state-cfg (get states current-state)
-        transition (or (get-transition anywhere-state input) (get-transition current-state-cfg input))]
+        transition (or (get-transition anywhere-state input)
+                       (get-transition current-state-cfg (if (>= input 0xa0) 0x41 input)))]
     (if transition
       (let [transition-action (:action transition)]
         (if-let [new-state (:transition transition)]
