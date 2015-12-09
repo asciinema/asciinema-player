@@ -2,28 +2,26 @@
   (:require [reagent.core :as reagent :refer [atom]]
             [asciinema-player.view :as view]
             [asciinema-player.util :as util]
+            [asciinema-player.vt :as vt]
             [cljs.core.async :refer [chan >! <! put! timeout close! dropping-buffer]]
             [clojure.walk :as walk]
             [clojure.set :refer [rename-keys]]
             [ajax.core :refer [GET]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
-(defn coll->lines [coll]
-  (into (sorted-map) (map-indexed vector coll)))
-
 (defn make-player
   "Returns fresh player state for given options."
-  [width height frames-url duration {:keys [speed snapshot font-size theme start-at auto-play] :or {speed 1 snapshot [] font-size "small" theme "asciinema"} :as options}]
-  (let [lines (coll->lines snapshot)
-        auto-play (if (nil? auto-play) (boolean start-at) auto-play)
+  [width height asciicast-url duration {:keys [speed snapshot font-size theme start-at auto-play]
+                                        :or {speed 1 snapshot [] font-size "small" theme "asciinema"} :as options}]
+  (let [auto-play (if (nil? auto-play) (boolean start-at) auto-play)
         start-at (or start-at 0)]
     (merge {:width width
             :height height
             :duration duration
-            :frames-url frames-url
+            :asciicast-url asciicast-url
             :speed speed
             :auto-play auto-play
-            :lines lines
+            :lines snapshot
             :font-size font-size
             :theme theme
             :cursor {:visible false}
@@ -43,11 +41,13 @@
   (/ (- (.getTime (js/Date.)) (.getTime then)) 1000))
 
 (defn update-screen
-  "Applies given screen state (line content and cursor attributes) to player's
-  state."
-  [state {:keys [lines cursor]}]
-  (merge state {:lines lines :cursor cursor}))
-
+  "Extracts screen state (line content and cursor attributes) from given frame
+  payload and applies it to player's state."
+  [{:keys [frame-fn] :as state} frame]
+  (let [{:keys [lines cursor]} (frame-fn frame)]
+    (-> state
+        (assoc :lines lines)
+        (update-in [:cursor] merge cursor))))
 
 (defn coll->chan
   "Returns a channel that emits frames from the given collection.
@@ -164,17 +164,16 @@
         (dissoc :stop)
         (update-in [:start-at] + t))))
 
-(defn fetch-frames
-  "Fetches frames, setting :loading to true at the start,
-  dispatching :frames-response event on success, :bad-response event on
+(defn fetch-asciicast
+  "Fetches asciicast JSON file, setting :loading to true at the start,
+  dispatching :asciicast-response event on success, :bad-response event on
   failure."
   [state dispatch]
-  (let [url (:frames-url state)]
-    (GET
-     url
-     {:response-format :raw
-      :handler #(dispatch [:frames-response %])
-      :error-handler #(dispatch [:bad-response %])})
+  (let [url (:asciicast-url state)]
+    (GET url
+         {:response-format :raw
+          :handler #(dispatch [:asciicast-response %])
+          :error-handler #(dispatch [:bad-response %])})
     (assoc state :loading true)))
 
 (defn new-position
@@ -189,7 +188,7 @@
     (if (contains? state :stop)
       (stop-playback state)
       (start-playback state dispatch))
-    (fetch-frames state dispatch)))
+    (fetch-asciicast state dispatch)))
 
 (defn handle-seek
   "Jumps to a given position (in seconds)."
@@ -249,34 +248,67 @@
 (defn- fix-line-diff-keys [line-diff]
   (into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) line-diff)))
 
-(defn fix-frames
+(defn fix-diffs
   "Converts integer keys referring to line numbers in line diff (which are
   keywords) to actual integers."
   [frames]
   (map #(update-in % [1 :lines] fix-line-diff-keys) frames))
 
-(defn make-vt []
-  {:lines (coll->lines [])
-   :cursor {:x 0 :y 0 :visible true :on true}})
+(defn stringify-line-segments [lines]
+  (map (fn [line]
+         (map (fn [[ch attrs]]
+                [(js/String.fromCharCode ch) attrs])
+              line))
+       lines))
 
-(defn reduce-frame [[_ vt] [delay diff]]
-  [delay (merge-with merge vt diff)])
+(defn reduce-v0-frame [[_ acc] [delay diff]]
+  [delay (merge-with merge acc diff)])
 
-(defn gen-screen-states [frames]
-  (let [vt (make-vt)]
-    (reductions reduce-frame [0 vt] frames)))
+(defn build-v0-frames [diffs]
+  (let [diffs (fix-diffs diffs)
+        acc {:lines (sorted-map)
+            :cursor {:x 0 :y 0 :visible true}}]
+    (reductions reduce-v0-frame [0 acc] diffs)))
 
-(defn handle-frames-response
-  "Merges frames into player state, hides loading indicator and starts the
+(defn acc->frame [acc]
+  (update-in acc [:lines] vals))
+
+(defn reduce-v1-frame [[_ vt] [delay str]]
+  [delay (vt/feed-str vt str)])
+
+(defn build-v1-frames [{:keys [stdout width height]}]
+  (let [vt (vt/make-vt width height)]
+    (reductions reduce-v1-frame [0 vt] stdout)))
+
+(defn vt->frame
+  "Extracts lines and cursor from given vt, converting unicode codepoints to
+  strings."
+  [{:keys [lines cursor]}]
+  {:lines (stringify-line-segments lines)
+   :cursor cursor})
+
+(defn initialize-asciicast
+  "Prepares fetched asciicast for playback."
+  [state asciicast]
+  (cond (vector? asciicast) (assoc state
+                                   :frame-fn acc->frame
+                                   :frames (build-v0-frames asciicast))
+        (= 1 (:version asciicast)) (assoc state
+                                          :frame-fn vt->frame
+                                          :frames (build-v1-frames asciicast))
+        :else (throw (str "unsupported asciicast version: " (:version asciicast)))))
+
+(defn handle-asciicast-response
+  "Merges asciicast frames into player state, hides loading indicator and starts the
   playback."
   [state dispatch [json]]
   (dispatch [:toggle-play])
-  (let [frames (-> json
-                   js/JSON.parse
-                   (util/faster-js->clj :keywordize-keys true)
-                   fix-frames
-                   gen-screen-states)]
-    (assoc state :loading false :frames frames)))
+  (let [asciicast (-> json
+                      js/JSON.parse
+                      (util/faster-js->clj :keywordize-keys true))]
+    (-> state
+        (assoc :loading false)
+        (initialize-asciicast asciicast))))
 
 (defn handle-update-state
   "Applies given function (with args) to the player state."
@@ -290,7 +322,7 @@
                      :finished handle-finished
                      :speed-up (partial handle-speed-change speed-up)
                      :speed-down (partial handle-speed-change speed-down)
-                     :frames-response handle-frames-response
+                     :asciicast-response handle-asciicast-response
                      :update-state handle-update-state})
 
 (defn process-event
@@ -356,15 +388,15 @@
 (defn create-player
   "Creates the player with the state built from given options by starting event
   processing loop and mounting Reagent component in DOM."
-  [dom-node width height frames-url duration options]
+  [dom-node width height asciicast-url duration options]
   (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)
-        state (make-player-ratom width height frames-url duration options)]
+        state (make-player-ratom width height asciicast-url duration options)]
     (create-player-with-state state dom-node)))
 
 (defn ^:export CreatePlayer
   "JavaScript API for creating the player, delegating to create-player."
-  ([dom-node width height frames-url duration] (CreatePlayer dom-node width height frames-url duration {}))
-  ([dom-node width height frames-url duration options]
+  ([dom-node width height asciicast-url duration] (CreatePlayer dom-node width height asciicast-url duration {}))
+  ([dom-node width height asciicast-url duration options]
    (let [options (-> options
                      (js->clj :keywordize-keys true)
                      (rename-keys {:autoPlay :auto-play
@@ -372,6 +404,6 @@
                                    :authorURL :author-url
                                    :startAt :start-at
                                    :authorImgURL :author-img-url}))]
-     (create-player dom-node width height frames-url duration options))))
+     (create-player dom-node width height asciicast-url duration options))))
 
 (enable-console-print!)

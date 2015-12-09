@@ -23,6 +23,15 @@
 ;; (defonce player-state
 ;;   (p/make-player-ratom 80 24 "/frames-20055.json" 38.91 options))
 
+;; (defonce player-state
+;;   (p/make-player-ratom 80 24 "/20055.json" 38.91 options))
+
+;; (defonce player-state
+;;   (p/make-player-ratom 79 22 "/21195.json" 42 options))
+
+;; (defonce player-state
+;;   (p/make-player-ratom 79 22 "/frames-21195.json" 42 options))
+
 ;; "catimg"
 
 ;; (defonce player-state
