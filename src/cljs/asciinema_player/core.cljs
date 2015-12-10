@@ -254,13 +254,6 @@
   [frames]
   (map #(update-in % [1 :lines] fix-line-diff-keys) frames))
 
-(defn stringify-line-segments [lines]
-  (map (fn [line]
-         (map (fn [[ch attrs]]
-                [(js/String.fromCharCode ch) attrs])
-              line))
-       lines))
-
 (defn reduce-v0-frame [[_ acc] [delay diff]]
   [delay (merge-with merge acc diff)])
 
@@ -284,7 +277,7 @@
   "Extracts lines and cursor from given vt, converting unicode codepoints to
   strings."
   [{:keys [lines cursor]}]
-  {:lines (stringify-line-segments lines)
+  {:lines (vt/compact-lines lines)
    :cursor cursor})
 
 (defn initialize-asciicast

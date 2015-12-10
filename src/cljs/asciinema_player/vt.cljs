@@ -764,3 +764,20 @@
 (defn feed-str [vt str]
   (let [codes (map #(.charCodeAt % 0) str)]
     (feed vt codes)))
+
+(defn compact-line
+  "Joins together all neighbouring cells having the same color attributes."
+  [line]
+  (let [[cell & cells] line]
+    (loop [segments []
+           chars [(first cell)]
+           attrs (last cell)
+           cells cells]
+      (if-let [[char new-attrs] (first cells)]
+        (if (= new-attrs attrs)
+          (recur segments (conj chars char) attrs (rest cells))
+          (recur (conj segments [(apply js/String.fromCharCode chars) attrs]) [char] new-attrs (rest cells)))
+        (conj segments [(apply js/String.fromCharCode chars) attrs])))))
+
+(defn compact-lines [lines]
+  (map compact-line lines))
