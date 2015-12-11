@@ -382,13 +382,24 @@
                                                 (repeat n (empty-line width char-attrs))
                                                 (drop y lines))))))))
 
-(defn execute-dl [{:keys [width height char-attrs] {y :y} :cursor :as vt}]
-  (let [n (min (get-param vt 0 1) (- height y))]
+(defn scroll-up-lines [lines n filler]
+  (let [n (min n (count lines))]
+    (concat
+     (drop n lines)
+     (repeat n filler))))
+
+(defn execute-dl [{:keys [bottom-margin width height char-attrs] {y :y} :cursor :as vt}]
+  (let [n (get-param vt 0 1)
+        filler (empty-line width char-attrs)]
     (update-in vt [:lines] (fn [lines]
-                             (vec (concat
-                                   (take y lines)
-                                   (drop (+ y n) lines)
-                                   (repeat n (empty-line width char-attrs))))))))
+                             (vec (if (<= y bottom-margin)
+                                    (concat
+                                     (take y lines)
+                                     (scroll-up-lines (subvec lines y (inc bottom-margin)) n filler)
+                                     (drop (inc bottom-margin) lines))
+                                    (concat
+                                     (take y lines)
+                                     (scroll-up-lines (drop y lines) n filler))))))))
 
 (defn execute-dch [{{:keys [x y]} :cursor :keys [char-attrs] :as vt}]
   (let [n (get-param vt 0 1)]

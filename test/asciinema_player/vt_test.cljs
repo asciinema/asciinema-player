@@ -5,7 +5,7 @@
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop :include-macros true]
-            [asciinema-player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor]]))
+            [asciinema-player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines]]))
 
 (defn test-event [initial-state input expected-state expected-actions]
   (is (= (parse initial-state input) [expected-state expected-actions])))
@@ -1267,26 +1267,43 @@
                  (feed-str "ABCDEFGHIJKLM")
                  (move-cursor 2 1))]
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "M")]
-        (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
-                      [[0x49 {}] [0x4a {}] [0x4b {}] [0x4c {}]]
-                      [[0x4d {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["ABCD" {}]]
+                                      [["IJKL" {}]]
+                                      [["M   " {}]]
+                                      [["    " {}]]]))
         (is (= x 2))
         (is (= y 1)))
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2M")]
-        (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
-                      [[0x4d {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["ABCD" {}]]
+                                      [["M   " {}]]
+                                      [["    " {}]]
+                                      [["    " {}]]]))
         (is (= x 2))
         (is (= y 1)))
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10M")]
-        (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["ABCD" {}]]
+                                      [["    " {}]]
+                                      [["    " {}]]
+                                      [["    " {}]]]))
         (is (= x 2))
-        (is (= y 1)))))
+        (is (= y 1)))
+      (let [vt (-> vt
+                   (feed-csi "2;3r") ; set scroll region
+                   (move-cursor 2 0))]
+        (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2M")]
+          (is (= (compact-lines lines) [[["IJKL" {}]]
+                                        [["    " {}]]
+                                        [["    " {}]]
+                                        [["M   " {}]]]))
+          (is (= x 2))
+          (is (= y 0)))
+        (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "20M")]
+          (is (= (compact-lines lines) [[["    " {}]]
+                                        [["    " {}]]
+                                        [["    " {}]]
+                                        [["M   " {}]]]))
+          (is (= x 2))
+          (is (= y 0))))))
 
   (testing "CSI P (DCH)"
     (let [vt (-> (make-vt 7 1)
