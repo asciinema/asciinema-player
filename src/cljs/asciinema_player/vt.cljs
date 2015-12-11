@@ -57,6 +57,7 @@
    :char-attrs {}
    :insert-mode false
    :auto-wrap-mode true
+   :new-line-mode false
    :next-print-wraps false
    :origin-mode false
    :lines (empty-screen width height)
@@ -132,6 +133,7 @@
 (defn set-mode [vt intermediate param]
   (match [intermediate param]
          [nil 4] (assoc vt :insert-mode true)
+         [nil 20] (assoc vt :new-line-mode true)
          [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
          [0x3f 7] (assoc vt :auto-wrap-mode true)
          [0x3f 25] (show-cursor vt)
@@ -144,6 +146,7 @@
 (defn reset-mode [vt intermediate param]
   (match [intermediate param]
          [nil 4] (assoc vt :insert-mode false)
+         [nil 20] (assoc vt :new-line-mode false)
          [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
          [0x3f 7] (assoc vt :auto-wrap-mode false)
          [0x3f 25] (show-cursor vt false)
@@ -185,15 +188,14 @@
 (defn execute-cr [vt]
   (move-cursor-to-col vt 0))
 
-(defn execute-lf [{:keys [height] {y :y} :cursor :as vt}]
-  (-> vt
-      move-cursor-down
-      execute-cr))
+(defn execute-lf [{:keys [new-line-mode] :as vt}]
+  (let [vt (move-cursor-down vt)]
+    (if new-line-mode
+      (execute-cr vt)
+      vt)))
 
-(def execute-vt move-cursor-down)
-(def execute-ff move-cursor-down)
-(def execute-ind move-cursor-down)
-(def execute-nel execute-lf)
+(defn execute-nel [vt]
+  (-> vt move-cursor-down execute-cr))
 
 (defn execute-hts [{{x :x} :cursor :as vt}]
   (if (pos? x)
@@ -532,10 +534,10 @@
                     0x08 execute-bs
                     0x09 execute-ht
                     0x0a execute-lf
-                    0x0b execute-vt
-                    0x0c execute-ff
+                    0x0b execute-lf
+                    0x0c execute-lf
                     0x0d execute-cr
-                    0x84 execute-ind
+                    0x84 execute-lf
                     0x85 execute-nel
                     0x88 execute-hts
                     0x8d execute-ri

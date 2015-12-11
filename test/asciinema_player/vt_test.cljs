@@ -383,6 +383,7 @@
     (is (= (-> vt :parser :param-chars) []))
     (is (= (-> vt :insert-mode) false))
     (is (= (-> vt :auto-wrap-mode) true))
+    (is (= (-> vt :new-line-mode) false))
     (is (= (-> vt :top-margin) 0))
     (is (= (-> vt :bottom-margin) 23))
     (is (= (-> vt :origin-mode) false)))
@@ -499,7 +500,7 @@
                       [[0x43 {:fg 1}] [0x43 {:fg 1}] [0x44 {:fg 1}] [0x48 {:fg 1}]]]))
         (is (= cursor {:x 3 :y 2 :visible true}))))))
 
-(defn test-ind [f]
+(defn test-lf [f]
   (let [vt (-> (make-vt 4 7)
                (feed-str "AAAABBBBCCCCDDDDEEEEFFFFG")
                (set-bg 3))]
@@ -588,7 +589,12 @@
                       [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
                       [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= x 2))
-        (is (= y 6))))))
+        (is (= y 6))))
+    (let [vt (feed-csi vt "20h") ; set new-line mode
+          vt (-> vt (move-cursor 2 1) f)
+          {{:keys [x y]} :cursor} vt]
+      (is (= x 0))
+      (is (= y 2)))))
 
 (defn test-nel [f]
   (let [vt (-> (make-vt 4 7)
@@ -841,13 +847,9 @@
           (is (= x 19))
           (is (= y 1)))))
 
-    (testing "0x0a (LF), 0x85 (NEL)"
-      (doseq [ch [0x0a 0x85]]
-        (test-nel #(feed-one % ch))))
-
-    (testing "0x0b (VT), 0x0c (FF), 0x84 (IND)"
-      (doseq [ch [0x0b 0x0c 0x84]]
-        (test-ind #(feed-one % ch))))
+    (testing "0x0a (LF), 0x0b (VT), 0x0c (FF), 0x84 (IND)"
+      (doseq [ch [0x0a 0x0b 0x0c 0x84]]
+        (test-lf #(feed-one % ch))))
 
     (testing "0x0d (CR)"
       (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 1) (feed-one 0x0d))]
@@ -857,6 +859,10 @@
         (is (= x 0))
         (is (= y 1))))
 
+    (testing "0x85 (NEL)"
+      (doseq [ch [0x85]]
+        (test-nel #(feed-one % ch))))
+
     (testing "0x88 (HTS)"
       (test-hts #(feed-one % 0x88)))
 
@@ -865,7 +871,7 @@
 
 (deftest esc-sequence-test
   (testing "ESC D (IND)"
-    (test-ind #(feed-esc % "D")))
+    (test-lf #(feed-esc % "D")))
 
   (testing "ESC E (NEL)"
     (test-nel #(feed-esc % "E")))
@@ -1422,6 +1428,11 @@
           {:keys [insert-mode]} (feed-csi vt "4h")]
       (is (= insert-mode true))))
 
+  (testing "CSI 20h (SM)"
+    (let [vt (make-vt 80 24)
+          {:keys [new-line-mode]} (feed-csi vt "20h")]
+      (is (= new-line-mode true))))
+
   (testing "CSI ?6h (DECSM)" ; set origin mode
     (let [vt (-> (make-vt 80 24)
                  (feed-csi "3;5r") ; set scroll region
@@ -1450,7 +1461,7 @@
       (doseq [cseq ["?47h" "?1047h"]]
         (testing "when in primary buffer"
           (let [vt (-> vt
-                       (feed-str "ABC\nDE")
+                       (feed-str "ABC\n\rDE")
                        (set-bg 2)
                        (feed-csi cseq))
                 {:keys [lines] {:keys [x y]} :cursor} vt]
@@ -1462,7 +1473,7 @@
         (testing "when in alternate buffer"
           (let [vt (-> vt
                        (feed-csi cseq)
-                       (feed-str "ABC\nDE")
+                       (feed-str "ABC\n\rDE")
                        (feed-csi cseq))
                 {:keys [lines] {:keys [x y]} :cursor} vt]
             (is (= x 2))
@@ -1475,7 +1486,7 @@
     (let [vt (make-vt 4 3)]
       (testing "when in primary buffer"
         (let [vt (-> vt
-                     (feed-str "ABC\nDE")
+                     (feed-str "ABC\n\rDE")
                      (set-bg 2)
                      (feed-csi "?1049h"))
               {:keys [lines] {:keys [x y]} :cursor} vt]
@@ -1487,7 +1498,7 @@
       (testing "when in alternate buffer"
         (let [vt (-> vt
                      (feed-csi "?1049h")
-                     (feed-str "ABC\nDE")
+                     (feed-str "ABC\n\rDE")
                      (feed-csi "?1049h"))
               {:keys [lines] {:keys [x y]} :cursor} vt]
           (is (= x 2))
@@ -1508,6 +1519,11 @@
     (let [vt (make-vt 80 24)
           {:keys [insert-mode]} (feed-csi vt "4l")]
       (is (= insert-mode false))))
+
+  (testing "CSI 20l (RM)"
+    (let [vt (make-vt 80 24)
+          {:keys [new-line-mode]} (feed-csi vt "20l")]
+      (is (= new-line-mode false))))
 
   (testing "CSI ?6l (DECRM)" ; reset origin mode
     (let [vt (-> (make-vt 20 10)
@@ -1537,7 +1553,7 @@
       (doseq [cseq ["?1047l"]]
         (testing "when in primary buffer"
           (let [vt (-> vt
-                       (feed-str "ABC\nDE")
+                       (feed-str "ABC\n\rDE")
                        (feed-csi cseq))
                 {:keys [lines] {:keys [x y]} :cursor} vt]
             (is (= x 2))
@@ -1547,10 +1563,10 @@
                           [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))
         (testing "when in alternate buffer"
           (let [vt (-> vt
-                       (feed-str "ABC\nDE")
+                       (feed-str "ABC\n\rDE")
                        (set-bg 2)
                        (feed-csi "?1047h") ; set alternate buffer
-                       (feed-str "\nX")
+                       (feed-str "\n\rX")
                        (feed-csi cseq))
                 {:keys [lines] {:keys [x y]} :cursor} vt]
             (is (= x 1))
@@ -1563,7 +1579,7 @@
     (let [vt (make-vt 4 3)]
       (testing "when in primary buffer"
         (let [vt (-> vt
-                     (feed-str "ABC\nDE")
+                     (feed-str "ABC\n\rDE")
                      (feed-csi "?1049l"))
               {:keys [lines] {:keys [x y]} :cursor} vt]
           (is (= x 0))
@@ -1573,10 +1589,10 @@
                         [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))
       (testing "when in alternate buffer"
         (let [vt (-> vt
-                     (feed-str "ABC\nDE")
+                     (feed-str "ABC\n\rDE")
                      (set-bg 2)
                      (feed-csi "?1049h")
-                     (feed-str "\nX")
+                     (feed-str "\n\rX")
                      (feed-csi "?1049l"))
               {:keys [lines] {:keys [x y]} :cursor} vt]
           (is (= x 2))
