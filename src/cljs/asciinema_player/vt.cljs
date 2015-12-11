@@ -73,13 +73,34 @@
 (defn set-margin [vt top bottom]
   (assoc vt :top-margin top :bottom-margin bottom))
 
+(defn scroll-up-lines [lines n filler]
+  (let [n (min n (count lines))]
+    (concat
+     (drop n lines)
+     (repeat n filler))))
+
 (defn scroll-up [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
-  (update-in vt [:lines] (fn [lines]
-                           (vec (concat
-                                 (take top-margin lines)
-                                 (subvec lines (inc top-margin) (inc bottom-margin))
-                                 [(empty-line width char-attrs)]
-                                 (drop (inc bottom-margin) lines))))))
+  (let [filler (empty-line width char-attrs)]
+    (update-in vt [:lines] (fn [lines]
+                             (vec (concat
+                                   (take top-margin lines)
+                                   (scroll-up-lines (subvec lines top-margin (inc bottom-margin)) 1 filler)
+                                   (drop (inc bottom-margin) lines)))))))
+
+(defn scroll-down-lines [lines n filler]
+  (let [height (count lines)
+        n (min n height)]
+    (concat
+     (repeat n filler)
+     (take (- height n) lines))))
+
+(defn scroll-down [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
+  (let [filler (empty-line width char-attrs)]
+    (update-in vt [:lines] (fn [lines]
+                             (vec (concat
+                                   (take top-margin lines)
+                                   (scroll-down-lines (subvec lines top-margin (inc bottom-margin)) 1 filler)
+                                   (drop (inc bottom-margin) lines)))))))
 
 (defn move-cursor-to-col [vt x]
   (-> vt
@@ -156,28 +177,7 @@
          [0x3f 1049] (-> vt switch-to-primary-buffer restore-cursor)
          :else vt))
 
-(defn scroll-up-lines [lines n filler]
-  (let [n (min n (count lines))]
-    (concat
-     (drop n lines)
-     (repeat n filler))))
-
-(defn scroll-down-lines [lines n filler]
-  (let [height (count lines)
-        n (min n height)]
-    (concat
-     (repeat n filler)
-     (take (- height n) lines))))
-
 ;; control functions
-
-(defn scroll-down [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
-  (update-in vt [:lines] (fn [lines]
-                           (vec (concat
-                                 (take top-margin lines)
-                                 [(empty-line width char-attrs)]
-                                 (subvec lines top-margin bottom-margin)
-                                 (drop (inc bottom-margin) lines))))))
 
 (defn execute-bs [{{:keys [x]} :cursor :as vt}]
   (move-cursor-to-col vt (max (dec x) 0)))
