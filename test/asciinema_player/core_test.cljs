@@ -8,7 +8,7 @@
     (let [player (make-player {})]
       (is (= (:width player) 80))
       (is (= (:height player) 24))
-      (is (= (:frames-url player) "https://..."))
+      (is (= (:asciicast-url player) "https://..."))
       (is (= (:duration player) 123.45))
       (is (= (:start-at player) 0))
       (is (= (:current-time player) 0))
@@ -32,12 +32,19 @@
       (is (= (:current-time player) 15))
       (is (= (:auto-play player) false)))
     (let [player (make-player {:snapshot [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]]})]
-      (is (= (:lines player) {0 [["foo" {}] ["bar" {:fg 1}]] 1 [["baz" {:bg 2}]]})))))
+      (is (= (:lines player) [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]])))))
 
 (deftest update-screen-test
-  (let [state {:lines {2 :a} :cursor {:y 5}}
-        changes {:lines {1 :b 3 :d} :cursor {:x 1 :y 2 :visible true} :unknown true}]
-    (is (= (c/update-screen state changes) {:lines {1 :b 3 :d} :cursor {:x 1 :y 2 :visible true}}))))
+  (let [frame-fn #(update-in % [:cursor :y] inc)
+        state {:lines {2 :a}
+               :cursor {:y 5}
+               :frame-fn frame-fn}
+        changes {:lines {1 :b 3 :d}
+                 :cursor {:x 1 :y 2 :visible true}
+                 :unknown true}]
+    (is (= (c/update-screen state changes) {:lines {1 :b 3 :d}
+                                            :cursor {:x 1 :y 3 :visible true}
+                                            :frame-fn frame-fn}))))
 
 (deftest new-position-test
   (is (= (c/new-position 2 5 -3) 0.0))
@@ -75,6 +82,6 @@
     (is (= (c/next-frames frames 12) []))
     (is (= (c/next-frames frames 13) []))))
 
-(deftest fix-frames-test
-  (let [frames [[1.2 {:lines {:0 [["foo" {:fg 1}]] :1 [["bar" {:bg 2}]]} :cursor {:x 1 :y 2 :visible false}}]]]
-    (is (= (c/fix-frames frames) [[1.2 {:lines {0 [["foo" {:fg 1}]] 1 [["bar" {:bg 2}]]} :cursor {:x 1 :y 2 :visible false}}]]))))
+(deftest fix-diffs-test
+  (let [diffs [[1.2 {:lines {:0 [["foo" {:fg 1}]] :1 [["bar" {:bg 2}]]} :cursor {:x 1 :y 2 :visible false}}]]]
+    (is (= (c/fix-diffs diffs) [[1.2 {:lines {0 [["foo" {:fg 1}]] 1 [["bar" {:bg 2}]]} :cursor {:x 1 :y 2 :visible false}}]]))))
