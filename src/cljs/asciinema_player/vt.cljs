@@ -156,6 +156,19 @@
          [0x3f 1049] (-> vt switch-to-primary-buffer restore-cursor)
          :else vt))
 
+(defn scroll-up-lines [lines n filler]
+  (let [n (min n (count lines))]
+    (concat
+     (drop n lines)
+     (repeat n filler))))
+
+(defn scroll-down-lines [lines n filler]
+  (let [height (count lines)
+        n (min n height)]
+    (concat
+     (repeat n filler)
+     (take (- height n) lines))))
+
 ;; control functions
 
 (defn scroll-down [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
@@ -374,19 +387,18 @@
                                    (repeat n (empty-line width char-attrs))
                                    (take (- height n) lines)))))))
 
-(defn execute-il [{:keys [width height char-attrs] {y :y} :cursor :as vt}]
-  (let [n (min (get-param vt 0 1) (- height y))]
+(defn execute-il [{:keys [bottom-margin width height char-attrs] {y :y} :cursor :as vt}]
+  (let [n (get-param vt 0 1)
+        filler (empty-line width char-attrs)]
     (update-in vt [:lines] (fn [lines]
-                             (vec (take height (concat
-                                                (take y lines)
-                                                (repeat n (empty-line width char-attrs))
-                                                (drop y lines))))))))
-
-(defn scroll-up-lines [lines n filler]
-  (let [n (min n (count lines))]
-    (concat
-     (drop n lines)
-     (repeat n filler))))
+                             (vec (if (<= y bottom-margin)
+                                    (concat
+                                     (take y lines)
+                                     (scroll-down-lines (subvec lines y (inc bottom-margin)) n filler)
+                                     (drop (inc bottom-margin) lines))
+                                    (concat
+                                     (take y lines)
+                                     (scroll-down-lines (drop y lines) n filler))))))))
 
 (defn execute-dl [{:keys [bottom-margin width height char-attrs] {y :y} :cursor :as vt}]
   (let [n (get-param vt 0 1)
