@@ -449,7 +449,7 @@
         (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x44 {:fg 1}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-        (is (= cursor {:x 3 :y 0 :visible true}))
+        (is (= cursor {:x 4 :y 0 :visible true}))
         (let [vt (feed-str vt "EF")
               {:keys [lines cursor]} vt]
           (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x44 {:fg 1}]]
@@ -481,7 +481,7 @@
         (is (= lines [[[0x41 {:fg 1}] [0x41 {:fg 1}] [0x41 {:fg 1}] [0x41 {:fg 1}]]
                       [[0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}]]
                       [[0x43 {:fg 1}] [0x43 {:fg 1}] [0x43 {:fg 1}] [0x43 {:fg 1}]]]))
-        (is (= cursor {:x 3 :y 2 :visible true}))
+        (is (= cursor {:x 4 :y 2 :visible true}))
         (let [vt (feed-str vt "DD")
               {:keys [lines cursor]} vt]
           (is (= lines [[[0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}]]
@@ -1759,8 +1759,8 @@
                 (let [vt (-> (make-vt 20 10)
                              (move-cursor x y)
                              (feed rubbish))
-                      {{:keys [x y]} :cursor} vt]
-                  (and (< -1 x 20)
+                      {:keys [next-print-wraps] {:keys [x y]} :cursor} vt]
+                  (and (or (< -1 x 20) (and (= x 20) (true? next-print-wraps)))
                        (< -1 y 10)))))
 
 (defspec test-row-and-column-count-for-random-input
@@ -1783,4 +1783,4 @@
                              (move-cursor 19 y)
                              (feed rubbish))
                       {{new-x :x new-y :y} :cursor :keys [next-print-wraps]} vt]
-                  (not (and next-print-wraps (not= new-x 19))))))
+                  (not (and next-print-wraps (< new-x 20))))))

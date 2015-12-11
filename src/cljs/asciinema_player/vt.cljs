@@ -107,8 +107,9 @@
       (assoc-in [:cursor :x] x)
       (assoc :next-print-wraps false)))
 
-(defn move-cursor-to-row [vt y]
+(defn move-cursor-to-row [{:keys [width] {:keys [x]} :cursor :as vt} y]
   (-> vt
+      (assoc-in [:cursor :x] (min x (dec width)))
       (assoc-in [:cursor :y] y)
       (assoc :next-print-wraps false)))
 
@@ -536,12 +537,16 @@
       (scroll-up vt)
       (move-cursor-to-row vt (inc y)))))
 
-(defn do-print [{:keys [width height char-attrs insert-mode] {:keys [x y]} :cursor :as vt} input]
+(defn do-print [{:keys [width height char-attrs auto-wrap-mode insert-mode] {:keys [x y]} :cursor :as vt} input]
   (let [cell (cell input char-attrs)]
     (if (= width (inc x))
-      (-> vt
-          (assoc-in [:lines y x] cell)
-          (assoc :next-print-wraps true))
+      (if auto-wrap-mode
+        (-> vt
+            (assoc-in [:lines y x] cell)
+            (move-cursor-to-col (inc x))
+            (assoc :next-print-wraps true))
+        (-> vt
+            (assoc-in [:lines y x] cell)))
       (let [f (if insert-mode insert-char replace-char)]
         (-> vt
             (update-in [:lines y] f x cell)
