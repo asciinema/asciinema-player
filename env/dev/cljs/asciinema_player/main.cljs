@@ -82,7 +82,8 @@
 
 (defn debug []
   (go
-    (let [v0-json (<! (fetch-json v0-url))
+    (let [check-from 24
+          v0-json (<! (fetch-json v0-url))
           v0-frames (vec (drop 1 (map #(p/acc->frame (last %)) (p/build-v0-frames v0-json))))
           v1-json (<! (fetch-json v1-url))
           v1-stdout (vec (map last (:stdout v1-json)))]
@@ -98,14 +99,18 @@
                 expected-cursor (get-in v0-frames [n :cursor])]
             (print n)
             (print "fed: " str)
-            (when (> n 0)
+            (when (>= n check-from)
               (when (not= actual-lines expected-lines)
+                (print "prev lines:")
+                (prn prev-lines)
                 (print "expected lines:")
                 (prn expected-lines)
                 (print "got lines:")
                 (prn actual-lines)
-                (print "prev lines:")
-                (prn prev-lines)
+                (print "first not matching line:")
+                (let [conflict (first (filter #(apply not= %) (map vector expected-lines actual-lines)))]
+                  (prn "expected: " (first conflict))
+                  (prn "got: " (second conflict)))
                 (throw "expectation failed"))
 
               (when (not= actual-cursor expected-cursor)
