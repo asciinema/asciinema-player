@@ -1650,7 +1650,7 @@
           (is (false? cursor-visible))))))
 
   (testing "CSI m (SGR)"
-    (let [vt (make-vt 20 1)
+    (let [vt (make-vt 21 1)
           vt (reduce feed-csi vt ["0mA"
                                   "1mA" ; turn on bold
                                   "3mA" ; turn on italic
@@ -1663,6 +1663,7 @@
                                   "25mA" ; turn off blink
                                   "27mA" ; turn off inverse
                                   "32;43mA" ; fg 2, bg 3
+                                  "93;104mA" ; fg 11, bg 12
                                   "39mA" ; default fg
                                   "49mA" ; default bg
                                   "32;43;1mA" ; fg 2, bg 3, bold
@@ -1684,7 +1685,8 @@
                     [0x41 {:inverse true}]
                     [0x41 {}]
                     [0x41 {:fg 2 :bg 3}]
-                    [0x41 {:bg 3}]
+                    [0x41 {:fg 11 :bg 12}]
+                    [0x41 {:bg 12}]
                     [0x41 {}]
                     [0x41 {:fg 2 :bg 3 :bold true}]
                     [0x41 {}]

@@ -489,6 +489,8 @@
                [(bg :guard #(<= 40 % 47)) _ _] (recur (set-attr vt :bg (- bg 40)) (rest params))
                [48 5 (bg :guard some?)] (recur (set-attr vt :bg bg) (drop 3 params))
                [49 _ _] (recur (unset-attr vt :bg) (rest params))
+               [(fg :guard #(<= 90 % 97)) _ _] (recur (set-attr vt :fg (- fg 82)) (rest params))
+               [(bg :guard #(<= 100 % 107)) _ _] (recur (set-attr vt :bg (- bg 92)) (rest params))
                :else (recur vt (rest params)))
         vt))))
 
