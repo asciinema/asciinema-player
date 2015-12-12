@@ -752,9 +752,9 @@
   }
   :osc-string {
     :on-enter osc-start
-    c0-prime? {:action ignore}
+    (disj c0-prime? 0x07) {:action ignore}
     (events :0x20-0x7F) {:action osc-put}
-    (events 0x07) {:transition :ground} ; 0x07 is xterm non-ANSI variant of transition to :ground - THIS WON'T HAPPEN BECAUSE OF 0x07 IN ANYWHERE, REMOVE?
+    (events 0x07) {:transition :ground} ; 0x07 is xterm non-ANSI variant of transition to :ground
     :on-exit osc-end
   }
   :sos-pm-apc-string {

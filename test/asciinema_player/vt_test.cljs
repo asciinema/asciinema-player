@@ -341,7 +341,12 @@
     (test-high-events :dcs-ignore))
 
   (testing "osc-string"
-    (doseq [input (range 0x00 (inc 0x17))]
+    (doseq [input (range 0x00 (inc 0x06))]
+      (test-event :osc-string input :osc-string [vt/ignore]))
+
+    (test-event :osc-string 0x07 :ground [vt/osc-end])
+
+    (doseq [input (range 0x08 (inc 0x17))]
       (test-event :osc-string input :osc-string [vt/ignore]))
 
     (test-event :osc-string 0x18 :ground [vt/osc-end vt/execute])
