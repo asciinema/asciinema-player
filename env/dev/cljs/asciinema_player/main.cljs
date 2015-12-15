@@ -55,7 +55,7 @@
 ;; (swap! player-state assoc :font-size "small")
 ;; (swap! player-state assoc :speed 1)
 
-(defonce reload-fn (atom nil))
+(defonce reload-fn (atom (fn [])))
 
 (defn reload []
   (@reload-fn))
@@ -67,8 +67,10 @@
   (reset! reload-fn reload-player)
   (reload-player))
 
-(def v0-url "/frames-21195.json")
-(def v1-url "/21195.json")
+(def asciicast-filename "22994.json")
+(def v0-url (str "/asciicasts/frames-" asciicast-filename))
+(def v1-url (str "/asciicasts/" asciicast-filename))
+(def check-from 1)
 
 (defn fetch-json [url]
   (let [ch (chan)]
@@ -80,15 +82,23 @@
                                   (util/faster-js->clj :keywordize-keys true))))})
     ch))
 
+(defn feed-verbose [vt str]
+  (let [codes (map #(.charCodeAt % 0) str)]
+    (reduce (fn [vt input]
+              (prn (-> vt :parser :state))
+              (vt/feed-one vt input)) vt codes)))
+
 (defn debug []
   (go
-    (let [check-from 24
-          v0-json (<! (fetch-json v0-url))
+    (let [v0-json (<! (fetch-json v0-url))
           v0-frames (vec (drop 1 (map #(p/acc->frame (last %)) (p/build-v0-frames v0-json))))
           v1-json (<! (fetch-json v1-url))
           v1-stdout (vec (map last (:stdout v1-json)))]
+      (print "comparing...")
       (loop [n 0
              prev-vt (vt/make-vt (:width v1-json) (:height v1-json))]
+        (when (= (mod n 100) 0)
+          (print n "/" (count v1-stdout)))
         (if-let [str (get v1-stdout n)]
           (let [vt (vt/feed-str prev-vt str)
                 prev-lines (vt/compact-lines (:lines prev-vt))
@@ -97,34 +107,39 @@
                 actual-cursor (:cursor vt)
                 expected-lines (get-in v0-frames [n :lines])
                 expected-cursor (get-in v0-frames [n :cursor])]
-            (print n)
-            (print "fed: " str)
             (when (>= n check-from)
-              (when (not= actual-lines expected-lines)
-                (print "prev lines:")
-                (prn prev-lines)
-                (print "expected lines:")
-                (prn expected-lines)
-                (print "got lines:")
-                (prn actual-lines)
-                (print "first not matching line:")
-                (let [conflict (first (filter #(apply not= %) (map vector expected-lines actual-lines)))]
-                  (prn "expected: " (first conflict))
-                  (prn "got: " (second conflict)))
-                (throw "expectation failed"))
-
               (when (not= actual-cursor expected-cursor)
+                (print n)
+                (print "fed: " str)
+
                 (print "expected cursor:")
                 (prn expected-cursor)
                 (print "got cursor:")
                 (prn actual-cursor)
                 (print "prev cursor:")
                 (prn prev-cursor)
+                (throw "expectation failed"))
+
+              (when (not= actual-lines expected-lines)
+                (print n)
+                (print "fed: " str)
+
+                (print "prev lines:")
+                (prn prev-lines)
+                (print "expected lines:")
+                (prn expected-lines)
+                (print "got lines:")
+                (prn actual-lines)
+                (print "first non-matching line:")
+                (let [conflict (first (filter #(apply not= %) (map vector expected-lines actual-lines)))]
+                  (prn "expected: " (first conflict))
+                  (prn "got: " (second conflict)))
+                ;; (feed-verbose prev-vt str)
                 (throw "expectation failed")))
 
             (recur (inc n) vt))
           (print "success"))))))
 
 (defn start-debug []
-  (reset! reload-fn debug)
+  ;; (reset! reload-fn debug)
   (debug))
