@@ -79,13 +79,15 @@
      (drop n lines)
      (repeat n filler))))
 
-(defn scroll-up [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
-  (let [filler (empty-line width char-attrs)]
-    (update-in vt [:lines] (fn [lines]
-                             (vec (concat
-                                   (take top-margin lines)
-                                   (scroll-up-lines (subvec lines top-margin (inc bottom-margin)) 1 filler)
-                                   (drop (inc bottom-margin) lines)))))))
+(defn scroll-up
+  ([vt] (scroll-up vt 1))
+  ([{:keys [width top-margin bottom-margin char-attrs] :as vt} n]
+   (let [filler (empty-line width char-attrs)]
+     (update-in vt [:lines] (fn [lines]
+                              (vec (concat
+                                    (take top-margin lines)
+                                    (scroll-up-lines (subvec lines top-margin (inc bottom-margin)) n filler)
+                                    (drop (inc bottom-margin) lines))))))))
 
 (defn scroll-down-lines [lines n filler]
   (let [height (count lines)
@@ -94,13 +96,15 @@
      (repeat n filler)
      (take (- height n) lines))))
 
-(defn scroll-down [{:keys [width top-margin bottom-margin char-attrs] :as vt}]
-  (let [filler (empty-line width char-attrs)]
-    (update-in vt [:lines] (fn [lines]
-                             (vec (concat
-                                   (take top-margin lines)
-                                   (scroll-down-lines (subvec lines top-margin (inc bottom-margin)) 1 filler)
-                                   (drop (inc bottom-margin) lines)))))))
+(defn scroll-down
+  ([vt] (scroll-down vt 1))
+  ([{:keys [width top-margin bottom-margin char-attrs] :as vt} n]
+   (let [filler (empty-line width char-attrs)]
+     (update-in vt [:lines] (fn [lines]
+                              (vec (concat
+                                    (take top-margin lines)
+                                    (scroll-down-lines (subvec lines top-margin (inc bottom-margin)) n filler)
+                                    (drop (inc bottom-margin) lines))))))))
 
 (defn move-cursor-to-col [vt x]
   (-> vt
@@ -374,19 +378,13 @@
                                  2 (empty-line width char-attrs)
                                  line)))))
 
-(defn execute-su [{:keys [width height char-attrs] :as vt}]
-  (let [n (min (get-param vt 0 1) height)]
-    (update-in vt [:lines] (fn [lines]
-                             (vec (concat
-                                   (drop n lines)
-                                   (repeat n (empty-line width char-attrs))))))))
+(defn execute-su [vt]
+  (let [n (get-param vt 0 1)]
+    (scroll-up vt n)))
 
-(defn execute-sd [{:keys [width height char-attrs] :as vt}]
-  (let [n (min (get-param vt 0 1) height)]
-    (update-in vt [:lines] (fn [lines]
-                             (vec (concat
-                                   (repeat n (empty-line width char-attrs))
-                                   (take (- height n) lines)))))))
+(defn execute-sd [vt]
+  (let [n (get-param vt 0 1)]
+    (scroll-down vt n)))
 
 (defn execute-il [{:keys [bottom-margin width height char-attrs] {y :y} :cursor :as vt}]
   (let [n (get-param vt 0 1)

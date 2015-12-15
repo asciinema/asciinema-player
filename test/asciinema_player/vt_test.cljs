@@ -1341,52 +1341,86 @@
         (is (= y 0)))))
 
   (testing "CSI S (SU)"
-    (let [vt (-> (make-vt 4 3)
-                 (feed-str "ABCDEFGHIJ")
+    (let [vt (-> (make-vt 4 5)
+                 (feed-str "ABCDEFGHIJKLMNOPQR")
                  (set-bg 3)
                  (move-cursor 2 1))]
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "S")]
-        (is (= lines [[[0x45 {}] [0x46 {}] [0x47 {}] [0x48 {}]]
-                      [[0x49 {}] [0x4a {}] [0x20 {}] [0x20 {}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
+        (is (= (compact-lines lines) [[["EFGH" {}]]
+                                      [["IJKL" {}]]
+                                      [["MNOP" {}]]
+                                      [["QR  " {}]]
+                                      [["    " {:bg 3}]]]))
         (is (= x 2))
         (is (= y 1)))
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2S")]
-        (is (= lines [[[0x49 {}] [0x4a {}] [0x20 {}] [0x20 {}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
+        (is (= (compact-lines lines) [[["IJKL" {}]]
+                                      [["MNOP" {}]]
+                                      [["QR  " {}]]
+                                      [["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]]))
         (is (= x 2))
         (is (= y 1)))
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10S")]
-        (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
+        (is (= (compact-lines lines) [[["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]]))
         (is (= x 2))
-        (is (= y 1)))))
+        (is (= y 1)))
+      (let [vt (-> vt
+                   (feed-csi "2;4r")
+                   (move-cursor 2 0))
+            {lines :lines {x :x y :y} :cursor} (feed-csi vt "2S")]
+        (is (= (compact-lines lines) [[["ABCD" {}]]
+                                      [["MNOP" {}]]
+                                      [["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]
+                                      [["QR  " {}]]]))
+        (is (= x 2))
+        (is (= y 0)))))
 
   (testing "CSI T (SD)"
-    (let [vt (-> (make-vt 4 3)
-                 (feed-str "ABCDEFGHIJ")
+    (let [vt (-> (make-vt 4 5)
+                 (feed-str "ABCDEFGHIJKLMNOPQR")
                  (set-bg 3)
                  (move-cursor 2 1))]
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "T")]
-        (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
-                      [[0x45 {}] [0x46 {}] [0x47 {}] [0x48 {}]]]))
+        (is (= (compact-lines lines) [[["    " {:bg 3}]]
+                                      [["ABCD" {}]]
+                                      [["EFGH" {}]]
+                                      [["IJKL" {}]]
+                                      [["MNOP" {}]]]))
         (is (= x 2))
         (is (= y 1)))
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2T")]
-        (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]]))
+        (is (= (compact-lines lines) [[["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]
+                                      [["ABCD" {}]]
+                                      [["EFGH" {}]]
+                                      [["IJKL" {}]]]))
         (is (= x 2))
         (is (= y 1)))
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10T")]
-        (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
+        (is (= (compact-lines lines) [[["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]]))
         (is (= x 2))
-        (is (= y 1)))))
+        (is (= y 1)))
+      (let [vt (-> vt
+                   (feed-csi "2;4r")
+                   (move-cursor 2 0))
+            {lines :lines {x :x y :y} :cursor} (feed-csi vt "2T")]
+        (is (= (compact-lines lines) [[["ABCD" {}]]
+                                      [["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]
+                                      [["EFGH" {}]]
+                                      [["QR  " {}]]]))
+        (is (= x 2))
+        (is (= y 0)))))
 
   (testing "CSI W (CTC)"
     (let [vt (-> (make-vt 30 24))]
