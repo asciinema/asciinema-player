@@ -19,6 +19,18 @@
 (def space 0x20)
 (def default-attrs {})
 
+(defn default-charset [ch]
+  ch)
+
+(def special-charset {96  9830, 97  9618, 98  9225, 99  9228,
+                      100 9229, 101 9226, 102 176,  103 177,
+                      104 9252, 105 9227, 106 9496, 107 9488,
+                      108 9484, 109 9492, 110 9532, 111 9146,
+                      112 9147, 113 9472, 114 9148, 115 9149,
+                      116 9500, 117 9508, 118 9524, 119 9516,
+                      120 9474, 121 8804, 122 8805, 123 960,
+                      124 8800, 125 163,  126 8901})
+
 (defn cell [ch char-attrs]
   [ch char-attrs])
 
@@ -55,6 +67,7 @@
    :tabs (default-tabs width)
    :cursor {:x 0 :y 0 :visible true}
    :char-attrs {}
+   :charset-fn default-charset
    :insert-mode false
    :auto-wrap-mode true
    :new-line-mode false
@@ -546,8 +559,9 @@
       (scroll-up vt)
       (move-cursor-to-row vt (inc y)))))
 
-(defn do-print [{:keys [width height char-attrs auto-wrap-mode insert-mode] {:keys [x y]} :cursor :as vt} input]
-  (let [cell (cell input char-attrs)]
+(defn do-print [{:keys [width height char-attrs auto-wrap-mode insert-mode charset-fn] {:keys [x y]} :cursor :as vt} input]
+  (let [input (if (< 95 input 127) (charset-fn input) input)
+        cell (cell input char-attrs)]
     (if (= width (inc x))
       (if auto-wrap-mode
         (-> vt
@@ -592,16 +606,15 @@
   (update-in vt [:parser :param-chars] conj input))
 
 (defn esc-dispatch [vt input]
-  (if (<= 0x40 input 0x5f)
-    (execute vt (+ input 0x40))
-    (condp = input
-      0x37 (execute-sc vt)
-      0x38 (condp = (get-intermediate vt 0)
-             nil (execute-rc vt)
-             0x23 (execute-decaln vt)
-             vt)
-      0x63 (make-vt (:width vt) (:height vt))
-      vt)))
+  (match [(get-intermediate vt 0) input]
+         [nil (_ :guard #(<= 0x40 % 0x5f))] (execute vt (+ input 0x40))
+         [nil 0x37] (execute-sc vt)
+         [nil 0x38] (execute-rc vt)
+         [nil 0x63] (make-vt (:width vt) (:height vt))
+         [0x23 0x38] (execute-decaln vt)
+         [0x28 0x30] (assoc vt :charset-fn special-charset)
+         [0x28 _] (assoc vt :charset-fn default-charset)
+         :else vt))
 
 (defn csi-dispatch [vt input]
   (if-let [action (condp = input

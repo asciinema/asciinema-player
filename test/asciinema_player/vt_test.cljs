@@ -435,6 +435,16 @@
                       [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
         (is (= cursor {:x 3 :y 1 :visible true}))))
 
+    (testing "printing ASCII art using special drawing character set"
+      (let [{:keys [lines cursor]} (-> vt
+                                       (feed-esc "(0") ; use drawing character set
+                                       (feed-str "abcd{|}~")
+                                       (feed-esc "(B") ; back to ASCII
+                                       (feed-str "abc"))]
+        (is (= (compact-lines lines) [[["▒␉␌␍" {:fg 1}]]
+                                      [["π≠£⋅" {:fg 1}]]
+                                      [["abc" {:fg 1}] [" " {}]]]))))
+
     (testing "printing in insert mode"
       (let [vt (-> vt
                    (feed-str "ABC")
