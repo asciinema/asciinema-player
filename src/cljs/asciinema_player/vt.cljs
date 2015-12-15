@@ -61,7 +61,10 @@
    :next-print-wraps false
    :origin-mode false
    :lines (empty-screen width height)
-   :saved initial-saved-cursor})
+   :saved initial-saved-cursor
+   :buffer :primary
+   :other-buffer-lines nil
+   :other-buffer-saved initial-saved-cursor})
 
 ;; helper functions
 
@@ -129,18 +132,24 @@
           (< y last-row) (move-cursor-to-row vt (inc y))
           :else vt)))
 
-(defn switch-to-alternate-buffer [{:keys [primary-buffer width height char-attrs] :as vt}]
-  (if-not primary-buffer
+(defn switch-to-alternate-buffer [{:keys [buffer width height char-attrs] :as vt}]
+  (if (= buffer :primary)
     (assoc vt
-           :primary-buffer (:lines vt)
-           :lines (empty-screen width height char-attrs))
+           :buffer :alternate
+           :other-buffer-lines (:lines vt)
+           :other-buffer-saved (:saved vt)
+           :lines (empty-screen width height char-attrs)
+           :saved (:other-buffer-saved vt))
     vt))
 
-(defn switch-to-primary-buffer [{:keys [primary-buffer] :as vt}]
-  (if primary-buffer
-    (-> vt
-        (assoc :lines primary-buffer)
-        (dissoc :primary-buffer))
+(defn switch-to-primary-buffer [{:keys [buffer] :as vt}]
+  (if (= buffer :alternate)
+    (assoc vt
+           :buffer :primary
+           :other-buffer-lines nil
+           :other-buffer-saved (:saved vt)
+           :lines (:other-buffer-lines vt)
+           :saved (:other-buffer-saved vt))
     vt))
 
 (defn save-cursor [{{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode] :as vt}]

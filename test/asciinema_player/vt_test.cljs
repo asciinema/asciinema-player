@@ -1665,7 +1665,8 @@
                      (feed-str "ABC\n\rDE")
                      (set-bg 2)
                      (feed-csi "?1049h")
-                     (feed-str "\n\rX")
+                     (feed-str "\n\rXYZ")
+                     (feed-esc "7")
                      (feed-csi "?1049l"))
               {:keys [lines] {:keys [x y]} :cursor} vt]
           (is (= x 2))
