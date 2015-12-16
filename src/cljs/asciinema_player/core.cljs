@@ -11,13 +11,14 @@
 
 (defn make-player
   "Returns fresh player state for given options."
-  [width height asciicast-url duration {:keys [speed snapshot font-size theme start-at auto-play]
-                                        :or {speed 1 snapshot [] font-size "small" theme "asciinema"} :as options}]
+  [width height asciicast-url {:keys [speed snapshot font-size theme start-at auto-play]
+                               :or {speed 1 snapshot [] font-size "small" theme "asciinema"}
+                               :as options}]
   (let [auto-play (if (nil? auto-play) (boolean start-at) auto-play)
         start-at (or start-at 0)]
     (merge {:width width
             :height height
-            :duration duration
+            :duration 0
             :asciicast-url asciicast-url
             :speed speed
             :auto-play auto-play
@@ -285,9 +286,12 @@
   [state asciicast]
   (cond (vector? asciicast) (assoc state
                                    :frame-fn acc->frame
+                                   :duration (reduce #(+ %1 (first %2)) 0 asciicast)
                                    :frames (build-v0-frames asciicast))
         (= 1 (:version asciicast)) (assoc state
+                                          ;; TODO: set width/height if not already set
                                           :frame-fn vt->frame
+                                          :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
                                           :frames (build-v1-frames asciicast))
         :else (throw (str "unsupported asciicast version: " (:version asciicast)))))
 
@@ -381,15 +385,15 @@
 (defn create-player
   "Creates the player with the state built from given options by starting event
   processing loop and mounting Reagent component in DOM."
-  [dom-node width height asciicast-url duration options]
+  [dom-node width height asciicast-url options]
   (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)
-        state (make-player-ratom width height asciicast-url duration options)]
+        state (make-player-ratom width height asciicast-url options)]
     (create-player-with-state state dom-node)))
 
 (defn ^:export CreatePlayer
   "JavaScript API for creating the player, delegating to create-player."
-  ([dom-node width height asciicast-url duration] (CreatePlayer dom-node width height asciicast-url duration {}))
-  ([dom-node width height asciicast-url duration options]
+  ([dom-node width height asciicast-url] (CreatePlayer dom-node width height asciicast-url {}))
+  ([dom-node width height asciicast-url options]
    (let [options (-> options
                      (js->clj :keywordize-keys true)
                      (rename-keys {:autoPlay :auto-play
@@ -397,6 +401,6 @@
                                    :authorURL :author-url
                                    :startAt :start-at
                                    :authorImgURL :author-img-url}))]
-     (create-player dom-node width height asciicast-url duration options))))
+     (create-player dom-node width height asciicast-url options))))
 
 (enable-console-print!)

@@ -52,7 +52,7 @@ Add player script and stylesheet to the page:
 Insert the player with:
 
 ```javascript
-asciinema_player.core.CreatePlayer(parent, width, height, dataURL, duration, options)
+asciinema_player.core.CreatePlayer(parent, width, height, dataURL, options)
 ```
 
 where:
@@ -61,7 +61,6 @@ where:
 * `width` - width of the player (number of terminal columns),
 * `height` - height of the player (number of terminal lines),
 * `dataURL` - URL of the data file which contains animation frames (also see note below),
-* `duration` - total duration of the recording in seconds,
 * `options` - (optional) object with any of the following properties:
   * `autoPlay` - set to true if playback should start automatically, default: `false`,
   * `loop` - set to true if playback should be looped, default: `false`,
@@ -87,7 +86,6 @@ For example:
     80,
     24,
     '/frames.json',
-    123.0,
     { speed: 2 }
   );
 </script>
