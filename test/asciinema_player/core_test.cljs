@@ -4,12 +4,12 @@
             [asciinema-player.core :as c]))
 
 (deftest make-player-test
-  (let [make-player #(c/make-player 80 24 "https://..." 123.45 %)]
+  (let [make-player #(c/make-player 80 24 "https://..." %)]
     (let [player (make-player {})]
       (is (= (:width player) 80))
       (is (= (:height player) 24))
       (is (= (:asciicast-url player) "https://..."))
-      (is (= (:duration player) 123.45))
+      (is (= (:duration player) 0))
       (is (= (:start-at player) 0))
       (is (= (:current-time player) 0))
       (is (= (:theme player) "asciinema"))
