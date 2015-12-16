@@ -52,7 +52,7 @@ Add player script and stylesheet to the page:
 Insert the player with:
 
 ```javascript
-asciinema_player.core.CreatePlayer(parent, width, height, dataURL, options)
+asciinema_player.core.CreatePlayer(parent, width, height, asciicastURL, options)
 ```
 
 where:
@@ -60,7 +60,7 @@ where:
 * `parent` - DOM element into which the player should be inserted as a child,
 * `width` - width of the player (number of terminal columns),
 * `height` - height of the player (number of terminal lines),
-* `dataURL` - URL of the data file which contains animation frames (also see note below),
+* `asciicastURL` - URL of the asciicast to play,
 * `options` - (optional) object with any of the following properties:
   * `autoPlay` - set to true if playback should start automatically, default: `false`,
   * `loop` - set to true if playback should be looped, default: `false`,
@@ -85,24 +85,8 @@ For example:
 </script>
 ```
 
-### Note on `dataURL`
-
-The player doesn't directly support [asciicast v1
-format](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v1.md).
-It's rather dumb at the moment. asciinema.org does heavy lifting and converts
-v1 format JSON into a simple format (series of line diffs) understandable by
-the player.
-
-To obtain proper JSON file that can be used as `dataURL` argument you can either:
-
-* download it from asciinema.org (look it up in specific recording's HTML page
-  source: https://asciinema.org/a/190),
-* convert asciicast v1 format (as produced by `asciinema rec file.json`) with
-  [this script](https://gist.github.com/sickill/504474702dd18c7dc0ec).
-
 ## TODO
 
-* update player to directly support asciicast v1 format
 * add hooks (start/pause/resume/finish)
 * figure out if GPL is compatible with Clojure(Script)'s EPL
 
