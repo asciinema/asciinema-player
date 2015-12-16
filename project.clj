@@ -12,12 +12,16 @@
                  [devcards "0.2.0-3"]
                  [org.clojure/test.check "0.8.2"]
                  [org.clojure/core.match "0.3.0-alpha4"]
+                 [com.cemerick/piggieback "0.2.1"]
+                 [org.clojure/tools.nrepl "0.2.10"]
                  [cljs-ajax "0.3.11"]]
 
   :plugins [[lein-cljsbuild "1.0.6"]
             [lein-figwheel "0.4.1"]
             [lein-less "1.7.5"]
             [lein-doo "0.1.6"]
+            [refactor-nrepl "1.1.0"]
+            [cider/cider-nrepl "0.10.0"]
             [lein-kibit "0.1.2"]]
 
   :min-lein-version "2.4.0"
@@ -61,6 +65,9 @@
   :figwheel {:http-server-root "public"
              :server-port 3449
              :nrepl-port 7888
+             :nrepl-middleware ["cider.nrepl/cider-middleware"
+                                "refactor-nrepl.middleware/wrap-refactor"
+                                "cemerick.piggieback/wrap-cljs-repl"]
              :css-dirs ["resources/public/css"]}
 
   :less {:source-paths ["src/less"]
