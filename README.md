@@ -81,13 +81,7 @@ For example:
 ```html
 <div id="player-container"></div>
 <script>
-  asciinema_player.core.CreatePlayer(
-    document.getElementById('player-container')
-    80,
-    24,
-    '/frames.json',
-    { speed: 2 }
-  );
+  asciinema_player.core.CreatePlayer('player-container', 80, 24, '/asciicast.json', { speed: 2 });
 </script>
 ```
 
