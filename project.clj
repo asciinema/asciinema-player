@@ -12,29 +12,32 @@
                  [devcards "0.2.0-3"]
                  [org.clojure/test.check "0.8.2"]
                  [org.clojure/core.match "0.3.0-alpha4"]
-                 [com.cemerick/piggieback "0.2.1"]
-                 [org.clojure/tools.nrepl "0.2.10"]
                  [cljs-ajax "0.3.11"]]
 
   :plugins [[lein-cljsbuild "1.0.6"]
-            [lein-figwheel "0.4.1"]
+            [lein-figwheel "0.5.0-2"]
             [lein-less "1.7.5"]
             [lein-doo "0.1.6"]
-            [refactor-nrepl "1.1.0"]
-            [cider/cider-nrepl "0.10.0"]
             [lein-kibit "0.1.2"]]
 
-  :min-lein-version "2.4.0"
-
-  :hooks [leiningen.cljsbuild]
+  :min-lein-version "2.5.3"
 
   :clean-targets ^{:protect false} ["resources/public/js" "target"]
 
-  :source-paths ["src/clj"]
+  :source-paths ["src/cljs"]
 
-  :cljsbuild {:builds {:dev {:source-paths ["src/cljs" "env/dev/cljs"]
-                             :figwheel {:on-jsload "asciinema-player.main/reload"}
-                             :compiler {:main "asciinema-player.main"
+  :profiles {:dev {:dependencies [[com.cemerick/piggieback "0.2.1"]
+                                  [org.clojure/tools.nrepl "0.2.10"]
+                                  [figwheel-sidecar "0.5.0-1"]]
+                   :plugins [[refactor-nrepl "1.1.0"]]
+                   :source-paths ["dev/clj" "dev/cljs"]}
+             :repl {:plugins [[cider/cider-nrepl "0.10.0"]]}}
+
+  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+
+  :cljsbuild {:builds {:dev {:source-paths ["src/cljs" "dev/cljs"]
+                             :figwheel {:on-jsload "asciinema-player.dev/reload"}
+                             :compiler {:main "asciinema-player.dev"
                                         :asset-path "js/dev"
                                         :output-to "resources/public/js/dev.js"
                                         :output-dir "resources/public/js/dev"
@@ -56,18 +59,14 @@
                                          :pretty-print false
                                          :main "asciinema-player.runner"}}
                        :release {:source-paths ["src/cljs"]
-                              :compiler {:output-to     "resources/public/js/release.js"
-                                         :output-dir    "resources/public/js/release"
-                                         :preamble      ["license.js"]
-                                         :optimizations :advanced
-                                         :pretty-print  false}}}}
+                                 :compiler {:output-to "resources/public/js/release.js"
+                                            :output-dir "resources/public/js/release"
+                                            :preamble ["license.js"]
+                                            :optimizations :advanced
+                                            :pretty-print  false}}}}
 
   :figwheel {:http-server-root "public"
              :server-port 3449
-             :nrepl-port 7888
-             :nrepl-middleware ["cider.nrepl/cider-middleware"
-                                "refactor-nrepl.middleware/wrap-refactor"
-                                "cemerick.piggieback/wrap-cljs-repl"]
              :css-dirs ["resources/public/css"]}
 
   :less {:source-paths ["src/less"]

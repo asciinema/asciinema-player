@@ -1,4 +1,4 @@
-(ns asciinema-player.main
+(ns asciinema-player.dev
   (:require [asciinema-player.core :as p]
             [asciinema-player.vt :as vt]
             [asciinema-player.util :as util]
