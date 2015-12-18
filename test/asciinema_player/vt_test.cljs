@@ -1836,14 +1836,3 @@
                              (feed rubbish))
                       {{new-x :x new-y :y} :cursor :keys [next-print-wraps]} vt]
                   (not (and next-print-wraps (< new-x 20))))))
-
-(defspec test-all-lines-have-unique-meta-id
-  {:num-tests 100}
-  (prop/for-all [x (gen/choose 0 19)
-                 y (gen/choose 0 9)
-                 rubbish gen-ascii-rubbish]
-    (let [vt (-> (make-vt 20 10)
-                 (move-cursor x y)
-                 (feed rubbish))
-          {:keys [lines]} vt]
-      (= (count (set (filter some? (map #(-> % meta :id) lines)))) (count lines)))))
