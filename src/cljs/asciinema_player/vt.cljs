@@ -788,7 +788,7 @@
 (defn- get-transition [rules input]
   (some (fn [[pred cfg]] (when (pred input) cfg)) rules))
 
-(defn parse [current-state input]
+(def parse (memoize (fn [current-state input]
   (let [current-state-cfg (get states current-state)
         transition (or (get-transition anywhere-state input)
                        (get-transition current-state-cfg (if (>= input 0xa0) 0x41 input)))]
@@ -800,7 +800,7 @@
                 entry-action (:on-enter new-state-cfg)
                 actions (remove nil? [exit-action transition-action entry-action])]
             [new-state actions])
-          [current-state (if transition-action [transition-action] [])])))))
+          [current-state (if transition-action [transition-action] [])])))))))
 
 (defn execute-actions [vt actions input]
   (reduce (fn [vt f] (f vt input)) vt actions))
