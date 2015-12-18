@@ -237,8 +237,8 @@
 (defn execute-nel [vt]
   (-> vt move-cursor-down execute-cr))
 
-(defn execute-hts [{{x :x} :cursor :as vt}]
-  (if (pos? x)
+(defn execute-hts [{{:keys [x]} :cursor :keys [width] :as vt}]
+  (if (< 0 x width)
     (update-in vt [:tabs] conj x)
     vt))
 
@@ -442,10 +442,10 @@
                                      (drop (+ x n) line)
                                      (repeat n (empty-cell char-attrs))))))))
 
-(defn execute-ctc [{{:keys [x]} :cursor :as vt}]
+(defn execute-ctc [{{:keys [x]} :cursor :keys [width] :as vt}]
   (let [n (get-param vt 0 0)]
     (condp = n
-      0 (update-in vt [:tabs] conj x)
+      0 (if (< 0 x width) (update-in vt [:tabs] conj x) vt)
       2 (update-in vt [:tabs] disj x)
       5 (update-in vt [:tabs] empty)
       vt)))
