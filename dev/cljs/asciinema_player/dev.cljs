@@ -1,4 +1,5 @@
 (ns asciinema-player.dev
+  (:refer-clojure :exclude [compare])
   (:require [asciinema-player.core :as p]
             [asciinema-player.vt :as vt]
             [asciinema-player.util :as util]
@@ -57,22 +58,11 @@
 ;; (swap! player-state assoc :font-size "small")
 ;; (swap! player-state assoc :speed 1)
 
-(defonce reload-fn (atom (fn [])))
-
 (defn reload []
-  (@reload-fn))
-
-(defn reload-player []
   (p/create-player-with-state player-state (. js/document (getElementById "player"))))
 
 (defn start-dev []
-  (reset! reload-fn reload-player)
-  (reload-player))
-
-(def asciicast-filename "22994.json")
-(def v0-url (str "/asciicasts/frames-" asciicast-filename))
-(def v1-url (str "/asciicasts/" asciicast-filename))
-(def check-from 1)
+  (reload))
 
 (defn fetch-json [url]
   (let [ch (chan)]
@@ -90,9 +80,11 @@
               (prn (-> vt :parser :state))
               (vt/feed-one vt input)) vt codes)))
 
-(defn debug []
+(defn compare [asciicast-filename check-from]
   (go
-    (let [v0-json (<! (fetch-json v0-url))
+    (let [v0-url (str "/asciicasts/frames-" asciicast-filename)
+          v1-url (str "/asciicasts/" asciicast-filename)
+          v0-json (<! (fetch-json v0-url))
           v0-frames (vec (drop 1 (map #(p/acc->frame (last %)) (p/build-v0-frames v0-json))))
           v1-json (<! (fetch-json v1-url))
           v1-stdout (vec (map last (:stdout v1-json)))]
@@ -142,6 +134,13 @@
             (recur (inc n) vt))
           (print "success"))))))
 
-(defn start-debug []
-  ;; (reset! reload-fn debug)
-  (debug))
+;; (compare "20055.json" 1)
+
+(def asciicast-filename "20055.json")
+(def v1-url (str "/asciicasts/" asciicast-filename))
+
+;; (go
+;;   (defonce v1-json (<! (fetch-json v1-url))))
+
+;; (let [v1-frames (map #(p/vt->frame (last %)) (p/build-v1-frames v1-json))]
+;;   (time (nth v1-frames 500)))
