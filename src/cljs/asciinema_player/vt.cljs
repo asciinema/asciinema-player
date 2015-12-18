@@ -40,13 +40,12 @@
 (defn empty-line
   ([width] (empty-line width default-attrs))
   ([width char-attrs]
-   (vec (repeat width (empty-cell char-attrs)))))
+   (with-meta (vec (repeat width (empty-cell char-attrs))) {:id (gensym)})))
 
 (defn empty-screen
   ([width height] (empty-screen width height default-attrs))
   ([width height char-attrs]
-   (let [line (empty-line width char-attrs)]
-     (vec (repeat height line)))))
+   (vec (repeatedly height #(empty-line width char-attrs)))))
 
 (defn default-tabs [width]
   (apply sorted-set (range 8 width 8)))
@@ -89,37 +88,37 @@
 (defn set-margin [vt top bottom]
   (assoc vt :top-margin top :bottom-margin bottom))
 
-(defn scroll-up-lines [lines n filler]
+(defn scroll-up-lines [lines n filler-fn]
   (let [n (min n (count lines))]
     (concat
      (drop n lines)
-     (repeat n filler))))
+     (repeatedly n filler-fn))))
 
 (defn scroll-up
   ([vt] (scroll-up vt 1))
   ([{:keys [width top-margin bottom-margin char-attrs] :as vt} n]
-   (let [filler (empty-line width char-attrs)]
+   (let [filler-fn #(empty-line width char-attrs)]
      (update-in vt [:lines] (fn [lines]
                               (vec (concat
                                     (take top-margin lines)
-                                    (scroll-up-lines (subvec lines top-margin (inc bottom-margin)) n filler)
+                                    (scroll-up-lines (subvec lines top-margin (inc bottom-margin)) n filler-fn)
                                     (drop (inc bottom-margin) lines))))))))
 
-(defn scroll-down-lines [lines n filler]
+(defn scroll-down-lines [lines n filler-fn]
   (let [height (count lines)
         n (min n height)]
     (concat
-     (repeat n filler)
+     (repeatedly n filler-fn)
      (take (- height n) lines))))
 
 (defn scroll-down
   ([vt] (scroll-down vt 1))
   ([{:keys [width top-margin bottom-margin char-attrs] :as vt} n]
-   (let [filler (empty-line width char-attrs)]
+   (let [filler-fn #(empty-line width char-attrs)]
      (update-in vt [:lines] (fn [lines]
                               (vec (concat
                                     (take top-margin lines)
-                                    (scroll-down-lines (subvec lines top-margin (inc bottom-margin)) n filler)
+                                    (scroll-down-lines (subvec lines top-margin (inc bottom-margin)) n filler-fn)
                                     (drop (inc bottom-margin) lines))))))))
 
 (defn move-cursor-to-col [vt x]
@@ -248,7 +247,7 @@
         :else vt))
 
 (defn execute-decaln [{:keys [width height] :as vt}]
-  (assoc vt :lines (vec (repeat height (vec (repeat width [0x45 {}]))))))
+  (assoc vt :lines (vec (repeatedly height #(vec (repeat width [0x45 {}]))))))
 
 (defn execute-sc [vt]
   (save-cursor vt))
@@ -290,9 +289,11 @@
 (defn execute-ich [{{:keys [x y]} :cursor :keys [width char-attrs] :as vt}]
   (let [n (get-param vt 0 1)]
     (update-in vt [:lines y] (fn [line]
-                               (vec (take width (concat (take x line)
-                                                        (repeat n [space char-attrs])
-                                                        (drop x line))))))))
+                               (with-meta
+                                 (vec (take width (concat (take x line)
+                                                          (repeat n [space char-attrs])
+                                                          (drop x line))))
+                                 (meta line))))))
 
 (defn execute-cuu [{:keys [top-margin] {:keys [y]} :cursor :as vt}]
   (let [n (get-param vt 0 1)
@@ -359,23 +360,27 @@
     (move-cursor-to-next-tab vt n)))
 
 (defn clear-line-right [line x char-attrs]
-  (vec (concat (take x line)
-               (repeat (- (count line) x) (empty-cell char-attrs)))))
+  (with-meta
+    (vec (concat (take x line)
+                 (repeat (- (count line) x) (empty-cell char-attrs))))
+    (meta line)))
 
 (defn clear-to-end-of-screen [{{:keys [x y]} :cursor :keys [width height char-attrs] :as vt}]
   (update-in vt [:lines] (fn [lines]
                            (let [top-lines (take y lines)
                                  curr-line (clear-line-right (nth lines y) x char-attrs)
-                                 bottom-lines (repeat (- height y 1) (empty-line width char-attrs))]
+                                 bottom-lines (repeatedly (- height y 1) #(empty-line width char-attrs))]
                              (vec (concat top-lines [curr-line] bottom-lines))))))
 
 (defn clear-line-left [line x char-attrs]
-  (vec (concat (repeat (inc x) (empty-cell char-attrs))
-               (drop (inc x) line))))
+  (with-meta
+    (vec (concat (repeat (inc x) (empty-cell char-attrs))
+                 (drop (inc x) line)))
+    (meta line)))
 
 (defn clear-to-beginning-of-screen [{{:keys [x y]} :cursor :keys [width height char-attrs] :as vt}]
   (update-in vt [:lines] (fn [lines]
-                           (let [top-lines (repeat y (empty-line width char-attrs))
+                           (let [top-lines (repeatedly y #(empty-line width char-attrs))
                                  curr-line (clear-line-left (nth lines y) x char-attrs)
                                  bottom-lines (drop (inc y) lines)]
                              (vec (concat top-lines [curr-line] bottom-lines))))))
@@ -410,37 +415,39 @@
 
 (defn execute-il [{:keys [bottom-margin width height char-attrs] {y :y} :cursor :as vt}]
   (let [n (get-param vt 0 1)
-        filler (empty-line width char-attrs)]
+        filler-fn #(empty-line width char-attrs)]
     (update-in vt [:lines] (fn [lines]
                              (vec (if (<= y bottom-margin)
                                     (concat
                                      (take y lines)
-                                     (scroll-down-lines (subvec lines y (inc bottom-margin)) n filler)
+                                     (scroll-down-lines (subvec lines y (inc bottom-margin)) n filler-fn)
                                      (drop (inc bottom-margin) lines))
                                     (concat
                                      (take y lines)
-                                     (scroll-down-lines (drop y lines) n filler))))))))
+                                     (scroll-down-lines (drop y lines) n filler-fn))))))))
 
 (defn execute-dl [{:keys [bottom-margin width height char-attrs] {y :y} :cursor :as vt}]
   (let [n (get-param vt 0 1)
-        filler (empty-line width char-attrs)]
+        filler-fn #(empty-line width char-attrs)]
     (update-in vt [:lines] (fn [lines]
                              (vec (if (<= y bottom-margin)
                                     (concat
                                      (take y lines)
-                                     (scroll-up-lines (subvec lines y (inc bottom-margin)) n filler)
+                                     (scroll-up-lines (subvec lines y (inc bottom-margin)) n filler-fn)
                                      (drop (inc bottom-margin) lines))
                                     (concat
                                      (take y lines)
-                                     (scroll-up-lines (drop y lines) n filler))))))))
+                                     (scroll-up-lines (drop y lines) n filler-fn))))))))
 
 (defn execute-dch [{{:keys [x y]} :cursor :keys [char-attrs] :as vt}]
   (let [n (get-param vt 0 1)]
     (update-in vt [:lines y] (fn [line]
-                               (vec (concat
-                                     (take x line)
-                                     (drop (+ x n) line)
-                                     (repeat n (empty-cell char-attrs))))))))
+                               (with-meta
+                                 (vec (concat
+                                       (take x line)
+                                       (drop (+ x n) line)
+                                       (repeat n (empty-cell char-attrs))))
+                                 (meta line))))))
 
 (defn execute-ctc [{{:keys [x]} :cursor :keys [width] :as vt}]
   (let [n (get-param vt 0 0)]
@@ -453,10 +460,12 @@
 (defn execute-ech [{{:keys [x y]} :cursor :keys [width char-attrs] :as vt}]
   (let [n (min (get-param vt 0 1) (- width x))]
     (update-in vt [:lines y] (fn [line]
-                               (vec (concat
-                                     (take x line)
-                                     (repeat n (empty-cell char-attrs))
-                                     (drop (+ x n) line)))))))
+                               (with-meta
+                                 (vec (concat
+                                       (take x line)
+                                       (repeat n (empty-cell char-attrs))
+                                       (drop (+ x n) line)))
+                                 (meta line))))))
 
 (defn execute-cbt [vt]
   (let [n (get-param vt 0 1)]
@@ -820,16 +829,18 @@
 (defn compact-line
   "Joins together all neighbouring cells having the same color attributes."
   [line]
-  (let [[cell & cells] line]
-    (loop [segments []
-           chars [(first cell)]
-           attrs (last cell)
-           cells cells]
-      (if-let [[char new-attrs] (first cells)]
-        (if (= new-attrs attrs)
-          (recur segments (conj chars char) attrs (rest cells))
-          (recur (conj segments [(apply js/String.fromCharCode chars) attrs]) [char] new-attrs (rest cells)))
-        (conj segments [(apply js/String.fromCharCode chars) attrs])))))
+  (with-meta
+    (let [[cell & cells] line]
+      (loop [segments []
+             chars [(first cell)]
+             attrs (last cell)
+             cells cells]
+        (if-let [[char new-attrs] (first cells)]
+          (if (= new-attrs attrs)
+            (recur segments (conj chars char) attrs (rest cells))
+            (recur (conj segments [(apply js/String.fromCharCode chars) attrs]) [char] new-attrs (rest cells)))
+          (conj segments [(apply js/String.fromCharCode chars) attrs]))))
+    (meta line)))
 
 (defn compact-lines [lines]
   (map compact-line lines))
