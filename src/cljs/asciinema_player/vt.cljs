@@ -276,10 +276,12 @@
 (defn get-intermediate [vt n]
   (get-in vt [:parser :intermediate-chars n]))
 
+(def get-cached-params (memoize (fn [chars]
+                                  (let [groups (split-coll 0x3b chars)]
+                                    (map reduce-param groups)))))
+
 (defn get-params [vt]
-  (let [chars (get-in vt [:parser :param-chars])
-        groups (split-coll 0x3b chars)]
-    (map reduce-param groups)))
+  (get-cached-params (get-in vt [:parser :param-chars])))
 
 (defn get-param [vt n default]
   (let [v (nth (get-params vt) n 0)]
