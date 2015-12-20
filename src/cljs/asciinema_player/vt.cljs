@@ -793,16 +793,15 @@
 (def parse (memoize (fn [current-state input]
   (let [current-state-cfg (get states current-state)
         transition (or (get-transition anywhere-state input)
-                       (get-transition current-state-cfg (if (>= input 0xa0) 0x41 input)))]
-    (if transition
-      (let [transition-action (:action transition)]
-        (if-let [new-state (:transition transition)]
-          (let [new-state-cfg (get states new-state)
-                exit-action (:on-exit current-state-cfg)
-                entry-action (:on-enter new-state-cfg)
-                actions (remove nil? [exit-action transition-action entry-action])]
-            [new-state actions])
-          [current-state (if transition-action [transition-action] [])])))))))
+                       (get-transition current-state-cfg (if (>= input 0xa0) 0x41 input)))
+        transition-action (:action transition)]
+    (if-let [new-state (:transition transition)]
+      (let [new-state-cfg (get states new-state)
+            exit-action (:on-exit current-state-cfg)
+            entry-action (:on-enter new-state-cfg)
+            actions (remove nil? [exit-action transition-action entry-action])]
+        [new-state actions])
+      [current-state (if transition-action [transition-action] [])])))))
 
 (defn execute-actions [vt actions input]
   (reduce (fn [vt f] (f vt input)) vt actions))
