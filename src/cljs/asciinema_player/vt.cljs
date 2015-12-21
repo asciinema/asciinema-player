@@ -815,7 +815,7 @@
   (reduce (fn [vt input] (feed-one vt input)) vt inputs))
 
 (defn feed-str [vt str]
-  (let [codes (map #(.charCodeAt % 0) str)]
+  (let [codes (mapv #(.charCodeAt str %) (range (count str)))]
     (feed vt codes)))
 
 (defn compact-line
