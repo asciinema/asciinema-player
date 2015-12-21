@@ -812,7 +812,7 @@
         (execute-actions actions input))))
 
 (defn feed [vt inputs]
-  (reduce (fn [vt input] (feed-one vt input)) vt inputs))
+  (reduce feed-one vt inputs))
 
 (defn feed-str [vt str]
   (let [codes (mapv #(.charCodeAt str %) (range (count str)))]
