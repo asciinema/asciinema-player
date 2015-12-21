@@ -148,9 +148,7 @@
                                 (do
                                   (dispatch [:update-state #(-> % (update-screen v) reset-blink)])
                                   (recur (make-cursor-blink-chan)))
-                                (do
-                                  (dispatch [:finished])
-                                  (print (str "finished in " (elapsed-time-since start)))))
+                                (dispatch [:finished]))
             stop-playback-chan nil))) ; do nothing, break the loop
       (dispatch [:update-state reset-blink]))
     (-> state
