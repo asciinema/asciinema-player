@@ -4,10 +4,10 @@
             [asciinema-player.core :as c]))
 
 (deftest make-player-test
-  (let [make-player #(c/make-player 80 24 "https://..." %)]
+  (let [make-player #(c/make-player "https://..." %)]
     (let [player (make-player {})]
-      (is (= (:width player) 80))
-      (is (= (:height player) 24))
+      (is (= (:width player) nil))
+      (is (= (:height player) nil))
       (is (= (:asciicast-url player) "https://..."))
       (is (= (:duration player) 0))
       (is (= (:start-at player) 0))
@@ -17,7 +17,9 @@
       (is (= (:speed player) 1))
       (is (= (:auto-play player) false))
       (is (= (:loop player) nil)))
-    (let [player (make-player {:speed 3 :theme "tango" :font-size "big" :loop true :author "me"})]
+    (let [player (make-player {:width 100 :height 40 :speed 3 :theme "tango" :font-size "big" :loop true :author "me"})]
+      (is (= (:width player) 100))
+      (is (= (:height player) 40))
       (is (= (:speed player) 3))
       (is (= (:theme player) "tango"))
       (is (= (:font-size player) "big"))
