@@ -17,28 +17,31 @@ Terminal session player, used on asciinema.org.
 The project uses [leiningen](http://leiningen.org/) for development and build
 related tasks so make sure you have it installed (as well as Java 7 or 8).
 
-TODO: clarify this all
+Start local web server with auto-compilation and live code reloading in the browser:
 
     lein figwheel dev
+
+Start auto-compilation of `.less` files:
+
     lein less auto
+
+Once the above tasks are running, open [localhost:3449](http://localhost:3449/)
+in the browser to load the player with sample asciicast. Any changes made to
+`.cljs` or `.less` files will be automatically pushed to the browser, preserving
+player's state.
+
+Run tests with:
+
     lein doo phantom test
-
-Open [localhost:3449](http://localhost:3449/) in the browser to load the player
-with sample asciicast.
-
-Any changes made to `.cljs` or `.less` files will be automatically pushed to the
-browser, preserving player's state.
 
 ### Building
 
-To build Javascript and CSS bundles run:
+To build stand-alone `.js` and `.css` files run:
 
     lein cljsbuild once release
     lein less once
 
 ## Usage
-
-TODO: update this section to reflect new namespace
 
 Add player script and stylesheet to the page:
 
@@ -49,19 +52,19 @@ Add player script and stylesheet to the page:
 </head>
 ```
 
-Insert the player with:
+Create the player widget with the following JavaScript code:
 
 ```javascript
-asciinema_player.core.CreatePlayer(parent, width, height, asciicastURL, options)
+asciinema_player.core.CreatePlayer(parent, asciicastURL, options)
 ```
 
 where:
 
-* `parent` - DOM element into which the player should be inserted as a child,
-* `width` - width of the player (number of terminal columns),
-* `height` - height of the player (number of terminal lines),
-* `asciicastURL` - URL of the asciicast to play,
+* `parent` - DOM element into which the player should be inserted (as the only child),
+* `asciicastURL` - URL of the asciicast JSON file to play,
 * `options` - (optional) object with any of the following properties:
+  * `width` - width of the player (number of terminal columns),
+  * `height` - height of the player (number of terminal lines),
   * `autoPlay` - set to true if playback should start automatically, default: `false`,
   * `loop` - set to true if playback should be looped, default: `false`,
   * `startAt` - start playback at given second (implies `autoPlay: true` unless
@@ -81,7 +84,7 @@ For example:
 ```html
 <div id="player-container"></div>
 <script>
-  asciinema_player.core.CreatePlayer('player-container', 80, 24, '/asciicast.json', { speed: 2 });
+  asciinema_player.core.CreatePlayer('player-container', '/asciicast.json', { speed: 2 });
 </script>
 ```
 

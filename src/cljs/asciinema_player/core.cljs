@@ -11,9 +11,9 @@
 
 (defn make-player
   "Returns fresh player state for given options."
-  [width height asciicast-url {:keys [speed snapshot font-size theme start-at auto-play]
-                               :or {speed 1 snapshot [] font-size "small" theme "asciinema"}
-                               :as options}]
+  [asciicast-url {:keys [width height speed snapshot font-size theme start-at auto-play]
+                  :or {speed 1 snapshot [] font-size "small" theme "asciinema"}
+                  :as options}]
   (let [auto-play (if (nil? auto-play) (boolean start-at) auto-play)
         start-at (or start-at 0)]
     (merge {:width width
@@ -279,18 +279,30 @@
   {:lines (vt/compact-lines lines)
    :cursor cursor})
 
+(defn initialize-asciicast-v0 [state asciicast]
+  (let [frame-0-lines (-> asciicast first last :lines)
+        width (->> frame-0-lines vals first (map #(count (first %))) (reduce +))
+        height (count frame-0-lines)]
+    (assoc state
+           :width (or (:width state) width)
+           :height (or (:height state) height)
+           :frame-fn acc->frame
+           :duration (reduce #(+ %1 (first %2)) 0 asciicast)
+           :frames (build-v0-frames asciicast))))
+
+(defn initialize-asciicast-v1 [state asciicast]
+  (assoc state
+         :width (or (:width state) (:width asciicast))
+         :height (or (:height state) (:height asciicast))
+         :frame-fn vt->frame
+         :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
+         :frames (build-v1-frames asciicast)))
+
 (defn initialize-asciicast
   "Prepares fetched asciicast for playback."
   [state asciicast]
-  (cond (vector? asciicast) (assoc state
-                                   :frame-fn acc->frame
-                                   :duration (reduce #(+ %1 (first %2)) 0 asciicast)
-                                   :frames (build-v0-frames asciicast))
-        (= 1 (:version asciicast)) (assoc state
-                                          ;; TODO: set width/height if not already set
-                                          :frame-fn vt->frame
-                                          :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
-                                          :frames (build-v1-frames asciicast))
+  (cond (vector? asciicast) (initialize-asciicast-v0 state asciicast)
+        (= 1 (:version asciicast)) (initialize-asciicast-v1 state asciicast)
         :else (throw (str "unsupported asciicast version: " (:version asciicast)))))
 
 (defn handle-asciicast-response
@@ -383,15 +395,15 @@
 (defn create-player
   "Creates the player with the state built from given options by starting event
   processing loop and mounting Reagent component in DOM."
-  [dom-node width height asciicast-url options]
+  [dom-node asciicast-url options]
   (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)
-        state (make-player-ratom width height asciicast-url options)]
+        state (make-player-ratom asciicast-url options)]
     (create-player-with-state state dom-node)))
 
 (defn ^:export CreatePlayer
   "JavaScript API for creating the player, delegating to create-player."
-  ([dom-node width height asciicast-url] (CreatePlayer dom-node width height asciicast-url {}))
-  ([dom-node width height asciicast-url options]
+  ([dom-node asciicast-url] (CreatePlayer dom-node asciicast-url {}))
+  ([dom-node asciicast-url options]
    (let [options (-> options
                      (js->clj :keywordize-keys true)
                      (rename-keys {:autoPlay :auto-play
@@ -399,6 +411,6 @@
                                    :authorURL :author-url
                                    :startAt :start-at
                                    :authorImgURL :author-img-url}))]
-     (create-player dom-node width height asciicast-url options))))
+     (create-player dom-node asciicast-url options))))
 
 (enable-console-print!)

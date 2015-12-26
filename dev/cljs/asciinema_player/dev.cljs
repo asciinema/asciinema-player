@@ -19,36 +19,36 @@
 
 ;; "emacs"
 
-(defonce player-state
-  (p/make-player-ratom 80 24 "/asciicasts/frames-10386.json" (merge options {:snapshot snapshot})))
+;; (defonce player-state
+;;   (p/make-player-ratom "/asciicasts/frames-10386.json" (merge options {:snapshot snapshot})))
 
 ;; (add-watch player-state :foo (fn [_ id old new] (prn (-> new (dissoc :lines) (dissoc :snapshot) (dissoc :frames)))))
 
 ;; "fractals"
 
 ;; (defonce player-state
-;;   (p/make-player-ratom 80 24 "/asciicasts/frames-20055.json" options))
+;;   (p/make-player-ratom "/asciicasts/frames-20055.json" options))
 
 ;; (defonce player-state
-;;   (p/make-player-ratom 80 24 "/asciicasts/20055.json" options))
+;;   (p/make-player-ratom "/asciicasts/20055.json" options))
 
 ;; "limelight.vim"
 
-;; (defonce player-state
-;;   (p/make-player-ratom 79 22 "/asciicasts/21195.json" options))
+(defonce player-state
+  (p/make-player-ratom "/asciicasts/21195.json" options))
 
 ;; (defonce player-state
-;;   (p/make-player-ratom 79 22 "/asciicasts/frames-21195.json" options))
+;;   (p/make-player-ratom "/asciicasts/frames-21195.json" options))
 
 ;; "catimg"
 
 ;; (defonce player-state
-;;   (p/make-player-ratom 100 41 "/asciicasts/frames-26491.json" options))
+;;   (p/make-player-ratom "/asciicasts/frames-26491.json" options))
 
 ;; "color table"
 
 ;; (defonce player-state
-;;   (p/make-player-ratom 84 31 "/asciicasts/frames-color-test.json" options))
+;;   (p/make-player-ratom "/asciicasts/frames-color-test.json" options))
 
 ;; (swap! player-state assoc :theme "solarized-dark")
 ;; (swap! player-state assoc :theme "solarized-light")
@@ -60,6 +60,8 @@
 
 (defn reload []
   (p/create-player-with-state player-state (. js/document (getElementById "player"))))
+
+;; (reload)
 
 (defn start-dev []
   (reload))

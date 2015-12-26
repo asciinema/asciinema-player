@@ -214,6 +214,8 @@
 
 (defn player [state dispatch]
   (let [{:keys [width height font-size theme lines cursor stop current-time duration loading frames show-hud title author author-url author-img-url]} @state
+        width (or width 80)
+        height (or height 24)
         on-key-press (partial handle-dom-event dispatch key-press->event)
         on-key-down (partial handle-dom-event dispatch key-down->event)
         on-mouse-move #(dispatch [:mouse-move])
