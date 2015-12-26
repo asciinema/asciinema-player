@@ -317,6 +317,11 @@
         (assoc :loading false)
         (initialize-asciicast asciicast))))
 
+(defn handle-bad-response [state dispatch resp]
+  (print "error fetching asciicast file:")
+  (prn resp)
+  (assoc state :loading false))
+
 (defn handle-update-state
   "Applies given function (with args) to the player state."
   [state _ [f & args]]
@@ -330,6 +335,7 @@
                      :speed-up (partial handle-speed-change speed-up)
                      :speed-down (partial handle-speed-change speed-down)
                      :asciicast-response handle-asciicast-response
+                     :bad-response handle-bad-response
                      :update-state handle-update-state})
 
 (defn process-event
