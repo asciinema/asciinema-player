@@ -808,7 +808,8 @@
 
 (defn feed-one [{{old-state :state} :parser :as vt} input]
   (let [[new-state actions] (parse old-state input)]
-    (-> vt (assoc-in [:parser :state] new-state)
+    (-> vt
+        (assoc-in [:parser :state] new-state)
         (execute-actions actions input))))
 
 (defn feed [vt inputs]
