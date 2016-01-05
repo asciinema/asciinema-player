@@ -1,7 +1,7 @@
 /**
- * asciinema-player v1.1.0
+ * asciinema-player v2.0.0.rc1
  *
- * Copyright 2011-2015, Marcin Kulik
+ * Copyright 2011-2016, Marcin Kulik
  * All rights reserved.
  *
  */
