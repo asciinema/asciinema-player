@@ -126,6 +126,7 @@ To build stand-alone `.js` and `.css` files run:
 
 ## TODO
 
+* make `CreatePlayer` return "control object"
 * add hooks (start/pause/resume/finish)
 * figure out if GPL is compatible with Clojure(Script)'s EPL
 
