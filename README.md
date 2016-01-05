@@ -6,9 +6,14 @@ Web player for terminal session recordings (as produced by [asciinema recorder](
 
 ## Usage
 
-### Record terminal session
+### Obtain terminal session recording
 
-    asciinema rec demo.json
+You can either:
+
+* record terminal session to a local file with `asciinema rec demo.json`
+  ([more details on recording](https://github.com/asciinema/asciinema)),
+* download an existing recording from asciinema.org by appending `.json` to the
+  asciicast page URL (for example: https://asciinema.org/a/28307__.json__).
 
 ### Download the player
 
