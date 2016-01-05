@@ -13,7 +13,7 @@ You can either:
 * record terminal session to a local file with `asciinema rec demo.json`
   ([more details on recording](https://github.com/asciinema/asciinema)),
 * download an existing recording from asciinema.org by appending `.json` to the
-  asciicast page URL (for example: https://asciinema.org/a/28307__.json__).
+  asciicast page URL (for example: https://asciinema.org/a/28307.json).
 
 ### Download the player
 
