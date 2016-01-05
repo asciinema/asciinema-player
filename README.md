@@ -18,9 +18,8 @@ You can either:
 ### Download the player
 
 Download latest version of the player from
-[releases page](https://github.com/asciinema/asciinema-player/releases). After
-extracting the archive you will get `asciinema-player.js` and
-`asciinema-player.css` files.
+[releases page](https://github.com/asciinema/asciinema-player/releases). You
+only need `asciinema-player.js` and `asciinema-player.css` files.
 
 ### Use the player in your HTML page
 
