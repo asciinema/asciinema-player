@@ -17,44 +17,15 @@
                   :author-url "http://ku1ik.com/"
                   :author-img-url "https://gravatar.com/avatar/2807e23da22a140cf573ea75b37d11f6?s=128&d=retro"})
 
-;; "emacs"
+;; old, preprocessed, pre-v1 format
 
-;; (defonce player-state
-;;   (p/make-player-ratom "/asciicasts/frames-10386.json" (merge options {:snapshot snapshot})))
+;; (defonce player-state (p/make-player-ratom "/asciicasts/frames-10386.json" (merge options {:snapshot snapshot})))
 
-;; (add-watch player-state :foo (fn [_ id old new] (prn (-> new (dissoc :lines) (dissoc :snapshot) (dissoc :frames)))))
+;; v1 format
 
-;; "fractals"
-
-;; (defonce player-state
-;;   (p/make-player-ratom "/asciicasts/frames-20055.json" options))
-
-;; (defonce player-state
-;;   (p/make-player-ratom "/asciicasts/20055.json" options))
-
-;; "limelight.vim"
-
-(defonce player-state
-  (p/make-player-ratom "/asciicasts/21195.json" options))
-
-;; (defonce player-state
-;;   (p/make-player-ratom "/asciicasts/frames-21195.json" options))
-
-;; "catimg"
-
-;; (defonce player-state
-;;   (p/make-player-ratom "/asciicasts/frames-26491.json" options))
-
-;; "color table"
-
-;; (defonce player-state
-;;   (p/make-player-ratom "/asciicasts/frames-color-test.json" options))
+(defonce player-state (p/make-player-ratom "/asciicasts/21195.json" options))
 
 ;; (swap! player-state assoc :theme "solarized-dark")
-;; (swap! player-state assoc :theme "solarized-light")
-;; (swap! player-state assoc :theme "tango")
-;; (swap! player-state assoc :theme "seti")
-;; (swap! player-state assoc :current-time 45)
 ;; (swap! player-state assoc :font-size "small")
 ;; (swap! player-state assoc :speed 1)
 
@@ -136,13 +107,21 @@
             (recur (inc n) vt))
           (print "success"))))))
 
-;; (compare "20055.json" 1)
-
-(def asciicast-filename "20055.json")
-(def v1-url (str "/asciicasts/" asciicast-filename))
+;; (compare "21195.json" 1)
 
 ;; (go
-;;   (defonce v1-json (<! (fetch-json v1-url))))
+;;   (let [asciicast-filename "21195.json"
+;;         v1-url (str "/asciicasts/" asciicast-filename)]
+;;     (defonce v1-json (<! (fetch-json v1-url)))))
 
 ;; (let [v1-frames (map #(p/vt->frame (last %)) (p/build-v1-frames v1-json))]
-;;   (time (nth v1-frames 500)))
+;;   (time (last v1-frames)))
+
+;; (let [v1-frames (p/build-v1-frames v1-json)]
+;;   (-> v1-frames (nth 45) last p/vt->frame :lines vec (nth 13) ffirst))
+
+;; (-> v1-json :stdout (nth 45))
+
+;; (-> v1-frames (nth 45) last p/vt->frame :lines (nth 13)))
+
+;; (-> (p/vt->frame (last (nth v1-frames 45))) :lines vec (nth 14)))
