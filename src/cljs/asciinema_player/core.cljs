@@ -396,7 +396,7 @@
   [state dom-node]
   (let [dispatch (start-event-loop! state)]
     (reagent/render-component [view/player state dispatch] dom-node)
-    (clj->js {:toggle (fn [] true)})))
+    nil)) ; TODO: return JS object with control functions (play/pause) here
 
 (defn create-player
   "Creates the player with the state built from given options by starting event
