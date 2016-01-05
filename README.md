@@ -2,9 +2,80 @@
 
 [![Build Status](https://travis-ci.org/asciinema/asciinema-player.svg?branch=master)](https://travis-ci.org/asciinema/asciinema-player)
 
-Terminal session player, used on asciinema.org.
+Web player for terminal session recordings (as produced by [asciinema recorder](https://github.com/asciinema/asciinema)).
+
+## Usage
+
+### Record terminal session
+
+    asciinema rec demo.json
+
+### Download the player
+
+Download latest version of the player from
+[releases page](https://github.com/asciinema/asciinema-player/releases). After
+extracting the archive you will get `asciinema-player.js` and
+`asciinema-player.css` files.
+
+### Include the player and your recording in your HTML page
+
+```html
+<html>
+<head>
+  <link rel="stylesheet" type="text/css" href="/asciinema-player.css" />
+  <script src="/asciinema-player.js"></script>
+</head>
+<body>
+  <div id="player-container"></div>
+  <script>
+    asciinema_player.core.CreatePlayer('player-container', '/demo.json');
+  </script>
+</body>
+</html>
+```
+
+## API
+
+Create the player widget with the following JavaScript code:
+
+```javascript
+asciinema_player.core.CreatePlayer(parent, asciicastURL, options)
+```
+
+where:
+
+* `parent` - DOM element into which the player should be inserted (as the only child),
+* `asciicastURL` - URL of the asciicast JSON file to play,
+* `options` - (optional) object with any of the following properties:
+  * `width` - width of the player (number of terminal columns),
+  * `height` - height of the player (number of terminal lines),
+  * `autoPlay` - set to true if playback should start automatically, default: `false`,
+  * `loop` - set to true if playback should be looped, default: `false`,
+  * `startAt` - start playback at given second (implies `autoPlay: true` unless
+    `autoPlay: false` is set explicitly)
+  * `speed` - playback speed, default: 1,
+  * `snapshot` - snapshot (preview) to display, default: `[]`,
+  * `fontSize` - size of terminal font: `'small'`, `'medium'` or `'big'`; default: `'small'`,
+  * `theme` - terminal theme, one of `'asciinema'`, `'tango'`, `'solarized-dark'`,
+    `'solarized-light'`, `'monokai'`; default: `'asciinema'`,
+  * `title` - title of the asciicast, displayed in the titlebar in fullscreen mode,
+  * `author` - author of the asciicast, displayed in the titlebar in fullscreen mode,
+  * `authorURL` - URL of the author's homepage/profile,
+  * `authorImgURL` - URL of the author's image, displayed in the titlebar in fullscreen mode
+
+For example:
+
+```html
+<div id="player-container"></div>
+<script>
+  asciinema_player.core.CreatePlayer('player-container', '/demo.json', { speed: 2, theme: 'solarized-dark' });
+</script>
+```
 
 ## Keyboard shortcuts
+
+The following keyboard shortcuts are currently available (when the player
+element is focused):
 
 * `space` - play / pause
 * `f` - toggle fullscreen mode
@@ -40,53 +111,6 @@ To build stand-alone `.js` and `.css` files run:
 
     lein cljsbuild once release
     lein less once
-
-## Usage
-
-Add player script and stylesheet to the page:
-
-```html
-<head>
-  <link rel="stylesheet" type="text/css" href="/asciinema-player.css" />
-  <script src="/asciinema-player.js"></script>
-</head>
-```
-
-Create the player widget with the following JavaScript code:
-
-```javascript
-asciinema_player.core.CreatePlayer(parent, asciicastURL, options)
-```
-
-where:
-
-* `parent` - DOM element into which the player should be inserted (as the only child),
-* `asciicastURL` - URL of the asciicast JSON file to play,
-* `options` - (optional) object with any of the following properties:
-  * `width` - width of the player (number of terminal columns),
-  * `height` - height of the player (number of terminal lines),
-  * `autoPlay` - set to true if playback should start automatically, default: `false`,
-  * `loop` - set to true if playback should be looped, default: `false`,
-  * `startAt` - start playback at given second (implies `autoPlay: true` unless
-    `autoPlay: false` is set explicitly)
-  * `speed` - playback speed, default: 1,
-  * `snapshot` - snapshot (preview) to display, default: `[]`,
-  * `fontSize` - size of terminal font: `'small'`, `'medium'` or `'big'`; default: `'small'`,
-  * `theme` - terminal theme, one of `'asciinema'`, `'tango'`, `'solarized-dark'`,
-    `'solarized-light'`, `'monokai'`; default: `'asciinema'`,
-  * `title` - title of the asciicast, displayed in the titlebar in fullscreen mode,
-  * `author` - author of the asciicast, displayed in the titlebar in fullscreen mode,
-  * `authorURL` - URL of the author's homepage/profile,
-  * `authorImgURL` - URL of the author's image, displayed in the titlebar in fullscreen mode
-
-For example:
-
-```html
-<div id="player-container"></div>
-<script>
-  asciinema_player.core.CreatePlayer('player-container', '/asciicast.json', { speed: 2 });
-</script>
-```
 
 ## TODO
 
