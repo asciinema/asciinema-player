@@ -22,7 +22,10 @@ Download latest version of the player from
 extracting the archive you will get `asciinema-player.js` and
 `asciinema-player.css` files.
 
-### Include the player and your recording in your HTML page
+### Use the player in your HTML page
+
+Add player files (`.js` and `.css`) together with the recording `.json` file to
+your site assets, then initialize the player as seen on the example below:
 
 ```html
 <html>
@@ -76,6 +79,10 @@ For example:
   asciinema_player.core.CreatePlayer('player-container', '/demo.json', { speed: 2, theme: 'solarized-dark' });
 </script>
 ```
+
+`CreatePlayer` doesn't return anything useful yet (that's why we're not storing
+its result in a variable). In the future it will return a "control object" for
+programmatic control of the playback.
 
 ## Keyboard shortcuts
 
