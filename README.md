@@ -29,6 +29,7 @@ Features:
 * custom playback speeds,
 * looped playback,
 * starting playback at specific time,
+* keyboard shortcuts,
 * multiple color schemes,
 * full-screen mode.
 
