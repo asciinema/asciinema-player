@@ -1,7 +1,8 @@
 # asciinema player changelog
 
-## master
+## 2.0.0 (2016-01-06)
 
+* New API
 * Added support for direct playback of asciicast V1 format
 * New option: `startAt`, for specifying playback start point (in seconds)
 * Improved rendering of lines with non-monospace characters
