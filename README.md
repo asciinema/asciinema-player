@@ -113,7 +113,7 @@ where:
   * `startAt` - start playback at given second (implies `autoPlay: true` unless
     `autoPlay: false` is set explicitly)
   * `speed` - playback speed, default: 1,
-  * `snapshot` - snapshot (preview) to display, default: `[]`,
+  * `snapshot` - snapshot (preview) to display, default: blank terminal,
   * `fontSize` - size of terminal font: `'small'`, `'medium'` or `'big'`; default: `'small'`,
   * `theme` - terminal theme, one of `'asciinema'`, `'tango'`, `'solarized-dark'`,
     `'solarized-light'`, `'monokai'`; default: `'asciinema'`,
