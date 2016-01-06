@@ -14,7 +14,7 @@ heavy-weight video files (`.mp4`, `.webm` etc) but instead it plays light-weight
 terminal session files called
 [asciicasts](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v1.md).
 
-Asciicasts are a capture of terminal's raw output and thus the player comes with
+Asciicast is a capture of terminal's raw output and thus the player comes with
 its own terminal emulator based on
 [Paul Williams' parser for ANSI-compatible video terminals](http://vt100.net/emu/dec_ansi_parser).
 It covers only the display part of the emulation as this is what the player is
