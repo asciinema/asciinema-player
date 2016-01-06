@@ -2,7 +2,40 @@
 
 [![Build Status](https://travis-ci.org/asciinema/asciinema-player.svg?branch=master)](https://travis-ci.org/asciinema/asciinema-player)
 
-Web player for terminal session recordings (as produced by [asciinema recorder](https://github.com/asciinema/asciinema)).
+Web player for terminal session recordings (as produced by
+[asciinema recorder](https://github.com/asciinema/asciinema)) that you can use
+on your website.
+
+## About
+
+asciinema player is an open-source terminal session player written in
+ClojureScript. Contrary to other "video" players asciinema player doesn't play
+heavy-weight video files (`.mp4`, `.webm` etc) but instead it plays light-weight
+terminal session files called
+[asciicasts](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v1.md).
+
+Asciicasts are a capture of terminal's raw output and thus the player comes with
+its own terminal emulator based on
+[Paul Williams' parser for ANSI-compatible video terminals](http://vt100.net/emu/dec_ansi_parser).
+It covers only the display part of the emulation as this is what the player is
+about (input is handled by your terminal+shell at the time of recording anyway)
+and its handling of escape sequences is fully compatible with most modern
+terminal emulators like xterm, Gnome Terminal, iTerm, mosh etc.
+
+Features:
+
+* copy-paste of terminal content (it's just a text after all!),
+* multiple font sizes,
+* custom playback speeds,
+* looped playback,
+* starting playback at specific time,
+* multiple color schemes,
+* full-screen mode.
+
+You can see the player in action on [asciinema.org](https://asciinema.org).
+
+If you don't want to depend on asciinema.org and you prefer to host the player
+and the recordings yourself then read on, it's very simple.
 
 ## Quick start
 
@@ -156,7 +189,7 @@ If you want to contribute to this project check out
 ## Authors
 
 Developed with passion by [Marcin Kulik](http://ku1ik.com) and great open
-source [contributors](https://github.com/asciinema/asciinema-player/contributors)
+source [contributors](https://github.com/asciinema/asciinema-player/contributors).
 
 ## License
 
