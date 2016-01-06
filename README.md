@@ -176,6 +176,8 @@ To build stand-alone `.js` and `.css` files run:
     lein cljsbuild once release
     lein less once
 
+This produces `resources/public/js/release.js` and `resources/public/css/main.css`.
+
 ## TODO
 
 * make `CreatePlayer` return "control object"
