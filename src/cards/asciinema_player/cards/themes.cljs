@@ -5,7 +5,7 @@
 
 ;; "emacs"
 
-(defonce state-1 (c/make-player-ratom 80 24 "/frames-10386.json" 148.297910690308 {}))
+(defonce state-1 (c/make-player-ratom "/asciicasts/frames-10386.json" {}))
 (defonce dispatch-1 (c/start-event-loop! state-1))
 
 (swap! state-1 assoc :theme "asciinema")
@@ -15,7 +15,7 @@
 
 ;; "fractals"
 
-(defonce state-2 (c/make-player-ratom 80 24 "/frames-20055.json" 38.91 {}))
+(defonce state-2 (c/make-player-ratom "/asciicasts/frames-20055.json" {}))
 (defonce dispatch-2 (c/start-event-loop! state-2))
 
 (defcard fractals-with-default-theme
@@ -23,7 +23,7 @@
 
 ;; "catimg"
 
-(defonce state-3 (c/make-player-ratom 100 41 "/frames-26491.json" 12.318521 {}))
+(defonce state-3 (c/make-player-ratom "/asciicasts/frames-26491.json" {}))
 (defonce dispatch-3 (c/start-event-loop! state-3))
 
 (defcard catimg-with-default-theme
@@ -31,7 +31,7 @@
 
 ;; "color table"
 
-(defonce state-4a (c/make-player-ratom 84 31 "/frames-color-test.json" 4.533024 {}))
+(defonce state-4a (c/make-player-ratom "/asciicasts/frames-color-test.json" {}))
 (defonce dispatch-4a (c/start-event-loop! state-4a))
 
 (defcard color-table-with-tango-theme
@@ -39,7 +39,7 @@
 
 (swap! state-4a assoc :theme "tango")
 
-(defonce state-4 (c/make-player-ratom 84 31 "/frames-color-test.json" 4.533024 {}))
+(defonce state-4 (c/make-player-ratom "/asciicasts/frames-color-test.json" {}))
 (defonce dispatch-4 (c/start-event-loop! state-4))
 
 (defcard color-table-with-asciinema-theme
@@ -47,7 +47,7 @@
 
 (swap! state-4 assoc :theme "asciinema")
 
-(defonce state-5 (c/make-player-ratom 84 31 "/frames-color-test.json" 4.533024 {}))
+(defonce state-5 (c/make-player-ratom "/asciicasts/frames-color-test.json" {}))
 (defonce dispatch-5 (c/start-event-loop! state-5))
 
 (defcard color-table-with-seti-theme
@@ -55,7 +55,7 @@
 
 (swap! state-5 assoc :theme "seti")
 
-(defonce state-6 (c/make-player-ratom 84 31 "/frames-color-test.json" 4.533024 {}))
+(defonce state-6 (c/make-player-ratom "/asciicasts/frames-color-test.json" {}))
 (defonce dispatch-6 (c/start-event-loop! state-6))
 
 (defcard color-table-with-monokai-theme

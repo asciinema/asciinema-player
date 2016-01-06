@@ -3,7 +3,7 @@
             [asciinema-player.view :as v])
   (:require-macros [devcards.core :as dc :refer [defcard]]))
 
-(defonce state-1 (c/make-player-ratom 80 24 "/frames-10386.json" 148.297910690308 {}))
+(defonce state-1 (c/make-player-ratom "/asciicasts/frames-10386.json" {}))
 (defonce dispatch-1 (c/start-event-loop! state-1))
 
 (swap! state-1 assoc :title "This is looooooooooooooooooooooooooooooooooooooooong title for such a narrow terminal")
@@ -11,7 +11,7 @@
 (defcard player-with-title
   (dc/reagent [v/player state-1 dispatch-1]))
 
-(defonce state-2 (c/make-player-ratom 80 24 "/frames-20055.json" 38.91 {}))
+(defonce state-2 (c/make-player-ratom "/asciicasts/21195.json" {}))
 (defonce dispatch-2 (c/start-event-loop! state-2))
 
 (swap! state-2 assoc :title "This is looooooooooooooooooooooooooooooooooooooooong title for such a narrow terminal")
