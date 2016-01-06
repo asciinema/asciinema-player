@@ -4,15 +4,14 @@
 
 Web player for terminal session recordings (as produced by [asciinema recorder](https://github.com/asciinema/asciinema)).
 
-## Usage
+## Quick start
 
-### Obtain terminal session recording
+The following example assumes you have obtained terminal session recording file
+by either:
 
-You can either:
-
-* record terminal session to a local file with `asciinema rec demo.json`
+* recording terminal session to a local file with `asciinema rec demo.json`
   ([more details on recording](https://github.com/asciinema/asciinema)),
-* download an existing recording from asciinema.org by appending `.json` to the
+* downloading an existing recording from asciinema.org by appending `.json` to the
   asciicast page URL (for example: https://asciinema.org/a/28307.json).
 
 ### Download the player
@@ -23,8 +22,28 @@ only need `asciinema-player.js` and `asciinema-player.css` files.
 
 ### Use the player in your HTML page
 
-Add player files (`.js` and `.css`) together with the recording `.json` file to
-your site assets, then initialize the player as seen on the example below:
+First, add player files (`asciinema-player.js` and `asciinema-player.css`)
+together with the recording `demo.json` file to your site assets.
+
+Then add necessary includes to your document's `<head>`:
+
+```html
+<link rel="stylesheet" type="text/css" href="/asciinema-player.css" />
+<script src="/asciinema-player.js"></script>
+```
+
+Now, add empty `<div>` element in your markup where you want the player to show
+up, assigning it `id` attribute. Then initialize the player with this id and the
+URL of the `.json` file containing the recording:
+
+```html
+<div id="player-container"></div>
+<script>
+  asciinema_player.core.CreatePlayer('player-container', '/demo.json');
+</script>
+```
+
+Complete example:
 
 ```html
 <html>
@@ -116,7 +135,7 @@ Run tests with:
 
     lein doo phantom test
 
-### Building
+### Building from source
 
 To build stand-alone `.js` and `.css` files run:
 
