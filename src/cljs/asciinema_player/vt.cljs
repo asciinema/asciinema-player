@@ -436,8 +436,10 @@
                                      (take y lines)
                                      (scroll-up-lines (drop y lines) n filler))))))))
 
-(defn execute-dch [{{:keys [x y]} :cursor :keys [char-attrs] :as vt}]
-  (let [n (get-param vt 0 1)]
+(defn execute-dch [{{:keys [x y]} :cursor :keys [width char-attrs] :as vt}]
+  (let [vt (if (>= x width) (move-cursor-to-col vt (dec width)) vt)
+        x (get-in vt [:cursor :x])
+        n (min (get-param vt 0 1) (- width x))]
     (update-in vt [:lines y] (fn [line]
                                (vec (concat
                                      (take x line)

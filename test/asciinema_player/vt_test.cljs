@@ -1337,6 +1337,10 @@
       (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "2P")]
         (is (= line0 [[0x41 {}] [0x42 {}] [0x45 {}] [0x46 {}] [0x20 {}] [0x20 {}] [0x20 {}]]))
         (is (= x 2))
+        (is (= y 0)))
+      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "10P")]
+        (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]))
+        (is (= x 2))
         (is (= y 0)))))
 
   (testing "CSI S (SU)"
