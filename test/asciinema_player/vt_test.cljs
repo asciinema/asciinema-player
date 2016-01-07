@@ -7,6 +7,18 @@
             [clojure.test.check.properties :as prop :include-macros true]
             [asciinema-player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines]]))
 
+(defn expect-lines [{lines :lines} expected]
+  (is (= (compact-lines lines) expected)))
+
+(defn expect-cursor
+  ([{{:keys [x y]} :cursor} expected-x expected-y]
+   (is (= x expected-x))
+   (is (= y expected-y)))
+  ([{{:keys [x y visible]} :cursor} expected-x expected-y expected-visible]
+   (is (= x expected-x))
+   (is (= y expected-y))
+   (is (= visible expected-visible))))
+
 (defn test-event [initial-state input expected-state expected-actions]
   (is (= (parse initial-state input) [expected-state expected-actions])))
 
@@ -422,28 +434,28 @@
                (set-fg 1))]
 
     (testing "printing within single line"
-      (let [{:keys [lines cursor]} (feed-str vt "ABC")]
-        (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x20 {}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-        (is (= cursor {:x 3 :y 0 :visible true}))))
+      (let [vt (feed-str vt "ABC")]
+        (expect-lines vt [[["ABC" {:fg 1}] [" " {}]]
+                          [["    " {}]]
+                          [["    " {}]]])
+        (expect-cursor vt 3 0 true)))
 
     (testing "printing non-ASCII characters"
-      (let [{:keys [lines cursor]} (feed-str vt "ABCżÓłĆ")]
-        (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x017c {:fg 1}]]
-                      [[0xd3 {:fg 1}] [0x0142 {:fg 1}] [0x0106 {:fg 1}] [0x20 {}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-        (is (= cursor {:x 3 :y 1 :visible true}))))
+      (let [vt (feed-str vt "ABCżÓłĆ")]
+        (expect-lines vt [[["ABCż" {:fg 1}]]
+                          [["ÓłĆ" {:fg 1}] [" " {}]]
+                          [["    " {}]]])
+        (expect-cursor vt 3 1 true)))
 
     (testing "printing ASCII art using special drawing character set"
-      (let [{:keys [lines cursor]} (-> vt
-                                       (feed-esc "(0") ; use drawing character set
-                                       (feed-str "abcd{|}~")
-                                       (feed-esc "(B") ; back to ASCII
-                                       (feed-str "abc"))]
-        (is (= (compact-lines lines) [[["▒␉␌␍" {:fg 1}]]
-                                      [["π≠£⋅" {:fg 1}]]
-                                      [["abc" {:fg 1}] [" " {}]]]))))
+      (let [vt (-> vt
+                   (feed-esc "(0") ; use drawing character set
+                   (feed-str "abcd{|}~")
+                   (feed-esc "(B") ; back to ASCII
+                   (feed-str "abc"))]
+        (expect-lines vt [[["▒␉␌␍" {:fg 1}]]
+                          [["π≠£⋅" {:fg 1}]]
+                          [["abc" {:fg 1}] [" " {}]]])))
 
     (testing "printing in insert mode"
       (let [vt (-> vt
@@ -452,253 +464,230 @@
                    (feed-csi "4h") ; enable insert mode
                    (set-fg 2)
                    (feed-str "HI"))]
-        (let [{:keys [lines cursor]} vt]
-          (is (= lines [[[0x41 {:fg 1}] [0x48 {:fg 2}] [0x49 {:fg 2}] [0x42 {:fg 1}]]
-                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-          (is (= cursor {:x 3 :y 0 :visible true})))))
+        (expect-lines vt [[["A" {:fg 1}] ["HI" {:fg 2}] ["B" {:fg 1}]]
+                          [["    " {}]]
+                          [["    " {}]]])
+        (expect-cursor vt 3 0 true)))
 
     (testing "printing on the right edge of the line"
-      (let [vt (feed-str vt "ABCD")
-            {:keys [lines cursor]} vt]
-        (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x44 {:fg 1}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-        (is (= cursor {:x 4 :y 0 :visible true}))
-        (let [vt (feed-str vt "EF")
-              {:keys [lines cursor]} vt]
-          (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x44 {:fg 1}]]
-                        [[0x45 {:fg 1}] [0x46 {:fg 1}] [0x20 {}] [0x20 {}]]
-                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-          (is (= cursor {:x 2 :y 1 :visible true})))
+      (let [vt (feed-str vt "ABCD")]
+        (expect-lines vt [[["ABCD" {:fg 1}]]
+                          [["    " {}]]
+                          [["    " {}]]])
+        (expect-cursor vt 4 0 true)
+        (let [vt (feed-str vt "EF")]
+          (expect-lines vt [[["ABCD" {:fg 1}]]
+                            [["EF" {:fg 1}] ["  " {}]]
+                            [["    " {}]]])
+          (expect-cursor vt 2 1 true))
         (let [vt (-> vt
                      (feed-csi "1;4H") ; move to the current position (in place)
-                     (feed-str "EF"))  ; next-print-wraps should have been reset above
-              {:keys [lines cursor]} vt]
-          (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x45 {:fg 1}]]
-                        [[0x46 {:fg 1}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-          (is (= cursor {:x 1 :y 1 :visible true})))))
+                     (feed-str "EF"))] ; next-print-wraps should have been reset above
+          (expect-lines vt [[["ABCE" {:fg 1}]]
+                            [["F" {:fg 1}] ["   " {}]]
+                            [["    " {}]]])
+          (expect-cursor vt 1 1 true))))
 
     (testing "printing on the right edge of the line (auto-wrap off)"
       (let [vt (-> vt
                    (feed-csi "?7l") ; reset auto-wrap
-                   (feed-str "ABCDEF"))
-            {:keys [lines cursor]} vt]
-        (is (= lines [[[0x41 {:fg 1}] [0x42 {:fg 1}] [0x43 {:fg 1}] [0x46 {:fg 1}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                      [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-        (is (= cursor {:x 3 :y 0 :visible true}))))
+                   (feed-str "ABCDEF"))]
+        (expect-lines vt [[["ABCF" {:fg 1}]]
+                          [["    " {}]]
+                          [["    " {}]]])
+        (expect-cursor vt 3 0 true)))
 
     (testing "printing on the bottom right edge of the screen"
-      (let [vt (feed-str vt "AAAABBBBCCCC")
-            {:keys [lines cursor]} vt]
-        (is (= lines [[[0x41 {:fg 1}] [0x41 {:fg 1}] [0x41 {:fg 1}] [0x41 {:fg 1}]]
-                      [[0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}]]
-                      [[0x43 {:fg 1}] [0x43 {:fg 1}] [0x43 {:fg 1}] [0x43 {:fg 1}]]]))
-        (is (= cursor {:x 4 :y 2 :visible true}))
-        (let [vt (feed-str vt "DD")
-              {:keys [lines cursor]} vt]
-          (is (= lines [[[0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}]]
-                        [[0x43 {:fg 1}] [0x43 {:fg 1}] [0x43 {:fg 1}] [0x43 {:fg 1}]]
-                        [[0x44 {:fg 1}] [0x44 {:fg 1}] [0x20 {:fg 1}] [0x20 {:fg 1}]]]))
-          (is (= cursor {:x 2 :y 2 :visible true})))))
+      (let [vt (feed-str vt "AAAABBBBCCCC")]
+        (expect-lines vt [[["AAAA" {:fg 1}]]
+                          [["BBBB" {:fg 1}]]
+                          [["CCCC" {:fg 1}]]])
+        (expect-cursor vt 4 2 true)
+        (let [vt (feed-str vt "DD")]
+          (expect-lines vt [[["BBBB" {:fg 1}]]
+                            [["CCCC" {:fg 1}]]
+                            [["DD  " {:fg 1}]]])
+          (expect-cursor vt 2 2 true))))
 
     (testing "printing on the bottom right edge of the screen (auto-wrap off)"
       (let [vt (-> vt
                    (feed-str "AAAABBBBCC")
                    (feed-csi "?7l") ; reset auto-wrap
-                   (feed-str "DDEFGH"))
-            {:keys [lines cursor]} vt]
-        (is (= lines [[[0x41 {:fg 1}] [0x41 {:fg 1}] [0x41 {:fg 1}] [0x41 {:fg 1}]]
-                      [[0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}] [0x42 {:fg 1}]]
-                      [[0x43 {:fg 1}] [0x43 {:fg 1}] [0x44 {:fg 1}] [0x48 {:fg 1}]]]))
-        (is (= cursor {:x 3 :y 2 :visible true}))))))
+                   (feed-str "DDEFGH"))]
+        (expect-lines vt [[["AAAA" {:fg 1}]]
+                          [["BBBB" {:fg 1}]]
+                          [["CCDH" {:fg 1}]]])
+        (expect-cursor vt 3 2 true)))))
 
 (defn test-lf [f]
   (let [vt (-> (make-vt 4 7)
                (feed-str "AAAABBBBCCCCDDDDEEEEFFFFG")
                (set-bg 3))]
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) f)]
-      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-      (is (= x 0))
-      (is (= y 1)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) f)]
-      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-      (is (= x 1))
-      (is (= y 2)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 6) f)]
-      (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                    [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
-      (is (= x 2))
-      (is (= y 6)))
+    (let [vt (-> vt (move-cursor 0 0) f)]
+      (expect-lines vt [[["AAAA" {}]]
+                        [["BBBB" {}]]
+                        [["CCCC" {}]]
+                        [["DDDD" {}]]
+                        [["EEEE" {}]]
+                        [["FFFF" {}]]
+                        [["G   " {}]]])
+      (expect-cursor vt 0 1))
+    (let [vt (-> vt (move-cursor 1 1) f)]
+      (expect-lines vt [[["AAAA" {}]]
+                        [["BBBB" {}]]
+                        [["CCCC" {}]]
+                        [["DDDD" {}]]
+                        [["EEEE" {}]]
+                        [["FFFF" {}]]
+                        [["G   " {}]]])
+      (expect-cursor vt 1 2))
+    (let [vt (-> vt (move-cursor 2 6) f)]
+      (expect-lines vt [[["BBBB" {}]]
+                        [["CCCC" {}]]
+                        [["DDDD" {}]]
+                        [["EEEE" {}]]
+                        [["FFFF" {}]]
+                        [["G   " {}]]
+                        [["    " {:bg 3}]]])
+      (expect-cursor vt 2 6))
     (let [vt (feed-csi vt "3;5r")] ; set scroll region 3-5
-      (let [vt (-> vt (move-cursor 2 1) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-        (is (= x 2))
-        (is (= y 2)))
-      (let [vt (-> vt (move-cursor 2 3) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-        (is (= x 2))
-        (is (= y 4)))
-      (let [vt (-> vt (move-cursor 2 4) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-        (is (= x 2))
-        (is (= y 4)))
-      (let [vt (-> vt (move-cursor 2 5) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-        (is (= x 2))
-        (is (= y 6)))
-      (let [vt (-> vt (move-cursor 2 6) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
-        (is (= x 2))
-        (is (= y 6))))
+      (let [vt (-> vt (move-cursor 2 1) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 2 2))
+      (let [vt (-> vt (move-cursor 2 3) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 2 4))
+      (let [vt (-> vt (move-cursor 2 4) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["    " {:bg 3}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 2 4))
+      (let [vt (-> vt (move-cursor 2 5) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 2 6))
+      (let [vt (-> vt (move-cursor 2 6) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 2 6))
     (let [vt (feed-csi vt "20h") ; set new-line mode
-          vt (-> vt (move-cursor 2 1) f)
-          {{:keys [x y]} :cursor} vt]
-      (is (= x 0))
-      (is (= y 2)))))
+          vt (-> vt (move-cursor 2 1) f)]
+      (expect-cursor vt 0 2)))))
 
 (defn test-nel [f]
   (let [vt (-> (make-vt 4 7)
                (feed-str "AAAABBBBCCCCDDDDEEEEFFFFG")
                (set-bg 3))]
     (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) f)]
-      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= (compact-lines lines) [[["AAAA" {}]]
+                                    [["BBBB" {}]]
+                                    [["CCCC" {}]]
+                                    [["DDDD" {}]]
+                                    [["EEEE" {}]]
+                                    [["FFFF" {}]]
+                                    [["G   " {}]]]))
       (is (= x 0))
       (is (= y 1)))
     (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) f)]
-      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= (compact-lines lines) [[["AAAA" {}]]
+                                    [["BBBB" {}]]
+                                    [["CCCC" {}]]
+                                    [["DDDD" {}]]
+                                    [["EEEE" {}]]
+                                    [["FFFF" {}]]
+                                    [["G   " {}]]]))
       (is (= x 0))
       (is (= y 2)))
     (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 6) f)]
-      (is (= lines [[[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                    [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
+      (is (= (compact-lines lines) [[["BBBB" {}]]
+                                    [["CCCC" {}]]
+                                    [["DDDD" {}]]
+                                    [["EEEE" {}]]
+                                    [["FFFF" {}]]
+                                    [["G   " {}]]
+                                    [["    " {:bg 3}]]]))
       (is (= x 0))
       (is (= y 6)))
     (let [vt (feed-csi vt "3;5r")] ; set scroll region 3-5
       (let [vt (-> vt (move-cursor 2 1) f)
             {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["AAAA" {}]]
+                                      [["BBBB" {}]]
+                                      [["CCCC" {}]]
+                                      [["DDDD" {}]]
+                                      [["EEEE" {}]]
+                                      [["FFFF" {}]]
+                                      [["G   " {}]]]))
         (is (= x 0))
         (is (= y 2)))
       (let [vt (-> vt (move-cursor 2 3) f)
             {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["AAAA" {}]]
+                                      [["BBBB" {}]]
+                                      [["CCCC" {}]]
+                                      [["DDDD" {}]]
+                                      [["EEEE" {}]]
+                                      [["FFFF" {}]]
+                                      [["G   " {}]]]))
         (is (= x 0))
         (is (= y 4)))
       (let [vt (-> vt (move-cursor 2 4) f)
             {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["AAAA" {}]]
+                                      [["BBBB" {}]]
+                                      [["DDDD" {}]]
+                                      [["EEEE" {}]]
+                                      [["    " {:bg 3}]]
+                                      [["FFFF" {}]]
+                                      [["G   " {}]]]))
         (is (= x 0))
         (is (= y 4)))
       (let [vt (-> vt (move-cursor 2 5) f)
             {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["AAAA" {}]]
+                                      [["BBBB" {}]]
+                                      [["CCCC" {}]]
+                                      [["DDDD" {}]]
+                                      [["EEEE" {}]]
+                                      [["FFFF" {}]]
+                                      [["G   " {}]]]))
         (is (= x 0))
         (is (= y 6)))
       (let [vt (-> vt (move-cursor 2 6) f)
             {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["AAAA" {}]]
+                                      [["BBBB" {}]]
+                                      [["CCCC" {}]]
+                                      [["DDDD" {}]]
+                                      [["EEEE" {}]]
+                                      [["FFFF" {}]]
+                                      [["G   " {}]]]))
         (is (= x 0))
         (is (= y 6))))))
 
@@ -718,89 +707,89 @@
                (feed-str "AAAABBBBCCCCDDDDEEEEFFFFG")
                (set-bg 3))]
     (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 6) f)]
-      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= (compact-lines lines) [[["AAAA" {}]]
+                                    [["BBBB" {}]]
+                                    [["CCCC" {}]]
+                                    [["DDDD" {}]]
+                                    [["EEEE" {}]]
+                                    [["FFFF" {}]]
+                                    [["G   " {}]]]))
       (is (= x 0))
       (is (= y 5)))
     (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 5) f)]
-      (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                    [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= (compact-lines lines) [[["AAAA" {}]]
+                                    [["BBBB" {}]]
+                                    [["CCCC" {}]]
+                                    [["DDDD" {}]]
+                                    [["EEEE" {}]]
+                                    [["FFFF" {}]]
+                                    [["G   " {}]]]))
       (is (= x 1))
       (is (= y 4)))
     (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 0) f)]
-      (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                    [[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                    [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                    [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                    [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                    [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]]))
+      (is (= (compact-lines lines) [[["    " {:bg 3}]]
+                                    [["AAAA" {}]]
+                                    [["BBBB" {}]]
+                                    [["CCCC" {}]]
+                                    [["DDDD" {}]]
+                                    [["EEEE" {}]]
+                                    [["FFFF" {}]]]))
       (is (= x 2))
       (is (= y 0)))
     (let [vt (feed-csi vt "3;5r")] ; set scroll region 3-5
       (let [vt (-> vt (move-cursor 2 5) f)
             {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["AAAA" {}]]
+                                      [["BBBB" {}]]
+                                      [["CCCC" {}]]
+                                      [["DDDD" {}]]
+                                      [["EEEE" {}]]
+                                      [["FFFF" {}]]
+                                      [["G   " {}]]]))
         (is (= x 2))
         (is (= y 4)))
       (let [vt (-> vt (move-cursor 2 3) f)
             {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["AAAA" {}]]
+                                      [["BBBB" {}]]
+                                      [["CCCC" {}]]
+                                      [["DDDD" {}]]
+                                      [["EEEE" {}]]
+                                      [["FFFF" {}]]
+                                      [["G   " {}]]]))
         (is (= x 2))
         (is (= y 2)))
       (let [vt (-> vt (move-cursor 2 2) f)
             {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["AAAA" {}]]
+                                      [["BBBB" {}]]
+                                      [["    " {:bg 3}]]
+                                      [["CCCC" {}]]
+                                      [["DDDD" {}]]
+                                      [["FFFF" {}]]
+                                      [["G   " {}]]]))
         (is (= x 2))
         (is (= y 2)))
       (let [vt (-> vt (move-cursor 2 1) f)
             {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["AAAA" {}]]
+                                      [["BBBB" {}]]
+                                      [["CCCC" {}]]
+                                      [["DDDD" {}]]
+                                      [["EEEE" {}]]
+                                      [["FFFF" {}]]
+                                      [["G   " {}]]]))
         (is (= x 2))
         (is (= y 0)))
       (let [vt (-> vt (move-cursor 2 0) f)
             {lines :lines {x :x y :y} :cursor} vt]
-        (is (= lines [[[0x41 {}] [0x41 {}] [0x41 {}] [0x41 {}]]
-                      [[0x42 {}] [0x42 {}] [0x42 {}] [0x42 {}]]
-                      [[0x43 {}] [0x43 {}] [0x43 {}] [0x43 {}]]
-                      [[0x44 {}] [0x44 {}] [0x44 {}] [0x44 {}]]
-                      [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                      [[0x46 {}] [0x46 {}] [0x46 {}] [0x46 {}]]
-                      [[0x47 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["AAAA" {}]]
+                                      [["BBBB" {}]]
+                                      [["CCCC" {}]]
+                                      [["DDDD" {}]]
+                                      [["EEEE" {}]]
+                                      [["FFFF" {}]]
+                                      [["G   " {}]]]))
         (is (= x 2))
         (is (= y 0))))))
 
@@ -902,9 +891,9 @@
                  (move-cursor 2 1)
                  (feed-esc "#8"))
           {lines :lines {x :x y :y} :cursor} vt]
-      (is (= lines [[[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]
-                    [[0x45 {}] [0x45 {}] [0x45 {}] [0x45 {}]]]))
+      (is (= (compact-lines lines) [[["EEEE" {}]]
+                                    [["EEEE" {}]]
+                                    [["EEEE" {}]]]))
       (is (= x 2))
       (is (= y 1))))
 
@@ -1214,21 +1203,21 @@
                  (set-bg 3)
                  (move-cursor 1 1))]
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "J")]
-        (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
-                      [[0x45 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
+        (is (= (compact-lines lines) [[["ABCD" {}]]
+                                      [["E" {}] ["   " {:bg 3}]]
+                                      [["    " {:bg 3}]]]))
         (is (= x 1))
         (is (= y 1)))
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "1J")]
-        (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x47 {}] [0x48 {}]]
-                      [[0x49 {}] [0x4a {}] [0x20 {}] [0x20 {}]]]))
+        (is (= (compact-lines lines) [[["    " {:bg 3}]]
+                                      [["  " {:bg 3}] ["GH" {}]]
+                                      [["IJ  " {}]]]))
         (is (= x 1))
         (is (= y 1)))
       (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2J")]
-        (is (= lines [[[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]
-                      [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]]))
+        (is (= (compact-lines lines) [[["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]
+                                      [["    " {:bg 3}]]]))
         (is (= x 1))
         (is (= y 1)))))
 
@@ -1550,9 +1539,9 @@
                 {:keys [lines] {:keys [x y]} :cursor} vt]
             (is (= x 2))
             (is (= y 1))
-            (is (= lines [[[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
-                          [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
-                          [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]]))))
+            (is (= (compact-lines lines) [[["    " {:bg 2}]]
+                                          [["    " {:bg 2}]]
+                                          [["    " {:bg 2}]]]))))
         (testing "when in alternate buffer"
           (let [vt (-> vt
                        (feed-csi cseq)
@@ -1561,9 +1550,9 @@
                 {:keys [lines] {:keys [x y]} :cursor} vt]
             (is (= x 2))
             (is (= y 1))
-            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
-                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
-                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]])))))))
+            (is (= (compact-lines lines) [[["ABC " {}]]
+                                          [["DE  " {}]]
+                                          [["    " {}]]])))))))
 
   (testing "CSI ?1049h (DECSM)" ; save cursor and switch to alternate buffer
     (let [vt (make-vt 4 3)]
@@ -1575,9 +1564,9 @@
               {:keys [lines] {:keys [x y]} :cursor} vt]
           (is (= x 2))
           (is (= y 1))
-          (is (= lines [[[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
-                        [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]
-                        [[0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}] [0x20 {:bg 2}]]]))))
+          (is (= (compact-lines lines) [[["    " {:bg 2}]]
+                                        [["    " {:bg 2}]]
+                                        [["    " {:bg 2}]]]))))
       (testing "when in alternate buffer"
         (let [vt (-> vt
                      (feed-csi "?1049h")
@@ -1586,9 +1575,9 @@
               {:keys [lines] {:keys [x y]} :cursor} vt]
           (is (= x 2))
           (is (= y 1))
-          (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
-                        [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
-                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))))
+          (is (= (compact-lines lines) [[["ABC " {}]]
+                                        [["DE  " {}]]
+                                        [["    " {}]]]))))))
 
   (testing "CSI ?h (DECSM)" ; set multiple modes
     (let [vt (-> (make-vt 80 24)
@@ -1641,9 +1630,9 @@
                 {:keys [lines] {:keys [x y]} :cursor} vt]
             (is (= x 2))
             (is (= y 1))
-            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
-                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
-                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))
+            (is (= (compact-lines lines) [[["ABC " {}]]
+                                          [["DE  " {}]]
+                                          [["    " {}]]]))))
         (testing "when in alternate buffer"
           (let [vt (-> vt
                        (feed-str "ABC\n\rDE")
@@ -1654,9 +1643,9 @@
                 {:keys [lines] {:keys [x y]} :cursor} vt]
             (is (= x 1))
             (is (= y 2))
-            (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
-                          [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
-                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]])))))))
+            (is (= (compact-lines lines) [[["ABC " {}]]
+                                          [["DE  " {}]]
+                                          [["    " {}]]])))))))
 
   (testing "CSI ?1049l (DECRM)" ; switch back to primary buffer and restore cursor
     (let [vt (make-vt 4 3)]
@@ -1667,9 +1656,9 @@
               {:keys [lines] {:keys [x y]} :cursor} vt]
           (is (= x 0))
           (is (= y 0))
-          (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
-                        [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
-                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))
+          (is (= (compact-lines lines) [[["ABC " {}]]
+                                        [["DE  " {}]]
+                                        [["    " {}]]]))))
       (testing "when in alternate buffer"
         (let [vt (-> vt
                      (feed-str "ABC\n\rDE")
@@ -1681,9 +1670,9 @@
               {:keys [lines] {:keys [x y]} :cursor} vt]
           (is (= x 2))
           (is (= y 1))
-          (is (= lines [[[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {}]]
-                        [[0x44 {}] [0x45 {}] [0x20 {}] [0x20 {}]]
-                        [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))))))
+          (is (= (compact-lines lines) [[["ABC " {}]]
+                                        [["DE  " {}]]
+                                        [["    " {}]]]))))))
 
   (testing "CSI ?l (DECRM)" ; reset multiple modes
     (let [vt (make-vt 80 24)]
@@ -1751,10 +1740,10 @@
                  (set-fg 1)
                  (feed-esc "7") ; save cursor
                  (feed-csi "!p"))] ; soft reset
-      (is (= (:lines vt) [[[0x41 {}] [0x42 {}] [0x43 {}] [0x44 {}]]
-                          [[0x45 {}] [0x46 {}] [0x47 {}] [0x48 {}]]
-                          [[0x49 {}] [0x20 {}] [0x20 {}] [0x20 {}]]
-                          [[0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]]))
+      (is (= (compact-lines (:lines vt)) [[["ABCD" {}]]
+                                          [["EFGH" {}]]
+                                          [["I   " {}]]
+                                          [["    " {}]]]))
       (is (= (:cursor vt) {:x 2 :y 2 :visible true}))
       (is (= (:char-attrs vt) {}))
       (is (= (:insert-mode vt) false))
