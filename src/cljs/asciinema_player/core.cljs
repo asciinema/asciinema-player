@@ -11,17 +11,15 @@
 
 (defn make-player
   "Returns fresh player state for given options."
-  [asciicast-url {:keys [width height speed snapshot font-size theme start-at auto-play]
+  [asciicast-url {:keys [width height speed snapshot font-size theme start-at]
                   :or {speed 1 snapshot [] font-size "small" theme "asciinema"}
                   :as options}]
-  (let [auto-play (if (nil? auto-play) (boolean start-at) auto-play)
-        start-at (or start-at 0)]
+  (let [start-at (or start-at 0)]
     (merge {:width width
             :height height
             :duration 0
             :asciicast-url asciicast-url
             :speed speed
-            :auto-play auto-play
             :lines snapshot
             :font-size font-size
             :theme theme
@@ -29,7 +27,7 @@
             :start-at start-at
             :current-time start-at
             :show-hud false}
-           (select-keys options [:loop :title :author :author-url :author-img-url]))))
+           (select-keys options [:loop :auto-play :title :author :author-url :author-img-url]))))
 
 (defn make-player-ratom
   "Returns Reagent atom with fresh player state."

@@ -1,5 +1,9 @@
 # asciinema player changelog
 
+## master
+
+* `startAt` option doesn't imply `autoPlay: true` anymore
+
 ## 2.0.0 (2016-01-06)
 
 * New API

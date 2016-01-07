@@ -15,20 +15,21 @@
       (is (= (:theme player) "asciinema"))
       (is (= (:font-size player) "small"))
       (is (= (:speed player) 1))
-      (is (= (:auto-play player) false))
+      (is (= (:auto-play player) nil))
       (is (= (:loop player) nil)))
-    (let [player (make-player {:width 100 :height 40 :speed 3 :theme "tango" :font-size "big" :loop true :author "me"})]
+    (let [player (make-player {:width 100 :height 40 :speed 3 :theme "tango" :font-size "big" :loop true :auto-play true :author "me"})]
       (is (= (:width player) 100))
       (is (= (:height player) 40))
       (is (= (:speed player) 3))
       (is (= (:theme player) "tango"))
       (is (= (:font-size player) "big"))
       (is (= (:loop player) true))
+      (is (= (:auto-play player) true))
       (is (= (:author player) "me")))
     (let [player (make-player {:start-at 15})]
       (is (= (:start-at player) 15))
       (is (= (:current-time player) 15))
-      (is (= (:auto-play player) true)))
+      (is (= (:auto-play player) nil)))
     (let [player (make-player {:start-at 15 :auto-play false})]
       (is (= (:start-at player) 15))
       (is (= (:current-time player) 15))
