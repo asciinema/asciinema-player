@@ -1,5 +1,6 @@
 (ns asciinema-player.vt-test
   (:require-macros [cljs.test :refer (is deftest testing)]
+                   [asciinema-player.vt-test :refer [property-tests-multiplier]]
                    [clojure.test.check.clojure-test :refer (defspec)])
   (:require [cljs.test]
             [clojure.test.check :as tc]
@@ -1791,13 +1792,13 @@
 (def gen-unicode-rubbish (gen/vector (gen/choose 0 0x10ffff) 1 100))
 
 (defspec test-parser-state-for-random-input
-  100
+  {:num-tests (* 100 (property-tests-multiplier))}
   (prop/for-all [rubbish gen-unicode-rubbish]
                 (let [vt (-> (make-vt 80 24) (feed rubbish))]
                   (keyword? (-> vt :parser :state)))))
 
 (defspec test-cursor-position-for-random-input
-  100
+  {:num-tests (* 100 (property-tests-multiplier))}
   (prop/for-all [x (gen/choose 0 19)
                  y (gen/choose 0 9)
                  rubbish gen-ascii-rubbish]
@@ -1809,7 +1810,7 @@
                        (< -1 y 10)))))
 
 (defspec test-row-and-column-count-for-random-input
-  {:num-tests 100}
+  {:num-tests (* 100 (property-tests-multiplier))}
   (prop/for-all [x (gen/choose 0 19)
                  y (gen/choose 0 9)
                  rubbish gen-ascii-rubbish]
@@ -1821,7 +1822,7 @@
                        (every? #(= 20 (count %)) lines)))))
 
 (defspec test-no-wrapping-after-moved-from-right-margin
-  {:num-tests 100}
+  {:num-tests (* 100 (property-tests-multiplier))}
   (prop/for-all [y (gen/choose 0 9)
                  rubbish gen-ascii-rubbish]
                 (let [vt (-> (make-vt 20 10)

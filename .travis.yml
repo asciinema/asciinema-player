@@ -1,3 +1,5 @@
 language: clojure
 script: lein doo phantom test once
 sudo: false
+env:
+  - PROPERTY_TESTS_MULTIPLIER=10

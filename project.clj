@@ -28,6 +28,7 @@
 
   :profiles {:dev {:dependencies [[com.cemerick/piggieback "0.2.1"]
                                   [org.clojure/tools.nrepl "0.2.10"]
+                                  [environ "1.0.1"]
                                   [figwheel-sidecar "0.5.0-1"]]
                    :plugins [[refactor-nrepl "1.1.0"]]
                    :source-paths ["dev/clj" "dev/cljs"]}
