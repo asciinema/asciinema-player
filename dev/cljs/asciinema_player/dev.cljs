@@ -30,7 +30,7 @@
 ;; (swap! player-state assoc :speed 1)
 
 (defn reload []
-  (p/create-player-with-state player-state (. js/document (getElementById "player"))))
+  (p/mount-player-with-ratom player-state (. js/document (getElementById "player"))))
 
 ;; (reload)
 
