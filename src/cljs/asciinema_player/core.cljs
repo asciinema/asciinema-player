@@ -34,6 +34,9 @@
   [& args]
   (atom (apply make-player args)))
 
+(defn dispatch [state event]
+  (put! (:event-ch state) event))
+
 (defn elapsed-time-since
   "Returns wall time (in seconds) elapsed since then."
   [then]
@@ -120,7 +123,7 @@
   "The heart of the player. Coordinates dispatching of state update events like
   terminal line updating, time reporting and cursor blinking.
   Returns function which stops the playback and returns time of the playback."
-  [state dispatch]
+  [state]
   (let [start (js/Date.)
         start-at (:start-at state)
         speed (:speed state)
@@ -137,18 +140,18 @@
         (let [[v c] (alts! [screen-state-chan timer-chan cursor-blink-chan stop-playback-chan])]
           (condp = c
             timer-chan (let [t (+ start-at (elapsed-time))]
-                         (dispatch [:update-state assoc :current-time t])
+                         (dispatch state [:update-state assoc :current-time t])
                          (recur cursor-blink-chan))
             cursor-blink-chan (do
-                                (dispatch [:update-state assoc-in [:cursor :on] v])
+                                (dispatch state [:update-state assoc-in [:cursor :on] v])
                                 (recur cursor-blink-chan))
             screen-state-chan (if v
                                 (do
-                                  (dispatch [:update-state #(-> % (update-screen v) reset-blink)])
+                                  (dispatch state [:update-state #(-> % (update-screen v) reset-blink)])
                                   (recur (make-cursor-blink-chan)))
-                                (dispatch [:finished]))
+                                (dispatch state [:finished]))
             stop-playback-chan nil))) ; do nothing, break the loop
-      (dispatch [:update-state reset-blink]))
+      (dispatch state [:update-state reset-blink]))
     (-> state
         (update-screen (screen-state-at (:frames state) start-at))
         (assoc :stop stop-fn))))
@@ -165,12 +168,12 @@
   "Fetches asciicast JSON file, setting :loading to true at the start,
   dispatching :asciicast-response event on success, :bad-response event on
   failure."
-  [state dispatch]
+  [state]
   (let [url (:asciicast-url state)]
     (GET url
          {:response-format :raw
-          :handler #(dispatch [:asciicast-response %])
-          :error-handler #(dispatch [:bad-response %])})
+          :handler #(dispatch state [:asciicast-response %])
+          :error-handler #(dispatch state [:bad-response %])})
     (assoc state :loading true)))
 
 (defn new-position
@@ -180,16 +183,16 @@
 
 (defn handle-toggle-play
   "Toggles the playback. Fetches frames if they were not loaded yet."
-  [state dispatch]
+  [state]
   (if (contains? state :frames)
     (if (contains? state :stop)
       (stop-playback state)
-      (start-playback state dispatch))
-    (fetch-asciicast state dispatch)))
+      (start-playback state))
+    (fetch-asciicast state)))
 
 (defn handle-seek
   "Jumps to a given position (in seconds)."
-  [state dispatch [position]]
+  [state [position]]
   (let [new-time (* position (:duration state))
         screen-state (screen-state-at (:frames state) new-time)
         playing? (contains? state :stop)]
@@ -199,27 +202,27 @@
                         (assoc :current-time new-time :start-at new-time)
                         (update-screen screen-state))]
       (if playing?
-        (start-playback new-state dispatch)
+        (start-playback new-state)
         new-state))))
 
 (defn handle-rewind
   "Rewinds the playback by 5 seconds."
-  [state dispatch]
+  [state]
   (let [position (new-position (:current-time state) (:duration state) -5)]
-    (handle-seek state dispatch [position])))
+    (handle-seek state [position])))
 
 (defn handle-fast-forward
   "Fast-forwards the playback by 5 seconds."
-  [state dispatch]
+  [state]
   (let [position (new-position (:current-time state) (:duration state) 5)]
-    (handle-seek state dispatch [position])))
+    (handle-seek state [position])))
 
 (defn handle-finished
   "Prepares player to be ready for playback from the beginning. Starts the
   playback immediately when loop option is true."
-  [state dispatch]
+  [state]
   (when (:loop state)
-    (dispatch [:toggle-play]))
+    (dispatch state [:toggle-play]))
   (-> state
       (dissoc :stop)
       (assoc :start-at 0)
@@ -233,13 +236,13 @@
 
 (defn handle-speed-change
   "Alters the speed of the playback by applying change-fn to the current speed."
-  [change-fn state dispatch]
+  [change-fn state]
   (if-let [stop (:stop state)]
     (let [t (stop)]
       (-> state
           (update-in [:start-at] + t)
           (update-in [:speed] change-fn)
-          (start-playback dispatch)))
+          start-playback))
     (update-in state [:speed] change-fn)))
 
 (defn- fix-line-diff-keys [line-diff]
@@ -277,12 +280,12 @@
   {:lines (vt/compact-lines lines)
    :cursor cursor})
 
-(defmulti initialize-asciicast (fn [dispatch state asciicast]
+(defmulti initialize-asciicast (fn [state asciicast]
                                  (if (vector? asciicast)
                                    0
                                    (:version asciicast))))
 
-(defmethod initialize-asciicast 0 [dispatch state asciicast]
+(defmethod initialize-asciicast 0 [state asciicast]
   (let [frame-0-lines (-> asciicast first last :lines)
         width (->> frame-0-lines vals first (map #(count (first %))) (reduce +))
         height (count frame-0-lines)]
@@ -294,7 +297,7 @@
            :duration (reduce #(+ %1 (first %2)) 0 asciicast)
            :frames (build-v0-frames asciicast))))
 
-(defmethod initialize-asciicast 1 [dispatch state asciicast]
+(defmethod initialize-asciicast 1 [state asciicast]
   (assoc state
          :loading false
          :width (or (:width state) (:width asciicast))
@@ -303,27 +306,27 @@
          :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
          :frames (build-v1-frames asciicast)))
 
-(defmethod initialize-asciicast :default [dispatch state asciicast]
+(defmethod initialize-asciicast :default [state asciicast]
   (throw (str "unsupported asciicast version: " (:version asciicast))))
 
 (defn handle-asciicast-response
   "Merges asciicast frames into player state, hides loading indicator and starts the
   playback."
-  [state dispatch [json]]
-  (dispatch [:toggle-play])
+  [state [json]]
+  (dispatch state [:toggle-play])
   (let [asciicast (-> json
                       js/JSON.parse
                       (util/faster-js->clj :keywordize-keys true))]
-    (initialize-asciicast dispatch state asciicast)))
+    (initialize-asciicast state asciicast)))
 
-(defn handle-bad-response [state dispatch resp]
+(defn handle-bad-response [state resp]
   (print "error fetching asciicast file:")
   (prn resp)
   (assoc state :loading false))
 
 (defn handle-update-state
   "Applies given function (with args) to the player state."
-  [state _ [f & args]]
+  [state [f & args]]
   (apply f state args))
 
 (def event-handlers {:toggle-play handle-toggle-play
@@ -339,9 +342,9 @@
 
 (defn process-event
   "Finds handler for the given event and applies it to the player state."
-  [state dispatch [event-name & args]]
+  [state [event-name & args]]
   (if-let [handler (get event-handlers event-name)]
-    (handler state dispatch args)
+    (handler state args)
     (do
       (print "unhandled event:" event-name)
       state)))
@@ -374,27 +377,28 @@
   [state]
   (let [events (chan)
         mouse-moves (chan (dropping-buffer 1))
-        user-activity (activity-chan mouse-moves 3000)
-        dispatch (fn [[event-name & args :as event]]
-                   (if (= event-name :mouse-move)
-                     (put! mouse-moves true)
-                     (put! events event))
-                   nil)]
+        user-activity (activity-chan mouse-moves 3000)]
     (go-loop []
-      (swap! state process-event dispatch (<! events))
-      (recur))
+      (let [[event-name & _ :as event] (<! events)]
+        (if (= event-name :mouse-move)
+          (put! mouse-moves true)
+          (swap! state process-event event))
+        (recur)))
     (go-loop []
       (swap! state assoc :show-hud (<! user-activity))
       (recur))
     (when (:auto-play @state)
-      (dispatch [:toggle-play]))
-    dispatch))
+      (put! events [:toggle-play]))
+    (swap! state assoc :event-ch events)))
 
 (defn create-player-with-state
   "Creates the player with given state, mounting top Reagent component in DOM."
   [state dom-node]
-  (let [dispatch (start-event-loop! state)]
-    (reagent/render-component [view/player state dispatch] dom-node)
+  (let [view-event-handler (fn [event]
+                             (dispatch @state event)
+                             nil)]
+    (start-event-loop! state)
+    (reagent/render-component [view/player state view-event-handler] dom-node)
     nil)) ; TODO: return JS object with control functions (play/pause) here
 
 (defn create-player
