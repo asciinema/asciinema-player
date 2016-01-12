@@ -277,31 +277,34 @@
   {:lines (vt/compact-lines lines)
    :cursor cursor})
 
-(defn initialize-asciicast-v0 [state asciicast]
+(defmulti initialize-asciicast (fn [dispatch state asciicast]
+                                 (if (vector? asciicast)
+                                   0
+                                   (:version asciicast))))
+
+(defmethod initialize-asciicast 0 [dispatch state asciicast]
   (let [frame-0-lines (-> asciicast first last :lines)
         width (->> frame-0-lines vals first (map #(count (first %))) (reduce +))
         height (count frame-0-lines)]
     (assoc state
+           :loading false
            :width (or (:width state) width)
            :height (or (:height state) height)
            :frame-fn acc->frame
            :duration (reduce #(+ %1 (first %2)) 0 asciicast)
            :frames (build-v0-frames asciicast))))
 
-(defn initialize-asciicast-v1 [state asciicast]
+(defmethod initialize-asciicast 1 [dispatch state asciicast]
   (assoc state
+         :loading false
          :width (or (:width state) (:width asciicast))
          :height (or (:height state) (:height asciicast))
          :frame-fn vt->frame
          :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
          :frames (build-v1-frames asciicast)))
 
-(defn initialize-asciicast
-  "Prepares fetched asciicast for playback."
-  [state asciicast]
-  (cond (vector? asciicast) (initialize-asciicast-v0 state asciicast)
-        (= 1 (:version asciicast)) (initialize-asciicast-v1 state asciicast)
-        :else (throw (str "unsupported asciicast version: " (:version asciicast)))))
+(defmethod initialize-asciicast :default [dispatch state asciicast]
+  (throw (str "unsupported asciicast version: " (:version asciicast))))
 
 (defn handle-asciicast-response
   "Merges asciicast frames into player state, hides loading indicator and starts the
@@ -311,9 +314,7 @@
   (let [asciicast (-> json
                       js/JSON.parse
                       (util/faster-js->clj :keywordize-keys true))]
-    (-> state
-        (assoc :loading false)
-        (initialize-asciicast asciicast))))
+    (initialize-asciicast dispatch state asciicast)))
 
 (defn handle-bad-response [state dispatch resp]
   (print "error fetching asciicast file:")
