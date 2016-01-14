@@ -148,12 +148,18 @@
       [:span.gutter
        [:span {:style {:width (str (* 100 progress) "%")}}]]]]))
 
-(defn control-bar [playing? current-time total-time dispatch]
+(defn recorded-control-bar [playing? current-time total-time dispatch]
   [:div.control-bar
    [playback-control-button playing? dispatch]
    [timer current-time total-time]
    [fullscreen-toggle-button]
    [progress-bar (/ current-time total-time) dispatch]])
+
+(defn stream-control-bar []
+  [:div.control-bar.live
+   [:span.timer "LIVE"]
+   [fullscreen-toggle-button]
+   [progress-bar 0 (fn [& _])]])
 
 (defn start-overlay [dispatch]
   (let [on-click (fn [e]
@@ -212,8 +218,9 @@
      title-text
      (when author [:span " by " (if author-url [:a {:href author-url} author] author)])]))
 
-(defn player [state dispatch]
-  (let [{:keys [width height font-size theme lines cursor stop current-time duration loading frames show-hud title author author-url author-img-url]} @state
+(defn player [player-atom dispatch]
+  (let [player @player-atom
+        {:keys [width height font-size theme lines cursor loading show-hud current-time duration title author author-url author-img-url]} player
         width (or width 80)
         height (or height 24)
         on-key-press (partial handle-dom-event dispatch key-press->event)
@@ -221,11 +228,14 @@
         on-mouse-move #(dispatch [:mouse-move])
         wrapper-class-name (when show-hud "hud")
         player-class-name (player-class-name theme)
-        playing? (boolean stop)]
+        source-type (-> player :source :type)]
     [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down :on-mouse-move on-mouse-move :class-name wrapper-class-name}
      [:div.asciinema-player {:class-name player-class-name :style (player-style)}
       [terminal width height font-size lines cursor]
-      [control-bar playing? current-time duration dispatch]
+      (if (= source-type :stream)
+        [stream-control-bar]
+        (let [playing? (-> player :source :stop)]
+          [recorded-control-bar playing? current-time duration dispatch]))
       (when (or title author) [title-bar title author author-url author-img-url])
-      (when-not (or loading frames) [start-overlay dispatch])
+      (when-not (or loading source-type) [start-overlay dispatch])
       (when loading [loading-overlay])]]))

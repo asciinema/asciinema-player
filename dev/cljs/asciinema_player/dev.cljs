@@ -25,6 +25,10 @@
 
 (defonce player-state (p/make-player-ratom "/asciicasts/21195.json" options))
 
+;; v2 format (stream)
+
+;; (defonce player-state (p/make-player-ratom "/asciicasts/live.json" options))
+
 ;; (swap! player-state assoc :theme "solarized-dark")
 ;; (swap! player-state assoc :font-size "small")
 ;; (swap! player-state assoc :speed 1)

@@ -18,6 +18,7 @@
     (merge {:width width
             :height height
             :duration 0
+            :source {}
             :asciicast-url asciicast-url
             :speed speed
             :lines snapshot
@@ -119,15 +120,25 @@
 (defn frames-at-speed [frames speed]
   (map (fn [[delay screen-state]] [(/ delay speed) screen-state]) frames))
 
-(defn start-playback
+(defn source-type
+  "Returns type of the frames source (:recorded or :stream). Expects first
+  argument to be player, the rest is ignored. Used mostly as multimethod
+  dispatch function."
+  [player & _]
+  (-> player :source :type))
+
+(defmulti start-playback
   "The heart of the player. Coordinates dispatching of state update events like
-  terminal line updating, time reporting and cursor blinking.
-  Returns function which stops the playback and returns time of the playback."
-  [player]
+  terminal line updating, time reporting and cursor blinking. Returns player
+  with its :source updated (depending on the impl)."
+  source-type)
+
+(defmethod start-playback :recorded [player]
   (let [start (js/Date.)
         start-at (:start-at player)
         speed (:speed player)
-        frames (-> (:frames player) (next-frames start-at) (frames-at-speed speed))
+        all-frames (-> player :source :frames)
+        frames (-> all-frames (next-frames start-at) (frames-at-speed speed))
         screen-state-chan (coll->chan frames)
         timer-chan (coll->chan (repeat [0.3 true]))
         stop-playback-chan (chan)
@@ -153,16 +164,35 @@
             stop-playback-chan nil))) ; do nothing, break the loop
       (dispatch player [:update-state reset-blink]))
     (-> player
-        (update-screen (screen-state-at (:frames player) start-at))
-        (assoc :stop stop-fn))))
+        (update-screen (screen-state-at all-frames start-at))
+        (assoc-in [:source :stop] stop-fn))))
 
-(defn stop-playback
-  "Stops the playback and returns updated player with new start position."
-  [player]
-  (let [t ((:stop player))]
+(defmethod start-playback :stream [{{:keys [url width height]} :source :as player}]
+  (let [es (js/EventSource. url)
+        ch (chan)]
+    (go-loop [vt (vt/make-vt width height)]
+      (let [message (js->clj (.parse js/JSON (<! ch)))
+            stdout (get message "stdout")
+            new-vt (vt/feed-str vt stdout)]
+        (dispatch player [:update-state #(-> % (update-screen new-vt) reset-blink)])
+        (recur new-vt)))
+    (set! (.-onopen es) #(dispatch player [:stream-connected]))
+    (set! (.-onerror es) #(dispatch player [:stream-disconnected %]))
+    (set! (.-onmessage es) #(put! ch (.-data %)))
+    (assoc-in player [:source :event-source] es)))
+
+(defmulti stop-playback
+  "Stops the playback and returns updated player."
+  source-type)
+
+(defmethod stop-playback :recorded [player]
+  (let [t ((-> player :source :stop))]
     (-> player
-        (dissoc :stop)
+        (update-in [:source] dissoc :stop)
         (update-in [:start-at] + t))))
+
+(defmethod stop-playback :stream [player]
+  player) ; we don't support this operation on stream atm
 
 (defn fetch-asciicast
   "Fetches asciicast JSON file, setting :loading to true at the start,
@@ -176,57 +206,94 @@
           :error-handler #(dispatch player [:bad-response %])})
     (assoc player :loading true)))
 
+(defn asciicast-loaded?
+  "Returns truthy value indicating whether asciicast is loaded."
+  [player]
+  (get-in player [:source :type]))
+
+(defmulti playing?
+  "Returns truthy value indicating whether player is playing."
+  source-type)
+
+(defmethod playing? :recorded [player]
+  (get-in player [:source :stop]))
+
+(defmethod playing? :stream [player]
+  (get-in player [:source :event-source]))
+
+(defn handle-toggle-play
+  "Toggles the playback. Fetches asciicast if it wasn't loaded yet."
+  [player]
+  (if-not (asciicast-loaded? player)
+    (fetch-asciicast player)
+    (if (playing? player)
+      (stop-playback player)
+      (start-playback player))))
+
+(defmulti handle-seek
+  "Jumps to a given position (in seconds)."
+  source-type)
+
+(defmethod handle-seek :recorded [player [position]]
+  (let [new-time (* position (:duration player))
+        frames (-> player :source :frames)
+        screen-state (screen-state-at frames new-time)
+        was-playing? (playing? player)]
+    (when was-playing?
+      ((-> player :source :stop)))
+    (let [new-player (-> player
+                         (assoc :current-time new-time :start-at new-time)
+                         (update-screen screen-state))]
+      (if was-playing?
+        (start-playback new-player)
+        new-player))))
+
+(defmethod handle-seek :stream [player & _]
+  player) ; we don't support this operation on stream atm
+
+(defmulti handle-rewind
+  "Rewinds the playback by 5 seconds."
+  source-type)
+
 (defn new-position
   "Returns time adjusted by given offset, clipped to the range 0..total-time."
   [current-time total-time offset]
   (/ (util/adjust-to-range (+ current-time offset) 0 total-time) total-time))
 
-(defn handle-toggle-play
-  "Toggles the playback. Fetches frames if they were not loaded yet."
-  [player]
-  (if (contains? player :frames)
-    (if (contains? player :stop)
-      (stop-playback player)
-      (start-playback player))
-    (fetch-asciicast player)))
-
-(defn handle-seek
-  "Jumps to a given position (in seconds)."
-  [player [position]]
-  (let [new-time (* position (:duration player))
-        screen-state (screen-state-at (:frames player) new-time)
-        playing? (contains? player :stop)]
-    (when playing?
-      ((:stop player)))
-    (let [new-player (-> player
-                         (assoc :current-time new-time :start-at new-time)
-                         (update-screen screen-state))]
-      (if playing?
-        (start-playback new-player)
-        new-player))))
-
-(defn handle-rewind
-  "Rewinds the playback by 5 seconds."
-  [player]
+(defmethod handle-rewind :recorded [player]
   (let [position (new-position (:current-time player) (:duration player) -5)]
     (handle-seek player [position])))
 
-(defn handle-fast-forward
+(defmethod handle-rewind :stream [player]
+  player) ; we don't support this operation on stream atm
+
+(defmulti handle-fast-forward
   "Fast-forwards the playback by 5 seconds."
-  [player]
+  source-type)
+
+(defmethod handle-fast-forward :recorded [player]
   (let [position (new-position (:current-time player) (:duration player) 5)]
     (handle-seek player [position])))
 
-(defn handle-finished
-  "Prepares player to be ready for playback from the beginning. Starts the
-  playback immediately when loop option is true."
-  [player]
+(defmethod handle-fast-forward :stream [player]
+  player) ; we don't support this operation on stream atm
+
+(defmulti handle-finished
+  "Does housekeeping after the source material ended. For ex, prepares player to
+  be ready for playback from the beginning. Starts the playback again when loop
+  option is true."
+  source-type)
+
+(defmethod handle-finished :recorded [player]
   (when (:loop player)
     (dispatch player [:toggle-play]))
   (-> player
-      (dissoc :stop)
-      (assoc :start-at 0)
+      (update-in [:source] dissoc :stop)
+      (assoc :start-at 0) ; TODO: move this to source?
       (assoc :current-time (:duration player))))
+
+(defmethod handle-finished :stream [player]
+  player) ; TODO: what to do here for stream?
 
 (defn speed-up [speed]
   (* speed 2))
@@ -234,16 +301,22 @@
 (defn speed-down [speed]
   (/ speed 2))
 
-(defn handle-speed-change
+(defmulti handle-speed-change
   "Alters the speed of the playback by applying change-fn to the current speed."
-  [change-fn player]
-  (if-let [stop (:stop player)]
-    (let [t (stop)]
+  (fn [change-fn player]
+    (source-type player)))
+
+(defmethod handle-speed-change :recorded [change-fn player]
+  (if (playing? player)
+    (let [t ((-> player :source :stop))]
       (-> player
           (update-in [:start-at] + t)
           (update-in [:speed] change-fn)
           start-playback))
     (update-in player [:speed] change-fn)))
+
+(defmethod handle-speed-change :stream [change-fn player]
+  player) ; we don't support this operation on stream
 
 (defn- fix-line-diff-keys [line-diff]
   (into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) line-diff)))
@@ -280,37 +353,60 @@
   {:lines (vt/compact-lines lines)
    :cursor cursor})
 
-(defmulti initialize-asciicast (fn [player asciicast]
-                                 (if (vector? asciicast)
-                                   0
-                                   (:version asciicast))))
+(defmulti initialize-asciicast
+  "Given fetched asciicast extracts necessary data from it and prepares the
+  player for playback."
+  (fn [player asciicast]
+    (if (vector? asciicast)
+      0
+      (:version asciicast))))
 
 (defmethod initialize-asciicast 0 [player asciicast]
   (let [frame-0-lines (-> asciicast first last :lines)
-        width (->> frame-0-lines vals first (map #(count (first %))) (reduce +))
-        height (count frame-0-lines)]
+        asciicast-width (->> frame-0-lines vals first (map #(count (first %))) (reduce +))
+        asciicast-height (count frame-0-lines)]
     (assoc player
            :loading false
-           :width (or (:width player) width)
-           :height (or (:height player) height)
+           :width (or (:width player) asciicast-width)
+           :height (or (:height player) asciicast-height)
            :frame-fn acc->frame
            :duration (reduce #(+ %1 (first %2)) 0 asciicast)
-           :frames (build-v0-frames asciicast))))
+           :source {:type :recorded
+                    :frames (build-v0-frames asciicast)})))
 
-(defmethod initialize-asciicast 1 [player asciicast]
+(defn initialize-asciicast-with-stdout [player asciicast]
   (assoc player
          :loading false
          :width (or (:width player) (:width asciicast))
          :height (or (:height player) (:height asciicast))
          :frame-fn vt->frame
          :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
-         :frames (build-v1-frames asciicast)))
+         :source {:type :recorded
+                  :frames (build-v1-frames asciicast)}))
+
+(defn initialize-asciicast-with-stream [player asciicast]
+  (assoc player
+         :width (or (:width player) (:width asciicast))
+         :height (or (:height player) (:height asciicast))
+         :frame-fn vt->frame
+         :source {:type :stream
+                  :url (:stream_url asciicast)
+                  :width (:width asciicast)
+                  :height (:height asciicast)}))
+
+(defmethod initialize-asciicast 1 [player asciicast]
+  (initialize-asciicast-with-stdout player asciicast))
+
+(defmethod initialize-asciicast 2 [player asciicast]
+  (if (:stream_url asciicast)
+    (initialize-asciicast-with-stream player asciicast)
+    (initialize-asciicast-with-stdout player asciicast)))
 
 (defmethod initialize-asciicast :default [player asciicast]
   (throw (str "unsupported asciicast version: " (:version asciicast))))
 
 (defn handle-asciicast-response
-  "Merges asciicast frames into player, hides loading indicator and starts the
+  "Parses given asciicast JSON, initializes the player with it and triggers
   playback."
   [player [json]]
   (dispatch player [:toggle-play])
@@ -323,6 +419,16 @@
   (print "error fetching asciicast file:")
   (prn resp)
   (assoc player :loading false))
+
+(defn handle-stream-connected
+  "Hides loading indicator. Called when stream connects."
+  [player]
+  (assoc player :loading false))
+
+(defn handle-stream-disconnected
+  "Shows loading indicator. Called when stream disconnects."
+  [player]
+  (assoc player :loading true))
 
 (defn handle-update-state
   "Applies given function (with args) to player."
@@ -338,6 +444,8 @@
                      :speed-down (partial handle-speed-change speed-down)
                      :asciicast-response handle-asciicast-response
                      :bad-response handle-bad-response
+                     :stream-connected handle-stream-connected
+                     :stream-disconnected handle-stream-disconnected
                      :update-state handle-update-state})
 
 (defn process-event

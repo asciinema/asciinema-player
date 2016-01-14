@@ -37,6 +37,59 @@
     (let [player (make-player {:snapshot [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]]})]
       (is (= (:lines player) [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]])))))
 
+(deftest initialize-asciicast-test
+  (testing "pre v1 format"
+    (let [asciicast [[1.0 {:lines {0 [["foo" {}] ["bar" {}]] 1 [["foobar" {}]]}}]
+                     [2.0 {:lines {0 [["baz" {}] ["qux" {}]] 1 [["quuuux" {}]]}}]]]
+      (let [player {:width 10 :height 5}
+            player (c/initialize-asciicast player asciicast)]
+        (is (= (select-keys player [:width :height :loading :frame-fn :duration])
+               {:width 10 :height 5 :loading false :frame-fn c/acc->frame :duration 3.0}))
+        (is (= (-> player :source :type) :recorded)))
+      (let [player {:width nil :height nil}
+            player (c/initialize-asciicast player asciicast)]
+        (is (= (select-keys player [:width :height]) {:width 6 :height 2}))
+        (is (= (-> player :source :type) :recorded)))))
+
+  (testing "v1 format"
+    (let [asciicast {:version 1 :width 80 :height 24 :stdout [[1.0 "foo"] [2.0 "bar"]]}]
+      (let [player {:width 10 :height 5}
+            player (c/initialize-asciicast player asciicast)]
+        (is (= (select-keys player [:width :height :loading :frame-fn :duration])
+               {:width 10 :height 5 :loading false :frame-fn c/vt->frame :duration 3.0}))
+        (is (= (-> player :source :type) :recorded)))
+      (let [player {:width nil :height nil}
+            player (c/initialize-asciicast player asciicast)]
+        (is (= (select-keys player [:width :height]) {:width 80 :height 24}))
+        (is (= (-> player :source :type) :recorded)))))
+
+  (testing "v2 format with stdout attribute"
+    (let [asciicast {:version 2 :width 80 :height 24 :stdout [[1.0 "foo"] [2.0 "bar"]]}]
+      (let [player {:width 10 :height 5}
+            player (c/initialize-asciicast player asciicast)]
+        (is (= (select-keys player [:width :height :loading :frame-fn :duration])
+               {:width 10 :height 5 :loading false :frame-fn c/vt->frame :duration 3.0}))
+        (is (= (-> player :source :type) :recorded)))
+      (let [player {:width nil :height nil}
+            player (c/initialize-asciicast player asciicast)]
+        (is (= (select-keys player [:width :height]) {:width 80 :height 24}))
+        (is (= (-> player :source :type) :recorded)))))
+
+  (testing "v2 format with stream_url attribute"
+    (let [asciicast {:version 2 :width 80 :height 24 :stream_url "http://example.com"}]
+      (let [player {:width 10 :height 5}
+            player (c/initialize-asciicast player asciicast)]
+        (is (= player {:width 10
+                       :height 5
+                       :frame-fn c/vt->frame
+                       :source {:type :stream
+                                :url "http://example.com"
+                                :width 80
+                                :height 24}})))
+      (let [player {:width nil :height nil}
+            player (c/initialize-asciicast player asciicast)]
+        (is (= (select-keys player [:width :height]) {:width 80 :height 24}))))))
+
 (deftest update-screen-test
   (let [frame-fn #(update-in % [:cursor :y] inc)
         state {:lines {2 :a}
