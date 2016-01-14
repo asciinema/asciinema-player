@@ -38,6 +38,12 @@
 (defn dispatch [player event]
   (put! (:event-ch player) event))
 
+(defn show-spinner [player]
+  (assoc player :loading true))
+
+(defn hide-spinner [player]
+  (assoc player :loading false))
+
 (defn elapsed-time-since
   "Returns wall time (in seconds) elapsed since then."
   [then]
@@ -204,7 +210,7 @@
          {:response-format :raw
           :handler #(dispatch player [:asciicast-response %])
           :error-handler #(dispatch player [:bad-response %])})
-    (assoc player :loading true)))
+    (show-spinner player)))
 
 (defn asciicast-loaded?
   "Returns truthy value indicating whether asciicast is loaded."
@@ -418,17 +424,17 @@
 (defn handle-bad-response [player resp]
   (print "error fetching asciicast file:")
   (prn resp)
-  (assoc player :loading false))
+  (hide-spinner player))
 
 (defn handle-stream-connected
   "Hides loading indicator. Called when stream connects."
   [player]
-  (assoc player :loading false))
+  (hide-spinner player))
 
 (defn handle-stream-disconnected
   "Shows loading indicator. Called when stream disconnects."
   [player]
-  (assoc player :loading true))
+  (show-spinner player))
 
 (defn handle-update-state
   "Applies given function (with args) to player."
