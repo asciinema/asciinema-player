@@ -59,7 +59,7 @@
         (update-in [:cursor] merge cursor))))
 
 (defn coll->chan
-  "Returns a channel that emits frames from the given collection.
+  "Returns a channel that emits elements from the given collection.
   The difference from core.async/to-chan is this function expects elements of
   the collection to be tuples of [delay data], and it emits data after delay
   (sec) for each element. It tries to always stay 'on the schedule' by measuring
