@@ -133,6 +133,30 @@
   [player & _]
   (-> player :source :type))
 
+(defn priority-chan
+  "Given primary channel and a function f returning secondary channel, returns a
+  new channel that emits values from both primary and secondary channel. Every
+  time there is a take from primary channel the current secondary channel is
+  discarded and the new one is obtained by calling f. The resulting channel is
+  closed when either input channel closes."
+  [[primary-label primary-ch] [secondary-label secondary-fn]]
+  (let [output-ch (chan)]
+    (go-loop [secondary-ch (secondary-fn)]
+      (let [[v c] (alts! [primary-ch secondary-ch])]
+        (if-not (nil? v)
+          (condp = c
+            primary-ch (do (>! output-ch [primary-label v]) (recur (secondary-fn)))
+            secondary-ch (do (>! output-ch [secondary-label v]) (recur secondary-ch)))
+          (close! output-ch))))
+    output-ch))
+
+(defn screen-events
+  "Given frames channel returns a channel of player events (as used with
+  `dispatch`). The resulting channel produces screen update events (:frame)
+  intermixed with cursor blinking events (:blink)."
+  [frames-ch]
+  (priority-chan [:frame frames-ch] [:blink make-cursor-blink-chan]))
+
 (defmulti start-playback
   "The heart of the player. Coordinates dispatching of state update events like
   terminal line updating, time reporting and cursor blinking. Returns player
@@ -145,46 +169,50 @@
         speed (:speed player)
         all-frames (-> player :source :frames)
         frames (-> all-frames (next-frames start-at) (frames-at-speed speed))
-        screen-state-chan (coll->chan frames)
-        timer-chan (coll->chan (repeat [0.3 true]))
-        stop-playback-chan (chan)
+        frames-ch (coll->chan frames)
+        events-ch (screen-events frames-ch)
         elapsed-time #(* (elapsed-time-since start) speed)
+        timer-ch (coll->chan (repeatedly (fn []
+                                           [0.3 (+ start-at (elapsed-time))])))
+        stop-playback-ch (chan)
         stop-fn (fn []
-                  (close! stop-playback-chan)
+                  (close! stop-playback-ch)
                   (elapsed-time))]
     (go
-      (loop [cursor-blink-chan (make-cursor-blink-chan)]
-        (let [[v c] (alts! [screen-state-chan timer-chan cursor-blink-chan stop-playback-chan])]
+      (loop []
+        (let [[v c] (alts! [events-ch timer-ch stop-playback-ch])]
           (condp = c
-            timer-chan (let [t (+ start-at (elapsed-time))]
-                         (dispatch player [:update-state assoc :current-time t])
-                         (recur cursor-blink-chan))
-            cursor-blink-chan (do
-                                (dispatch player [:update-state assoc-in [:cursor :on] v])
-                                (recur cursor-blink-chan))
-            screen-state-chan (if v
-                                (do
-                                  (dispatch player [:update-state #(-> % (update-screen v) reset-blink)])
-                                  (recur (make-cursor-blink-chan)))
-                                (dispatch player [:finished]))
-            stop-playback-chan nil))) ; do nothing, break the loop
-      (dispatch player [:update-state reset-blink]))
+            timer-ch (do
+                       (dispatch player [:time v])
+                       (recur))
+            events-ch (if v
+                        (do
+                          (dispatch player v)
+                          (recur))
+                        (dispatch player [:finished]))
+            stop-playback-ch nil))) ; do nothing, break the loop
+      (dispatch player [:blink true]))
     (-> player
         (update-screen (screen-state-at all-frames start-at))
         (assoc-in [:source :stop] stop-fn))))
 
 (defmethod start-playback :stream [{{:keys [url width height]} :source :as player}]
   (let [es (js/EventSource. url)
-        ch (chan)]
-    (go-loop [vt (vt/make-vt width height)]
-      (let [message (js->clj (.parse js/JSON (<! ch)))
-            stdout (get message "stdout")
-            new-vt (vt/feed-str vt stdout)]
-        (dispatch player [:update-state #(-> % (update-screen new-vt) reset-blink)])
-        (recur new-vt)))
+        es-ch (chan)
+        vt-ch (chan)
+        events-ch (screen-events vt-ch)]
     (set! (.-onopen es) #(dispatch player [:stream-connected]))
     (set! (.-onerror es) #(dispatch player [:stream-disconnected %]))
-    (set! (.-onmessage es) #(put! ch (.-data %)))
+    (set! (.-onmessage es) #(put! es-ch (.-data %)))
+    (go-loop [vt (vt/make-vt width height)]
+      (let [message (js->clj (.parse js/JSON (<! es-ch)))
+            stdout (get message "stdout")
+            new-vt (vt/feed-str vt stdout)]
+        (>! vt-ch new-vt)
+        (recur new-vt)))
+    (go-loop []
+      (dispatch player (<! events-ch))
+      (recur))
     (assoc-in player [:source :event-source] es)))
 
 (defmulti stop-playback
@@ -436,10 +464,22 @@
   [player]
   (show-spinner player))
 
-(defn handle-update-state
-  "Applies given function (with args) to player."
-  [player [f & args]]
-  (apply f player args))
+(defn handle-frame
+  "Updates screen with given frame and resets cursor visibility."
+  [player [frame]]
+  (-> player
+      (update-screen frame)
+      reset-blink))
+
+(defn handle-blink
+  "Shows or hides the cursor."
+  [player [cursor-on?]]
+  (assoc-in player [:cursor :on] cursor-on?))
+
+(defn handle-time
+  "Updates player's current time (as displayed in control bar)."
+  [player [t]]
+  (assoc player :current-time t))
 
 (def event-handlers {:toggle-play handle-toggle-play
                      :seek handle-seek
@@ -452,7 +492,9 @@
                      :bad-response handle-bad-response
                      :stream-connected handle-stream-connected
                      :stream-disconnected handle-stream-disconnected
-                     :update-state handle-update-state})
+                     :frame handle-frame
+                     :blink handle-blink
+                     :time handle-time})
 
 (defn process-event
   "Finds handler for the given event and applies it to the player."
