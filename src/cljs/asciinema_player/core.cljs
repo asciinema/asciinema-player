@@ -3,7 +3,7 @@
             [asciinema-player.view :as view]
             [asciinema-player.util :as util]
             [asciinema-player.vt :as vt]
-            [cljs.core.async :refer [chan >! <! put! timeout close! dropping-buffer]]
+            [cljs.core.async :refer [chan >! <! put! timeout close! dropping-buffer sliding-buffer]]
             [clojure.walk :as walk]
             [clojure.set :refer [rename-keys]]
             [ajax.core :refer [GET]])
@@ -59,37 +59,31 @@
         (update-in [:cursor] merge cursor))))
 
 (defn coll->chan
-  "Returns a channel that emits elements from the given collection.
-  The difference from core.async/to-chan is this function expects elements of
-  the collection to be tuples of [delay data], and it emits data after delay
-  (sec) for each element. It tries to always stay 'on the schedule' by measuring
-  elapsed time and skipping elements if necessary. When reducer and init given
-  it reduces consecutive elements instead of skipping."
-  ([coll] (coll->chan coll (fn [_ v] v) nil))
-  ([coll reducer init]
-   (let [ch (chan)
-         start (js/Date.)
-         reducer (fnil reducer init)]
-     (go
-       (loop [coll coll
-              virtual-time 0
-              wall-time (elapsed-time-since start)
-              acc nil]
-         (if-let [[delay data] (first coll)]
-           (let [new-virtual-time (+ virtual-time delay)
-                 ahead (- new-virtual-time wall-time)]
-             (if (pos? ahead)
-               (do
-                 (when-not (nil? acc)
-                   (>! ch acc))
-                 (<! (timeout (* 1000 ahead)))
-                 (>! ch data)
-                 (recur (rest coll) new-virtual-time (elapsed-time-since start) nil))
-               (recur (rest coll) new-virtual-time wall-time (reducer acc data)))))
-         (when-not (nil? acc)
-           (>! ch acc)))
-       (close! ch))
-     ch)))
+  "Returns a channel that emits elements from the given collection. The
+  difference from core.async/to-chan is this function expects elements of the
+  collection to be tuples of [delay data], and it emits data after delay (sec)
+  for each element. It tries to always stay 'on the schedule' by measuring
+  elapsed time and skipping elements if necessary."
+  [coll]
+  (let [ch (chan (sliding-buffer 1))
+        start (js/Date.)]
+    (go
+      (loop [coll coll
+             virtual-time 0
+             wall-time (elapsed-time-since start)]
+        (if-let [[delay data] (first coll)]
+          (let [new-virtual-time (+ virtual-time delay)
+                ahead (- new-virtual-time wall-time)]
+            (if (pos? ahead)
+              (do
+                (<! (timeout (* 1000 ahead)))
+                (>! ch data)
+                (recur (rest coll) new-virtual-time (elapsed-time-since start)))
+              (do
+                (>! ch data)
+                (recur (rest coll) new-virtual-time wall-time))))))
+      (close! ch))
+    ch))
 
 (defn screen-state-at
   "Returns screen state (lines + cursor) at given time (in seconds)."
@@ -198,21 +192,28 @@
 
 (defmethod start-playback :stream [{{:keys [url width height]} :source :as player}]
   (let [es (js/EventSource. url)
-        es-ch (chan)
-        vt-ch (chan)
+        es-ch (chan 10000) ; make enough buffer for very fast ES producers
+        vt-ch (chan (sliding-buffer 1))
         events-ch (screen-events vt-ch)]
-    (set! (.-onopen es) #(dispatch player [:stream-connected]))
-    (set! (.-onerror es) #(dispatch player [:stream-disconnected %]))
-    (set! (.-onmessage es) #(put! es-ch (.-data %)))
+    (set! (.-onopen es) (fn []
+                          (dispatch player [:stream-connected])))
+    (set! (.-onerror es) (fn [err]
+                           (close! es-ch)
+                           (dispatch player [:stream-disconnected err])))
+    (set! (.-onmessage es) (fn [e]
+                             (put! es-ch (.-data e))))
     (go-loop [vt (vt/make-vt width height)]
-      (let [message (js->clj (.parse js/JSON (<! es-ch)))
-            stdout (get message "stdout")
-            new-vt (vt/feed-str vt stdout)]
-        (>! vt-ch new-vt)
-        (recur new-vt)))
+      (if-let [v (<! es-ch)]
+        (let [message (js->clj (.parse js/JSON v))
+              stdout (get message "stdout")
+              new-vt (vt/feed-str vt stdout)]
+          (>! vt-ch new-vt)
+          (recur new-vt))
+        (close! vt-ch)))
     (go-loop []
-      (dispatch player (<! events-ch))
-      (recur))
+      (when-let [v (<! events-ch)]
+        (dispatch player v)
+        (recur)))
     (assoc-in player [:source :event-source] es)))
 
 (defmulti stop-playback
