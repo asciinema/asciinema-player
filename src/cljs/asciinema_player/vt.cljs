@@ -234,6 +234,12 @@
       (execute-cr vt)
       vt)))
 
+(defn execute-so [vt]
+  (assoc vt :charset-fn special-charset))
+
+(defn execute-si [vt]
+  (assoc vt :charset-fn default-charset))
+
 (defn execute-nel [vt]
   (-> vt move-cursor-down execute-cr))
 
@@ -592,6 +598,8 @@
                     0x0b execute-lf
                     0x0c execute-lf
                     0x0d execute-cr
+                    0x0e execute-so
+                    0x0f execute-si
                     0x84 execute-lf
                     0x85 execute-nel
                     0x88 execute-hts
@@ -616,8 +624,8 @@
          [nil 0x38] (execute-rc vt)
          [nil 0x63] (make-vt (:width vt) (:height vt))
          [0x23 0x38] (execute-decaln vt)
-         [0x28 0x30] (assoc vt :charset-fn special-charset)
-         [0x28 _] (assoc vt :charset-fn default-charset)
+         [0x28 0x30] (execute-so vt)
+         [0x28 _] (execute-si vt)
          :else vt))
 
 (defn csi-dispatch [vt input]

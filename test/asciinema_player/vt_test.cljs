@@ -451,12 +451,16 @@
     (testing "printing ASCII art using special drawing character set"
       (let [vt (-> vt
                    (feed-esc "(0") ; use drawing character set
-                   (feed-str "abcd{|}~")
+                   (feed-str "ab{|")
                    (feed-esc "(B") ; back to ASCII
-                   (feed-str "abc"))]
-        (expect-lines vt [[["▒␉␌␍" {:fg 1}]]
-                          [["π≠£⋅" {:fg 1}]]
-                          [["abc" {:fg 1}] [" " {}]]])))
+                   (feed-str "ab")
+                   (feed-one 0x0e) ; use drawing character set
+                   (feed-str "ab{|")
+                   (feed-one 0x0f) ; back to ASCII
+                   (feed-str "ab"))]
+        (expect-lines vt [[["▒␉π≠" {:fg 1}]]
+                          [["ab▒␉" {:fg 1}]]
+                          [["π≠ab" {:fg 1}]]])))
 
     (testing "printing in insert mode"
       (let [vt (-> vt
