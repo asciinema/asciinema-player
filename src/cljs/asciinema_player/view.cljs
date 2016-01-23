@@ -62,15 +62,14 @@
 (defn terminal-class-name [font-size]
   (str "font-" font-size))
 
-(def font-height {"small" 16 "medium" 24 "big" 32}) ; must match line-heights defined in CSS
-
-(defn terminal-style [width height font-size]
+(defn terminal-style [width height]
   {:width (str width "ch")
-   :height (str (* height (font-height font-size)) "px")})
+   :height (str (* 1.3333333333 height) "em")})
+
 
 (defn terminal [width height font-size lines {cursor-x :x cursor-y :y cursor-visible :visible cursor-on :on}]
   [:pre.asciinema-terminal
-   {:class-name (terminal-class-name font-size) :style (terminal-style width height font-size)}
+   {:class-name (terminal-class-name font-size) :style (terminal-style width height)}
    (map-indexed (fn [idx parts]
                   (let [cursor-x (when (and cursor-visible (= idx cursor-y)) cursor-x)
                         parts (if cursor-x (insert-cursor parts cursor-x) parts)]
