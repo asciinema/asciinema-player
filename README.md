@@ -25,7 +25,7 @@ terminal emulators like xterm, Gnome Terminal, iTerm, mosh etc.
 Features:
 
 * copy-paste of terminal content (it's just a text after all!),
-* multiple font sizes,
+* predefined and custom font sizes,
 * custom playback speeds,
 * looped playback,
 * starting playback at specific time,
@@ -114,7 +114,8 @@ where:
   * `startAt` - start playback at given second, default: 0,
   * `speed` - playback speed, default: 1,
   * `snapshot` - snapshot (preview) to display, default: blank terminal,
-  * `fontSize` - size of terminal font: `'small'`, `'medium'` or `'big'`; default: `'small'`,
+  * `fontSize` - size of terminal font: `'small'`, `'medium'`, `'big'` or
+     any CSS `font-size` value (e.g. `15px`); default: `'small'`,
   * `theme` - terminal theme, one of `'asciinema'`, `'tango'`, `'solarized-dark'`,
     `'solarized-light'`, `'monokai'`; default: `'asciinema'`,
   * `title` - title of the asciicast, displayed in the titlebar in fullscreen mode,

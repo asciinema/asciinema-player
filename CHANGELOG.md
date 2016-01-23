@@ -3,6 +3,7 @@
 ## master
 
 * `startAt` option doesn't imply `autoPlay: true` anymore
+* `fontSize` option accepts any CSS `font-size` value (e.g. `15px`)
 
 ## 2.0.0 (2016-01-06)
 

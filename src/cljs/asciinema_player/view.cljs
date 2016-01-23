@@ -59,17 +59,20 @@
           (concat left (split-part-with-cursor part idx) (rest right))))
       left)))
 
+(def named-font-sizes #{"small" "medium" "big"})
+
 (defn terminal-class-name [font-size]
-  (str "font-" font-size))
+  (when (named-font-sizes font-size)
+    (str "font-" font-size)))
 
-(defn terminal-style [width height]
-  {:width (str width "ch")
-   :height (str (* 1.3333333333 height) "em")})
-
+(defn terminal-style [width height font-size]
+  (let [font-size (when-not (named-font-sizes font-size) {:font-size font-size})]
+    (merge {:width (str width "ch") :height (str (* 1.3333333333 height) "em")}
+           font-size)))
 
 (defn terminal [width height font-size lines {cursor-x :x cursor-y :y cursor-visible :visible cursor-on :on}]
   [:pre.asciinema-terminal
-   {:class-name (terminal-class-name font-size) :style (terminal-style width height)}
+   {:class-name (terminal-class-name font-size) :style (terminal-style width height font-size)}
    (map-indexed (fn [idx parts]
                   (let [cursor-x (when (and cursor-visible (= idx cursor-y)) cursor-x)
                         parts (if cursor-x (insert-cursor parts cursor-x) parts)]

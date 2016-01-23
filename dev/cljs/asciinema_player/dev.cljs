@@ -31,6 +31,7 @@
 
 ;; (swap! player-state assoc :theme "solarized-dark")
 ;; (swap! player-state assoc :font-size "small")
+;; (swap! player-state assoc :font-size "15px")
 ;; (swap! player-state assoc :speed 1)
 
 (defn reload []
