@@ -12,10 +12,14 @@
         return merged;
     }
 
-    AsciinemaPlayerProto.opt = function(optName, attrName, defaultValue, coerceFn) {
+    function parsePoster(poster) {
+        return [];
+    }
+
+    AsciinemaPlayerProto.opt = function(attrName, optName, defaultValue, coerceFn) {
         var obj = {};
         var value = this.getAttribute(attrName);
-        if (value !== undefined) {
+        if (value !== null) {
             if (value === '' && defaultValue !== undefined) {
                 value = defaultValue;
             } else if (coerceFn) {
@@ -28,19 +32,19 @@
 
     AsciinemaPlayerProto.createdCallback = function() {
         var opts = merge(
-            this.opt('width', 'width', 0, parseInt),
-            this.opt('height', 'height', 0, parseInt),
-            this.opt('autoPlay', 'autoplay', true, Boolean),
+            this.opt('cols', 'width', 0, parseInt),
+            this.opt('rows', 'height', 0, parseInt),
+            this.opt('autoplay', 'autoPlay', true, Boolean),
             this.opt('loop', 'loop', true, Boolean),
-            this.opt('startAt', 't', 0, parseInt),
+            this.opt('start-at', 'startAt', 0, parseInt),
             this.opt('speed', 'speed', 1, parseFloat),
-            // this.opt('snapshot', 'snapshot', true, Boolean),
-            this.opt('fontSize', 'font-size'),
+            this.opt('poster', 'snapshot', true, parsePoster),
+            this.opt('font-size', 'fontSize'),
             this.opt('theme', 'theme'),
             this.opt('title', 'title'),
             this.opt('author', 'author'),
-            this.opt('authorURL', 'author-url'),
-            this.opt('authorImgURL', 'author-img-url')
+            this.opt('author-url', 'authorURL'),
+            this.opt('author-img-url', 'authorImgURL')
         );
 
         asciinema_player.core.CreatePlayer(this, this.getAttribute('src'), opts);
