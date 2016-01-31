@@ -3,7 +3,10 @@
 ## master
 
 * `startAt` option doesn't imply `autoPlay: true` anymore
+* `startAt` option now accepts number of seconds or time in format "hh:mm:ss"
 * `fontSize` option accepts any CSS `font-size` value (e.g. `15px`)
+* various terminal emulation fixes
+* support for live streaming from SSE (Server-Sent Events) endpoints
 
 ## 2.0.0 (2016-01-06)
 
