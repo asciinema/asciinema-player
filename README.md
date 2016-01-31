@@ -111,7 +111,7 @@ where:
   * `height` - height of the player (number of terminal lines),
   * `autoPlay` - set to true if playback should start automatically, default: `false`,
   * `loop` - set to true if playback should be looped, default: `false`,
-  * `startAt` - start playback at given second, default: 0,
+  * `startAt` - start playback at given time (123, "2:03", "1:02:03"), default: 0,
   * `speed` - playback speed, default: 1,
   * `snapshot` - snapshot (preview) to display, default: blank terminal,
   * `fontSize` - size of terminal font: `'small'`, `'medium'`, `'big'` or

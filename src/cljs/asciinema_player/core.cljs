@@ -6,15 +6,24 @@
             [cljs.core.async :refer [chan >! <! put! timeout close! dropping-buffer sliding-buffer]]
             [clojure.walk :as walk]
             [clojure.set :refer [rename-keys]]
-            [ajax.core :refer [GET]])
+            [ajax.core :refer [GET]]
+            [clojure.string :as str])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
+
+(defn parse-npt [t]
+  (if (number? t)
+    t
+    (let [numbers (map js/parseFloat (str/split t #":"))
+          components (map * (reverse numbers) (iterate (partial * 60) 1))]
+      (apply + components))))
+
 
 (defn make-player
   "Builds initial player for given options."
   [asciicast-url {:keys [width height speed snapshot font-size theme start-at]
                   :or {speed 1 snapshot [] font-size "small" theme "asciinema"}
                   :as options}]
-  (let [start-at (or start-at 0)]
+  (let [start-at (parse-npt (or start-at 0))]
     (merge {:width width
             :height height
             :duration 0

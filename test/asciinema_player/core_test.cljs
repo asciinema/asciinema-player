@@ -30,12 +30,21 @@
       (is (= (:start-at player) 15))
       (is (= (:current-time player) 15))
       (is (= (:auto-play player) nil)))
-    (let [player (make-player {:start-at 15 :auto-play false})]
-      (is (= (:start-at player) 15))
-      (is (= (:current-time player) 15))
+    (let [player (make-player {:start-at "1:15" :auto-play false})]
+      (is (= (:start-at player) 75))
+      (is (= (:current-time player) 75))
       (is (= (:auto-play player) false)))
     (let [player (make-player {:snapshot [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]]})]
       (is (= (:lines player) [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]])))))
+
+(deftest parse-npt-test
+  (is (= (c/parse-npt 123.5) 123.5))
+  (is (= (c/parse-npt "123.5") 123.5))
+  (is (= (c/parse-npt "2:4") 124))
+  (is (= (c/parse-npt "02:04") 124))
+  (is (= (c/parse-npt "2:04.5") 124.5))
+  (is (= (c/parse-npt "1:2:35") 3755))
+  (is (= (c/parse-npt "01:02:35.5") 3755.5)))
 
 (deftest initialize-asciicast-test
   (testing "pre v1 format"
