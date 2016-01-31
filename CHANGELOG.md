@@ -7,6 +7,7 @@
 * `fontSize` option accepts any CSS `font-size` value (e.g. `15px`)
 * various terminal emulation fixes
 * support for live streaming from SSE (Server-Sent Events) endpoints
+* `snapshot` option has been renamed to `poster` (old name still works)
 
 ## 2.0.0 (2016-01-06)
 

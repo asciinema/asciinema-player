@@ -20,8 +20,8 @@
 
 (defn make-player
   "Builds initial player for given options."
-  [asciicast-url {:keys [width height speed snapshot font-size theme start-at]
-                  :or {speed 1 snapshot [] font-size "small" theme "asciinema"}
+  [asciicast-url {:keys [width height speed poster font-size theme start-at]
+                  :or {speed 1 poster [] font-size "small" theme "asciinema"}
                   :as options}]
   (let [start-at (parse-npt (or start-at 0))]
     (merge {:width width
@@ -30,7 +30,7 @@
             :source {}
             :asciicast-url asciicast-url
             :speed speed
-            :lines snapshot
+            :lines poster
             :font-size font-size
             :theme theme
             :cursor {:visible false}
@@ -583,6 +583,7 @@
                      (js->clj :keywordize-keys true)
                      (rename-keys {:autoPlay :auto-play
                                    :fontSize :font-size
+                                   :snapshot :poster
                                    :authorURL :author-url
                                    :startAt :start-at
                                    :authorImgURL :author-img-url}))]

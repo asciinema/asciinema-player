@@ -34,7 +34,7 @@
       (is (= (:start-at player) 75))
       (is (= (:current-time player) 75))
       (is (= (:auto-play player) false)))
-    (let [player (make-player {:snapshot [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]]})]
+    (let [player (make-player {:poster [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]]})]
       (is (= (:lines player) [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]])))))
 
 (deftest parse-npt-test

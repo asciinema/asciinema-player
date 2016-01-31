@@ -113,7 +113,7 @@ where:
   * `loop` - set to true if playback should be looped, default: `false`,
   * `startAt` - start playback at given time (123, "2:03", "1:02:03"), default: 0,
   * `speed` - playback speed, default: 1,
-  * `snapshot` - snapshot (preview) to display, default: blank terminal,
+  * `poster` - poster (preview) to display before playback start, default: blank terminal,
   * `fontSize` - size of terminal font: `'small'`, `'medium'`, `'big'` or
      any CSS `font-size` value (e.g. `15px`); default: `'small'`,
   * `theme` - terminal theme, one of `'asciinema'`, `'tango'`, `'solarized-dark'`,
