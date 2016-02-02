@@ -17,11 +17,20 @@
           components (map * (reverse numbers) (iterate (partial * 60) 1))]
       (apply + components))))
 
+(defn parse-poster [poster]
+  (if (string? poster)
+    (when (= (.indexOf poster "data:application/json;base64,") 0)
+      (-> poster
+          (.substring 29)
+          js/atob
+          js/JSON.parse
+          (js->clj :keywordize-keys true)))
+    poster))
 
 (defn make-player
   "Builds initial player for given options."
   [asciicast-url {:keys [width height speed poster font-size theme start-at]
-                  :or {speed 1 poster [] font-size "small" theme "asciinema"}
+                  :or {speed 1 font-size "small" theme "asciinema"}
                   :as options}]
   (let [start-at (parse-npt (or start-at 0))]
     (merge {:width width
@@ -30,7 +39,7 @@
             :source {}
             :asciicast-url asciicast-url
             :speed speed
-            :lines poster
+            :lines (or (parse-poster poster) [])
             :font-size font-size
             :theme theme
             :cursor {:visible false}
