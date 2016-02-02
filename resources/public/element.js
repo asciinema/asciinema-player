@@ -12,10 +12,6 @@
         return merged;
     }
 
-    function parsePoster(poster) {
-        return [];
-    }
-
     AsciinemaPlayerProto.opt = function(attrName, optName, defaultValue, coerceFn) {
         var obj = {};
         var value = this.getAttribute(attrName);
@@ -38,7 +34,7 @@
             this.opt('loop', 'loop', true, Boolean),
             this.opt('start-at', 'startAt', 0, parseInt),
             this.opt('speed', 'speed', 1, parseFloat),
-            this.opt('poster', 'snapshot', true, parsePoster),
+            this.opt('poster', 'poster'),
             this.opt('font-size', 'fontSize'),
             this.opt('theme', 'theme'),
             this.opt('title', 'title'),
