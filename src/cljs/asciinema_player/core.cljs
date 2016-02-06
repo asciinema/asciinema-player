@@ -22,6 +22,7 @@
     (when (= (.indexOf poster "data:application/json;base64,") 0)
       (-> poster
           (.substring 29)
+          (.replace (js/RegExp. "\\s" "g") "")
           js/atob
           js/JSON.parse
           (js->clj :keywordize-keys true)))
