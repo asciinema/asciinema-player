@@ -26,9 +26,7 @@
 (def part-class-name-memoized (memoize part-class-name))
 
 (defn part [[text attrs] cursor-on]
-  [:span {:class-name (part-class-name-memoized attrs cursor-on)
-          :style {:width (.concat "" (count text) "ch")}}
-   text])
+  [:span {:class-name (part-class-name-memoized attrs cursor-on)} text])
 
 (def part-memoized (memoize part))
 
