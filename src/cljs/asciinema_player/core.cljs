@@ -84,7 +84,7 @@
   for each element. It tries to always stay 'on the schedule' by measuring
   elapsed time and skipping elements if necessary."
   [coll]
-  (let [ch (chan (sliding-buffer 1))
+  (let [ch (chan)
         start (js/Date.)]
     (go
       (loop [coll coll
@@ -170,6 +170,21 @@
   [frames-ch]
   (priority-chan [:frame frames-ch] [:blink make-cursor-blink-chan]))
 
+(defn pipe
+  "Copies elements received on input-ch to output-ch until stop-ch closes."
+  [input-ch stop-ch]
+  (let [output-ch (chan (sliding-buffer 1))]
+    (go-loop []
+      (let [[v c] (alts! [input-ch stop-ch])]
+        (condp = c
+          input-ch (if v
+                     (do
+                       (>! output-ch v)
+                       (recur))
+                     (close! output-ch))
+          stop-ch nil)))
+    output-ch))
+
 (defmulti start-playback
   "The heart of the player. Coordinates dispatching of state update events like
   terminal line updating, time reporting and cursor blinking. Returns player
@@ -182,12 +197,12 @@
         speed (:speed player)
         all-frames (-> player :source :frames)
         frames (-> all-frames (next-frames start-at) (frames-at-speed speed))
-        frames-ch (coll->chan frames)
+        stop-playback-ch (chan)
+        frames-ch (pipe (coll->chan frames) stop-playback-ch)
         events-ch (screen-events frames-ch)
         elapsed-time #(* (elapsed-time-since start) speed)
-        timer-ch (coll->chan (repeatedly (fn []
-                                           [0.3 (+ start-at (elapsed-time))])))
-        stop-playback-ch (chan)
+        time-events (repeatedly (fn [] [0.3 (+ start-at (elapsed-time))]))
+        timer-ch (pipe (coll->chan time-events) stop-playback-ch)
         stop-fn (fn []
                   (close! stop-playback-ch)
                   (elapsed-time))]
@@ -204,6 +219,7 @@
                           (recur))
                         (dispatch player [:finished]))
             stop-playback-ch nil))) ; do nothing, break the loop
+      (close! stop-playback-ch)
       (dispatch player [:blink true]))
     (-> player
         (update-screen (screen-state-at all-frames start-at))
