@@ -136,6 +136,16 @@ For example:
 its result in a variable). In the future it will return a "control object" for
 programmatic control of the playback.
 
+### Controlling a Hosted Player
+Here are some jQuery workarounds for controlling the player pending development of a formal API.  Due to the same-origin policy, these work only with a player [hosted in your web page](https://github.com/tooda02/asciinema-player#use-the-player-in-your-html-page).
+
+Action | Coding
+------ | ------
+Start or stop the player | $(".playback-button").trigger("click") 
+Determine if player is playing | 2 == $(".playback-button")[0].getElementsByTagName("path").length
+Fetch elapsed time | $(".time-elapsed").text()
+Fetch remaining time | $(".time-remaining").text()
+
 ## Keyboard shortcuts
 
 The following keyboard shortcuts are currently available (when the player
