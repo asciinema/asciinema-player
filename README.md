@@ -178,12 +178,6 @@ To build stand-alone `.js` and `.css` files run:
 
 This produces `resources/public/js/release.js` and `resources/public/css/main.css`.
 
-## TODO
-
-* make `CreatePlayer` return "control object"
-* add hooks (start/pause/resume/finish)
-* figure out if GPL is compatible with Clojure(Script)'s EPL
-
 ## Contributing
 
 If you want to contribute to this project check out
