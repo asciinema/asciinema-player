@@ -17,15 +17,25 @@
           components (map * (reverse numbers) (iterate (partial * 60) 1))]
       (apply + components))))
 
-(defn parse-poster [poster]
+(defn parse-json-poster [poster]
+  (-> poster
+      (.replace (js/RegExp. "\\s" "g") "")
+      js/atob
+      js/JSON.parse
+      (js->clj :keywordize-keys true)))
+
+(defn parse-text-poster [text width height]
+  (-> (vt/make-vt width height)
+      (vt/feed-str text)
+      :lines
+      vt/compact-lines))
+
+(defn parse-poster [poster width height]
   (if (string? poster)
-    (when (= (.indexOf poster "data:application/json;base64,") 0)
-      (-> poster
-          (.substring 29)
-          (.replace (js/RegExp. "\\s" "g") "")
-          js/atob
-          js/JSON.parse
-          (js->clj :keywordize-keys true)))
+    (condp #(= (.indexOf %2 %1) 0) poster
+      "data:application/json;base64," (-> poster (.substring 29) parse-json-poster)
+      "data:text/plain," (-> poster (.substring 16) (parse-text-poster width height))
+      nil)
     poster))
 
 (defn make-player
@@ -40,7 +50,7 @@
             :source {}
             :asciicast-url asciicast-url
             :speed speed
-            :lines (or (parse-poster poster) [])
+            :lines (or (parse-poster poster (or width 80) (or height 24)) [])
             :font-size font-size
             :theme theme
             :cursor {:visible false}

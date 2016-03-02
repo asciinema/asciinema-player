@@ -16,6 +16,7 @@
   (str "data:application/json;base64," (-> poster-js clj->js js/JSON.stringify js/btoa)))
 
 (defonce options {:speed 1
+                  :poster "data:text/plain,\n\r  test \u001b[1;32msnapshot"
                   :title "Something cool"
                   :author "sickill"
                   :author-url "http://ku1ik.com/"

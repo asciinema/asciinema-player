@@ -46,6 +46,18 @@
   (is (= (c/parse-npt "1:2:35") 3755))
   (is (= (c/parse-npt "01:02:35.5") 3755.5)))
 
+(deftest parse-poster-test
+  (let [poster [[["foo" {:fg 1}]] [["bar" {:bg 2}]]]
+        base64-data (-> poster clj->js js/JSON.stringify js/btoa)
+        base64-poster (str "data:application/json;base64," base64-data)
+        text "foo\n\rbar\u001b[31mbaz"
+        text-poster (str "data:text/plain," text)]
+    (is (= (c/parse-poster nil 8 2) nil))
+    (is (= (c/parse-poster poster 8 2) poster))
+    (is (= (c/parse-poster base64-poster 8 2) poster))
+    (is (= (c/parse-poster text-poster 8 2) [[["foo     " {}]]
+                                             [["bar" {}] ["baz" {:fg 1}] ["  " {}]]]))))
+
 (deftest initialize-asciicast-test
   (testing "pre v1 format"
     (let [asciicast [[1.0 {:lines {0 [["foo" {}] ["bar" {}]] 1 [["foobar" {}]]}}]
