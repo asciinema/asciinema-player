@@ -158,8 +158,8 @@ Playback speed. Defaults to 1 (normal speed).
 
 Poster (preview) to display before playback start.
 
-Can be specified either as text (possibly containing escape sequences) or as a
-BASE64 encoded JSON array containing line fragments.
+Can be specified either as text (possibly containing escape sequences) or as an
+array containing line fragments.
 
 To use text, the `poster` value should be in the following format:
 
@@ -171,11 +171,7 @@ need to replace usual `\xXX` hex syntax with Unicode `\u00XX` though:
 
     data:text/plain,I'm regular \u001b[1;32mI'm bold green\u001b[3BI'm 3 lines down
 
-The alternative to text poster is JSON array poster:
-
-    data:application/json;base64,<base64-encoded-json-array>
-
-The structure of the array is as follows:
+The alternative to text poster is a JavaScript array poster describing contents of terminal lines:
 
     [
       [["some text with default color attributes", {}]], // line 1
@@ -183,8 +179,12 @@ The structure of the array is as follows:
       [["bold text", { "bold": true }], ["underlined text", { "underline": true }], ["italic text", { "italic": true }]] // line 3
     ]
 
+The above array poster can be also passed in as BASE64 encoded JSON like this:
+
+    data:application/json;base64,<base64-encoded-json-array>
+
 You can use `btoa(JSON.stringify(arr))` in JavaScript (console) to BASE64-encode
-the above array.
+the line array.
 
 Defaults to blank terminal.
 
