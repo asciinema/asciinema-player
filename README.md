@@ -112,27 +112,47 @@ where:
 
 #### `width`
 
-Width of the player (number of terminal columns).
+Width of the player (as a number of terminal columns).
+
+When not set it defaults to 80 (until asciicast gets loaded) and to width saved
+in the asciicast file.
+
+It's recommended to set it to the same value as in asciicast file to prevent
+player to resize itself from 80x24 to the actual dimensions of the asciicast
+when it gets loaded.
 
 #### `height`
 
-Height of the player (number of terminal lines).
+Height of the player (as a number of terminal lines).
+
+When not set it defaults to 24 (until asciicast gets loaded) and to height saved
+in the asciicast file.
+
+Same recommendation as for `width` applies here.
 
 #### `autoPlay`
 
-Set to true if playback should start automatically, default: `false`.
+Set to true if playback should start automatically. Defaults to `false`.
 
 #### `loop`
 
-Set to true if playback should be looped, default: `false`.
+Set to true if playback should be looped. Defaults to `false`.
 
 #### `startAt`
 
-Start playback at given time (123, "2:03", "1:02:03"), default: 0.
+Start playback at given time.
+
+Supported formats:
+
+* 123 (number of seconds)
+* "2:03" (string in format "mm:ss")
+* "1:02:03" (string in format "hh:mm:ss")
+
+Defaults to 0.
 
 #### `speed`
 
-Playback speed, default: 1 (normal speed).
+Playback speed. Defaults to 1 (normal speed).
 
 #### `poster`
 
@@ -140,11 +160,30 @@ Poster (preview) to display before playback start, default: blank terminal.
 
 #### `fontSize`
 
-Size of terminal font: `'small'`, `'medium'`, `'big'` or any CSS `font-size` value (e.g. `15px`); default: `'small'`.
+Size of terminal font.
+
+Possible values:
+
+* `'small'`
+* `'medium'`
+* `'big'`
+* any CSS `font-size` value (e.g. `15px`)
+
+Defaults to `'small'`.
 
 #### `theme`
 
-Terminal theme, one of `'asciinema'`, `'tango'`, `'solarized-dark'`, `'solarized-light'`, `'monokai'`; default: `'asciinema'`.
+Terminal color theme.
+
+One of:
+
+* `'asciinema'`
+* `'tango'`
+* `'solarized-dark'`
+* `'solarized-light'`
+* `'monokai'`
+
+Defaults to `'asciinema'`.
 
 #### `title`
 
@@ -156,13 +195,14 @@ Author of the asciicast, displayed in the titlebar in fullscreen mode.
 
 #### `authorURL`
 
-URL of the author's homepage/profile.
+URL of the author's homepage/profile. Author name (`author` above) is linked to
+this URL.
 
 #### `authorImgURL`
 
 URL of the author's image, displayed in the titlebar in fullscreen mode.
 
-### Example
+### Example usage of options
 
 ```html
 <div id="player-container"></div>
@@ -170,10 +210,6 @@ URL of the author's image, displayed in the titlebar in fullscreen mode.
   asciinema_player.core.CreatePlayer('player-container', '/demo.json', { speed: 2, theme: 'solarized-dark' });
 </script>
 ```
-
-`CreatePlayer` doesn't return anything useful yet (that's why we're not storing
-its result in a variable). In the future it will return a "control object" for
-programmatic control of the playback.
 
 ## Keyboard shortcuts
 
