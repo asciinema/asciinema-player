@@ -1,6 +1,6 @@
 # asciinema player changelog
 
-## master
+## 2.1.0 (2016-03-03)
 
 * `startAt` option doesn't imply `autoPlay: true` anymore
 * `startAt` option now accepts number of seconds or time in format "hh:mm:ss"
