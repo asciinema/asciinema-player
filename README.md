@@ -106,24 +106,63 @@ where:
 
 * `parent` - DOM element into which the player should be inserted (as the only child),
 * `asciicastURL` - URL of the asciicast JSON file to play,
-* `options` - (optional) object with any of the following properties:
-  * `width` - width of the player (number of terminal columns),
-  * `height` - height of the player (number of terminal lines),
-  * `autoPlay` - set to true if playback should start automatically, default: `false`,
-  * `loop` - set to true if playback should be looped, default: `false`,
-  * `startAt` - start playback at given time (123, "2:03", "1:02:03"), default: 0,
-  * `speed` - playback speed, default: 1,
-  * `poster` - poster (preview) to display before playback start, default: blank terminal,
-  * `fontSize` - size of terminal font: `'small'`, `'medium'`, `'big'` or
-     any CSS `font-size` value (e.g. `15px`); default: `'small'`,
-  * `theme` - terminal theme, one of `'asciinema'`, `'tango'`, `'solarized-dark'`,
-    `'solarized-light'`, `'monokai'`; default: `'asciinema'`,
-  * `title` - title of the asciicast, displayed in the titlebar in fullscreen mode,
-  * `author` - author of the asciicast, displayed in the titlebar in fullscreen mode,
-  * `authorURL` - URL of the author's homepage/profile,
-  * `authorImgURL` - URL of the author's image, displayed in the titlebar in fullscreen mode
+* `options` - (optional) options object (see below).
 
-For example:
+### Options
+
+#### `width`
+
+Width of the player (number of terminal columns).
+
+#### `height`
+
+Height of the player (number of terminal lines).
+
+#### `autoPlay`
+
+Set to true if playback should start automatically, default: `false`.
+
+#### `loop`
+
+Set to true if playback should be looped, default: `false`.
+
+#### `startAt`
+
+Start playback at given time (123, "2:03", "1:02:03"), default: 0.
+
+#### `speed`
+
+Playback speed, default: 1 (normal speed).
+
+#### `poster`
+
+Poster (preview) to display before playback start, default: blank terminal.
+
+#### `fontSize`
+
+Size of terminal font: `'small'`, `'medium'`, `'big'` or any CSS `font-size` value (e.g. `15px`); default: `'small'`.
+
+#### `theme`
+
+Terminal theme, one of `'asciinema'`, `'tango'`, `'solarized-dark'`, `'solarized-light'`, `'monokai'`; default: `'asciinema'`.
+
+#### `title`
+
+Title of the asciicast, displayed in the titlebar in fullscreen mode.
+
+#### `author`
+
+Author of the asciicast, displayed in the titlebar in fullscreen mode.
+
+#### `authorURL`
+
+URL of the author's homepage/profile.
+
+#### `authorImgURL`
+
+URL of the author's image, displayed in the titlebar in fullscreen mode.
+
+### Example
 
 ```html
 <div id="player-container"></div>
