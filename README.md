@@ -156,7 +156,36 @@ Playback speed. Defaults to 1 (normal speed).
 
 #### `poster`
 
-Poster (preview) to display before playback start, default: blank terminal.
+Poster (preview) to display before playback start.
+
+Can be specified either as text (possibly containing escape sequences) or as a
+BASE64 encoded JSON array containing line fragments.
+
+To use text, the `poster` value should be in the following format:
+
+    data:text/plain,this will be printed as poster\n\rthis in second line
+
+All [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code) can be
+used to add color and move the cursor around to produce good looking poster:
+
+    data:text/plain,I'm regular \u001b[1;32mI'm bold green\u001b[3BI'm 3 lines down
+
+The alternative to text poster is JSON array poster:
+
+    data:application/json;base64,<base64-encoded-json-array>
+
+The structure of the array is as follows:
+
+    [
+      [["some text with default color attributes", {}]], // line 1
+      [["red text", { "fg": 1 }], ["blue bg text", { "bg": 2 }]], // line 2
+      [["bold text", { "bold": true }], ["underlined text", { "underline": true }], ["italic text", { "italic": true }]] // line 3
+    ]
+
+You can use `btoa(JSON.stringify(arr))` in JavaScript (console) to BASE64-encode
+the above array.
+
+Defaults to blank terminal.
 
 #### `fontSize`
 
@@ -207,7 +236,15 @@ URL of the author's image, displayed in the titlebar in fullscreen mode.
 ```html
 <div id="player-container"></div>
 <script>
-  asciinema_player.core.CreatePlayer('player-container', '/demo.json', { speed: 2, theme: 'solarized-dark' });
+  asciinema_player.core.CreatePlayer(
+    "player-container",
+    "/demo.json",
+    {
+      speed: 2,
+      theme: "solarized-dark",
+      poster: "data:text/plain,\u001b[5;5HAwesome \u001b[1;33mdemo!"
+    }
+  );
 </script>
 ```
 
