@@ -166,7 +166,8 @@ To use text, the `poster` value should be in the following format:
     data:text/plain,this will be printed as poster\n\rthis in second line
 
 All [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code) can be
-used to add color and move the cursor around to produce good looking poster:
+used to add color and move the cursor around to produce good looking poster. You
+need to replace usual `\xXX` hex syntax with Unicode `\u00XX` though:
 
     data:text/plain,I'm regular \u001b[1;32mI'm bold green\u001b[3BI'm 3 lines down
 
