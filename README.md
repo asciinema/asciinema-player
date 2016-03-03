@@ -115,7 +115,7 @@ where:
 Width of the player (as a number of terminal columns).
 
 When not set it defaults to 80 (until asciicast gets loaded) and to width saved
-in the asciicast file.
+in the asciicast file (after it gets loaded).
 
 It's recommended to set it to the same value as in asciicast file to prevent
 player to resize itself from 80x24 to the actual dimensions of the asciicast
@@ -126,7 +126,7 @@ when it gets loaded.
 Height of the player (as a number of terminal lines).
 
 When not set it defaults to 24 (until asciicast gets loaded) and to height saved
-in the asciicast file.
+in the asciicast file (after it gets loaded).
 
 Same recommendation as for `width` applies here.
 
@@ -160,16 +160,16 @@ Poster (preview) to display before playback start, default: blank terminal.
 
 #### `fontSize`
 
-Size of terminal font.
+Size of the terminal font.
 
 Possible values:
 
-* `'small'`
-* `'medium'`
-* `'big'`
+* `small`
+* `medium`
+* `big`
 * any CSS `font-size` value (e.g. `15px`)
 
-Defaults to `'small'`.
+Defaults to `small`.
 
 #### `theme`
 
@@ -177,13 +177,13 @@ Terminal color theme.
 
 One of:
 
-* `'asciinema'`
-* `'tango'`
-* `'solarized-dark'`
-* `'solarized-light'`
-* `'monokai'`
+* `asciinema`
+* `tango`
+* `solarized-dark`
+* `solarized-light`
+* `monokai`
 
-Defaults to `'asciinema'`.
+Defaults to `asciinema`.
 
 #### `title`
 
@@ -202,7 +202,7 @@ this URL.
 
 URL of the author's image, displayed in the titlebar in fullscreen mode.
 
-### Example usage of options
+### Example usage with options
 
 ```html
 <div id="player-container"></div>
