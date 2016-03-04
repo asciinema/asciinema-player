@@ -1712,6 +1712,7 @@
       (expect-attrs (reduce feed-csi vt [all-on-params   "m"]) {}) ; implicit 0 param
       (expect-attrs (reduce feed-csi vt [all-on-params  "0m"]) {}) ; explicit 0 param
       (expect-attrs (reduce feed-csi vt [all-on-params "21m"]) (dissoc all-on-attrs :bold))
+      (expect-attrs (reduce feed-csi vt [all-on-params "22m"]) (dissoc all-on-attrs :bold))
       (expect-attrs (reduce feed-csi vt [all-on-params "23m"]) (dissoc all-on-attrs :italic))
       (expect-attrs (reduce feed-csi vt [all-on-params "24m"]) (dissoc all-on-attrs :underline))
       (expect-attrs (reduce feed-csi vt [all-on-params "25m"]) (dissoc all-on-attrs :blink))

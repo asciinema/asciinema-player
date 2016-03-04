@@ -509,6 +509,7 @@
                [5  _ _] (recur (set-attr vt :blink true) (rest params))
                [7  _ _] (recur (set-attr vt :inverse true) (rest params))
                [21 _ _] (recur (unset-attr vt :bold) (rest params))
+               [22 _ _] (recur (unset-attr vt :bold) (rest params))
                [23 _ _] (recur (unset-attr vt :italic) (rest params))
                [24 _ _] (recur (unset-attr vt :underline) (rest params))
                [25 _ _] (recur (unset-attr vt :blink) (rest params))
