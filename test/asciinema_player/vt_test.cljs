@@ -1694,49 +1694,30 @@
 
   (testing "CSI m (SGR)"
     (let [vt (make-vt 21 1)
-          vt (reduce feed-csi vt ["0mA"
-                                  "1mA" ; turn on bold
-                                  "3mA" ; turn on italic
-                                  "4mA" ; turn on underline
-                                  "5mA" ; turn on blink
-                                  "7mA" ; turn on inverse
-                                  "21mA" ; turn off bold
-                                  "23mA" ; turn off italic
-                                  "24mA" ; turn off underline
-                                  "25mA" ; turn off blink
-                                  "27mA" ; turn off inverse
-                                  "32;43mA" ; fg 2, bg 3
-                                  "93;104mA" ; fg 11, bg 12
-                                  "39mA" ; default fg
-                                  "49mA" ; default bg
-                                  "32;43;1mA" ; fg 2, bg 3, bold
-                                  "0mA" ; reset all attrs (explicit "0" param)
-                                  "32;43;1mA" ; fg 2, bg 3, bold
-                                  "mA" ; reset all attrs (implicit "0" param)
-                                  "1;38;5;88;48;5;99;5mA"]) ; bold, fg 88, bg 99, blink
-          {:keys [lines]} vt
-          [line0 & _] lines]
-      (is (= line0 [[0x41 {}]
-                    [0x41 {:bold true}]
-                    [0x41 {:bold true :italic true}]
-                    [0x41 {:bold true :italic true :underline true}]
-                    [0x41 {:bold true :italic true :underline true :blink true}]
-                    [0x41 {:bold true :italic true :underline true :blink true :inverse true}]
-                    [0x41 {:italic true :underline true :blink true :inverse true}]
-                    [0x41 {:underline true :blink true :inverse true}]
-                    [0x41 {:blink true :inverse true}]
-                    [0x41 {:inverse true}]
-                    [0x41 {}]
-                    [0x41 {:fg 2 :bg 3}]
-                    [0x41 {:fg 11 :bg 12}]
-                    [0x41 {:bg 12}]
-                    [0x41 {}]
-                    [0x41 {:fg 2 :bg 3 :bold true}]
-                    [0x41 {}]
-                    [0x41 {:fg 2 :bg 3 :bold true}]
-                    [0x41 {}]
-                    [0x41 {:fg 88 :bg 99 :bold true :blink true}]
-                    [0x20 {}]]))))
+          all-on-params "1;3;4;5;7;31;42m"
+          all-on-attrs {:bold true :italic true :underline true :blink true
+                        :inverse true :fg 1 :bg 2}
+          expect-attrs #(is (= (-> %1 (feed-str "A") :lines ffirst last) %2))]
+      (expect-attrs (feed-csi vt "1m") {:bold true})
+      (expect-attrs (feed-csi vt "3m") {:italic true})
+      (expect-attrs (feed-csi vt "4m") {:underline true})
+      (expect-attrs (feed-csi vt "5m") {:blink true})
+      (expect-attrs (feed-csi vt "7m") {:inverse true})
+      (expect-attrs (feed-csi vt "32m") {:fg 2})
+      (expect-attrs (feed-csi vt "43m") {:bg 3})
+      (expect-attrs (feed-csi vt "93m") {:fg 11})
+      (expect-attrs (feed-csi vt "104m") {:bg 12})
+      (expect-attrs (feed-csi vt "1;38;5;88;48;5;99;5m") {:fg 88 :bg 99 :bold true :blink true})
+      (expect-attrs (feed-csi vt all-on-params) all-on-attrs)
+      (expect-attrs (reduce feed-csi vt [all-on-params   "m"]) {}) ; implicit 0 param
+      (expect-attrs (reduce feed-csi vt [all-on-params  "0m"]) {}) ; explicit 0 param
+      (expect-attrs (reduce feed-csi vt [all-on-params "21m"]) (dissoc all-on-attrs :bold))
+      (expect-attrs (reduce feed-csi vt [all-on-params "23m"]) (dissoc all-on-attrs :italic))
+      (expect-attrs (reduce feed-csi vt [all-on-params "24m"]) (dissoc all-on-attrs :underline))
+      (expect-attrs (reduce feed-csi vt [all-on-params "25m"]) (dissoc all-on-attrs :blink))
+      (expect-attrs (reduce feed-csi vt [all-on-params "27m"]) (dissoc all-on-attrs :inverse))
+      (expect-attrs (reduce feed-csi vt [all-on-params "39m"]) (dissoc all-on-attrs :fg))
+      (expect-attrs (reduce feed-csi vt [all-on-params "49m"]) (dissoc all-on-attrs :bg))))
 
   (testing "CSI !p (DECSTR)"
     (let [vt (-> (make-vt 4 4)
