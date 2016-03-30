@@ -125,16 +125,18 @@
         candidate
         (recur (rest frames) (- seconds delay) screen-state)))))
 
+(defn next-frames* [frames seconds]
+  (if (seq frames)
+    (let [[delay screen-state] (first frames)]
+      (if (<= delay seconds)
+        (recur (rest frames) (- seconds delay))
+        (cons [(- delay seconds) screen-state] (rest frames))))
+    frames))
+
 (defn next-frames
   "Returns a lazy sequence of frames starting from given time (in seconds)."
   [frames seconds]
-  (lazy-seq
-   (if (seq frames)
-     (let [[delay screen-state] (first frames)]
-       (if (<= delay seconds)
-         (next-frames (rest frames) (- seconds delay))
-         (cons [(- delay seconds) screen-state] (rest frames))))
-     frames)))
+  (lazy-seq (next-frames* frames seconds)))
 
 (defn reset-blink
   "Makes cursor 'block' visible."
