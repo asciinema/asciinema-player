@@ -1,5 +1,5 @@
 (ns asciinema-player.vt-test
-  (:require-macros [cljs.test :refer (is deftest testing)]
+  (:require-macros [cljs.test :refer (is are deftest testing)]
                    [asciinema-player.vt-test :refer [property-tests-multiplier]]
                    [clojure.test.check.clojure-test :refer (defspec)])
   (:require [cljs.test]
@@ -1697,28 +1697,31 @@
           all-on-params "1;3;4;5;7;31;42m"
           all-on-attrs {:bold true :italic true :underline true :blink true
                         :inverse true :fg 1 :bg 2}
-          expect-attrs #(is (= (-> %1 (feed-str "A") :lines ffirst last) %2))]
-      (expect-attrs (feed-csi vt "1m") {:bold true})
-      (expect-attrs (feed-csi vt "3m") {:italic true})
-      (expect-attrs (feed-csi vt "4m") {:underline true})
-      (expect-attrs (feed-csi vt "5m") {:blink true})
-      (expect-attrs (feed-csi vt "7m") {:inverse true})
-      (expect-attrs (feed-csi vt "32m") {:fg 2})
-      (expect-attrs (feed-csi vt "43m") {:bg 3})
-      (expect-attrs (feed-csi vt "93m") {:fg 11})
-      (expect-attrs (feed-csi vt "104m") {:bg 12})
-      (expect-attrs (feed-csi vt "1;38;5;88;48;5;99;5m") {:fg 88 :bg 99 :bold true :blink true})
-      (expect-attrs (feed-csi vt all-on-params) all-on-attrs)
-      (expect-attrs (reduce feed-csi vt [all-on-params   "m"]) {}) ; implicit 0 param
-      (expect-attrs (reduce feed-csi vt [all-on-params  "0m"]) {}) ; explicit 0 param
-      (expect-attrs (reduce feed-csi vt [all-on-params "21m"]) (dissoc all-on-attrs :bold))
-      (expect-attrs (reduce feed-csi vt [all-on-params "22m"]) (dissoc all-on-attrs :bold))
-      (expect-attrs (reduce feed-csi vt [all-on-params "23m"]) (dissoc all-on-attrs :italic))
-      (expect-attrs (reduce feed-csi vt [all-on-params "24m"]) (dissoc all-on-attrs :underline))
-      (expect-attrs (reduce feed-csi vt [all-on-params "25m"]) (dissoc all-on-attrs :blink))
-      (expect-attrs (reduce feed-csi vt [all-on-params "27m"]) (dissoc all-on-attrs :inverse))
-      (expect-attrs (reduce feed-csi vt [all-on-params "39m"]) (dissoc all-on-attrs :fg))
-      (expect-attrs (reduce feed-csi vt [all-on-params "49m"]) (dissoc all-on-attrs :bg))))
+          compare-attrs #(= (-> %1 (feed-csi %2) (feed-str "A") :lines ffirst last) %3)]
+      (are [input-str expected-attrs] (compare-attrs vt input-str expected-attrs)
+        "1m" {:bold true}
+        "3m" {:italic true}
+        "4m" {:underline true}
+        "5m" {:blink true}
+        "7m" {:inverse true}
+        "32m" {:fg 2}
+        "43m" {:bg 3}
+        "93m" {:fg 11}
+        "104m" {:bg 12}
+        "1;38;5;88;48;5;99;5m" {:fg 88 :bg 99 :bold true :blink true}
+        all-on-params all-on-attrs)
+      (let [vt (feed-csi vt all-on-params)]
+        (are [input-str expected-attrs] (compare-attrs vt input-str expected-attrs)
+          "m" {} ; implicit 0 param
+          "0m" {} ; explicit 0 param
+          "21m" (dissoc all-on-attrs :bold)
+          "22m" (dissoc all-on-attrs :bold)
+          "23m" (dissoc all-on-attrs :italic)
+          "24m" (dissoc all-on-attrs :underline)
+          "25m" (dissoc all-on-attrs :blink)
+          "27m" (dissoc all-on-attrs :inverse)
+          "39m" (dissoc all-on-attrs :fg)
+          "49m" (dissoc all-on-attrs :bg)))))
 
   (testing "CSI !p (DECSTR)"
     (let [vt (-> (make-vt 4 4)
