@@ -608,15 +608,15 @@
 (defn create-player
   "Creates the player with the state built from given options by starting event
   processing loop and mounting Reagent component in DOM."
-  [dom-node asciicast-url options]
+  [dom-node url options]
   (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)
-        state (make-player-ratom asciicast-url options)]
+        state (make-player-ratom url options)]
     (mount-player-with-ratom state dom-node)))
 
 (defn ^:export CreatePlayer
   "JavaScript API for creating the player, delegating to create-player."
-  ([dom-node asciicast-url] (CreatePlayer dom-node asciicast-url {}))
-  ([dom-node asciicast-url options]
+  ([dom-node url] (CreatePlayer dom-node url {}))
+  ([dom-node url options]
    (let [options (-> options
                      (js->clj :keywordize-keys true)
                      (rename-keys {:autoPlay :auto-play
@@ -625,6 +625,6 @@
                                    :authorURL :author-url
                                    :startAt :start-at
                                    :authorImgURL :author-img-url}))]
-     (create-player dom-node asciicast-url options))))
+     (create-player dom-node url options))))
 
 (enable-console-print!)
