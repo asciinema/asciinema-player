@@ -222,7 +222,6 @@
       (let [ports (remove nil? [pri-ch command-ch end-ch])
             [v c] (alts! ports :priority true)
             [command arg] (if (= c end-ch) [:internal/rewind v] v)]
-        (println command)
         (condp = command
           :start (if stop-ch
                    (recur start-at speed end-ch stop-ch)
