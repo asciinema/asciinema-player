@@ -1,8 +1,9 @@
 (ns asciinema-player.source
+  (:refer-clojure :exclude [js->clj])
   (:require [cljs.core.async :refer [chan >! <! put! close! timeout poll!]]
             [ajax.core :as http]
             [asciinema-player.vt :as vt]
-            [asciinema-player.util :as util])
+            [asciinema-player.util :as util :refer [js->clj]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (defprotocol Source
@@ -289,7 +290,7 @@
                       (fn [json]
                         (-> json
                             js/JSON.parse
-                            (util/faster-js->clj :keywordize-keys true)
+                            (js->clj :keywordize-keys true)
                             initialize-asciicast))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -343,7 +344,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn es-message [payload]
-  (util/faster-js->clj (.parse js/JSON payload) :keywordize-keys true))
+  (js->clj (.parse js/JSON payload) :keywordize-keys true))
 
 (defn process-es-messages! [es-ch events-ch]
   (go

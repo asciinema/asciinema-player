@@ -61,7 +61,7 @@
           :handler (fn [res]
                      (put! ch (-> res
                                   js/JSON.parse
-                                  (util/faster-js->clj :keywordize-keys true))))})
+                                  (js->clj :keywordize-keys true))))})
     ch))
 
 (defn feed-verbose [vt str]

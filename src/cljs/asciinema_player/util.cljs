@@ -1,15 +1,16 @@
-(ns asciinema-player.util)
+(ns asciinema-player.util
+  (:refer-clojure :exclude [js->clj]))
 
 (defn adjust-to-range [value min-value max-value]
   (min max-value (max value min-value)))
 
 ; Optimized js->clj implementation by Darrick Wiebe (http://dev.clojure.org/jira/browse/CLJS-844)
-(defn faster-js->clj
+(defn js->clj
   "Recursively transforms JavaScript arrays into ClojureScript
   vectors, and JavaScript objects into ClojureScript maps.  With
   option ':keywordize-keys true' will convert object fields from
   strings to keywords."
-  ([x] (faster-js->clj x :keywordize-keys false))
+  ([x] (js->clj x :keywordize-keys false))
   ([x & opts]
    (cond
      (satisfies? IEncodeClojure x)
