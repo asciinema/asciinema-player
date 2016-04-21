@@ -1,8 +1,8 @@
-(ns asciinema-player.view
-  (:require-macros [reagent.ratom :refer [reaction]])
+(ns asciinema.player.view
   (:require [clojure.string :as string]
-            [asciinema-player.util :as util]
-            [asciinema-player.fullscreen :as fullscreen]))
+            [reagent.ratom :refer-macros [reaction]]
+            [asciinema.player.util :as util]
+            [asciinema.player.fullscreen :as fullscreen]))
 
 (defn fg-color [fg bold?]
   (if (and fg bold? (< fg 8)) (+ fg 8) fg))

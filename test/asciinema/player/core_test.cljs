@@ -1,7 +1,7 @@
-(ns asciinema-player.core-test
+(ns asciinema.player.core-test
   (:require-macros [cljs.test :refer (is deftest testing)])
   (:require [cljs.test]
-            [asciinema-player.core :as c]))
+            [asciinema.player.core :as c]))
 
 (deftest make-player-test
   (let [make-player #(c/make-player "https://..." %)]

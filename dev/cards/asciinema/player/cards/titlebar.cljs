@@ -1,6 +1,6 @@
-(ns asciinema-player.cards.titlebar
-  (:require [asciinema-player.core :as c]
-            [asciinema-player.view :as v])
+(ns asciinema.player.cards.titlebar
+  (:require [asciinema.player.core :as c]
+            [asciinema.player.view :as v])
   (:require-macros [devcards.core :as dc :refer [defcard]]))
 
 (defonce state-1 (c/make-player-ratom "/asciicasts/frames-10386.json" {}))

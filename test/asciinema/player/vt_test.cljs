@@ -1,12 +1,12 @@
-(ns asciinema-player.vt-test
+(ns asciinema.player.vt-test
   (:require-macros [cljs.test :refer (is are deftest testing)]
-                   [asciinema-player.vt-test :refer [property-tests-multiplier]]
+                   [asciinema.player.vt-test :refer [property-tests-multiplier]]
                    [clojure.test.check.clojure-test :refer (defspec)])
   (:require [cljs.test]
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop :include-macros true]
-            [asciinema-player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines]]))
+            [asciinema.player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines]]))
 
 (defn expect-lines [{lines :lines} expected]
   (is (= (compact-lines lines) expected)))

@@ -1,6 +1,6 @@
-(ns asciinema-player.cards.themes
-  (:require [asciinema-player.core :as c]
-            [asciinema-player.view :as v])
+(ns asciinema.player.cards.themes
+  (:require [asciinema.player.core :as c]
+            [asciinema.player.view :as v])
   (:require-macros [devcards.core :as dc :refer [defcard]]))
 
 ;; "emacs"

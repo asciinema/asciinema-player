@@ -73,7 +73,7 @@ URL of the `.json` file containing the recording:
 ```html
 <div id="player-container"></div>
 <script>
-  asciinema_player.core.CreatePlayer('player-container', '/demo.json');
+  asciinema.player.core.CreatePlayer('player-container', '/demo.json');
 </script>
 ```
 
@@ -88,7 +88,7 @@ Complete example:
 <body>
   <div id="player-container"></div>
   <script>
-    asciinema_player.core.CreatePlayer('player-container', '/demo.json');
+    asciinema.player.core.CreatePlayer('player-container', '/demo.json');
   </script>
 </body>
 </html>
@@ -99,7 +99,7 @@ Complete example:
 Create the player widget with the following JavaScript code:
 
 ```javascript
-asciinema_player.core.CreatePlayer(parent, asciicastURL, options)
+asciinema.player.core.CreatePlayer(parent, asciicastURL, options)
 ```
 
 where:
@@ -242,7 +242,7 @@ URL of the author's image, displayed in the titlebar in fullscreen mode.
 ```html
 <div id="player-container"></div>
 <script>
-  asciinema_player.core.CreatePlayer(
+  asciinema.player.core.CreatePlayer(
     "player-container",
     "/demo.json",
     {

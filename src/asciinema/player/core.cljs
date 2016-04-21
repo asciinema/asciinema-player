@@ -1,10 +1,10 @@
-(ns asciinema-player.core
+(ns asciinema.player.core
   (:require [reagent.core :as reagent :refer [atom]]
-            [asciinema-player.view :as view]
-            [asciinema-player.util :as util]
-            [asciinema-player.raf :as raf]
-            [asciinema-player.vt :as vt]
-            [asciinema-player.source :as source :refer [make-source]]
+            [asciinema.player.view :as view]
+            [asciinema.player.util :as util]
+            [asciinema.player.raf :as raf]
+            [asciinema.player.vt :as vt]
+            [asciinema.player.source :as source :refer [make-source]]
             [cljs.core.async :refer [chan >! <! put! timeout close! sliding-buffer dropping-buffer]]
             [clojure.set :refer [rename-keys]]
             [clojure.string :as str])

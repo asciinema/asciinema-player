@@ -1,7 +1,7 @@
-(ns asciinema-player.source-test
+(ns asciinema.player.source-test
   (:require-macros [cljs.test :refer (is deftest testing)])
   (:require [cljs.test]
-            [asciinema-player.source :as s]))
+            [asciinema.player.source :as s]))
 
 (deftest initialize-asciicast-test
   (testing "pre v1 format"

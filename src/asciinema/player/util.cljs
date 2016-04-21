@@ -1,4 +1,4 @@
-(ns asciinema-player.util
+(ns asciinema.player.util
   (:refer-clojure :exclude [js->clj]))
 
 (defn adjust-to-range [value min-value max-value]

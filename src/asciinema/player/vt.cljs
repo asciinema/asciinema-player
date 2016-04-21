@@ -1,7 +1,7 @@
-(ns asciinema-player.vt
+(ns asciinema.player.vt
   (:refer-clojure :exclude [print])
-  (:require-macros [asciinema-player.vt :refer [events]])
-  (:require [asciinema-player.util :refer [adjust-to-range]]
+  (:require-macros [asciinema.player.vt :refer [events]])
+  (:require [asciinema.player.util :refer [adjust-to-range]]
             [cljs.core.match :refer-macros [match]]))
 
 

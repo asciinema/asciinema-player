@@ -1,9 +1,9 @@
-(ns asciinema-player.dev
+(ns asciinema.player.dev
   (:refer-clojure :exclude [compare])
-  (:require [asciinema-player.core :as p]
-            [asciinema-player.vt :as vt]
-            [asciinema-player.util :as util]
-            [asciinema-player.source :as source]
+  (:require [asciinema.player.core :as p]
+            [asciinema.player.vt :as vt]
+            [asciinema.player.util :as util]
+            [asciinema.player.source :as source]
             [clojure.walk :as walk]
             [cljs.core.async :refer [chan >! <! put!]]
             [ajax.core :refer [GET]])

@@ -24,7 +24,7 @@
 
   :clean-targets ^{:protect false} ["resources/public/js" "target"]
 
-  :source-paths ["src/cljs"]
+  :source-paths ["src"]
 
   :profiles {:dev {:dependencies [[com.cemerick/piggieback "0.2.1"]
                                   [org.clojure/tools.nrepl "0.2.10"]
@@ -36,33 +36,33 @@
 
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 
-  :cljsbuild {:builds {:dev {:source-paths ["src/cljs" "dev/cljs"]
-                             :figwheel {:on-jsload "asciinema-player.dev/reload"}
-                             :compiler {:main "asciinema-player.dev"
+  :cljsbuild {:builds {:dev {:source-paths ["src" "dev/cljs"]
+                             :figwheel {:on-jsload "asciinema.player.dev/reload"}
+                             :compiler {:main "asciinema.player.dev"
                                         :asset-path "js/dev"
                                         :output-to "resources/public/js/dev.js"
                                         :output-dir "resources/public/js/dev"
                                         :source-map true
                                         :optimizations :none
                                         :pretty-print true}}
-                       :devcards {:source-paths ["src/cljs" "src/cards" ]
+                       :devcards {:source-paths ["src" "dev/cards" ]
                                   :figwheel {:devcards true}
-                                  :compiler {:main "asciinema-player.cards"
+                                  :compiler {:main "asciinema.player.cards"
                                              :asset-path "js/devcards"
                                              :output-to "resources/public/js/devcards.js"
                                              :output-dir "resources/public/js/devcards"
                                              :source-map-timestamp true
                                              :optimizations :none}}
-                       :test {:source-paths ["src/cljs" "test"]
+                       :test {:source-paths ["src" "test"]
                               :compiler {:output-to "resources/public/js/test.js"
                                          :source-map "resources/public/js/test.js.map"
                                          :optimizations :none
                                          :pretty-print false
-                                         :main "asciinema-player.runner"}}
-                       :release {:source-paths ["src/cljs"]
+                                         :main "asciinema.player.runner"}}
+                       :release {:source-paths ["src"]
                                  :compiler {:output-to "resources/public/js/release.js"
                                             :output-dir "resources/public/js/release"
-                                            :preamble ["license.js"]
+                                            :preamble ["license.js" "old-ns.js"]
                                             :optimizations :advanced
                                             :pretty-print  false}}}}
 

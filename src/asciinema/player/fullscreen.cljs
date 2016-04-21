@@ -1,5 +1,5 @@
-(ns asciinema-player.fullscreen
-  (:require [asciinema-player.util :as util]))
+(ns asciinema.player.fullscreen
+  (:require [asciinema.player.util :as util]))
 
 (defn is-fullscreen? []
   (let [options ["fullscreenElement"

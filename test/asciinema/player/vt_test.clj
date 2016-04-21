@@ -1,4 +1,4 @@
-(ns asciinema-player.vt-test
+(ns asciinema.player.vt-test
   (:require [environ.core :refer [env]]))
 
 (defmacro property-tests-multiplier []
