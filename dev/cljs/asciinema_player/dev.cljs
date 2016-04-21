@@ -75,7 +75,7 @@
     (let [v0-url (str "/asciicasts/frames-" asciicast-filename)
           v1-url (str "/asciicasts/" asciicast-filename)
           v0-json (<! (fetch-json v0-url))
-          v0-frames (vec (drop 1 (map #(source/acc->frame (last %)) (source/build-v0-frames v0-json))))
+          v0-frames (vec (drop 1 (map #(source/acc->screen (last %)) (source/build-v0-frames v0-json))))
           v1-json (<! (fetch-json v1-url))
           v1-stdout (vec (map last (:stdout v1-json)))]
       (print "comparing...")

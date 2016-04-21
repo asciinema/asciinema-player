@@ -22,8 +22,8 @@
 
 (defn screen-state-at
   "Returns screen state (lines + cursor) at given time (in seconds)."
-  [frames seconds]
-  (loop [frames frames
+  [screen-frames seconds]
+  (loop [frames screen-frames
          seconds seconds
          candidate nil]
     (let [[delay screen-state :as frame] (first frames)]
@@ -59,7 +59,7 @@
              :cursor {:x 0 :y 0 :visible true}}]
     (reductions reduce-v0-frame [0 acc] diffs)))
 
-(defn acc->frame
+(defn acc->screen
   "Extracts lines and cursor from pre v1 format frame."
   [acc]
   (update-in acc [:lines] vals))
@@ -71,7 +71,7 @@
   (let [vt (vt/make-vt width height)]
     (reductions reduce-v1-frame [0 vt] stdout)))
 
-(defn vt->frame
+(defn vt->screen
   "Extracts lines and cursor from given vt, converting unicode codepoints to
   strings."
   [{:keys [lines cursor]}]
@@ -79,7 +79,7 @@
    :cursor cursor})
 
 (defmulti initialize-asciicast
-  "Given fetched asciicast extracts width, frame and frames into a map."
+  "Given fetched asciicast extracts width, height and frames into a map."
   (fn [asciicast]
     (if (vector? asciicast)
       0
@@ -91,14 +91,14 @@
         asciicast-height (count frame-0-lines)]
     {:width asciicast-width
      :height asciicast-height
-     :frame-fn #(delay (acc->frame %))
+     :screen-fn #(delay (acc->screen %))
      :duration (reduce #(+ %1 (first %2)) 0 asciicast)
      :frames (build-v0-frames asciicast)}))
 
 (defmethod initialize-asciicast 1 [asciicast]
   {:width (:width asciicast)
    :height (:height asciicast)
-   :frame-fn #(delay (vt->frame %))
+   :screen-fn #(delay (vt->screen %))
    :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
    :frames (build-v1-frames asciicast)})
 
@@ -188,15 +188,15 @@
   "Starts emitting :time and :frame events with given start position and speed.
   Stops when stop-ch closes. Returns a channel to which stop position is
   eventually delivered."
-  [events-ch frames frame-fn duration stop-ch start-at speed loop?]
+  [events-ch frames screen-fn duration stop-ch start-at speed loop?]
   (go
     (>! events-ch [:playing true])
     (loop [start-at start-at]
       (let [elapsed-time (util/timer speed)
-            vfs (-> frames (drop-frames start-at) (frames-at-speed speed))
+            sfs (-> frames (drop-frames start-at) (frames-at-speed speed))
             tfs (time-frames start-at elapsed-time)
             local-stop-ch (chan)
-            done-ch (emit-events :frame vfs frame-fn events-ch local-stop-ch)
+            done-ch (emit-events :screen sfs screen-fn events-ch local-stop-ch)
             _ (emit-events :time tfs identity events-ch local-stop-ch)
             [_ c] (alts! [done-ch stop-ch])]
         (close! local-stop-ch)
@@ -228,9 +228,9 @@
                    (recur start-at speed end-ch stop-ch)
                    (do
                      (show-loading source)
-                     (let [{:keys [frames frame-fn duration]} (<! (@recording-ch-fn true))
+                     (let [{:keys [frames screen-fn duration]} (<! (@recording-ch-fn true))
                            stop-ch (chan)
-                           end-ch (play! events-ch frames frame-fn duration stop-ch start-at speed loop?)]
+                           end-ch (play! events-ch frames screen-fn duration stop-ch start-at speed loop?)]
                        (recur nil speed end-ch stop-ch))))
           :stop (if stop-ch
                   (do
@@ -254,9 +254,9 @@
                           (recur start-at new-speed end-ch stop-ch))
           :internal/rewind (recur 0 speed nil nil)
           :internal/seek (let [start-at arg
-                               {:keys [frames frame-fn]} (<! (@recording-ch-fn true))]
+                               {:keys [frames screen-fn]} (<! (@recording-ch-fn true))]
                            (>! events-ch [:time start-at])
-                           (>! events-ch [:frame (frame-fn (screen-state-at frames start-at))])
+                           (>! events-ch [:screen (screen-fn (screen-state-at frames start-at))])
                            (recur start-at speed end-ch stop-ch)))))
     command-ch))
 
@@ -300,7 +300,7 @@
     (go-loop [vt (vt/make-vt width height)]
       (when-let [stdout (<! stdout-ch)]
         (let [new-vt (vt/feed-str vt stdout)]
-          (>! events-ch [:frame (delay (vt->frame new-vt))])
+          (>! events-ch [:screen (delay (vt->screen new-vt))])
           (recur new-vt))))
     stdout-ch))
 

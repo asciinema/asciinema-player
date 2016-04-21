@@ -75,10 +75,10 @@
   (put! (:events-ch player) event))
 
 (defn update-screen
-  "Extracts screen state (line content and cursor attributes) from given frame
+  "Extracts screen state (line content and cursor attributes) from given payload
   (a ref, possibly a delay) and applies it to player."
-  [player frame]
-  (let [{:keys [lines cursor]} @frame]
+  [player screen]
+  (let [{:keys [lines cursor]} @screen]
     (-> player
         (assoc :lines lines)
         (update-in [:cursor] merge cursor))))
@@ -156,11 +156,11 @@
     (source/change-speed source new-speed)
     (assoc player :speed new-speed)))
 
-(defn handle-frame
-  "Updates screen with given frame and resets cursor blinking."
-  [player [frame]]
+(defn handle-screen
+  "Updates screen with given lines/cursor and resets cursor blinking."
+  [player [screen]]
   (-> player
-      (update-screen frame)
+      (update-screen screen)
       restart-blinking))
 
 (defn handle-loading
@@ -201,7 +201,7 @@
 (def event-handlers {:blink handle-blink
                      :duration handle-duration
                      :fast-forward handle-fast-forward
-                     :frame handle-frame
+                     :screen handle-screen
                      :loading handle-loading
                      :playing handle-playing
                      :rewind handle-rewind
@@ -253,18 +253,18 @@
         mouse-moves-ch (chan (dropping-buffer 1))
         user-activity-ch (activity-chan mouse-moves-ch 3000)
         final-ch (chan 1000)
-        frame-event (atom nil)]
+        screen-event (atom nil)]
     (go-loop []
       (let [[[event-name & _ :as event] c] (alts! [events-ch final-ch time-ch])]
         (if (= c events-ch)
           (condp = event-name
-            :frame (if @frame-event
-                     (reset! frame-event event)
-                     (do
-                       (reset! frame-event event)
-                       (raf/request-animation-frame (fn []
-                                                      (put! final-ch @frame-event)
-                                                      (reset! frame-event nil)))))
+            :screen (if @screen-event
+                      (reset! screen-event event)
+                      (do
+                        (reset! screen-event event)
+                        (raf/request-animation-frame (fn []
+                                                       (put! final-ch @screen-event)
+                                                       (reset! screen-event nil)))))
             :time (>! time-ch event)
             :mouse-move (>! mouse-moves-ch true)
             (>! final-ch event))
