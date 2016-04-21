@@ -1,4 +1,5 @@
 (ns asciinema-player.view
+  (:require-macros [reagent.ratom :refer [reaction]])
   (:require [clojure.string :as string]
             [asciinema-player.util :as util]
             [asciinema-player.fullscreen :as fullscreen]))
@@ -68,14 +69,20 @@
     (merge {:width (str width "ch") :height (str (* 1.3333333333 height) "em")}
            font-size)))
 
-(defn terminal [width height font-size lines {cursor-x :x cursor-y :y cursor-visible :visible cursor-on :on}]
-  [:pre.asciinema-terminal
-   {:class-name (terminal-class-name font-size) :style (terminal-style width height font-size)}
-   (map-indexed (fn [idx parts]
-                  (let [cursor-x (when (and cursor-visible (= idx cursor-y)) cursor-x)
-                        parts (if cursor-x (insert-cursor parts cursor-x) parts)]
-                    ^{:key idx} [line parts cursor-on]))
-                lines)])
+(defn terminal [width height font-size screen]
+  (let [class-name (reaction (terminal-class-name @font-size))
+        style (reaction (terminal-style @width @height @font-size))
+        cursor (reaction (:cursor @screen))
+        lines (reaction (:lines @screen))]
+    (fn []
+      (let [{cursor-x :x cursor-y :y cursor-visible :visible cursor-on :on} @cursor]
+        [:pre.asciinema-terminal
+         {:class-name @class-name :style @style}
+         (map-indexed (fn [idx parts]
+                        (let [cursor-x (when (and cursor-visible (= idx cursor-y)) cursor-x)
+                              parts (if cursor-x (insert-cursor parts cursor-x) parts)]
+                          ^{:key idx} [line parts cursor-on]))
+                      @lines)]))))
 
 (def logo-raw-svg "<defs> <mask id=\"small-triangle-mask\"> <rect width=\"100%\" height=\"100%\" fill=\"white\"/> <polygon points=\"508.01270189221935 433.01270189221935, 208.0127018922194 259.8076211353316, 208.01270189221927 606.217782649107\" fill=\"black\"></polygon> </mask> </defs> <polygon points=\"808.0127018922194 433.01270189221935, 58.01270189221947 -1.1368683772161603e-13, 58.01270189221913 866.0254037844386\" mask=\"url(#small-triangle-mask)\" fill=\"white\"></polygon> <polyline points=\"481.2177826491071 333.0127018922194, 134.80762113533166 533.0127018922194\" stroke=\"white\" stroke-width=\"90\"></polyline>")
 
@@ -102,10 +109,11 @@
    [:path {:d "M5,7 L0,7 L2,9 L0,11 L1,12 L3,10 L5,12 Z"}]])
 
 (defn playback-control-button [playing? dispatch]
-  (let [on-click (fn [e]
-                   (.preventDefault e)
-                   (dispatch [:toggle-play]))]
-    [:span.playback-button {:on-click on-click} [(if playing? pause-icon play-icon)]]))
+  (letfn [(on-click [e]
+            (.preventDefault e)
+            (dispatch [:toggle-play]))]
+    (fn []
+      [:span.playback-button {:on-click on-click} [(if @playing? pause-icon play-icon)]])))
 
 (defn pad2 [number]
   (if (< number 10) (str "0" number) number))
@@ -123,14 +131,15 @@
 
 (defn timer [current-time total-time]
   [:span.timer
-   [:span.time-elapsed (elapsed-time current-time)]
-   [:span.time-remaining (remaining-time current-time total-time)]])
+   [:span.time-elapsed (elapsed-time @current-time)]
+   [:span.time-remaining (remaining-time @current-time @total-time)]])
 
 (defn fullscreen-toggle-button []
-  (let [on-click (fn [e]
-                   (.preventDefault e)
-                   (fullscreen/toggle (-> e .-currentTarget .-parentNode .-parentNode .-parentNode)))]
-    [:span.fullscreen-button {:on-click on-click} [expand-icon] [shrink-icon]]))
+  (letfn [(on-click [e]
+            (.preventDefault e)
+            (fullscreen/toggle (-> e .-currentTarget .-parentNode .-parentNode .-parentNode)))]
+    (fn []
+      [:span.fullscreen-button {:on-click on-click} [expand-icon] [shrink-icon]])))
 
 (defn element-local-mouse-x [e]
   (let [rect (-> e .-currentTarget .getBoundingClientRect)]
@@ -142,18 +151,22 @@
                         (let [bar-width (-> e .-currentTarget .-offsetWidth)
                               mouse-x (util/adjust-to-range (element-local-mouse-x e) 0 bar-width)
                               position (/ mouse-x bar-width)]
-                          (dispatch [:seek position])))]
-    [:span.progressbar
-     [:span.bar {:on-mouse-down on-mouse-down}
-      [:span.gutter
-       [:span {:style {:width (str (* 100 progress) "%")}}]]]]))
+                          (dispatch [:seek position])))
+        progress-str (reaction (str (* 100 @progress) "%"))]
+    (fn []
+      [:span.progressbar
+       [:span.bar {:on-mouse-down on-mouse-down}
+        [:span.gutter
+         [:span {:style {:width @progress-str}}]]]])))
 
 (defn recorded-control-bar [playing? current-time total-time dispatch]
-  [:div.control-bar
-   [playback-control-button playing? dispatch]
-   [timer current-time total-time]
-   [fullscreen-toggle-button]
-   [progress-bar (/ current-time total-time) dispatch]])
+  (let [progress (reaction (/ @current-time @total-time))]
+    (fn []
+      [:div.control-bar
+       [playback-control-button playing? dispatch]
+       [timer current-time total-time]
+       [fullscreen-toggle-button]
+       [progress-bar progress dispatch]])))
 
 (defn stream-control-bar []
   [:div.control-bar.live
@@ -162,14 +175,15 @@
    [progress-bar 0 (fn [& _])]])
 
 (defn start-overlay [dispatch]
-  (let [on-click (fn [e]
-                   (.preventDefault e)
-                   (dispatch [:toggle-play]))]
-    [:div.start-prompt {:on-click on-click}
-     [:div.play-button
-      [:div
-       [:span
-        [logo-play-icon]]]]]))
+  (letfn [(on-click [e]
+            (.preventDefault e)
+            (dispatch [:toggle-play]))]
+    (fn []
+      [:div.start-prompt {:on-click on-click}
+       [:div.play-button
+        [:div
+         [:span
+          [logo-play-icon]]]]])))
 
 (defn loading-overlay []
   [:div.loading
@@ -177,8 +191,6 @@
 
 (defn player-class-name [theme-name]
   (str "asciinema-theme-" theme-name))
-
-(defn player-style [] {})
 
 (defn handle-dom-event [dispatch event-mapper dom-event]
   (when-let [[event-name & _ :as event] (event-mapper dom-event)]
@@ -218,24 +230,27 @@
      title-text
      (when author [:span " by " (if author-url [:a {:href author-url} author] author)])]))
 
-(defn player [player-atom dispatch]
-  (let [player @player-atom
-        {:keys [width height font-size theme lines cursor loading show-hud current-time duration title author author-url author-img-url]} player
-        width (or width 80)
-        height (or height 24)
-        on-key-press (partial handle-dom-event dispatch key-press->event)
+(defn player [player dispatch]
+  (let [on-key-press (partial handle-dom-event dispatch key-press->event)
         on-key-down (partial handle-dom-event dispatch key-down->event)
         on-mouse-move #(dispatch [:mouse-move])
-        wrapper-class-name (when show-hud "hud")
-        player-class-name (player-class-name theme)
-        source-type (-> player :source :type)]
-    [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down :on-mouse-move on-mouse-move :class-name wrapper-class-name}
-     [:div.asciinema-player {:class-name player-class-name :style (player-style)}
-      [terminal width height font-size lines cursor]
-      (if (= source-type :stream)
-        [stream-control-bar]
-        (let [playing? (-> player :source :stop)]
-          [recorded-control-bar playing? current-time duration dispatch]))
-      (when (or title author) [title-bar title author author-url author-img-url])
-      (when-not (or loading source-type) [start-overlay dispatch])
-      (when loading [loading-overlay])]]))
+        wrapper-class-name (reaction (when (:show-hud @player) "hud"))
+        player-class-name (reaction (player-class-name (:theme @player)))
+        width (reaction (or (:width @player) 80))
+        height (reaction (or (:height @player) 24))
+        font-size (reaction (:font-size @player))
+        screen (reaction (-> @player (select-keys [:lines :cursor])))
+        playing (reaction (:playing @player))
+        current-time (reaction (:current-time @player))
+        total-time (reaction (:duration @player))
+        loading (reaction (:loading @player))
+        loaded (reaction (:loaded @player))
+        {:keys [title author author-url author-img-url]} @player]
+    (fn []
+      [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down :on-mouse-move on-mouse-move :class-name @wrapper-class-name}
+       [:div.asciinema-player {:class-name @player-class-name}
+        [terminal width height font-size screen]
+        [recorded-control-bar playing current-time total-time dispatch]
+        (when (or title author) [title-bar title author author-url author-img-url])
+        (when-not (or @loading @loaded) [start-overlay dispatch])
+        (when @loading [loading-overlay])]])))

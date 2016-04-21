@@ -3,6 +3,7 @@
   (:require [asciinema-player.core :as p]
             [asciinema-player.vt :as vt]
             [asciinema-player.util :as util]
+            [asciinema-player.source :as source]
             [clojure.walk :as walk]
             [cljs.core.async :refer [chan >! <! put!]]
             [ajax.core :refer [GET]])
@@ -16,6 +17,9 @@
   (str "data:application/json;base64," (-> poster-js clj->js js/JSON.stringify js/btoa)))
 
 (defonce options {:speed 1
+                  :auto-play false
+                  :preload false
+                  :loop true
                   :poster "data:text/plain,\n\r  test \u001b[1;32msnapshot"
                   :title "Something cool"
                   :author "sickill"
@@ -29,6 +33,8 @@
 ;; v1 format
 
 (defonce player-state (p/make-player-ratom "/asciicasts/21195.json" options))
+;; (defonce player-state (p/make-player-ratom "/asciicasts/20055.json" options))
+;; (defonce player-state (p/make-player-ratom "/asciicasts/frames-20055.json" options))
 
 ;; v2 format (stream)
 
@@ -40,6 +46,7 @@
 ;; (swap! player-state assoc :speed 1)
 
 (defn reload []
+  (source/init (:source @player-state))
   (p/mount-player-with-ratom player-state (. js/document (getElementById "player"))))
 
 ;; (reload)
@@ -68,7 +75,7 @@
     (let [v0-url (str "/asciicasts/frames-" asciicast-filename)
           v1-url (str "/asciicasts/" asciicast-filename)
           v0-json (<! (fetch-json v0-url))
-          v0-frames (vec (drop 1 (map #(p/acc->frame (last %)) (p/build-v0-frames v0-json))))
+          v0-frames (vec (drop 1 (map #(source/acc->frame (last %)) (source/build-v0-frames v0-json))))
           v1-json (<! (fetch-json v1-url))
           v1-stdout (vec (map last (:stdout v1-json)))]
       (print "comparing...")
@@ -120,12 +127,13 @@
 ;; (compare "21195.json" 1)
 
 ;; (go
-;;   (let [asciicast-filename "21195.json"
+;;   (let [asciicast-filename "20055.json"
 ;;         v1-url (str "/asciicasts/" asciicast-filename)]
-;;     (defonce v1-json (<! (fetch-json v1-url)))))
+;;     (def v1-json (<! (fetch-json v1-url)))))
 
-;; (let [v1-frames (map #(p/vt->frame (last %)) (p/build-v1-frames v1-json))]
-;;   (time (last v1-frames)))
+;; (go
+;;   (let [v1-frames (p/build-v1-frames v1-json)]
+;;     (time (last v1-frames))))
 
 ;; (let [v1-frames (p/build-v1-frames v1-json)]
 ;;   (-> v1-frames (nth 45) last p/vt->frame :lines vec (nth 13) ffirst))

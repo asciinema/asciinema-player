@@ -9,7 +9,7 @@
   vectors, and JavaScript objects into ClojureScript maps.  With
   option ':keywordize-keys true' will convert object fields from
   strings to keywords."
-  ([x] (faster-js->clj x {:keywordize-keys false}))
+  ([x] (faster-js->clj x :keywordize-keys false))
   ([x & opts]
    (cond
      (satisfies? IEncodeClojure x)
@@ -33,3 +33,22 @@
                           (transient {}) (js-keys x)))
                  :else x))]
        (f x)))))
+
+(defn elapsed-time-since
+  "Returns wall time (in seconds) elapsed since 'then'."
+  [then]
+  (/ (- (.getTime (js/Date.)) (.getTime then)) 1000))
+
+(defn timer
+  "Returns a function returning elapsed time since timer's creation."
+  ([] (timer 1))
+  ([speed]
+   (let [start-date (js/Date.)]
+     (fn []
+       (* (elapsed-time-since start-date) speed)))))
+
+(defn document-prop [name]
+  (aget js/document name))
+
+(defn window-prop [name]
+  (aget js/window name))

@@ -1,7 +1,5 @@
-(ns asciinema-player.fullscreen)
-
-(defn document-prop [name]
-  (aget js/document name))
+(ns asciinema-player.fullscreen
+  (:require [asciinema-player.util :as util]))
 
 (defn is-fullscreen? []
   (let [options ["fullscreenElement"
@@ -9,7 +7,7 @@
                  "webkitFullscreenElement"
                  "webkitCurrentFullScreenElement"
                  "msFullscreenElement"]]
-  (some (comp boolean document-prop) options)))
+  (some (comp boolean util/document-prop) options)))
 
 (defn request [dom-node]
   (let [options ["requestFullscreen"
@@ -27,7 +25,7 @@
                  "webkitCancelFullScreen"
                  "mozCancelFullScreen"
                  "msExitFullscreen"]
-        f (some document-prop options)]
+        f (some util/document-prop options)]
     (if f
       (.call f js/document))))
 

@@ -134,6 +134,11 @@ Same recommendation as for `width` applies here.
 
 Set to true if playback should start automatically. Defaults to `false`.
 
+### `preload`
+
+Set to true if the recording should be preloaded on player's initialization.
+Defaults to `false`.
+
 #### `loop`
 
 Set to true if playback should be looped. Defaults to `false`.

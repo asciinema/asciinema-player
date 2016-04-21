@@ -3,6 +3,7 @@
             [asciinema-player.core-test]
             [asciinema-player.view-test]
             [asciinema-player.vt-test]
+            [asciinema-player.source-test]
             [asciinema-player.util-test]))
 
 (enable-console-print!)
@@ -11,4 +12,5 @@
   'asciinema-player.core-test
   'asciinema-player.view-test
   'asciinema-player.vt-test
+  'asciinema-player.source-test
   'asciinema-player.util-test)
