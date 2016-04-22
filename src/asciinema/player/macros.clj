@@ -1,4 +1,4 @@
-(ns asciinema.player.vt
+(ns asciinema.player.macros
   (:require [clojure.string :as string]))
 
 (defn event-seq [event]

@@ -3,7 +3,8 @@
   (:require [cljs.core.async :refer [chan >! <! put! close! timeout poll!]]
             [ajax.core :as http]
             [asciinema.player.vt :as vt]
-            [asciinema.player.util :as util :refer [js->clj]])
+            [asciinema.player.util :as util]
+            [asciinema.player.patch :refer [js->clj]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (defprotocol Source

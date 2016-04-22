@@ -1,9 +1,10 @@
 (ns asciinema.player.vt
   (:refer-clojure :exclude [print])
-  (:require-macros [asciinema.player.vt :refer [events]])
+  #?(:cljs (:require-macros [asciinema.player.macros :refer [events]]))
   (:require [asciinema.player.util :refer [adjust-to-range]]
-            [cljs.core.match :refer-macros [match]]))
-
+            #?(:clj [asciinema.player.macros :refer [events]])
+            #?(:clj [clojure.core.match :refer [match]]
+               :cljs [cljs.core.match :refer-macros [match]])))
 
 ;; References:
 ;; http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
@@ -827,8 +828,12 @@
   (reduce feed-one vt inputs))
 
 (defn feed-str [vt str]
-  (let [codes (mapv #(.charCodeAt str %) (range (count str)))]
+  (let [codes (mapv #(#?(:clj .codePointAt :cljs .charCodeAt) str %) (range (count str)))]
     (feed vt codes)))
+
+(defn chars->string [chars]
+  #?(:clj (String. (int-array chars) 0 (count chars))
+     :cljs (apply js/String.fromCharCode chars)))
 
 (defn compact-line
   "Joins together all neighbouring cells having the same color attributes."
@@ -841,8 +846,8 @@
       (if-let [[char new-attrs] (first cells)]
         (if (= new-attrs attrs)
           (recur segments (conj chars char) attrs (rest cells))
-          (recur (conj segments [(apply js/String.fromCharCode chars) attrs]) [char] new-attrs (rest cells)))
-        (conj segments [(apply js/String.fromCharCode chars) attrs])))))
+          (recur (conj segments [(chars->string chars) attrs]) [char] new-attrs (rest cells)))
+        (conj segments [(chars->string chars) attrs])))))
 
 (defn compact-lines [lines]
   (map compact-line lines))

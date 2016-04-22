@@ -1,15 +1,8 @@
-(ns asciinema.player.util
+(ns asciinema.player.patch
   (:refer-clojure :exclude [js->clj]))
-
-(defn adjust-to-range [value min-value max-value]
-  (min max-value (max value min-value)))
 
 ; Optimized js->clj implementation by Darrick Wiebe (http://dev.clojure.org/jira/browse/CLJS-844)
 (defn js->clj
-  "Recursively transforms JavaScript arrays into ClojureScript
-  vectors, and JavaScript objects into ClojureScript maps.  With
-  option ':keywordize-keys true' will convert object fields from
-  strings to keywords."
   ([x] (js->clj x :keywordize-keys false))
   ([x & opts]
    (cond
@@ -34,22 +27,3 @@
                           (transient {}) (js-keys x)))
                  :else x))]
        (f x)))))
-
-(defn elapsed-time-since
-  "Returns wall time (in seconds) elapsed since 'then'."
-  [then]
-  (/ (- (.getTime (js/Date.)) (.getTime then)) 1000))
-
-(defn timer
-  "Returns a function returning elapsed time since timer's creation."
-  ([] (timer 1))
-  ([speed]
-   (let [start-date (js/Date.)]
-     (fn []
-       (* (elapsed-time-since start-date) speed)))))
-
-(defn document-prop [name]
-  (aget js/document name))
-
-(defn window-prop [name]
-  (aget js/window name))
