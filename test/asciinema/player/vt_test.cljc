@@ -1,11 +1,14 @@
 (ns asciinema.player.vt-test
-  (:require-macros [cljs.test :refer (is are deftest testing)]
-                   [asciinema.player.vt-test :refer [property-tests-multiplier]]
-                   [clojure.test.check.clojure-test :refer (defspec)])
-  (:require [cljs.test]
+  #?(:cljs (:require-macros [cljs.test :refer [is are deftest testing]]
+                            [clojure.test.check.clojure-test :refer [defspec]]
+                            [asciinema.player.test-macros :refer [property-tests-multiplier]]))
+  (:require #?(:clj [clojure.test :refer [is are deftest testing]]
+               :cljs [cljs.test])
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
-            [clojure.test.check.properties :as prop :include-macros true]
+            [clojure.test.check.properties :as prop #?@(:cljs [:include-macros true])]
+            #?(:clj [clojure.test.check.clojure-test :refer [defspec]])
+            #?(:clj [asciinema.player.test-macros :refer [property-tests-multiplier]])
             [asciinema.player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines]]))
 
 (defn expect-lines [{lines :lines} expected]
@@ -409,7 +412,7 @@
     (is (= (:tabs vt) #{8 16}))))
 
 (defn feed-esc [vt str]
-  (let [codes (map #(.charCodeAt % 0) str)]
+  (let [codes (mapv #(#?(:clj .codePointAt :cljs .charCodeAt) str %) (range (count str)))]
     (feed vt (list* 0x1b codes))))
 
 (defn feed-csi [vt & strs]
