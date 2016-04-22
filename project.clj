@@ -62,7 +62,7 @@
                        :release {:source-paths ["src"]
                                  :compiler {:output-to "resources/public/js/release.js"
                                             :output-dir "resources/public/js/release"
-                                            :preamble ["license.js" "old-ns.js"]
+                                            :preamble ["license.js"]
                                             :optimizations :advanced
                                             :pretty-print  false}}}}
 
