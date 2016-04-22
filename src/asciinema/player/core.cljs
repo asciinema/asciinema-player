@@ -6,7 +6,6 @@
             [asciinema.player.vt :as vt]
             [asciinema.player.source :as source :refer [make-source]]
             [cljs.core.async :refer [chan >! <! put! timeout close! sliding-buffer dropping-buffer]]
-            [clojure.set :refer [rename-keys]]
             [clojure.string :as str])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
@@ -294,19 +293,5 @@
         player-ratom (make-player-ratom url options)]
     (source/init (:source @player-ratom))
     (mount-player-with-ratom player-ratom dom-node)))
-
-(defn ^:export CreatePlayer
-  "JavaScript API for creating the player, delegating to create-player."
-  ([dom-node url] (CreatePlayer dom-node url {}))
-  ([dom-node url options]
-   (let [options (-> options
-                     (js->clj :keywordize-keys true)
-                     (rename-keys {:autoPlay :auto-play
-                                   :fontSize :font-size
-                                   :snapshot :poster
-                                   :authorURL :author-url
-                                   :startAt :start-at
-                                   :authorImgURL :author-img-url}))]
-     (create-player dom-node url options))))
 
 (enable-console-print!)
