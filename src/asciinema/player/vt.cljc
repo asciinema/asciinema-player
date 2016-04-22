@@ -175,6 +175,7 @@
 (defn restore-cursor [{{:keys [cursor char-attrs origin-mode auto-wrap-mode]} :saved :as vt}]
   (-> vt
       (assoc :char-attrs char-attrs
+             :next-print-wraps false
              :origin-mode origin-mode
              :auto-wrap-mode auto-wrap-mode)
       (update-in [:cursor] merge cursor)))

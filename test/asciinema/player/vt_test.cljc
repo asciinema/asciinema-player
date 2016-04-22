@@ -11,6 +11,8 @@
             #?(:clj [asciinema.player.test-macros :refer [property-tests-multiplier]])
             [asciinema.player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines]]))
 
+(def vt-80x24 (make-vt 80 24))
+
 (defn expect-lines [{lines :lines} expected]
   (is (= (compact-lines lines) expected)))
 
@@ -920,12 +922,17 @@
                         :auto-wrap-mode false}))))))
 
   (testing "ESC 8 (RC), CSI ?1048l"
-    (let [vt (-> (make-vt 80 24)
-                 (set-fg 1)
-                 (feed-csi "?6h") ; set origin mode
-                 (feed-csi "?7l") ; reset auto-wrap mode
-                 (move-cursor 4 5))]
-      (doseq [f [#(feed-esc % "8") #(feed-csi % "?1048l")]]
+    (doseq [f [#(feed-esc % "8") #(feed-csi % "?1048l")]]
+      (let [vt (-> vt-80x24
+                   (move-cursor 79 10)
+                   (feed-str " ") ; print on the edge
+                   f)] ; restore cursor
+        (is (false? (:next-print-wraps vt))))
+      (let [vt (-> vt-80x24
+                   (set-fg 1)
+                   (feed-csi "?6h") ; set origin mode
+                   (feed-csi "?7l") ; reset auto-wrap mode
+                   (move-cursor 4 5))]
         (let [vt (f vt) ; restore cursor, there was no save (SC) so far
               {{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode]} vt]
           (is (= x 0))
