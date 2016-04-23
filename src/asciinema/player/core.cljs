@@ -248,25 +248,12 @@
   events. Updates Reagent atom with the result of event handler."
   [player-atom]
   (let [events-ch (:events-ch @player-atom)
-        time-ch (chan (sliding-buffer 1))
         mouse-moves-ch (chan (dropping-buffer 1))
-        user-activity-ch (activity-chan mouse-moves-ch 3000)
-        final-ch (chan 1000)
-        screen-event (atom nil)]
+        user-activity-ch (activity-chan mouse-moves-ch 3000)]
     (go-loop []
-      (let [[[event-name & _ :as event] c] (alts! [events-ch final-ch time-ch])]
-        (if (= c events-ch)
-          (condp = event-name
-            :screen (if @screen-event
-                      (reset! screen-event event)
-                      (do
-                        (reset! screen-event event)
-                        (raf/request-animation-frame (fn []
-                                                       (put! final-ch @screen-event)
-                                                       (reset! screen-event nil)))))
-            :time (>! time-ch event)
-            :mouse-move (>! mouse-moves-ch true)
-            (>! final-ch event))
+      (let [[event-name & _ :as event] (<! events-ch)]
+        (condp = event-name
+          :mouse-move (>! mouse-moves-ch true)
           (swap! player-atom process-event event)))
       (recur))
     (go-loop []
