@@ -50,9 +50,9 @@
                                              [["bar" {}] ["baz" {:fg 1}] ["  " {}]]]))))
 (deftest update-screen-test
   (let [player {:lines {2 :a} :cursor {:y 5}}
-        frame (delay {:lines {1 :b 3 :d}
-                      :cursor {:x 1 :y 2 :visible true}
-                      :unknown true})]
+        frame {:lines {1 :b 3 :d}
+               :cursor {:x 1 :y 2 :visible true}
+               :unknown true}]
     (is (= (c/update-screen player frame) {:lines {1 :b 3 :d}
                                            :cursor {:x 1 :y 2 :visible true}}))))
 
