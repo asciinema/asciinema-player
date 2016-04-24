@@ -77,7 +77,7 @@
   "Extracts screen state (line content and cursor attributes) from given payload
   (a ref, possibly a delay) and applies it to player."
   [player screen]
-  (let [{:keys [lines cursor]} @screen]
+  (let [{:keys [lines cursor]} screen]
     (-> player
         (assoc :lines lines)
         (update-in [:cursor] merge cursor))))

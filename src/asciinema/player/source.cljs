@@ -92,14 +92,14 @@
         asciicast-height (count frame-0-lines)]
     {:width asciicast-width
      :height asciicast-height
-     :screen-fn #(delay (acc->screen %))
+     :screen-fn acc->screen
      :duration (reduce #(+ %1 (first %2)) 0 asciicast)
      :frames (build-v0-frames asciicast)}))
 
 (defmethod initialize-asciicast 1 [asciicast]
   {:width (:width asciicast)
    :height (:height asciicast)
-   :screen-fn #(delay (vt->screen %))
+   :screen-fn vt->screen
    :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
    :frames (build-v1-frames asciicast)})
 
@@ -301,7 +301,7 @@
     (go-loop [vt (vt/make-vt width height)]
       (when-let [stdout (<! stdout-ch)]
         (let [new-vt (vt/feed-str vt stdout)]
-          (>! events-ch [:screen (delay (vt->screen new-vt))])
+          (>! events-ch [:screen (vt->screen new-vt)])
           (recur new-vt))))
     stdout-ch))
 
