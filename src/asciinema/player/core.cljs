@@ -5,7 +5,7 @@
             [asciinema.player.raf :as raf]
             [asciinema.player.vt :as vt]
             [asciinema.player.source :as source :refer [make-source]]
-            [cljs.core.async :refer [chan >! <! put! timeout close! sliding-buffer dropping-buffer]]
+            [cljs.core.async :refer [chan >! <! put! timeout close! dropping-buffer]]
             [clojure.string :as str])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
