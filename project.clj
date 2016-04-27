@@ -65,6 +65,7 @@
                                             :output-dir "resources/public/js/release"
                                             :preamble ["license.js"]
                                             :optimizations :advanced
+                                            :elide-asserts true
                                             :pretty-print  false}}}}
 
   :figwheel {:http-server-root "public"
