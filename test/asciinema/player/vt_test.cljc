@@ -12,7 +12,8 @@
             #?(:clj [asciinema.player.test-macros :refer [property-tests-multiplier]])
             [asciinema.player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines]]))
 
-(use-fixtures :once schema.test/validate-schemas)
+#?(:clj
+   (use-fixtures :once schema.test/validate-schemas))
 
 (def vt-80x24 (make-vt 80 24))
 
