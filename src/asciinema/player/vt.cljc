@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [print])
   #?(:cljs (:require-macros [asciinema.player.macros :refer [events]]))
   (:require [asciinema.player.util :refer [adjust-to-range]]
+            [schema.core :as s #?@(:cljs [:include-macros true])]
             #?(:clj [asciinema.player.macros :refer [events]])
             #?(:clj [clojure.core.match :refer [match]]
                :cljs [cljs.core.match :refer-macros [match]])))
@@ -17,11 +18,67 @@
 ;; http://www.shaels.net/index.php/propterm/documents
 ;; http://vt100.net/docs/vt102-ug/chapter5.html
 
-(def space 0x20)
-(def default-attrs {})
+(def CodePoint s/Num)
 
-(defn default-charset [ch]
-  ch)
+(def CharAttrs {(s/optional-key :fg) s/Num
+                (s/optional-key :bg) s/Num
+                (s/optional-key :bold) s/Bool
+                (s/optional-key :italic) s/Bool
+                (s/optional-key :underline) s/Bool
+                (s/optional-key :blink) s/Bool
+                (s/optional-key :inverse) s/Bool})
+
+(def Cell [(s/one CodePoint "unicode codepoint") (s/one CharAttrs "text attributes")])
+
+(def CellLine [Cell])
+
+(def Fragment [(s/one s/Str "text") (s/one CharAttrs "text attributes")])
+
+(def FragmentLine [Fragment])
+
+(def Tabs #?(:clj clojure.lang.PersistentTreeSet :cljs cljs.core/PersistentTreeSet))
+
+(def Charset (s/pred ifn?))
+
+(def Parser {:state s/Keyword
+             :intermediate-chars [s/Num]
+             :param-chars [s/Num]})
+
+(def Cursor {:x s/Num
+             :y s/Num
+             :visible s/Bool})
+
+(def SavedCursor {:cursor {:x s/Num :y s/Num}
+                  :char-attrs CharAttrs
+                  :origin-mode s/Bool
+                  :auto-wrap-mode s/Bool})
+
+(s/defrecord VT
+    [width :- s/Num
+     height :- s/Num
+     top-margin :- s/Num
+     bottom-margin :- s/Num
+     parser :- Parser
+     tabs :- Tabs
+     cursor :- Cursor
+     char-attrs :- CharAttrs
+     charset-fn :- Charset
+     insert-mode :- s/Bool
+     auto-wrap-mode :- s/Bool
+     new-line-mode :- s/Bool
+     next-print-wraps :- s/Bool
+     origin-mode :- s/Bool
+     buffer :- s/Keyword
+     lines :- [CellLine]
+     saved :- SavedCursor
+     other-buffer-lines :- (s/maybe [CellLine])
+     other-buffer-saved :- SavedCursor])
+
+(def space 0x20)
+
+(def normal-char-attrs {})
+
+(def default-charset identity)
 
 (def special-charset {96  9830, 97  9618, 98  9225, 99  9228,
                       100 9229, 101 9226, 102 176,  103 177,
@@ -32,53 +89,64 @@
                       120 9474, 121 8804, 122 8805, 123 960,
                       124 8800, 125 163,  126 8901})
 
-(defn cell [ch char-attrs]
-  [ch char-attrs])
+(def initial-parser {:state :ground
+                     :intermediate-chars []
+                     :param-chars []})
 
-(defn empty-cell [char-attrs]
+(def initial-cursor {:x 0
+                     :y 0
+                     :visible true})
+
+(def initial-saved-cursor {:cursor {:x 0 :y 0}
+                           :char-attrs normal-char-attrs
+                           :origin-mode false
+                           :auto-wrap-mode true})
+
+(s/defn default-tabs :- Tabs
+  [width]
+  (apply sorted-set (range 8 width 8)))
+
+(s/defn cell :- Cell
+  [ch :- CodePoint
+   char-attrs :- CharAttrs]
+  (vector ch char-attrs))
+
+(s/defn empty-cell :- Cell
+  [char-attrs]
   (cell space char-attrs))
 
-(defn empty-line
-  ([width] (empty-line width default-attrs))
+(s/defn empty-line :- CellLine
+  ([width] (empty-line width normal-char-attrs))
   ([width char-attrs]
    (vec (repeat width (empty-cell char-attrs)))))
 
-(defn empty-screen
-  ([width height] (empty-screen width height default-attrs))
+(s/defn empty-screen :- [CellLine]
+  ([width height] (empty-screen width height normal-char-attrs))
   ([width height char-attrs]
    (let [line (empty-line width char-attrs)]
      (vec (repeat height line)))))
 
-(defn default-tabs [width]
-  (apply sorted-set (range 8 width 8)))
-
-(def initial-saved-cursor {:cursor {:x 0 :y 0}
-                           :char-attrs {}
-                           :origin-mode false
-                           :auto-wrap-mode true})
-
-(defn make-vt [width height]
-  {:width width
-   :height height
-   :top-margin 0
-   :bottom-margin (dec height)
-   :parser {:state :ground
-            :intermediate-chars []
-            :param-chars []}
-   :tabs (default-tabs width)
-   :cursor {:x 0 :y 0 :visible true}
-   :char-attrs {}
-   :charset-fn default-charset
-   :insert-mode false
-   :auto-wrap-mode true
-   :new-line-mode false
-   :next-print-wraps false
-   :origin-mode false
-   :lines (empty-screen width height)
-   :saved initial-saved-cursor
-   :buffer :primary
-   :other-buffer-lines nil
-   :other-buffer-saved initial-saved-cursor})
+(s/defn make-vt :- VT [width :- s/Num
+                       height :- s/Num]
+  (map->VT {:width width
+            :height height
+            :top-margin 0
+            :bottom-margin (dec height)
+            :parser initial-parser
+            :tabs (default-tabs width)
+            :cursor initial-cursor
+            :char-attrs normal-char-attrs
+            :charset-fn default-charset
+            :insert-mode false
+            :auto-wrap-mode true
+            :new-line-mode false
+            :next-print-wraps false
+            :origin-mode false
+            :buffer :primary
+            :lines (empty-screen width height)
+            :saved initial-saved-cursor
+            :other-buffer-lines nil
+            :other-buffer-saved initial-saved-cursor}))
 
 ;; helper functions
 
@@ -256,7 +324,7 @@
         :else vt))
 
 (defn execute-decaln [{:keys [width height] :as vt}]
-  (assoc vt :lines (vec (repeat height (vec (repeat width [0x45 {}]))))))
+  (assoc vt :lines (vec (repeat height (vec (repeat width [0x45 normal-char-attrs]))))))
 
 (defn execute-sc [vt]
   (save-cursor vt))
@@ -539,7 +607,7 @@
         (set-margin 0 (dec height))
         (assoc :insert-mode false
                :origin-mode false
-               :char-attrs {}
+               :char-attrs normal-char-attrs
                :saved initial-saved-cursor))
     vt))
 
@@ -819,8 +887,10 @@
 (defn execute-actions [vt actions input]
   (reduce (fn [vt f] (f vt input)) vt actions))
 
-(defn feed-one [{{old-state :state} :parser :as vt} input]
-  (let [[new-state actions] (parse old-state input)]
+(s/defn feed-one :- VT [vt :- VT
+                        input :- s/Num]
+  (let [{{old-state :state} :parser} vt
+        [new-state actions] (parse old-state input)]
     (-> vt
         (assoc-in [:parser :state] new-state)
         (execute-actions actions input))))
@@ -832,13 +902,14 @@
   (let [codes (mapv #(#?(:clj .codePointAt :cljs .charCodeAt) str %) (range (count str)))]
     (feed vt codes)))
 
-(defn chars->string [chars]
+(s/defn chars->string :- s/Str
+  [chars :- [CodePoint]]
   #?(:clj (String. (int-array chars) 0 (count chars))
      :cljs (apply js/String.fromCharCode chars)))
 
-(defn compact-line
+(s/defn compact-line :- FragmentLine
   "Joins together all neighbouring cells having the same color attributes."
-  [line]
+  [line :- CellLine]
   (let [[cell & cells] line]
     (loop [segments []
            chars [(first cell)]

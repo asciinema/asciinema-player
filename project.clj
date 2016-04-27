@@ -11,6 +11,7 @@
                  [devcards "0.2.0-3"]
                  [org.clojure/test.check "0.8.2"]
                  [org.clojure/core.match "0.3.0-alpha4"]
+                 [prismatic/schema "1.1.0"]
                  [com.cognitect/transit-cljs "0.8.237"] ; to prevent warning
                  [cljs-ajax "0.3.11"]]
 

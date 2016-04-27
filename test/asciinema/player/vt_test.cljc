@@ -2,14 +2,17 @@
   #?(:cljs (:require-macros [cljs.test :refer [is are deftest testing]]
                             [clojure.test.check.clojure-test :refer [defspec]]
                             [asciinema.player.test-macros :refer [property-tests-multiplier]]))
-  (:require #?(:clj [clojure.test :refer [is are deftest testing]]
-               :cljs [cljs.test])
+  (:require #?(:clj [clojure.test :refer [is are deftest testing use-fixtures]]
+               :cljs [cljs.test :refer-macros [use-fixtures]])
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop #?@(:cljs [:include-macros true])]
             #?(:clj [clojure.test.check.clojure-test :refer [defspec]])
+            [schema.test]
             #?(:clj [asciinema.player.test-macros :refer [property-tests-multiplier]])
             [asciinema.player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines]]))
+
+(use-fixtures :once schema.test/validate-schemas)
 
 (def vt-80x24 (make-vt 80 24))
 
@@ -397,11 +400,8 @@
 (deftest make-vt-test
   (let [vt (make-vt 80 24)]
     (is (= (:tabs vt) #{8 16 24 32 40 48 56 64 72}))
-    (is (= (-> vt :char-attrs) {}))
-    (is (= (-> vt :saved) {:cursor {:x 0 :y 0}
-                           :char-attrs {}
-                           :auto-wrap-mode true
-                           :origin-mode false}))
+    (is (= (-> vt :char-attrs) vt/normal-char-attrs))
+    (is (= (-> vt :saved) vt/initial-saved-cursor))
     (is (= (-> vt :parser :intermediate-chars) []))
     (is (= (-> vt :parser :param-chars) []))
     (is (= (-> vt :insert-mode) false))
@@ -937,7 +937,7 @@
               {{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode]} vt]
           (is (= x 0))
           (is (= y 0))
-          (is (= char-attrs {}))
+          (is (= char-attrs vt/normal-char-attrs))
           (is (false? origin-mode))
           (is (true? auto-wrap-mode)))
         (let [vt (-> vt
@@ -1722,8 +1722,8 @@
         all-on-params all-on-attrs)
       (let [vt (feed-csi vt all-on-params)]
         (are [input-str expected-attrs] (compare-attrs vt input-str expected-attrs)
-          "m" {} ; implicit 0 param
-          "0m" {} ; explicit 0 param
+          "m" vt/normal-char-attrs ; implicit 0 param
+          "0m" vt/normal-char-attrs ; explicit 0 param
           "21m" (dissoc all-on-attrs :bold)
           "22m" (dissoc all-on-attrs :bold)
           "23m" (dissoc all-on-attrs :italic)
@@ -1749,7 +1749,7 @@
                                           [["I   " {}]]
                                           [["    " {}]]]))
       (is (= (:cursor vt) {:x 2 :y 2 :visible true}))
-      (is (= (:char-attrs vt) {}))
+      (is (= (:char-attrs vt) vt/normal-char-attrs))
       (is (= (:insert-mode vt) false))
       (is (= (:origin-mode vt) false))
       (is (= (:top-margin vt) 0))
