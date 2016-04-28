@@ -908,7 +908,8 @@
      :cljs (apply js/String.fromCharCode chars)))
 
 (s/defn compact-line :- FragmentLine
-  "Joins together all neighbouring cells having the same color attributes."
+  "Joins together all neighbouring cells having the same color attributes,
+  converting unicode codepoints to strings."
   [line :- CellLine]
   (let [[cell & cells] line]
     (loop [segments []

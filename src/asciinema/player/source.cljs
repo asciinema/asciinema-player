@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [js->clj])
   (:require [cljs.core.async :refer [chan >! <! put! close! timeout poll!]]
             [ajax.core :as http]
+            [schema.core :as s]
             [asciinema.player.vt :as vt]
             [asciinema.player.util :as util]
             [asciinema.player.patch :refer [js->clj]])
@@ -51,19 +52,24 @@
   [frames]
   (map #(update-in % [1 :lines] fix-line-diff-keys) frames))
 
-(defn reduce-v0-frame [[_ acc] [delay diff]]
+(s/defrecord LegacyScreen
+    [cursor :- {:x s/Num
+                :y s/Num
+                :visible s/Bool}
+     lines :- (s/pred map?)])
+
+(def LegacyFrame [(s/one s/Num "delay") (s/one LegacyScreen "screen")])
+
+(s/defn reduce-v0-frame :- LegacyFrame
+  [[_ acc] :- LegacyFrame
+   [delay diff]]
   [delay (merge-with merge acc diff)])
 
 (defn build-v0-frames [diffs]
   (let [diffs (fix-diffs diffs)
-        acc {:lines (sorted-map)
-             :cursor {:x 0 :y 0 :visible true}}]
+        acc (map->LegacyScreen {:lines (sorted-map)
+                                :cursor {:x 0 :y 0 :visible true}})]
     (reductions reduce-v0-frame [0 acc] diffs)))
-
-(defn acc->screen
-  "Extracts lines and cursor from pre v1 format frame."
-  [acc]
-  (update-in acc [:lines] vals))
 
 (defn reduce-v1-frame [[_ vt] [delay str]]
   [delay (vt/feed-str vt str)])
@@ -71,13 +77,6 @@
 (defn build-v1-frames [{:keys [stdout width height]}]
   (let [vt (vt/make-vt width height)]
     (reductions reduce-v1-frame [0 vt] stdout)))
-
-(defn vt->screen
-  "Extracts lines and cursor from given vt, converting unicode codepoints to
-  strings."
-  [{:keys [lines cursor]}]
-  {:lines (vt/compact-lines lines)
-   :cursor cursor})
 
 (defmulti initialize-asciicast
   "Given fetched asciicast extracts width, height and frames into a map."
@@ -92,14 +91,12 @@
         asciicast-height (count frame-0-lines)]
     {:width asciicast-width
      :height asciicast-height
-     :screen-fn acc->screen
      :duration (reduce #(+ %1 (first %2)) 0 asciicast)
      :frames (build-v0-frames asciicast)}))
 
 (defmethod initialize-asciicast 1 [asciicast]
   {:width (:width asciicast)
    :height (:height asciicast)
-   :screen-fn vt->screen
    :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
    :frames (build-v1-frames asciicast)})
 
@@ -165,7 +162,7 @@
 (defn emit-events
   "Starts sending frames as events with a given name, stopping when stop-ch
   closes."
-  [event-name coll f events-ch stop-ch]
+  [event-name coll events-ch stop-ch]
   (let [elapsed-time (util/timer)]
     (go
       (loop [coll coll
@@ -179,17 +176,17 @@
                     [_ c] (alts! [stop-ch timeout-ch] :priority true)]
                 (when (= c timeout-ch)
                   (do
-                    (>! events-ch [event-name (f data)])
+                    (>! events-ch [event-name data])
                     (recur (rest coll) new-virtual-time (elapsed-time)))))
               (do
-                (>! events-ch [event-name (f data)])
+                (>! events-ch [event-name data])
                 (recur (rest coll) new-virtual-time wall-time)))))))))
 
 (defn play!
   "Starts emitting :time and :frame events with given start position and speed.
   Stops when stop-ch closes. Returns a channel to which stop position is
   eventually delivered."
-  [events-ch frames screen-fn duration stop-ch start-at speed loop?]
+  [events-ch frames duration stop-ch start-at speed loop?]
   (go
     (>! events-ch [:playing true])
     (loop [start-at start-at]
@@ -197,8 +194,8 @@
             sfs (-> frames (drop-frames start-at) (frames-at-speed speed))
             tfs (time-frames start-at elapsed-time)
             local-stop-ch (chan)
-            done-ch (emit-events :screen sfs screen-fn events-ch local-stop-ch)
-            _ (emit-events :time tfs identity events-ch local-stop-ch)
+            done-ch (emit-events :screen sfs events-ch local-stop-ch)
+            _ (emit-events :time tfs events-ch local-stop-ch)
             [_ c] (alts! [done-ch stop-ch])]
         (close! local-stop-ch)
         (if (= c done-ch)
@@ -229,9 +226,9 @@
                    (recur start-at speed end-ch stop-ch)
                    (do
                      (show-loading source)
-                     (let [{:keys [frames screen-fn duration]} (<! (@recording-ch-fn true))
+                     (let [{:keys [frames duration]} (<! (@recording-ch-fn true))
                            stop-ch (chan)
-                           end-ch (play! events-ch frames screen-fn duration stop-ch start-at speed loop?)]
+                           end-ch (play! events-ch frames duration stop-ch start-at speed loop?)]
                        (recur nil speed end-ch stop-ch))))
           :stop (if stop-ch
                   (do
@@ -255,9 +252,9 @@
                           (recur start-at new-speed end-ch stop-ch))
           :internal/rewind (recur 0 speed nil nil)
           :internal/seek (let [start-at arg
-                               {:keys [frames screen-fn]} (<! (@recording-ch-fn true))]
+                               {:keys [frames]} (<! (@recording-ch-fn true))]
                            (>! events-ch [:time start-at])
-                           (>! events-ch [:screen (screen-fn (screen-state-at frames start-at))])
+                           (>! events-ch [:screen (screen-state-at frames start-at)])
                            (recur start-at speed end-ch stop-ch)))))
     command-ch))
 
@@ -301,7 +298,7 @@
     (go-loop [vt (vt/make-vt width height)]
       (when-let [stdout (<! stdout-ch)]
         (let [new-vt (vt/feed-str vt stdout)]
-          (>! events-ch [:screen (vt->screen new-vt)])
+          (>! events-ch [:screen new-vt])
           (recur new-vt))))
     stdout-ch))
 
@@ -395,3 +392,18 @@
 
 (defmethod make-source :stream [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload?]
   (->StreamSource events-ch url auto-play? (atom false)))
+
+(defprotocol Screen
+  (contents [this] "Extracts lines and cursor from the screen."))
+
+(extend-protocol Screen
+  vt/VT
+  (contents [{:keys [cursor lines]}]
+    {:cursor cursor
+     :lines (vt/compact-lines lines)}))
+
+(extend-protocol Screen
+  LegacyScreen
+  (contents [{:keys [cursor lines]}]
+    {:cursor cursor
+     :lines (vals lines)}))

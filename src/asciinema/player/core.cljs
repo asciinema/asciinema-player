@@ -77,7 +77,7 @@
   "Extracts screen state (line content and cursor attributes) from given payload
   (a ref, possibly a delay) and applies it to player."
   [player screen]
-  (let [{:keys [lines cursor]} screen]
+  (let [{:keys [lines cursor]} (source/contents screen)]
     (-> player
         (assoc :lines lines)
         (update-in [:cursor] merge cursor))))
@@ -88,7 +88,7 @@
 
 (defn start-blinking [{:keys [events-ch] :as player}]
   (let [cursor-blink-ch (chan)]
-    (source/emit-events :blink blinks identity events-ch cursor-blink-ch)
+    (source/emit-events :blink blinks events-ch cursor-blink-ch)
     (-> player
         (assoc-in [:cursor :on] true)
         (assoc :cursor-blink-ch cursor-blink-ch))))
