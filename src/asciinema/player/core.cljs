@@ -5,6 +5,7 @@
             [asciinema.player.raf :as raf]
             [asciinema.player.vt :as vt]
             [asciinema.player.source :as source :refer [make-source]]
+            [schema.core :as s]
             [cljs.core.async :refer [chan >! <! put! timeout close! dropping-buffer]]
             [clojure.string :as str])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
@@ -16,36 +17,44 @@
           components (map * (reverse numbers) (iterate (partial * 60) 1))]
       (apply + components))))
 
-(defn parse-json-poster [poster]
-  (-> poster
-      (.replace (js/RegExp. "\\s" "g") "")
-      js/atob
-      js/JSON.parse
-      (js->clj :keywordize-keys true)))
+(s/defn parse-json-poster :- (s/protocol view/TerminalView)
+  [json :- s/Str]
+  (let [lines (-> json
+                  (.replace (js/RegExp. "\\s" "g") "")
+                  js/atob
+                  js/JSON.parse
+                  (js->clj :keywordize-keys true))]
+    {:lines lines}))
 
-(defn parse-text-poster [text width height]
+(s/defn parse-text-poster :- (s/protocol view/TerminalView)
+  [text :- s/Str
+   width :- s/Num
+   height :- s/Num]
   (-> (vt/make-vt width height)
-      (vt/feed-str text)
-      :lines
-      vt/compact-lines))
+      (vt/feed-str text)))
 
-(defn parse-poster [poster width height]
-  (if (string? poster)
-    (condp #(= (.indexOf %2 %1) 0) poster
-      "data:application/json;base64," (-> poster (.substring 29) parse-json-poster)
-      "data:text/plain," (-> poster (.substring 16) (parse-text-poster width height))
-      nil)
-    poster))
+(s/defn parse-poster :- (s/maybe (s/protocol view/TerminalView))
+  [poster width height]
+  (when poster
+    (if (string? poster)
+      (condp #(= (.indexOf %2 %1) 0) poster
+        "data:application/json;base64," (-> poster (.substring 29) parse-json-poster)
+        "data:text/plain," (-> poster (.substring 16) (parse-text-poster width height)))
+      {:lines poster})))
+
+(def blank-screen {:cursor {:visible false}
+                   :lines []})
 
 (defn make-player
   "Builds initial player for given URL and options."
-  [url {:keys [type width height speed loop auto-play preload poster font-size theme start-at]
-        :or {type :asciicast speed 1 font-size "small" theme "asciinema"}
+  [url {:keys [type width height start-at speed loop auto-play preload poster font-size theme]
+        :or {type :asciicast speed 1 loop false auto-play false preload false font-size "small" theme "asciinema"}
         :as options}]
   (let [start-at (parse-npt (or start-at 0))
         events-ch (chan)
         vt-width (or width 80)
         vt-height (or height 24)
+        poster (parse-poster poster vt-width vt-height)
         source (make-source type events-ch url vt-width vt-height start-at speed auto-play loop preload)]
     (merge {:width width
             :height height
@@ -57,8 +66,8 @@
             :loaded false
             :source source
             :events-ch events-ch
-            :lines (or (parse-poster poster vt-width vt-height) [])
-            :cursor {:visible false}
+            :poster poster
+            :screen blank-screen
             :cursor-blink-ch nil
             :font-size font-size
             :theme theme
@@ -74,13 +83,9 @@
   (put! (:events-ch player) event))
 
 (defn update-screen
-  "Extracts screen state (line content and cursor attributes) from given payload
-  (a ref, possibly a delay) and applies it to player."
+  "Sets the screen contents to be displayed."
   [player screen]
-  (let [{:keys [lines cursor]} (source/contents screen)]
-    (-> player
-        (assoc :lines lines)
-        (update-in [:cursor] merge cursor))))
+  (assoc player :screen screen))
 
 (def blinks
   "Infinite seq of cursor blinks."

@@ -1,6 +1,7 @@
 (ns asciinema.player.core-test
   (:require-macros [cljs.test :refer (is deftest testing)])
   (:require [cljs.test]
+            [asciinema.player.view :as view]
             [asciinema.player.core :as c]))
 
 (deftest make-player-test
@@ -26,7 +27,7 @@
     (let [player (make-player {:start-at "1:15"})]
       (is (= (:current-time player) 75)))
     (let [player (make-player {:poster [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]]})]
-      (is (= (:lines player) [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]])))))
+      (is (= (-> player :poster :lines) [[["foo" {}] ["bar" {:fg 1}]] [["baz" {:bg 2}]]])))))
 
 (deftest parse-npt-test
   (is (= (c/parse-npt 123.5) 123.5))
@@ -44,17 +45,12 @@
         text "foo\n\rbar\u001b[31mbaz"
         text-poster (str "data:text/plain," text)]
     (is (= (c/parse-poster nil 8 2) nil))
-    (is (= (c/parse-poster poster 8 2) poster))
-    (is (= (c/parse-poster base64-poster 8 2) poster))
-    (is (= (c/parse-poster text-poster 8 2) [[["foo     " {}]]
-                                             [["bar" {}] ["baz" {:fg 1}] ["  " {}]]]))))
-(deftest update-screen-test
-  (let [player {:lines {2 :a} :cursor {:y 5}}
-        frame {:lines {1 :b 3 :d}
-               :cursor {:x 1 :y 2 :visible true}
-               :unknown true}]
-    (is (= (c/update-screen player frame) {:lines {1 :b 3 :d}
-                                           :cursor {:x 1 :y 2 :visible true}}))))
+    (is (= (c/parse-poster poster 8 2) {:lines poster}))
+    (is (= (c/parse-poster base64-poster 8 2) {:lines poster}))
+    (let [p (c/parse-poster text-poster 8 2)]
+      (is (= (view/lines p) [[["foo     " {}]]
+                             [["bar" {}] ["baz" {:fg 1}] ["  " {}]]]))
+      (is (= (view/cursor p) {:x 6 :y 1 :visible true})))))
 
 (deftest new-start-at-test
   (is (= (c/new-start-at 2 5 -3) 0))

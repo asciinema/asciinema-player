@@ -5,6 +5,7 @@
             [schema.core :as s]
             [asciinema.player.vt :as vt]
             [asciinema.player.util :as util]
+            [asciinema.player.view :as view]
             [asciinema.player.patch :refer [js->clj]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
@@ -393,17 +394,9 @@
 (defmethod make-source :stream [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload?]
   (->StreamSource events-ch url auto-play? (atom false)))
 
-(defprotocol Screen
-  (contents [this] "Extracts lines and cursor from the screen."))
-
-(extend-protocol Screen
-  vt/VT
-  (contents [{:keys [cursor lines]}]
-    {:cursor cursor
-     :lines (vt/compact-lines lines)}))
-
-(extend-protocol Screen
+(extend-protocol view/TerminalView
   LegacyScreen
-  (contents [{:keys [cursor lines]}]
-    {:cursor cursor
-     :lines (vals lines)}))
+  (lines [this]
+    (vals (:lines this)))
+  (cursor [this]
+    (:cursor this)))
