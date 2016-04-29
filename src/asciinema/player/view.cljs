@@ -32,7 +32,7 @@
 (def part-memoized (memoize part))
 
 (defn line [parts cursor-on]
-  [:span.line (map-indexed (fn [idx p] ^{:key idx} [part-memoized p cursor-on]) parts)])
+  [:span.line (doall (map-indexed (fn [idx p] ^{:key idx} [part-memoized p @cursor-on]) parts))])
 
 (defn split-part-with-cursor [[text attrs] position]
   (let [left-chars (take position text)
@@ -69,13 +69,13 @@
     (merge {:width (str width "ch") :height (str (* 1.3333333333 height) "em")}
            font-size)))
 
-(defn terminal [width height font-size screen]
+(defn terminal [width height font-size screen cursor-on]
   (let [class-name (reaction (terminal-class-name @font-size))
         style (reaction (terminal-style @width @height @font-size))
         cursor (reaction (:cursor @screen))
         lines (reaction (:lines @screen))]
     (fn []
-      (let [{cursor-x :x cursor-y :y cursor-visible :visible cursor-on :on} @cursor]
+      (let [{cursor-x :x cursor-y :y cursor-visible :visible} @cursor]
         [:pre.asciinema-terminal
          {:class-name @class-name :style @style}
          (map-indexed (fn [idx parts]
@@ -240,6 +240,7 @@
         height (reaction (or (:height @player) 24))
         font-size (reaction (:font-size @player))
         screen (reaction (-> @player (select-keys [:lines :cursor])))
+        cursor-on (reaction (:cursor-on @player))
         playing (reaction (:playing @player))
         current-time (reaction (:current-time @player))
         total-time (reaction (:duration @player))
@@ -249,7 +250,7 @@
     (fn []
       [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down :on-mouse-move on-mouse-move :class-name @wrapper-class-name}
        [:div.asciinema-player {:class-name @player-class-name}
-        [terminal width height font-size screen]
+        [terminal width height font-size screen cursor-on]
         [recorded-control-bar playing current-time total-time dispatch]
         (when (or title author) [title-bar title author author-url author-img-url])
         (when-not (or @loading @loaded) [start-overlay dispatch])

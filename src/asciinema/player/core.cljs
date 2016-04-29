@@ -90,13 +90,13 @@
   (let [cursor-blink-ch (chan)]
     (source/emit-events :blink blinks events-ch cursor-blink-ch)
     (-> player
-        (assoc-in [:cursor :on] true)
+        (assoc :cursor-on true)
         (assoc :cursor-blink-ch cursor-blink-ch))))
 
 (defn stop-blinking [{:keys [cursor-blink-ch] :as player}]
   (close! cursor-blink-ch)
   (-> player
-      (assoc-in [:cursor :on] true)
+      (assoc :cursor-on true)
       (assoc :cursor-blink-ch nil)))
 
 (defn restart-blinking [{:keys [cursor-blink-ch] :as player}]
@@ -178,7 +178,7 @@
 (defn handle-blink
   "Shows or hides the cursor block."
   [player [cursor-on?]]
-  (assoc-in player [:cursor :on] cursor-on?))
+  (assoc player :cursor-on cursor-on?))
 
 (defn handle-time
   "Updates player's current time (as displayed in control bar)."
