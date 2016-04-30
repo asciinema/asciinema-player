@@ -11,9 +11,8 @@
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 (defn parse-npt [t]
-  (if (number? t)
-    t
-    (let [numbers (map js/parseFloat (str/split t #":"))
+  (when t
+    (let [numbers (map js/parseFloat (str/split (str t) #":"))
           components (map * (reverse numbers) (iterate (partial * 60) 1))]
       (apply + components))))
 
@@ -33,14 +32,15 @@
   (-> (vt/make-vt width height)
       (vt/feed-str text)))
 
-(s/defn parse-poster :- (s/maybe (s/protocol view/TerminalView))
-  [poster width height]
+(defn parse-poster [poster width height]
   (when poster
     (if (string? poster)
       (condp #(= (.indexOf %2 %1) 0) poster
-        "data:application/json;base64," (-> poster (.substring 29) parse-json-poster)
-        "data:text/plain," (-> poster (.substring 16) (parse-text-poster width height)))
-      {:lines poster})))
+        "data:application/json;base64," {:screen (-> poster (.substring 29) parse-json-poster)}
+        "data:text/plain," {:screen (-> poster (.substring 16) (parse-text-poster width height))}
+        "npt:" {:time (-> poster (.substring 4) parse-npt)}
+        nil)
+      {:screen {:lines poster}})))
 
 (def blank-screen {:cursor {:visible false}
                    :lines []})
@@ -50,12 +50,13 @@
   [url {:keys [type width height start-at speed loop auto-play preload poster font-size theme]
         :or {type :asciicast speed 1 loop false auto-play false preload false font-size "small" theme "asciinema"}
         :as options}]
-  (let [start-at (parse-npt (or start-at 0))
-        events-ch (chan)
+  (let [events-ch (chan)
         vt-width (or width 80)
         vt-height (or height 24)
-        poster (parse-poster poster vt-width vt-height)
-        source (make-source type events-ch url vt-width vt-height start-at speed auto-play loop preload)]
+        start-at (or (parse-npt start-at) 0)
+        {poster-screen :screen poster-time :time} (parse-poster poster vt-width vt-height)
+        poster-time (or poster-time (when (> start-at 0) start-at))
+        source (make-source type events-ch url vt-width vt-height start-at speed auto-play loop preload poster-time)]
     (merge {:width width
             :height height
             :current-time start-at
@@ -66,8 +67,7 @@
             :loaded false
             :source source
             :events-ch events-ch
-            :poster poster
-            :screen blank-screen
+            :screen (or poster-screen blank-screen)
             :cursor-blink-ch nil
             :font-size font-size
             :theme theme

@@ -19,7 +19,7 @@
 
 (defmulti make-source
   "Returns a Source instance for given type and args."
-  (fn [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play loop preload] type))
+  (fn [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play loop preload poster-time] type))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -151,6 +151,14 @@
       (>! events-ch [:duration duration])
       (>! events-ch [:size width height]))))
 
+(defn show-poster
+  "Forces loading of recording and sends 'poster' at a given time to the
+  player."
+  [{:keys [events-ch recording-ch-fn]} time]
+  (go
+    (let [{:keys [frames]} (<! (@recording-ch-fn true))]
+      (>! events-ch [:screen (screen-state-at frames time)]))))
+
 (defn show-loading
   "Reports 'loading' to the player until the recording is loaded."
   [{:keys [events-ch recording-ch-fn]}]
@@ -259,7 +267,7 @@
                            (recur start-at speed end-ch stop-ch)))))
     command-ch))
 
-(defrecord PrerecordedSource [events-ch url start-at speed auto-play? loop? preload? recording-fn recording-ch-fn stop-ch command-ch]
+(defrecord PrerecordedSource [events-ch url start-at speed auto-play? loop? preload? poster-time recording-fn recording-ch-fn stop-ch command-ch]
   Source
   (init [this]
     (reset! command-ch (start-event-loop! this))
@@ -268,8 +276,10 @@
       (report-duration-and-size this))
     (when preload?
       (@recording-ch-fn true))
-    (when auto-play?
-      (start this)))
+    (if auto-play?
+      (start this)
+      (when poster-time
+        (show-poster this poster-time))))
   (start [this]
     (put! @command-ch [:start]))
   (stop [this]
@@ -281,11 +291,11 @@
   (change-speed [this speed]
     (put! @command-ch [:change-speed speed])))
 
-(defn prerecorded-source [events-ch url initial-start-at initial-speed auto-play? loop? preload recording-fn]
-  (->PrerecordedSource events-ch url initial-start-at initial-speed auto-play? loop? preload recording-fn (atom nil) (atom nil) (atom nil)))
+(defn prerecorded-source [events-ch url initial-start-at initial-speed auto-play? loop? preload poster-time recording-fn]
+  (->PrerecordedSource events-ch url initial-start-at initial-speed auto-play? loop? preload poster-time recording-fn (atom nil) (atom nil) (atom nil)))
 
-(defmethod make-source :asciicast [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload?]
-  (prerecorded-source events-ch url initial-start-at initial-speed auto-play? loop? preload?
+(defmethod make-source :asciicast [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload? poster-time]
+  (prerecorded-source events-ch url initial-start-at initial-speed auto-play? loop? preload? poster-time
                       (fn [json]
                         (-> json
                             js/JSON.parse
@@ -337,7 +347,7 @@
   (change-speed [this speed]
     nil))
 
-(defmethod make-source :random [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload?]
+(defmethod make-source :random [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload? poster-time]
   (->RandomSource events-ch initial-speed auto-play? width-hint height-hint (atom nil) (atom nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -391,7 +401,7 @@
   (change-speed [this speed]
     nil))
 
-(defmethod make-source :stream [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload?]
+(defmethod make-source :stream [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload? poster-time]
   (->StreamSource events-ch url auto-play? (atom false)))
 
 (extend-protocol view/TerminalView

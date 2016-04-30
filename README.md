@@ -157,41 +157,32 @@ Defaults to 0.
 
 #### `speed`
 
-Playback speed. Defaults to 1 (normal speed).
+Playback speed. Defaults to 1 (normal speed). 2 means 2x faster.
 
 #### `poster`
 
 Poster (preview) to display before playback start.
 
-Can be specified either as text (possibly containing escape sequences) or as an
-array containing line fragments.
+The following poster specifications are supported:
 
-To use text, the `poster` value should be in the following format:
+* `"npt:2:34"` - show recording "frame" at given time
+* `"data:text/plain,Poster text"` - show given text
 
-    data:text/plain,this will be printed as poster\n\rthis in second line
+The easiest way of specifying a poster is to use `"npt:2:34"` format. This will
+preload the recording and display terminal contents from the recording at 2 min
+34 s.
 
-All [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code) can be
-used to add color and move the cursor around to produce good looking poster. You
-need to replace usual `\xXX` hex syntax with Unicode `\u00XX` though:
+Alternatively, a `poster` value of `"data:text/plain,This will be printed as
+poster\n\rThis in second line"` will display arbitrary text. All
+[ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code) can be used
+to add color and move the cursor around to produce good looking poster. You need
+to replace usual `\xXX` hex syntax with Unicode `\u00XX` though.
+
+Example of text poster with cursor positioning:
 
     data:text/plain,I'm regular \u001b[1;32mI'm bold green\u001b[3BI'm 3 lines down
 
-The alternative to text poster is a JavaScript array poster describing contents of terminal lines:
-
-    [
-      [["some text with default color attributes", {}]], // line 1
-      [["red text", { "fg": 1 }], ["blue bg text", { "bg": 2 }]], // line 2
-      [["bold text", { "bold": true }], ["underlined text", { "underline": true }], ["italic text", { "italic": true }]] // line 3
-    ]
-
-The above array poster can be also passed in as BASE64 encoded JSON like this:
-
-    data:application/json;base64,<base64-encoded-json-array>
-
-You can use `btoa(JSON.stringify(arr))` in JavaScript (console) to BASE64-encode
-the line array.
-
-Defaults to blank terminal.
+Defaults to "frame" at `startAt` (or blank terminal when `startAt` is 0).
 
 #### `fontSize`
 

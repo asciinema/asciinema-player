@@ -256,10 +256,7 @@
         width (reaction (or (:width @player) 80))
         height (reaction (or (:height @player) 24))
         font-size (reaction (:font-size @player))
-        screen (reaction (let [{:keys [loaded poster screen]} @player]
-                           (if (and (not loaded) poster)
-                             poster
-                             screen)))
+        screen (reaction (:screen @player))
         cursor-on (reaction (:cursor-on @player))
         playing (reaction (:playing @player))
         current-time (reaction (:current-time @player))
