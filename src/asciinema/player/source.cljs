@@ -97,7 +97,7 @@
 (defn report-duration-and-size
   "Waits for recording to load and then reports its size and duration to the
   player."
-  [{:keys [events-ch recording-ch-fn]}]
+  [{:keys [recording-ch-fn]} events-ch]
   (go
     (let [{:keys [duration width height]} (<! (@recording-ch-fn false))]
       (>! events-ch [:duration duration])
@@ -106,14 +106,14 @@
 (defn show-poster
   "Forces loading of recording and sends 'poster' at a given time to the
   player."
-  [{:keys [events-ch recording-ch-fn]} time]
+  [{:keys [recording-ch-fn]} time events-ch]
   (go
     (let [{:keys [frames]} (<! (@recording-ch-fn true))]
       (>! events-ch [:screen (screen-state-at frames time)]))))
 
 (defn show-loading
   "Reports 'loading' to the player until the recording is loaded."
-  [{:keys [events-ch recording-ch-fn]}]
+  [{:keys [recording-ch-fn]} events-ch]
   (when-not (poll! (@recording-ch-fn false))
     (go
       (>! events-ch [:loading true])
@@ -170,7 +170,7 @@
 
 (defn start-event-loop!
   "Main event loop of the PrerecordedSource."
-  [{:keys [events-ch recording-ch-fn start-at speed loop?] :as source}]
+  [{:keys [recording-ch-fn start-at speed loop?] :as source} events-ch]
   (let [command-ch (chan 10)
         pri-ch (chan 10)]
     (go-loop [start-at start-at
@@ -184,7 +184,7 @@
           :start (if stop-ch
                    (recur start-at speed end-ch stop-ch)
                    (do
-                     (show-loading source)
+                     (show-loading source events-ch)
                      (let [{:keys [frames duration]} (<! (@recording-ch-fn true))
                            stop-ch (chan)
                            end-ch (play! events-ch frames duration stop-ch start-at speed loop?)]
@@ -217,19 +217,21 @@
                            (recur start-at speed end-ch stop-ch)))))
     command-ch))
 
-(defrecord PrerecordedSource [events-ch url start-at speed auto-play? loop? preload? poster-time recording-fn recording-ch-fn stop-ch command-ch]
+(defrecord PrerecordedSource [url start-at speed auto-play? loop? preload? poster-time recording-fn recording-ch-fn stop-ch command-ch]
   Source
   (init [this]
-    (reset! command-ch (start-event-loop! this))
-    (let [f (make-recording-ch-fn url recording-fn)]
-      (reset! recording-ch-fn f)
-      (report-duration-and-size this))
-    (when preload?
-      (@recording-ch-fn true))
-    (if auto-play?
-      (start this)
-      (when poster-time
-        (show-poster this poster-time))))
+    (let [events-ch (chan)]
+      (reset! command-ch (start-event-loop! this events-ch))
+      (let [f (make-recording-ch-fn url recording-fn)]
+        (reset! recording-ch-fn f)
+        (report-duration-and-size this events-ch))
+      (when preload?
+        (@recording-ch-fn true))
+      (if auto-play?
+        (start this)
+        (when poster-time
+          (show-poster this poster-time events-ch)))
+      events-ch))
   (start [this]
     (put! @command-ch [:start]))
   (stop [this]
@@ -241,11 +243,11 @@
   (change-speed [this speed]
     (put! @command-ch [:change-speed speed])))
 
-(defn prerecorded-source [events-ch url start-at speed auto-play? loop? preload poster-time recording-fn]
-  (->PrerecordedSource events-ch url start-at speed auto-play? loop? preload poster-time recording-fn (atom nil) (atom nil) (atom nil)))
+(defn prerecorded-source [url start-at speed auto-play? loop? preload poster-time recording-fn]
+  (->PrerecordedSource url start-at speed auto-play? loop? preload poster-time recording-fn (atom nil) (atom nil) (atom nil)))
 
-(defmethod make-source :asciicast [url {:keys [events-ch start-at speed auto-play loop preload poster-time]}]
-  (prerecorded-source events-ch url start-at speed auto-play loop preload poster-time
+(defmethod make-source :asciicast [url {:keys [start-at speed auto-play loop preload poster-time]}]
+  (prerecorded-source url start-at speed auto-play loop preload poster-time
                       (fn [json]
                         (-> json
                             js/JSON.parse
@@ -273,17 +275,19 @@
           (recur))))
     (>! events-ch [:playing false])))
 
-(defrecord RandomSource [events-ch speed auto-play? width height stdout-ch stop-ch]
+(defrecord RandomSource [speed auto-play? width height events-ch stdout-ch stop-ch]
   Source
   (init [this]
-    (reset! stdout-ch (vts! width height events-ch))
+    (reset! events-ch (chan))
+    (reset! stdout-ch (vts! width height @events-ch))
     (when auto-play?
-      (start this)))
+      (start this))
+    @events-ch)
   (start [this]
     (when-not @stop-ch
       (let [command-ch (chan)]
         (reset! stop-ch command-ch)
-        (start-random-stdout-gen! events-ch @stdout-ch speed command-ch))))
+        (start-random-stdout-gen! @events-ch @stdout-ch speed command-ch))))
   (stop [this]
     (when @stop-ch
       (close! @stop-ch)
@@ -297,8 +301,8 @@
   (change-speed [this speed]
     nil))
 
-(defmethod make-source :random [_ {:keys [events-ch url width height speed auto-play]}]
-  (->RandomSource events-ch speed auto-play width height (atom nil) (atom nil)))
+(defmethod make-source :random [_ {:keys [url width height speed auto-play]}]
+  (->RandomSource speed auto-play width height (atom nil) (atom nil) (atom nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -336,12 +340,13 @@
 (defrecord StreamSource [events-ch url auto-play? started?]
   Source
   (init [this]
+    (reset! events-ch (chan))
     (when auto-play?
       (start this)))
   (start [this]
     (when-not @started?
       (reset! started? true)
-      (start-event-source! url events-ch)))
+      (start-event-source! url @events-ch)))
   (stop [this]
     nil)
   (toggle [this]
@@ -351,5 +356,5 @@
   (change-speed [this speed]
     nil))
 
-(defmethod make-source :stream [url {:keys [events-ch auto-play]}]
-  (->StreamSource events-ch url auto-play (atom false)))
+(defmethod make-source :stream [url {:keys [auto-play]}]
+  (->StreamSource (atom nil) url auto-play (atom false)))

@@ -50,14 +50,12 @@
   [url {:keys [type width height start-at speed loop auto-play preload poster font-size theme]
         :or {speed 1 loop false auto-play false preload false font-size "small" theme "asciinema"}
         :as options}]
-  (let [events-ch (chan)
-        vt-width (or width 80)
+  (let [vt-width (or width 80)
         vt-height (or height 24)
         start-at (or (parse-npt start-at) 0)
         {poster-screen :screen poster-time :time} (parse-poster poster vt-width vt-height)
         poster-time (or poster-time (when (and (not poster-screen) (> start-at 0)) start-at))
-        source (make-source url {:events-ch events-ch
-                                 :type type
+        source (make-source url {:type type
                                  :width vt-width
                                  :height vt-height
                                  :start-at start-at
@@ -75,7 +73,6 @@
             :loading false
             :loaded false
             :source source
-            :events-ch events-ch
             :screen (or poster-screen blank-screen)
             :cursor-blink-ch nil
             :font-size font-size
@@ -87,9 +84,6 @@
   "Returns Reagent atom with initial player state."
   [& args]
   (atom (apply make-player args)))
-
-(defn dispatch [player event]
-  (put! (:events-ch player) event))
 
 (defn update-screen
   "Sets the screen contents to be displayed."
@@ -262,12 +256,11 @@
 (defn start-event-loop!
   "Starts event processing loop. It handles both internal and user triggered
   events. Updates Reagent atom with the result of event handler."
-  [player-atom]
-  (let [events-ch (:events-ch @player-atom)
-        mouse-moves-ch (chan (dropping-buffer 1))
+  [player-atom channels]
+  (let [mouse-moves-ch (chan (dropping-buffer 1))
         user-activity-ch (activity-chan mouse-moves-ch 3000)]
     (go-loop []
-      (let [[event-name & _ :as event] (<! events-ch)]
+      (let [[[event-name & _ :as event] _] (alts! (seq channels))]
         (condp = event-name
           :mouse-move (>! mouse-moves-ch true)
           (swap! player-atom process-event event)))
@@ -280,11 +273,12 @@
 
 (defn mount-player-with-ratom
   "Mounts player's Reagent component in DOM and starts event loop."
-  [player-atom dom-node]
-  (let [view-event-handler (fn [event]
-                             (dispatch @player-atom event)
+  [player-atom source-ch dom-node]
+  (let [ui-ch (chan)
+        view-event-handler (fn [event]
+                             (put! ui-ch event)
                              nil)]
-    (start-event-loop! player-atom)
+    (start-event-loop! player-atom #{ui-ch source-ch})
     (reagent/render-component [view/player player-atom view-event-handler] dom-node)
     nil)) ; TODO: return JS object with control functions (play/pause) here
 
@@ -293,8 +287,8 @@
   processing loop and mounting Reagent component in DOM."
   [dom-node url options]
   (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)
-        player-ratom (make-player-ratom url options)]
-    (source/init (:source @player-ratom))
-    (mount-player-with-ratom player-ratom dom-node)))
+        player-ratom (make-player-ratom url options)
+        source-ch (source/init (:source @player-ratom))]
+    (mount-player-with-ratom player-ratom source-ch dom-node)))
 
 (enable-console-print!)

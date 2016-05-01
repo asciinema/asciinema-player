@@ -53,8 +53,9 @@
 ;; (swap! player-state assoc :speed 1)
 
 (defn reload []
-  (source/init (:source @player-state))
-  (p/mount-player-with-ratom player-state (. js/document (getElementById "player"))))
+  (let [source-ch (source/init (:source @player-state))
+        dom-node (. js/document (getElementById "player"))]
+    (p/mount-player-with-ratom player-state source-ch dom-node)))
 
 ;; (reload)
 
