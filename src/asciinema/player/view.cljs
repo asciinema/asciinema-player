@@ -1,7 +1,6 @@
 (ns asciinema.player.view
   (:require [clojure.string :as string]
             [reagent.ratom :refer-macros [reaction]]
-            [asciinema.player.vt :as vt]
             [asciinema.player.util :as util]
             [asciinema.player.fullscreen :as fullscreen]))
 
@@ -13,13 +12,6 @@
   cljs.core/PersistentArrayMap
   (lines [this]
     (:lines this))
-  (cursor [this]
-    (:cursor this)))
-
-(extend-protocol TerminalView
-  vt/VT
-  (lines [this]
-    (vt/compact-lines (:lines this)))
   (cursor [this]
     (:cursor this)))
 

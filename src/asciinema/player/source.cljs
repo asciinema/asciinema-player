@@ -3,9 +3,10 @@
   (:require [cljs.core.async :refer [chan >! <! put! close! timeout poll!]]
             [ajax.core :as http]
             [schema.core :as s]
+            [asciinema.player.format.asciicast-v0 :as v0]
+            [asciinema.player.format.asciicast-v1 :as v1]
             [asciinema.player.vt :as vt]
             [asciinema.player.util :as util]
-            [asciinema.player.view :as view]
             [asciinema.player.patch :refer [js->clj]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
@@ -44,41 +45,6 @@
         (cons [(- delay seconds) screen-state] (rest frames))))
     frames))
 
-(defn- fix-line-diff-keys [line-diff]
-  (into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) line-diff)))
-
-(defn fix-diffs
-  "Converts integer keys referring to line numbers in line diff (which are
-  keywords) to actual integers."
-  [frames]
-  (map #(update-in % [1 :lines] fix-line-diff-keys) frames))
-
-(s/defrecord LegacyScreen
-    [cursor :- {:x s/Num
-                :y s/Num
-                :visible s/Bool}
-     lines :- (s/pred map?)])
-
-(def LegacyFrame [(s/one s/Num "delay") (s/one LegacyScreen "screen")])
-
-(s/defn reduce-v0-frame :- LegacyFrame
-  [[_ acc] :- LegacyFrame
-   [delay diff]]
-  [delay (merge-with merge acc diff)])
-
-(defn build-v0-frames [diffs]
-  (let [diffs (fix-diffs diffs)
-        acc (map->LegacyScreen {:lines (sorted-map)
-                                :cursor {:x 0 :y 0 :visible true}})]
-    (reductions reduce-v0-frame [0 acc] diffs)))
-
-(defn reduce-v1-frame [[_ vt] [delay str]]
-  [delay (vt/feed-str vt str)])
-
-(defn build-v1-frames [{:keys [stdout width height]}]
-  (let [vt (vt/make-vt width height)]
-    (reductions reduce-v1-frame [0 vt] stdout)))
-
 (defmulti initialize-asciicast
   "Given fetched asciicast extracts width, height and frames into a map."
   (fn [asciicast]
@@ -87,21 +53,12 @@
       (:version asciicast))))
 
 (defmethod initialize-asciicast 0 [asciicast]
-  (let [frame-0-lines (-> asciicast first last :lines)
-        asciicast-width (->> frame-0-lines vals first (map #(count (first %))) (reduce +))
-        asciicast-height (count frame-0-lines)]
-    {:width asciicast-width
-     :height asciicast-height
-     :duration (reduce #(+ %1 (first %2)) 0 asciicast)
-     :frames (build-v0-frames asciicast)}))
+  (v0/initialize-asciicast asciicast))
 
 (defmethod initialize-asciicast 1 [asciicast]
-  {:width (:width asciicast)
-   :height (:height asciicast)
-   :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
-   :frames (build-v1-frames asciicast)})
+  (v1/initialize-asciicast asciicast))
 
-(defmethod initialize-asciicast :default [player asciicast]
+(defmethod initialize-asciicast :default [asciicast]
   (throw (str "unsupported asciicast version: " (:version asciicast))))
 
 (defn time-frames
@@ -403,10 +360,3 @@
 
 (defmethod make-source :stream [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload? poster-time]
   (->StreamSource events-ch url auto-play? (atom false)))
-
-(extend-protocol view/TerminalView
-  LegacyScreen
-  (lines [this]
-    (vals (:lines this)))
-  (cursor [this]
-    (:cursor this)))

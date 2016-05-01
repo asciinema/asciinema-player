@@ -5,6 +5,7 @@
             [asciinema.player.util :as util]
             [asciinema.player.source :as source]
             [asciinema.player.view :as view]
+            [asciinema.player.format.asciicast-v0 :as v0]
             [clojure.walk :as walk]
             [cljs.core.async :refer [chan >! <! put!]]
             [schema.core :as s]
@@ -81,7 +82,7 @@
     (let [v0-url (str "/asciicasts/frames-" asciicast-filename)
           v1-url (str "/asciicasts/" asciicast-filename)
           v0-json (<! (fetch-json v0-url))
-          v0-frames (vec (drop 1 (map #(view/lines (last %)) (source/build-v0-frames v0-json)))) ; FIXME
+          v0-frames (vec (drop 1 (map #(view/lines (last %)) (v0/build-v0-frames v0-json)))) ; FIXME
           v1-json (<! (fetch-json v1-url))
           v1-stdout (vec (map last (:stdout v1-json)))]
       (print "comparing...")

@@ -46,7 +46,3 @@
     (is (= (s/drop-frames frames 11) [[1 :c]]))
     (is (= (s/drop-frames frames 12) [[0 :c]]))
     (is (= (s/drop-frames frames 13) []))))
-
-(deftest fix-diffs-test
-  (let [diffs [[1.2 {:lines {:0 [["foo" {:fg 1}]] :1 [["bar" {:bg 2}]]} :cursor {:x 1 :y 2 :visible false}}]]]
-    (is (= (s/fix-diffs diffs) [[1.2 {:lines {0 [["foo" {:fg 1}]] 1 [["bar" {:bg 2}]]} :cursor {:x 1 :y 2 :visible false}}]]))))
