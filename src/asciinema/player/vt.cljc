@@ -126,8 +126,9 @@
    (let [line (empty-line width char-attrs)]
      (vec (repeat height line)))))
 
-(s/defn make-vt :- VT [width :- s/Num
-                       height :- s/Num]
+(s/defn make-vt :- VT
+  [width :- s/Num
+   height :- s/Num]
   (map->VT {:width width
             :height height
             :top-margin 0
@@ -887,8 +888,9 @@
 (defn execute-actions [vt actions input]
   (reduce (fn [vt f] (f vt input)) vt actions))
 
-(s/defn feed-one :- VT [vt :- VT
-                        input :- s/Num]
+(s/defn #?@(:clj [feed-one] :cljs [^:never-validate feed-one]) :- VT
+  [vt :- VT
+   input :- s/Num]
   (let [{{old-state :state} :parser} vt
         [new-state actions] (parse old-state input)]
     (-> vt
