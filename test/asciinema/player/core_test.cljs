@@ -60,9 +60,11 @@
         (is (= (:poster-time source) 16)))
       (let [player (make-player {:start-at 5
                                  :poster [[["foo" {}] ["bar" {:fg 1}]]
-                                          [["baz" {:bg 2}]]]})]
+                                          [["baz" {:bg 2}]]]})
+            source (:source player)]
         (is (= (-> player :screen :lines) [[["foo" {}] ["bar" {:fg 1}]]
-                                           [["baz" {:bg 2}]]]))))))
+                                           [["baz" {:bg 2}]]]))
+        (is (= (:poster-time source) nil))))))
 
 (deftest test-parse-npt
   (is (= (c/parse-npt nil) nil))

@@ -55,7 +55,7 @@
         vt-height (or height 24)
         start-at (or (parse-npt start-at) 0)
         {poster-screen :screen poster-time :time} (parse-poster poster vt-width vt-height)
-        poster-time (or poster-time (when (> start-at 0) start-at))
+        poster-time (or poster-time (when (and (not poster-screen) (> start-at 0)) start-at))
         source (make-source type events-ch url vt-width vt-height start-at speed auto-play loop preload poster-time)]
     (merge {:width width
             :height height
