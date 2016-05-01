@@ -20,7 +20,8 @@
 
 (defmulti make-source
   "Returns a Source instance for given type and args."
-  (fn [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play loop preload poster-time] type))
+  (fn [url {:keys [type]}]
+    (or type :asciicast)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -248,11 +249,11 @@
   (change-speed [this speed]
     (put! @command-ch [:change-speed speed])))
 
-(defn prerecorded-source [events-ch url initial-start-at initial-speed auto-play? loop? preload poster-time recording-fn]
-  (->PrerecordedSource events-ch url initial-start-at initial-speed auto-play? loop? preload poster-time recording-fn (atom nil) (atom nil) (atom nil)))
+(defn prerecorded-source [events-ch url start-at speed auto-play? loop? preload poster-time recording-fn]
+  (->PrerecordedSource events-ch url start-at speed auto-play? loop? preload poster-time recording-fn (atom nil) (atom nil) (atom nil)))
 
-(defmethod make-source :asciicast [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload? poster-time]
-  (prerecorded-source events-ch url initial-start-at initial-speed auto-play? loop? preload? poster-time
+(defmethod make-source :asciicast [url {:keys [events-ch start-at speed auto-play loop preload poster-time]}]
+  (prerecorded-source events-ch url start-at speed auto-play loop preload poster-time
                       (fn [json]
                         (-> json
                             js/JSON.parse
@@ -304,8 +305,8 @@
   (change-speed [this speed]
     nil))
 
-(defmethod make-source :random [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload? poster-time]
-  (->RandomSource events-ch initial-speed auto-play? width-hint height-hint (atom nil) (atom nil)))
+(defmethod make-source :random [_ {:keys [events-ch url width height speed auto-play]}]
+  (->RandomSource events-ch speed auto-play width height (atom nil) (atom nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -358,5 +359,5 @@
   (change-speed [this speed]
     nil))
 
-(defmethod make-source :stream [type events-ch url width-hint height-hint initial-start-at initial-speed auto-play? loop? preload? poster-time]
-  (->StreamSource events-ch url auto-play? (atom false)))
+(defmethod make-source :stream [url {:keys [events-ch auto-play]}]
+  (->StreamSource events-ch url auto-play (atom false)))

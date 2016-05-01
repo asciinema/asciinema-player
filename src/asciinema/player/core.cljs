@@ -48,7 +48,7 @@
 (defn make-player
   "Builds initial player for given URL and options."
   [url {:keys [type width height start-at speed loop auto-play preload poster font-size theme]
-        :or {type :asciicast speed 1 loop false auto-play false preload false font-size "small" theme "asciinema"}
+        :or {speed 1 loop false auto-play false preload false font-size "small" theme "asciinema"}
         :as options}]
   (let [events-ch (chan)
         vt-width (or width 80)
@@ -56,7 +56,16 @@
         start-at (or (parse-npt start-at) 0)
         {poster-screen :screen poster-time :time} (parse-poster poster vt-width vt-height)
         poster-time (or poster-time (when (and (not poster-screen) (> start-at 0)) start-at))
-        source (make-source type events-ch url vt-width vt-height start-at speed auto-play loop preload poster-time)]
+        source (make-source url {:events-ch events-ch
+                                 :type type
+                                 :width vt-width
+                                 :height vt-height
+                                 :start-at start-at
+                                 :speed speed
+                                 :auto-play auto-play
+                                 :loop loop
+                                 :preload preload
+                                 :poster-time poster-time})]
     (merge {:width width
             :height height
             :current-time start-at
