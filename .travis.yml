@@ -1,5 +1,5 @@
 language: clojure
-before_install: yes y | lein upgrade
+before_install: yes y | sudo lein upgrade
 script: lein test && lein doo phantom test once
 sudo: true
 env:
