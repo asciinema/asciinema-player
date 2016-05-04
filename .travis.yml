@@ -3,4 +3,4 @@ before_install: yes y | sudo lein upgrade
 script: lein test && lein doo phantom test once
 sudo: true
 env:
-  - PROPERTY_TESTS_MULTIPLIER=100
+  - PROPERTY_TESTS_MULTIPLIER=10
