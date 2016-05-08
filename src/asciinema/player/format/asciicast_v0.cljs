@@ -23,9 +23,9 @@
 (defn fix-line-diff-keys [line-diff]
   (into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) line-diff)))
 
-(defn reduce-v0-frame [[_ screen] [delay diff]]
+(defn reduce-v0-frame [[prev-time screen] [curr-time diff]]
   (let [diff (update diff :lines fix-line-diff-keys)]
-    [delay (merge-with merge screen diff)]))
+    (vector (+ prev-time curr-time) (merge-with merge screen diff))))
 
 (defn build-v0-frames [diffs]
   (let [screen (map->LegacyScreen {:lines (sorted-map)

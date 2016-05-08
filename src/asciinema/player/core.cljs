@@ -98,11 +98,13 @@
 
 (def blinks
   "Infinite seq of cursor blinks."
-  (cycle [[0.5 false] [0.5 true]]))
+  (iterate (fn [[t b]]
+             (vector (+ t 0.5) (not b)))
+           [0.5 false]))
 
 (defn start-blinking [{:keys [events-ch] :as player}]
   (let [cursor-blink-ch (chan)]
-    (source/emit-events :blink blinks events-ch cursor-blink-ch)
+    (source/emit-events :blink blinks 0 events-ch cursor-blink-ch)
     (-> player
         (assoc :cursor-on true)
         (assoc :cursor-blink-ch cursor-blink-ch))))

@@ -14,8 +14,8 @@
                   :env {s/Keyword s/Str}
                   :stdout [StdoutFrame]})
 
-(s/defn reduce-v1-frame [[_ vt] [delay str]]
-  [delay (vt/feed-str vt str)])
+(s/defn reduce-v1-frame [[prev-time vt] [curr-time str]]
+  (vector (+ prev-time curr-time) (vt/feed-str vt str)))
 
 (defn build-v1-frames [{:keys [stdout width height]}]
   (let [vt (vt/make-vt width height)]

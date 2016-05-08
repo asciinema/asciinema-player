@@ -28,23 +28,12 @@
 (defn screen-state-at
   "Returns screen state (lines + cursor) at given time (in seconds)."
   [screen-frames seconds]
-  (loop [frames screen-frames
-         seconds seconds
-         candidate nil]
-    (let [[delay screen-state :as frame] (first frames)]
-      (if (or (nil? frame) (< seconds delay))
-        candidate
-        (recur (rest frames) (- seconds delay) screen-state)))))
+  (last (last (take-while #(<= (first %) seconds) screen-frames))))
 
 (defn drop-frames
   "Returns sequence of frames starting at given time (in seconds)."
   [frames seconds]
-  (if (seq frames)
-    (let [[delay screen-state] (first frames)]
-      (if (< delay seconds)
-        (recur (rest frames) (- seconds delay))
-        (cons [(- delay seconds) screen-state] (rest frames))))
-    frames))
+  (drop-while #(< (first %) seconds) frames))
 
 (defmulti initialize-asciicast
   "Given fetched asciicast extracts width, height and frames into a map."
@@ -63,13 +52,18 @@
   (throw (str "unsupported asciicast version: " (:version asciicast))))
 
 (defn time-frames
-  "Returns in infinite seq of time frames at given speed, starting from start-at
-  (in sec)."
-  [start-at elapsed-time]
-  (repeatedly (fn [] [0.3 (+ start-at (elapsed-time))])))
+  "Returns infinite seq of time frames."
+  []
+  (iterate (fn [[a b]]
+             [(inc a) (inc b)])
+           [0 0]))
 
-(defn frames-at-speed [frames speed]
-  (map (fn [[delay data]] [(/ delay speed) data]) frames))
+(defn frames-at-speed
+  "Alters time of each frame to match given speed."
+  [frames speed]
+  (map (fn [[time data]]
+         (vector (/ time speed) data))
+       frames))
 
 (defn lazy-promise-chan
   "Returns a function f returning a promise channel. The calculation of the
@@ -129,25 +123,23 @@
 (defn emit-events
   "Starts sending frames as events with a given name, stopping when stop-ch
   closes."
-  [event-name coll events-ch stop-ch]
+  [event-name coll start-at events-ch stop-ch]
   (let [elapsed-time (util/timer)]
     (go
       (loop [coll coll
-             virtual-time 0
              wall-time (elapsed-time)]
-        (if-let [[delay data] (first coll)]
-          (let [new-virtual-time (+ virtual-time delay)
-                ahead (- new-virtual-time wall-time)]
+        (if-let [[time data] (first coll)]
+          (let [ahead (- time start-at wall-time)]
             (if (pos? ahead)
               (let [timeout-ch (timeout (* 1000 ahead))
                     [_ c] (alts! [stop-ch timeout-ch] :priority true)]
                 (when (= c timeout-ch)
                   (do
                     (>! events-ch [event-name data])
-                    (recur (rest coll) new-virtual-time (elapsed-time)))))
+                    (recur (rest coll) (elapsed-time)))))
               (do
                 (>! events-ch [event-name data])
-                (recur (rest coll) new-virtual-time wall-time)))))))))
+                (recur (rest coll) wall-time)))))))))
 
 (defn play!
   "Starts emitting :time and :frame events with given start position and speed.
@@ -159,10 +151,10 @@
     (loop [start-at start-at]
       (let [elapsed-time (util/timer speed)
             sfs (-> frames (drop-frames start-at) (frames-at-speed speed))
-            tfs (time-frames start-at elapsed-time)
+            tfs (-> (time-frames) (drop-frames start-at) (frames-at-speed speed))
             local-stop-ch (chan)
-            done-ch (emit-events :screen sfs events-ch local-stop-ch)
-            _ (emit-events :time tfs events-ch local-stop-ch)
+            done-ch (emit-events :screen sfs (/ start-at speed) events-ch local-stop-ch)
+            _ (emit-events :time tfs (/ start-at speed) events-ch local-stop-ch)
             [_ c] (alts! [done-ch stop-ch])]
         (close! local-stop-ch)
         (if (= c done-ch)
