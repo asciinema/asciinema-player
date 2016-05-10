@@ -1,13 +1,14 @@
 (ns asciinema.player.core
   (:require [reagent.core :as reagent :refer [atom]]
             [asciinema.player.view :as view]
-            [asciinema.player.util :as util]
-            [asciinema.player.raf :as raf]
             [asciinema.player.vt :as vt]
+            [asciinema.player.messages :as m]
+            [asciinema.player.processing]
             [asciinema.player.source :as source :refer [make-source]]
             [schema.core :as s]
-            [cljs.core.async :refer [chan >! <! put! timeout close! dropping-buffer]]
-            [clojure.string :as str])
+            [cljs.core.async :refer [chan >! <! put! timeout dropping-buffer]]
+            [clojure.string :as str]
+            [clojure.set :as set])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 (defn parse-npt [t]
@@ -85,151 +86,6 @@
   [& args]
   (atom (apply make-player args)))
 
-(defn update-screen
-  "Sets the screen contents to be displayed."
-  [player screen]
-  (assoc player :screen screen))
-
-(def blinks
-  "Infinite seq of cursor blinks."
-  (iterate (fn [[t b]]
-             (vector (+ t 0.5) (not b)))
-           [0.5 false]))
-
-(defn start-blinking [{:keys [events-ch] :as player}]
-  (let [cursor-blink-ch (chan)]
-    (source/emit-events :blink blinks 0 events-ch cursor-blink-ch)
-    (-> player
-        (assoc :cursor-on true)
-        (assoc :cursor-blink-ch cursor-blink-ch))))
-
-(defn stop-blinking [{:keys [cursor-blink-ch] :as player}]
-  (close! cursor-blink-ch)
-  (-> player
-      (assoc :cursor-on true)
-      (assoc :cursor-blink-ch nil)))
-
-(defn restart-blinking [{:keys [cursor-blink-ch] :as player}]
-  (if cursor-blink-ch
-    (-> player
-        stop-blinking
-        start-blinking)
-    player))
-
-(defn handle-toggle-play
-  "Toggles the playback on the source."
-  [{:keys [source] :as player}]
-  (source/toggle source)
-  player)
-
-(defn handle-seek
-  "Jumps to a given position (in seconds)."
-  [{:keys [duration source] :as player} [position]]
-  (when duration
-    (let [new-time (* position duration)]
-      (source/seek source new-time)))
-  player)
-
-(defn new-start-at
-  "Returns time adjusted by given offset, clipped to the range 0..total-time."
-  [current-time total-time offset]
-  (util/adjust-to-range (+ current-time offset) 0 total-time))
-
-(defn handle-rewind
-  "Rewinds the playback by 5 seconds."
-  [{:keys [current-time duration source] :as player}]
-  (when duration
-    (let [new-time (new-start-at current-time duration -5)]
-      (source/seek source new-time)))
-  player)
-
-(defn handle-fast-forward
-  "Fast-forwards the playback by 5 seconds."
-  [{:keys [current-time duration source] :as player}]
-  (when duration
-    (let [new-time (new-start-at current-time duration 5)]
-      (source/seek source new-time)))
-  player)
-
-(defn speed-up [speed]
-  (* speed 2))
-
-(defn speed-down [speed]
-  (/ speed 2))
-
-(defn handle-speed-change
-  "Alters the speed of the playback to the result of applying change-fn to the
-  current speed."
-  [change-fn {:keys [playing speed source] :as player}]
-  (let [new-speed (change-fn speed)]
-    (source/change-speed source new-speed)
-    (assoc player :speed new-speed)))
-
-(defn handle-screen
-  "Updates screen with given lines/cursor and resets cursor blinking."
-  [player [screen]]
-  (-> player
-      (update-screen screen)
-      restart-blinking))
-
-(defn handle-loading
-  "Shows/hides loading indicator."
-  [player [loading?]]
-  (assoc player :loading loading?))
-
-(defn handle-playing
-  "Toggle the play/pause button and start/stops cursor blinking."
-  [player [playing?]]
-  (let [player (assoc player :playing playing? :loaded true)]
-    (if playing?
-      (start-blinking player)
-      (stop-blinking player))))
-
-(defn handle-blink
-  "Shows or hides the cursor block."
-  [player [cursor-on?]]
-  (assoc player :cursor-on cursor-on?))
-
-(defn handle-time
-  "Updates player's current time (as displayed in control bar)."
-  [player [t]]
-  (assoc player :current-time t))
-
-(defn handle-duration
-  "Sets the total playback time."
-  [player [d]]
-  (assoc player :duration d))
-
-(defn handle-size
-  "Sets player's width and height if not already set."
-  [{player-width :width player-height :height :as player} [width height]]
-  (-> player
-      (assoc :width (or player-width width))
-      (assoc :height (or player-height height))))
-
-(def event-handlers {:blink handle-blink
-                     :duration handle-duration
-                     :fast-forward handle-fast-forward
-                     :screen handle-screen
-                     :loading handle-loading
-                     :playing handle-playing
-                     :rewind handle-rewind
-                     :seek handle-seek
-                     :size handle-size
-                     :speed-down (partial handle-speed-change speed-down)
-                     :speed-up (partial handle-speed-change speed-up)
-                     :time handle-time
-                     :toggle-play handle-toggle-play})
-
-(defn process-event
-  "Finds handler for the given event and applies it to the player."
-  [player [event-name & args]]
-  (if-let [handler (get event-handlers event-name)]
-    (handler player args)
-    (do
-      (print "unhandled event:" event-name)
-      player)))
-
 (defn activity-chan
   "Converts given channel into an activity indicator channel. The resulting
   channel emits false when there are no reads on input channel within msec, then
@@ -253,38 +109,37 @@
       (recur))
     out))
 
-(defn start-event-loop!
-  "Starts event processing loop. It handles both internal and user triggered
-  events. Updates Reagent atom with the result of event handler."
-  [player-atom channels]
-  (let [mouse-moves-ch (chan (dropping-buffer 1))
-        user-activity-ch (activity-chan mouse-moves-ch 3000)]
+(defn start-message-loop!
+  "Starts message processing loop. Updates Reagent atom with the result applying
+  a message to player state."
+  [player-atom initial-channels]
+  (let [channels (atom initial-channels)]
     (go-loop []
-      (let [[[event-name & _ :as event] _] (alts! (seq channels))]
-        (condp = event-name
-          :mouse-move (>! mouse-moves-ch true)
-          (swap! player-atom process-event event)))
-      (recur))
-    (go-loop []
-      (let [show? (<! user-activity-ch)]
-        (when-not (nil? show?)
-          (swap! player-atom assoc :show-hud show?)
-          (recur))))))
+      (let [[message channel] (alts! (seq @channels))]
+        (when (nil? message)
+          (swap! channels disj channel))
+
+        (when (satisfies? m/Update message)
+          (swap! player-atom #(m/update-player message %)))
+
+        (when (satisfies? m/ChannelSource message)
+          (swap! channels set/union (m/get-channels message @player-atom))))
+      (recur))))
 
 (defn mount-player-with-ratom
-  "Mounts player's Reagent component in DOM and starts event loop."
+  "Mounts player's Reagent component in DOM and starts message loop."
   [player-atom source-ch dom-node]
   (let [ui-ch (chan)
-        view-event-handler (fn [event]
-                             (put! ui-ch event)
-                             nil)]
-    (start-event-loop! player-atom #{ui-ch source-ch})
-    (reagent/render-component [view/player player-atom view-event-handler] dom-node)
+        view-message-handler (fn [message]
+                               (put! ui-ch message)
+                               nil)]
+    (start-message-loop! player-atom #{ui-ch source-ch})
+    (reagent/render-component [view/player player-atom view-message-handler] dom-node)
     nil)) ; TODO: return JS object with control functions (play/pause) here
 
 (defn create-player
-  "Creates the player with the state built from given options by starting event
-  processing loop and mounting Reagent component in DOM."
+  "Creates the player with the state built from given options by starting
+  message processing loop and mounting Reagent component in DOM."
   [dom-node url options]
   (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)
         player-ratom (make-player-ratom url options)

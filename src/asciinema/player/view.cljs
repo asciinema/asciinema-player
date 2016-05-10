@@ -1,6 +1,7 @@
 (ns asciinema.player.view
   (:require [clojure.string :as string]
             [reagent.ratom :refer-macros [reaction]]
+            [asciinema.player.messages :as m]
             [asciinema.player.util :as util]
             [asciinema.player.fullscreen :as fullscreen]))
 
@@ -120,7 +121,7 @@
 (defn playback-control-button [playing? dispatch]
   (letfn [(on-click [e]
             (.preventDefault e)
-            (dispatch [:toggle-play]))]
+            (dispatch (m/->TogglePlay)))]
     (fn []
       [:span.playback-button {:on-click on-click} [(if @playing? pause-icon play-icon)]])))
 
@@ -160,7 +161,7 @@
                         (let [bar-width (-> e .-currentTarget .-offsetWidth)
                               mouse-x (util/adjust-to-range (element-local-mouse-x e) 0 bar-width)
                               position (/ mouse-x bar-width)]
-                          (dispatch [:seek position])))
+                          (dispatch (m/->Seek position))))
         progress-str (reaction (str (* 100 @progress) "%"))]
     (fn []
       [:span.progressbar
@@ -184,9 +185,9 @@
    [progress-bar 0 (fn [& _])]])
 
 (defn start-overlay [dispatch]
-  (letfn [(on-click [e]
-            (.preventDefault e)
-            (dispatch [:toggle-play]))]
+  (letfn [(on-click [ev]
+            (.preventDefault ev)
+            (dispatch (m/->TogglePlay)))]
     (fn []
       [:div.start-prompt {:on-click on-click}
        [:div.play-button
@@ -202,34 +203,34 @@
   (str "asciinema-theme-" theme-name))
 
 (defn handle-dom-event [dispatch event-mapper dom-event]
-  (when-let [[event-name & _ :as event] (event-mapper dom-event)]
+  (when-let [message (event-mapper dom-event)]
     (.preventDefault dom-event)
-    (if (= event-name :toggle-fullscreen) ; has to be processed synchronously
+    (if (= message :toggle-fullscreen) ; has to be processed synchronously
       (fullscreen/toggle (.-currentTarget dom-event))
-      (dispatch event))))
+      (dispatch message))))
 
-(defn key-press->event [dom-event]
+(defn key-press->message [dom-event]
   (case (.-key dom-event)
-    " " [:toggle-play]
-    "f" [:toggle-fullscreen]
-    "0" [:seek 0.0]
-    "1" [:seek 0.1]
-    "2" [:seek 0.2]
-    "3" [:seek 0.3]
-    "4" [:seek 0.4]
-    "5" [:seek 0.5]
-    "6" [:seek 0.6]
-    "7" [:seek 0.7]
-    "8" [:seek 0.8]
-    "9" [:seek 0.9]
-    ">" [:speed-up]
-    "<" [:speed-down]
+    " " (m/->TogglePlay)
+    "f" :toggle-fullscreen
+    "0" (m/->Seek 0.0)
+    "1" (m/->Seek 0.1)
+    "2" (m/->Seek 0.2)
+    "3" (m/->Seek 0.3)
+    "4" (m/->Seek 0.4)
+    "5" (m/->Seek 0.5)
+    "6" (m/->Seek 0.6)
+    "7" (m/->Seek 0.7)
+    "8" (m/->Seek 0.8)
+    "9" (m/->Seek 0.9)
+    ">" (m/->SpeedUp)
+    "<" (m/->SpeedDown)
     nil))
 
-(defn key-down->event [dom-event]
+(defn key-down->message [dom-event]
   (case (.-which dom-event)
-    37 [:rewind]
-    39 [:fast-forward]
+    37 (m/->Rewind)
+    39 (m/->FastForward)
     nil))
 
 (defn title-bar [title author author-url author-img-url]
@@ -240,9 +241,8 @@
      (when author [:span " by " (if author-url [:a {:href author-url} author] author)])]))
 
 (defn player [player dispatch]
-  (let [on-key-press (partial handle-dom-event dispatch key-press->event)
-        on-key-down (partial handle-dom-event dispatch key-down->event)
-        on-mouse-move #(dispatch [:mouse-move])
+  (let [on-key-press (partial handle-dom-event dispatch key-press->message)
+        on-key-down (partial handle-dom-event dispatch key-down->message)
         wrapper-class-name (reaction (when (:show-hud @player) "hud"))
         player-class-name (reaction (player-class-name (:theme @player)))
         width (reaction (or (:width @player) 80))
@@ -257,7 +257,7 @@
         loaded (reaction (:loaded @player))
         {:keys [title author author-url author-img-url]} @player]
     (fn []
-      [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down :on-mouse-move on-mouse-move :class-name @wrapper-class-name}
+      [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down :class-name @wrapper-class-name}
        [:div.asciinema-player {:class-name @player-class-name}
         [terminal width height font-size screen cursor-on]
         [recorded-control-bar playing current-time total-time dispatch]

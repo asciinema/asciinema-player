@@ -5,7 +5,9 @@
             [schema.core :as s]
             [asciinema.player.format.asciicast-v0 :as v0]
             [asciinema.player.format.asciicast-v1 :as v1]
+            [asciinema.player.frames :as f]
             [asciinema.player.vt :as vt]
+            [asciinema.player.messages :as m]
             [asciinema.player.util :as util]
             [asciinema.player.patch :refer [js->clj]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
@@ -24,16 +26,6 @@
     (or type :asciicast)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn screen-state-at
-  "Returns screen state (lines + cursor) at given time (in seconds)."
-  [screen-frames seconds]
-  (last (last (take-while #(<= (first %) seconds) screen-frames))))
-
-(defn drop-frames
-  "Returns sequence of frames starting at given time (in seconds)."
-  [frames seconds]
-  (drop-while #(< (first %) seconds) frames))
 
 (defmulti initialize-asciicast
   "Given fetched asciicast extracts width, height and frames into a map."
@@ -54,16 +46,14 @@
 (defn time-frames
   "Returns infinite seq of time frames."
   []
-  (iterate (fn [[a b]]
-             [(inc a) (inc b)])
-           [0 0]))
+  (iterate (fn [[a _]]
+             [(inc a) (inc a)])
+           [0 0])) ; TODO use f/frame constructor
 
-(defn frames-at-speed
-  "Alters time of each frame to match given speed."
-  [frames speed]
-  (map (fn [[time data]]
-         (vector (/ time speed) data))
-       frames))
+(defn screen-at
+  "Returns screen state (lines + cursor) at given time (in seconds)."
+  [seconds screen-frames]
+  (last (f/frame-at seconds screen-frames)))
 
 (defn lazy-promise-chan
   "Returns a function f returning a promise channel. The calculation of the
@@ -97,80 +87,86 @@
 (defn report-duration-and-size
   "Waits for recording to load and then reports its size and duration to the
   player."
-  [{:keys [recording-ch-fn]} events-ch]
+  [{:keys [recording-ch-fn]} msg-ch]
   (go
     (let [{:keys [duration width height]} (<! (@recording-ch-fn false))]
-      (>! events-ch [:duration duration])
-      (>! events-ch [:size width height]))))
+      (>! msg-ch (m/->SetDuration duration))
+      (>! msg-ch (m/->Resize width height)))))
 
 (defn show-poster
   "Forces loading of recording and sends 'poster' at a given time to the
   player."
-  [{:keys [recording-ch-fn]} time events-ch]
+  [{:keys [recording-ch-fn]} time msg-ch]
   (go
     (let [{:keys [frames]} (<! (@recording-ch-fn true))]
-      (>! events-ch [:screen (screen-state-at frames time)]))))
+      (>! msg-ch (m/->UpdateScreen (screen-at time frames))))))
 
 (defn show-loading
   "Reports 'loading' to the player until the recording is loaded."
-  [{:keys [recording-ch-fn]} events-ch]
+  [{:keys [recording-ch-fn]} msg-ch]
   (when-not (poll! (@recording-ch-fn false))
     (go
-      (>! events-ch [:loading true])
+      (>! msg-ch (m/->SetLoading true))
       (<! (@recording-ch-fn false))
-      (>! events-ch [:loading false]))))
+      (>! msg-ch (m/->SetLoading false)))))
 
-(defn emit-events
+(defn emit-coll
   "Starts sending frames as events with a given name, stopping when stop-ch
   closes."
-  [event-name coll start-at events-ch stop-ch]
-  (let [elapsed-time (util/timer)]
+  [coll]
+  (let [out-ch (chan)]
     (go
-      (loop [coll coll
-             wall-time (elapsed-time)]
-        (if-let [[time data] (first coll)]
-          (let [ahead (- time start-at wall-time)]
-            (if (pos? ahead)
-              (let [timeout-ch (timeout (* 1000 ahead))
-                    [_ c] (alts! [stop-ch timeout-ch] :priority true)]
-                (when (= c timeout-ch)
-                  (do
-                    (>! events-ch [event-name data])
-                    (recur (rest coll) (elapsed-time)))))
-              (do
-                (>! events-ch [event-name data])
-                (recur (rest coll) wall-time)))))))))
+      (let [elapsed-time (util/timer)]
+        (loop [coll coll
+               wall-time (elapsed-time)]
+          (if-let [[time data] (first coll)]
+            (let [ahead (- time wall-time)]
+              (if (pos? ahead)
+                (let [timeout-ch (timeout (* 1000 ahead))]
+                  (<! timeout-ch)
+                  (when (>! out-ch data)
+                    (recur (rest coll) (elapsed-time))))
+                (when (>! out-ch data)
+                  (recur (rest coll) wall-time))))
+            (close! out-ch)))))
+    out-ch))
+
+(defn play-frames [msg-ch frames start-at speed loop? stop-ch]
+  (go
+    (loop [start-at start-at
+           sub-ch (emit-coll (f/frames-for-playback start-at speed frames))
+           elapsed-time (util/timer speed)]
+      (let [[v c] (alts! [sub-ch stop-ch])]
+        (condp = c
+          sub-ch (if v
+                   (do
+                     (>! msg-ch v)
+                     (recur start-at sub-ch elapsed-time))
+                   (if loop?
+                     (recur 0 (emit-coll (f/frames-for-playback 0 speed frames)) (util/timer speed))
+                     nil))
+          stop-ch (do
+                    (close! sub-ch)
+                    (+ start-at (elapsed-time))))))))
 
 (defn play!
   "Starts emitting :time and :frame events with given start position and speed.
   Stops when stop-ch closes. Returns a channel to which stop position is
   eventually delivered."
-  [events-ch frames duration stop-ch start-at speed loop?]
+  [msg-ch frames duration start-at speed loop? stop-ch]
   (go
-    (>! events-ch [:playing true])
-    (loop [start-at start-at]
-      (let [elapsed-time (util/timer speed)
-            sfs (-> frames (drop-frames start-at) (frames-at-speed speed))
-            tfs (-> (time-frames) (drop-frames start-at) (frames-at-speed speed))
-            local-stop-ch (chan)
-            done-ch (emit-events :screen sfs (/ start-at speed) events-ch local-stop-ch)
-            _ (emit-events :time tfs (/ start-at speed) events-ch local-stop-ch)
-            [_ c] (alts! [done-ch stop-ch])]
-        (close! local-stop-ch)
-        (if (= c done-ch)
-          (if loop?
-            (recur 0)
-            (do
-              (>! events-ch [:time duration])
-              (>! events-ch [:playing false])
-              0))
-          (do
-            (>! events-ch [:playing false])
-            (+ start-at (elapsed-time))))))))
+    (>! msg-ch (m/->SetPlaying true))
+    (let [screen-frames (f/map-frame-data m/->UpdateScreen frames)
+          time-frames (f/map-frame-data m/->UpdateTime (time-frames))
+          frames (f/interleave-frames screen-frames time-frames)
+          stopped-at (<! (play-frames msg-ch frames start-at speed loop? stop-ch))]
+      (>! msg-ch (m/->UpdateTime (or stopped-at duration)))
+      (>! msg-ch (m/->SetPlaying false))
+      stopped-at)))
 
 (defn start-event-loop!
   "Main event loop of the PrerecordedSource."
-  [{:keys [recording-ch-fn start-at speed loop?] :as source} events-ch]
+  [{:keys [recording-ch-fn start-at speed loop?] :as source} msg-ch]
   (let [command-ch (chan 10)
         pri-ch (chan 10)]
     (go-loop [start-at start-at
@@ -184,10 +180,10 @@
           :start (if stop-ch
                    (recur start-at speed end-ch stop-ch)
                    (do
-                     (show-loading source events-ch)
+                     (show-loading source msg-ch)
                      (let [{:keys [frames duration]} (<! (@recording-ch-fn true))
                            stop-ch (chan)
-                           end-ch (play! events-ch frames duration stop-ch start-at speed loop?)]
+                           end-ch (play! msg-ch frames duration start-at speed loop? stop-ch)]
                        (recur nil speed end-ch stop-ch))))
           :stop (if stop-ch
                   (do
@@ -212,26 +208,26 @@
           :internal/rewind (recur 0 speed nil nil)
           :internal/seek (let [start-at arg
                                {:keys [frames]} (<! (@recording-ch-fn true))]
-                           (>! events-ch [:time start-at])
-                           (>! events-ch [:screen (screen-state-at frames start-at)])
+                           (>! msg-ch (m/->UpdateTime start-at))
+                           (>! msg-ch (m/->UpdateScreen (screen-at start-at frames)))
                            (recur start-at speed end-ch stop-ch)))))
     command-ch))
 
 (defrecord PrerecordedSource [url start-at speed auto-play? loop? preload? poster-time recording-fn recording-ch-fn stop-ch command-ch]
   Source
   (init [this]
-    (let [events-ch (chan)]
-      (reset! command-ch (start-event-loop! this events-ch))
+    (let [msg-ch (chan)]
+      (reset! command-ch (start-event-loop! this msg-ch))
       (let [f (make-recording-ch-fn url recording-fn)]
         (reset! recording-ch-fn f)
-        (report-duration-and-size this events-ch))
+        (report-duration-and-size this msg-ch))
       (when preload?
         (@recording-ch-fn true))
       (if auto-play?
         (start this)
         (when poster-time
-          (show-poster this poster-time events-ch)))
-      events-ch))
+          (show-poster this poster-time msg-ch)))
+      msg-ch))
   (start [this]
     (put! @command-ch [:start]))
   (stop [this]
@@ -256,38 +252,38 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn vts! [width height events-ch]
+(defn vts! [width height msg-ch]
   (let [stdout-ch (chan)]
     (go-loop [vt (vt/make-vt width height)]
       (when-let [stdout (<! stdout-ch)]
         (let [new-vt (vt/feed-str vt stdout)]
-          (>! events-ch [:screen new-vt])
+          (>! msg-ch (m/->UpdateScreen new-vt))
           (recur new-vt))))
     stdout-ch))
 
-(defn start-random-stdout-gen! [events-ch stdout-ch speed stop-ch]
+(defn start-random-stdout-gen! [msg-ch stdout-ch speed stop-ch]
   (go
-    (>! events-ch [:playing true])
+    (>! msg-ch (m/->SetPlaying true))
     (loop []
       (let [[v c] (alts! [stop-ch (timeout (/ (* 100 (rand)) speed))])]
         (when-not (= c stop-ch)
           (>! stdout-ch (js/String.fromCharCode (rand-int 0xa0)))
           (recur))))
-    (>! events-ch [:playing false])))
+    (>! msg-ch (m/->SetPlaying false))))
 
-(defrecord RandomSource [speed auto-play? width height events-ch stdout-ch stop-ch]
+(defrecord RandomSource [speed auto-play? width height msg-ch stdout-ch stop-ch]
   Source
   (init [this]
-    (reset! events-ch (chan))
-    (reset! stdout-ch (vts! width height @events-ch))
+    (reset! msg-ch (chan))
+    (reset! stdout-ch (vts! width height @msg-ch))
     (when auto-play?
       (start this))
-    @events-ch)
+    @msg-ch)
   (start [this]
     (when-not @stop-ch
       (let [command-ch (chan)]
         (reset! stop-ch command-ch)
-        (start-random-stdout-gen! @events-ch @stdout-ch speed command-ch))))
+        (start-random-stdout-gen! @msg-ch @stdout-ch speed command-ch))))
   (stop [this]
     (when @stop-ch
       (close! @stop-ch)
@@ -309,44 +305,44 @@
 (defn es-message [payload]
   (js->clj (.parse js/JSON payload) :keywordize-keys true))
 
-(defn process-es-messages! [es-ch events-ch]
+(defn process-es-messages! [es-ch msg-ch]
   (go
     (let [{:keys [time width height stdout]} (<! es-ch)
-          stdout-ch (vts! width height events-ch)]
+          stdout-ch (vts! width height msg-ch)]
       (>! stdout-ch stdout)
       (loop []
         (when-let [{:keys [stdout]} (<! es-ch)]
           (>! stdout-ch stdout)
           (recur))))))
 
-(defn start-event-source! [url events-ch]
+(defn start-event-source! [url msg-ch]
   (let [es (js/EventSource. url)
         es-ch (atom nil)]
-    (put! events-ch [:loading true])
+    (put! msg-ch (m/->SetLoading true))
     (set! (.-onopen es) (fn []
                           (let [command-ch (chan 10000 (map es-message))] ; 10000 to make enough buffer for very fast es producers
                             (reset! es-ch command-ch)
-                            (process-es-messages! command-ch events-ch)
-                            (put! events-ch [:playing true])
-                            (put! events-ch [:loading false]))))
+                            (process-es-messages! command-ch msg-ch)
+                            (put! msg-ch (m/->SetPlaying true))
+                            (put! msg-ch (m/->SetLoading false)))))
     (set! (.-onerror es) (fn [err]
                            (close! @es-ch)
                            (reset! es-ch nil)
-                           (put! events-ch [:loading true])))
+                           (put! msg-ch (m/->SetLoading true))))
     (set! (.-onmessage es) (fn [event]
                              (when-let [command-ch @es-ch]
                                (put! command-ch (.-data event)))))))
 
-(defrecord StreamSource [events-ch url auto-play? started?]
+(defrecord StreamSource [msg-ch url auto-play? started?]
   Source
   (init [this]
-    (reset! events-ch (chan))
+    (reset! msg-ch (chan))
     (when auto-play?
       (start this)))
   (start [this]
     (when-not @started?
       (reset! started? true)
-      (start-event-source! url @events-ch)))
+      (start-event-source! url @msg-ch)))
   (stop [this]
     nil)
   (toggle [this]

@@ -94,9 +94,3 @@
         (is (= (view/lines screen) [[["foo     " {}]]
                                     [["bar" {}] ["baz" {:fg 1}] ["  " {}]]]))
         (is (= (view/cursor screen) {:x 6 :y 1 :visible true}))))))
-
-(deftest new-start-at-test
-  (is (= (c/new-start-at 2 5 -3) 0))
-  (is (= (c/new-start-at 2 5 -1) 1))
-  (is (= (c/new-start-at 2 5 4) 5))
-  (is (= (c/new-start-at 2 5 2) 4)))
