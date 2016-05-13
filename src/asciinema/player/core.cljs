@@ -191,6 +191,13 @@
       (start-blinking player)
       (stop-blinking player))))
 
+(defn handle-visibility-change
+  "Stops the playback when the player is hidden."
+  [{:keys [source] :as player}]
+    (if js/document.hidden
+      (source/stop source))
+  player)
+
 (defn handle-blink
   "Shows or hides the cursor block."
   [player [cursor-on?]]
@@ -225,6 +232,7 @@
                      :speed-down (partial handle-speed-change speed-down)
                      :speed-up (partial handle-speed-change speed-up)
                      :time handle-time
+                     :visibility-change handle-visibility-change
                      :toggle-play handle-toggle-play})
 
 (defn process-event
@@ -278,6 +286,20 @@
           (swap! player-atom assoc :show-hud show?)
           (recur))))))
 
+; wrap the player in a component with lifecycle hooks for adding/removing document event listeners
+(defn visibility-watcher [player dispatch]
+  (let []
+    (reagent/create-class
+      {:component-did-mount (fn [this]
+        (def listener (.addEventListener js/document "visibilitychange" (fn [event]
+          (dispatch [:visibility-change])
+          ))))
+       :component-will-unmount (fn [this]
+         (.removeEventListener js/document "visibilitychange" listener))
+       :reagent-render (fn [this]
+         [view/player player dispatch]
+        )})))
+
 (defn mount-player-with-ratom
   "Mounts player's Reagent component in DOM and starts event loop."
   [player-atom dom-node]
@@ -285,7 +307,7 @@
                              (dispatch @player-atom event)
                              nil)]
     (start-event-loop! player-atom)
-    (reagent/render-component [view/player player-atom view-event-handler] dom-node)
+    (reagent/render-component [visibility-watcher player-atom view-event-handler] dom-node)
     nil)) ; TODO: return JS object with control functions (play/pause) here
 
 (defn create-player
