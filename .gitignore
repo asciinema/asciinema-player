@@ -11,3 +11,4 @@ pom.xml.asc
 /resources/public/css
 /out
 /.repl
+.nrepl-history
