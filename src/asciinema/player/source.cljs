@@ -156,6 +156,8 @@
   [msg-ch frames duration start-at speed loop? stop-ch]
   (go
     (>! msg-ch (m/->SetPlaying true))
+    (>! msg-ch (m/->UpdateTime start-at))
+    (>! msg-ch (m/->UpdateScreen (screen-at start-at frames)))
     (let [screen-frames (f/map-frame-data m/->UpdateScreen frames)
           time-frames (f/map-frame-data m/->UpdateTime (time-frames))
           frames (f/interleave-frames screen-frames time-frames)
