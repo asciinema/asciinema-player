@@ -1,9 +1,11 @@
 (ns asciinema.player.view
   (:require [clojure.string :as string]
             [reagent.ratom :refer-macros [reaction]]
+            [cljs.core.async :refer [chan >! <! put! alts! timeout dropping-buffer pipe]]
             [asciinema.player.messages :as m]
             [asciinema.player.util :as util]
-            [asciinema.player.fullscreen :as fullscreen]))
+            [asciinema.player.fullscreen :as fullscreen])
+  (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 (defprotocol TerminalView
   (lines [this])
@@ -15,6 +17,15 @@
     (:lines this))
   (cursor [this]
     (:cursor this)))
+
+(defn send-value! [ch f]
+  (fn [dom-event]
+    (when-let [msg (f dom-event)]
+      (put! ch msg)
+      (.stopPropagation dom-event))))
+
+(defn send! [ch msg]
+  (send-value! ch (fn [_] msg)))
 
 (defn fg-color [fg bold?]
   (if (and fg bold? (< fg 8)) (+ fg 8) fg))
@@ -118,10 +129,8 @@
    [:path {:d "M7,5 L7,0 L9,2 L11,0 L12,1 L10,3 L12,5 Z"}]
    [:path {:d "M5,7 L0,7 L2,9 L0,11 L1,12 L3,10 L5,12 Z"}]])
 
-(defn playback-control-button [playing? dispatch]
-  (letfn [(on-click [e]
-            (.preventDefault e)
-            (dispatch (m/->TogglePlay)))]
+(defn playback-control-button [playing? msg-ch]
+  (let [on-click (send! msg-ch (m/->TogglePlay))]
     (fn []
       [:span.playback-button {:on-click on-click} [(if @playing? pause-icon play-icon)]])))
 
@@ -155,13 +164,13 @@
   (let [rect (-> e .-currentTarget .getBoundingClientRect)]
     (- (.-clientX e) (.-left rect))))
 
-(defn progress-bar [progress dispatch]
-  (let [on-mouse-down (fn [e]
-                        (.preventDefault e)
-                        (let [bar-width (-> e .-currentTarget .-offsetWidth)
-                              mouse-x (util/adjust-to-range (element-local-mouse-x e) 0 bar-width)
-                              position (/ mouse-x bar-width)]
-                          (dispatch (m/->Seek position))))
+(defn click-position [e]
+  (let [bar-width (-> e .-currentTarget .-offsetWidth)
+        mouse-x (util/adjust-to-range (element-local-mouse-x e) 0 bar-width)]
+    (/ mouse-x bar-width)))
+
+(defn progress-bar [progress msg-ch]
+  (let [on-mouse-down (send-value! msg-ch (fn [e] (-> e click-position m/->Seek)))
         progress-str (reaction (str (* 100 @progress) "%"))]
     (fn []
       [:span.progressbar
@@ -169,14 +178,14 @@
         [:span.gutter
          [:span {:style {:width @progress-str}}]]]])))
 
-(defn recorded-control-bar [playing? current-time total-time dispatch]
+(defn recorded-control-bar [playing? current-time total-time msg-ch]
   (let [progress (reaction (/ @current-time @total-time))]
     (fn []
       [:div.control-bar
-       [playback-control-button playing? dispatch]
+       [playback-control-button playing? msg-ch]
        [timer current-time total-time]
        [fullscreen-toggle-button]
-       [progress-bar progress dispatch]])))
+       [progress-bar progress msg-ch]])))
 
 (defn stream-control-bar []
   [:div.control-bar.live
@@ -184,10 +193,8 @@
    [fullscreen-toggle-button]
    [progress-bar 0 (fn [& _])]])
 
-(defn start-overlay [dispatch]
-  (letfn [(on-click [ev]
-            (.preventDefault ev)
-            (dispatch (m/->TogglePlay)))]
+(defn start-overlay [msg-ch]
+  (let [on-click (send! msg-ch (m/->TogglePlay))]
     (fn []
       [:div.start-prompt {:on-click on-click}
        [:div.play-button
@@ -201,13 +208,6 @@
 
 (defn player-class-name [theme-name]
   (str "asciinema-theme-" theme-name))
-
-(defn handle-dom-event [dispatch event-mapper dom-event]
-  (when-let [message (event-mapper dom-event)]
-    (.preventDefault dom-event)
-    (if (= message :toggle-fullscreen) ; has to be processed synchronously
-      (fullscreen/toggle (.-currentTarget dom-event))
-      (dispatch message))))
 
 (defn key-press->message [dom-event]
   (case (.-key dom-event)
@@ -233,6 +233,14 @@
     39 (m/->FastForward)
     nil))
 
+(defn handle-key-press [msg-ch dom-event]
+  (when-let [msg (key-press->message dom-event)]
+    (.stopPropagation dom-event)
+    (if (= msg :toggle-fullscreen)
+      (fullscreen/toggle (.-currentTarget dom-event))
+      (put! msg-ch msg))
+    nil))
+
 (defn title-bar [title author author-url author-img-url]
   (let [title-text (if title (str "\"" title "\"") "untitled")]
     [:span.title-bar
@@ -240,9 +248,35 @@
      title-text
      (when author [:span " by " (if author-url [:a {:href author-url} author] author)])]))
 
-(defn player [player dispatch]
-  (let [on-key-press (partial handle-dom-event dispatch key-press->message)
-        on-key-down (partial handle-dom-event dispatch key-down->message)
+(defn activity-chan
+  "Converts given channel into an activity indicator channel. The resulting
+  channel emits false when there are no reads on input channel within msec, then
+  true when new values show up on input, then false again after msec without
+  reads on input, and so on."
+  ([input msec] (activity-chan input msec (chan)))
+  ([input msec output]
+   (go-loop []
+     ;; wait for activity on input channel
+     (<! input)
+     (>! output true)
+
+     ;; wait for inactivity on input channel
+     (loop []
+       (let [t (timeout msec)
+             [_ c] (alts! [input t])]
+         (when (= c input)
+           (recur))))
+     (>! output false)
+
+     (recur))
+   output))
+
+(defn player [player msg-ch]
+  (let [mouse-moves-ch (chan (dropping-buffer 1))
+        user-activity-ch (activity-chan mouse-moves-ch 3000 (chan 1 (map m/->ShowHud)))
+        on-mouse-move (send! mouse-moves-ch true)
+        on-key-press (partial handle-key-press msg-ch)
+        on-key-down (send-value! msg-ch key-down->message)
         wrapper-class-name (reaction (when (:show-hud @player) "hud"))
         player-class-name (reaction (player-class-name (:theme @player)))
         width (reaction (or (:width @player) 80))
@@ -256,11 +290,12 @@
         loading (reaction (:loading @player))
         loaded (reaction (:loaded @player))
         {:keys [title author author-url author-img-url]} @player]
+    (pipe user-activity-ch msg-ch)
     (fn []
-      [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down :class-name @wrapper-class-name}
+      [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down :on-mouse-move on-mouse-move :class-name @wrapper-class-name}
        [:div.asciinema-player {:class-name @player-class-name}
         [terminal width height font-size screen cursor-on]
-        [recorded-control-bar playing current-time total-time dispatch]
+        [recorded-control-bar playing current-time total-time msg-ch]
         (when (or title author) [title-bar title author author-url author-img-url])
-        (when-not (or @loading @loaded) [start-overlay dispatch])
+        (when-not (or @loading @loaded) [start-overlay msg-ch])
         (when @loading [loading-overlay])]])))

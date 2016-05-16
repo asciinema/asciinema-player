@@ -86,29 +86,6 @@
   [& args]
   (atom (apply make-player args)))
 
-(defn activity-chan
-  "Converts given channel into an activity indicator channel. The resulting
-  channel emits false when there are no reads on input channel within msec, then
-  true when new values show up on input, then false again after msec without
-  reads on input, and so on."
-  [input msec]
-  (let [out (chan)]
-    (go-loop []
-      ;; wait for activity on input channel
-      (<! input)
-      (>! out true)
-
-      ;; wait for inactivity on input channel
-      (loop []
-        (let [t (timeout msec)
-              [_ c] (alts! [input t])]
-          (when (= c input)
-            (recur))))
-      (>! out false)
-
-      (recur))
-    out))
-
 (defn start-message-loop!
   "Starts message processing loop. Updates Reagent atom with the result applying
   a message to player state."
@@ -129,12 +106,9 @@
 (defn mount-player-with-ratom
   "Mounts player's Reagent component in DOM and starts message loop."
   [player-atom source-ch dom-node]
-  (let [ui-ch (chan)
-        view-message-handler (fn [message]
-                               (put! ui-ch message)
-                               nil)]
+  (let [ui-ch (chan)]
     (start-message-loop! player-atom #{ui-ch source-ch})
-    (reagent/render-component [view/player player-atom view-message-handler] dom-node)
+    (reagent/render-component [view/player player-atom ui-ch] dom-node)
     nil)) ; TODO: return JS object with control functions (play/pause) here
 
 (defn create-player
