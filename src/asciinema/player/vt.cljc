@@ -570,30 +570,37 @@
 (defn execute-sgr [vt]
   (let [params (or (seq (get-params vt)) [0])]
     (loop [vt vt
-           [p1 p2 p3 & _ :as params] params]
-      (if p1
-        (match [p1 p2 p3]
-               [0  _ _] (recur (reset-attrs vt) (rest params))
-               [1  _ _] (recur (set-attr vt :bold true) (rest params))
-               [3  _ _] (recur (set-attr vt :italic true) (rest params))
-               [4  _ _] (recur (set-attr vt :underline true) (rest params))
-               [5  _ _] (recur (set-attr vt :blink true) (rest params))
-               [7  _ _] (recur (set-attr vt :inverse true) (rest params))
-               [21 _ _] (recur (unset-attr vt :bold) (rest params))
-               [22 _ _] (recur (unset-attr vt :bold) (rest params))
-               [23 _ _] (recur (unset-attr vt :italic) (rest params))
-               [24 _ _] (recur (unset-attr vt :underline) (rest params))
-               [25 _ _] (recur (unset-attr vt :blink) (rest params))
-               [27 _ _] (recur (unset-attr vt :inverse) (rest params))
-               [(fg :guard #(<= 30 % 37)) _ _] (recur (set-attr vt :fg (- fg 30)) (rest params))
-               [38 5 (fg :guard some?)] (recur (set-attr vt :fg fg) (drop 3 params))
-               [39 _ _] (recur (unset-attr vt :fg) (rest params))
-               [(bg :guard #(<= 40 % 47)) _ _] (recur (set-attr vt :bg (- bg 40)) (rest params))
-               [48 5 (bg :guard some?)] (recur (set-attr vt :bg bg) (drop 3 params))
-               [49 _ _] (recur (unset-attr vt :bg) (rest params))
-               [(fg :guard #(<= 90 % 97)) _ _] (recur (set-attr vt :fg (- fg 82)) (rest params))
-               [(bg :guard #(<= 100 % 107)) _ _] (recur (set-attr vt :bg (- bg 92)) (rest params))
-               :else (recur vt (rest params)))
+           params params]
+      (if (seq params)
+        (let [x (first params)]
+          (case x
+            0  (recur (reset-attrs vt) (rest params))
+            1  (recur (set-attr vt :bold true) (rest params))
+            3  (recur (set-attr vt :italic true) (rest params))
+            4  (recur (set-attr vt :underline true) (rest params))
+            5  (recur (set-attr vt :blink true) (rest params))
+            7  (recur (set-attr vt :inverse true) (rest params))
+            21 (recur (unset-attr vt :bold) (rest params))
+            22 (recur (unset-attr vt :bold) (rest params))
+            23 (recur (unset-attr vt :italic) (rest params))
+            24 (recur (unset-attr vt :underline) (rest params))
+            25 (recur (unset-attr vt :blink) (rest params))
+            27 (recur (unset-attr vt :inverse) (rest params))
+            (30 31 32 33 34 35 36 37) (recur (set-attr vt :fg (- x 30)) (rest params))
+            38 (let [[y fg] (take 2 (rest params))]
+                 (if (and (= y 5) fg)
+                   (recur (set-attr vt :fg fg) (drop 3 params))
+                   (recur vt (rest params))))
+            39 (recur (unset-attr vt :fg) (rest params))
+            (40 41 42 43 44 45 46 47) (recur (set-attr vt :bg (- x 40)) (rest params))
+            48 (let [[y bg] (take 2 (rest params))]
+                 (if (and (= y 5) bg)
+                   (recur (set-attr vt :bg bg) (drop 3 params))
+                   (recur vt (rest params))))
+            49 (recur (unset-attr vt :bg) (rest params))
+            (90 91 92 93 94 95 96 97) (recur (set-attr vt :fg (- x 82)) (rest params))
+            (100 101 102 103 104 105 106 107) (recur (set-attr vt :bg (- x 92)) (rest params))
+            (recur vt (rest params))))
         vt))))
 
 (defn execute-vpa [vt]
