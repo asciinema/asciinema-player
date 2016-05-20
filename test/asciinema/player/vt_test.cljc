@@ -1719,6 +1719,7 @@
         "93m" {:fg 11}
         "104m" {:bg 12}
         "1;38;5;88;48;5;99;5m" {:fg 88 :bg 99 :bold true :blink true}
+        "1;38;2;1;101;201;48;2;2;102;202;5m" {:fg [1 101 201] :bg [2 102 202] :bold true :blink true}
         all-on-params all-on-attrs)
       (let [vt (feed-csi vt all-on-params)]
         (are [input-str expected-attrs] (compare-attrs vt input-str expected-attrs)

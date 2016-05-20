@@ -20,8 +20,12 @@
 
 (def CodePoint s/Num)
 
-(def CharAttrs {(s/optional-key :fg) s/Num
-                (s/optional-key :bg) s/Num
+(def Color (s/if vector?
+             [(s/one s/Num "r") (s/one s/Num "g") (s/one s/Num "b")]
+             s/Num))
+
+(def CharAttrs {(s/optional-key :fg) Color
+                (s/optional-key :bg) Color
                 (s/optional-key :bold) s/Bool
                 (s/optional-key :italic) s/Bool
                 (s/optional-key :underline) s/Bool
@@ -587,16 +591,26 @@
             25 (recur (unset-attr vt :blink) (rest params))
             27 (recur (unset-attr vt :inverse) (rest params))
             (30 31 32 33 34 35 36 37) (recur (set-attr vt :fg (- x 30)) (rest params))
-            38 (let [[y fg] (take 2 (rest params))]
-                 (if (and (= y 5) fg)
-                   (recur (set-attr vt :fg fg) (drop 3 params))
-                   (recur vt (rest params))))
+            38 (case (second params)
+                 2 (let [[r g b] (take 3 (drop 2 params))]
+                     (if b ; all r, g and b are not nil
+                       (recur (set-attr vt :fg [r g b]) (drop 5 params))
+                       (recur vt (drop 2 params))))
+                 5 (if-let [fg (first (drop 2 params))]
+                     (recur (set-attr vt :fg fg) (drop 3 params))
+                     (recur vt (drop 2 params)))
+                 (recur vt (rest params)))
             39 (recur (unset-attr vt :fg) (rest params))
             (40 41 42 43 44 45 46 47) (recur (set-attr vt :bg (- x 40)) (rest params))
-            48 (let [[y bg] (take 2 (rest params))]
-                 (if (and (= y 5) bg)
-                   (recur (set-attr vt :bg bg) (drop 3 params))
-                   (recur vt (rest params))))
+            48 (case (second params)
+                 2 (let [[r g b] (take 3 (drop 2 params))]
+                     (if b ; all r, g and b are not nil
+                       (recur (set-attr vt :bg [r g b]) (drop 5 params))
+                       (recur vt (drop 2 params))))
+                 5 (if-let [bg (first (drop 2 params))]
+                     (recur (set-attr vt :bg bg) (drop 3 params))
+                     (recur vt (drop 2 params)))
+                 (recur vt (rest params)))
             49 (recur (unset-attr vt :bg) (rest params))
             (90 91 92 93 94 95 96 97) (recur (set-attr vt :fg (- x 82)) (rest params))
             (100 101 102 103 104 105 106 107) (recur (set-attr vt :bg (- x 92)) (rest params))
