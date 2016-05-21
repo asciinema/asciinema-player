@@ -169,11 +169,11 @@
   ([vt] (scroll-up vt 1))
   ([{:keys [width top-margin bottom-margin char-attrs] :as vt} n]
    (let [filler (empty-line width char-attrs)]
-     (update-in vt [:lines] (fn [lines]
-                              (vec (concat
-                                    (take top-margin lines)
-                                    (scroll-up-lines (subvec lines top-margin (inc bottom-margin)) n filler)
-                                    (drop (inc bottom-margin) lines))))))))
+     (update vt :lines (fn [lines]
+                         (vec (concat
+                               (take top-margin lines)
+                               (scroll-up-lines (subvec lines top-margin (inc bottom-margin)) n filler)
+                               (drop (inc bottom-margin) lines))))))))
 
 (defn scroll-down-lines [lines n filler]
   (let [height (count lines)
@@ -186,11 +186,11 @@
   ([vt] (scroll-down vt 1))
   ([{:keys [width top-margin bottom-margin char-attrs] :as vt} n]
    (let [filler (empty-line width char-attrs)]
-     (update-in vt [:lines] (fn [lines]
-                              (vec (concat
-                                    (take top-margin lines)
-                                    (scroll-down-lines (subvec lines top-margin (inc bottom-margin)) n filler)
-                                    (drop (inc bottom-margin) lines))))))))
+     (update vt :lines (fn [lines]
+                         (vec (concat
+                               (take top-margin lines)
+                               (scroll-down-lines (subvec lines top-margin (inc bottom-margin)) n filler)
+                               (drop (inc bottom-margin) lines))))))))
 
 (defn move-cursor-to-col [vt x]
   (-> vt
@@ -442,22 +442,22 @@
                (repeat (- (count line) x) (empty-cell char-attrs)))))
 
 (defn clear-to-end-of-screen [{{:keys [x y]} :cursor :keys [width height char-attrs] :as vt}]
-  (update-in vt [:lines] (fn [lines]
-                           (let [top-lines (take y lines)
-                                 curr-line (clear-line-right (nth lines y) x char-attrs)
-                                 bottom-lines (repeat (- height y 1) (empty-line width char-attrs))]
-                             (vec (concat top-lines [curr-line] bottom-lines))))))
+  (update vt :lines (fn [lines]
+                      (let [top-lines (take y lines)
+                            curr-line (clear-line-right (nth lines y) x char-attrs)
+                            bottom-lines (repeat (- height y 1) (empty-line width char-attrs))]
+                        (vec (concat top-lines [curr-line] bottom-lines))))))
 
 (defn clear-line-left [line x char-attrs]
   (vec (concat (repeat (inc x) (empty-cell char-attrs))
                (drop (inc x) line))))
 
 (defn clear-to-beginning-of-screen [{{:keys [x y]} :cursor :keys [width height char-attrs] :as vt}]
-  (update-in vt [:lines] (fn [lines]
-                           (let [top-lines (repeat y (empty-line width char-attrs))
-                                 curr-line (clear-line-left (nth lines y) x char-attrs)
-                                 bottom-lines (drop (inc y) lines)]
-                             (vec (concat top-lines [curr-line] bottom-lines))))))
+  (update vt :lines (fn [lines]
+                      (let [top-lines (repeat y (empty-line width char-attrs))
+                            curr-line (clear-line-left (nth lines y) x char-attrs)
+                            bottom-lines (drop (inc y) lines)]
+                        (vec (concat top-lines [curr-line] bottom-lines))))))
 
 (defn clear-screen [{:keys [width height char-attrs] :as vt}]
   (assoc-in vt [:lines] (empty-screen width height char-attrs)))
@@ -490,28 +490,28 @@
 (defn execute-il [{:keys [bottom-margin width height char-attrs] {y :y} :cursor :as vt}]
   (let [n (get-param vt 0 1)
         filler (empty-line width char-attrs)]
-    (update-in vt [:lines] (fn [lines]
-                             (vec (if (<= y bottom-margin)
-                                    (concat
-                                     (take y lines)
-                                     (scroll-down-lines (subvec lines y (inc bottom-margin)) n filler)
-                                     (drop (inc bottom-margin) lines))
-                                    (concat
-                                     (take y lines)
-                                     (scroll-down-lines (drop y lines) n filler))))))))
+    (update vt :lines (fn [lines]
+                        (vec (if (<= y bottom-margin)
+                               (concat
+                                (take y lines)
+                                (scroll-down-lines (subvec lines y (inc bottom-margin)) n filler)
+                                (drop (inc bottom-margin) lines))
+                               (concat
+                                (take y lines)
+                                (scroll-down-lines (drop y lines) n filler))))))))
 
 (defn execute-dl [{:keys [bottom-margin width height char-attrs] {y :y} :cursor :as vt}]
   (let [n (get-param vt 0 1)
         filler (empty-line width char-attrs)]
-    (update-in vt [:lines] (fn [lines]
-                             (vec (if (<= y bottom-margin)
-                                    (concat
-                                     (take y lines)
-                                     (scroll-up-lines (subvec lines y (inc bottom-margin)) n filler)
-                                     (drop (inc bottom-margin) lines))
-                                    (concat
-                                     (take y lines)
-                                     (scroll-up-lines (drop y lines) n filler))))))))
+    (update vt :lines (fn [lines]
+                        (vec (if (<= y bottom-margin)
+                               (concat
+                                (take y lines)
+                                (scroll-up-lines (subvec lines y (inc bottom-margin)) n filler)
+                                (drop (inc bottom-margin) lines))
+                               (concat
+                                (take y lines)
+                                (scroll-up-lines (drop y lines) n filler))))))))
 
 (defn execute-dch [{{:keys [x y]} :cursor :keys [width char-attrs] :as vt}]
   (let [vt (if (>= x width) (move-cursor-to-col vt (dec width)) vt)
