@@ -27,30 +27,54 @@
 (defn send! [ch msg]
   (send-value! ch (fn [_] msg)))
 
-(defn fg-color [fg bold?]
-  (if (and fg bold? (< fg 8)) (+ fg 8) fg))
+(defn indexed-color? [c]
+  (or (number? c)
+      (= c "fg")
+      (= c "bg")))
 
-(defn bg-color [bg blink?]
-  (if (and bg blink? (< bg 8)) (+ bg 8) bg))
+(def rgb-color? vector?)
 
-(defn part-class-name [{:keys [fg bg bold blink underline inverse cursor]} cursor-on]
-  (let [fg (fg-color fg bold)
-        bg (bg-color bg blink)
-        inverse (if (and cursor cursor-on) (not inverse) inverse)
-        final-fg (if inverse (or bg "bg") fg)
-        final-bg (if inverse (or fg "fg") bg)
-        fg-class (if final-fg (str "fg-" final-fg))
-        bg-class (if final-bg (str "bg-" final-bg))
+(defn color-class-name [color high-intensity prefix]
+  (when (indexed-color? color)
+    (let [color (if (and high-intensity (< color 8))
+                  (+ color 8)
+                  color)]
+      (str prefix color))))
+
+(defn part-class-name [{:keys [fg bg bold blink underline inverse cursor]}]
+  (let [fg-final (if inverse (or bg "bg") fg)
+        bg-final (if inverse (or fg "fg") bg)
+        fg-class (color-class-name fg-final bold "fg-")
+        bg-class (color-class-name bg-final blink "bg-")
         bold-class (when bold "bright")
         underline-class (when underline "underline")
         cursor-class (when cursor "cursor")
         classes (remove nil? [fg-class bg-class bold-class underline-class cursor-class])]
-    (string/join " " classes)))
+    (when (seq classes)
+      (string/join " " classes))))
 
-(def part-class-name-memoized (memoize part-class-name))
+(defn css-rgb [[r g b]]
+  (str "rgb(" r "," g "," b ")"))
+
+(defn part-style [{:keys [fg bg inverse]}]
+  (let [fg-final (if inverse bg fg)
+        bg-final (if inverse fg bg)]
+    (merge (when (rgb-color? fg-final) {:color (css-rgb fg-final)})
+           (when (rgb-color? bg-final) {:background-color (css-rgb bg-final)}))))
+
+(defn part-props [{:keys [inverse cursor] :as attrs}]
+  (let [inverse (if cursor (not inverse) inverse)
+        attrs (assoc attrs :inverse inverse)
+        class-name (part-class-name attrs)
+        style (part-style attrs)]
+    (merge (when class-name {:class-name class-name})
+           (when style {:style style}))))
+
+(def part-props-memoized (memoize part-props))
 
 (defn part [[text attrs] cursor-on]
-  [:span {:class-name (part-class-name-memoized attrs cursor-on)} text])
+  (let [attrs (update attrs :cursor #(and % cursor-on))]
+    [:span (part-props-memoized attrs) text]))
 
 (def part-memoized (memoize part))
 
