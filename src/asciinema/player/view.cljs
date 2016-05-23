@@ -22,7 +22,9 @@
   (fn [dom-event]
     (when-let [msg (f dom-event)]
       (put! ch msg)
-      (.stopPropagation dom-event))))
+      (doto dom-event
+        .stopPropagation
+        .preventDefault))))
 
 (defn send! [ch msg]
   (send-value! ch (fn [_] msg)))
@@ -259,7 +261,9 @@
 
 (defn handle-key-press [msg-ch dom-event]
   (when-let [msg (key-press->message dom-event)]
-    (.stopPropagation dom-event)
+    (doto dom-event
+      .stopPropagation
+      .preventDefault)
     (if (= msg :toggle-fullscreen)
       (fullscreen/toggle (.-currentTarget dom-event))
       (put! msg-ch msg))
