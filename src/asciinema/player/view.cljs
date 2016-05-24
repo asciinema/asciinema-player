@@ -22,9 +22,7 @@
   (fn [dom-event]
     (when-let [msg (f dom-event)]
       (put! ch msg)
-      (doto dom-event
-        .stopPropagation
-        .preventDefault))))
+      (.stopPropagation dom-event))))
 
 (defn send! [ch msg]
   (send-value! ch (fn [_] msg)))
@@ -259,15 +257,19 @@
     39 (m/->FastForward)
     nil))
 
-(defn handle-key-press [msg-ch dom-event]
+(defn handle-key-press [dom-event]
   (when-let [msg (key-press->message dom-event)]
-    (doto dom-event
-      .stopPropagation
-      .preventDefault)
+    (.preventDefault dom-event)
     (if (= msg :toggle-fullscreen)
-      (fullscreen/toggle (.-currentTarget dom-event))
-      (put! msg-ch msg))
-    nil))
+      (do
+        (fullscreen/toggle (.-currentTarget dom-event))
+        nil)
+      msg)))
+
+(defn handle-key-down [dom-event]
+  (when-let [msg (key-down->message dom-event)]
+    (.preventDefault dom-event)
+    msg))
 
 (defn title-bar [title author author-url author-img-url]
   (let [title-text (if title (str "\"" title "\"") "untitled")]
@@ -303,8 +305,8 @@
   (let [mouse-moves-ch (chan (dropping-buffer 1))
         user-activity-ch (activity-chan mouse-moves-ch 3000 (chan 1 (map m/->ShowHud)))
         on-mouse-move (send! mouse-moves-ch true)
-        on-key-press (partial handle-key-press msg-ch)
-        on-key-down (send-value! msg-ch key-down->message)
+        on-key-press (send-value! msg-ch handle-key-press)
+        on-key-down (send-value! msg-ch handle-key-down)
         wrapper-class-name (reaction (when (:show-hud @player) "hud"))
         player-class-name (reaction (player-class-name (:theme @player)))
         width (reaction (or (:width @player) 80))
