@@ -46,9 +46,11 @@
 (defn time-frames
   "Returns infinite seq of time frames."
   []
-  (iterate (fn [[a _]]
-             [(inc a) (inc a)])
-           [0 0])) ; TODO use f/frame constructor
+  (let [interval (/ 1 3)]
+    (map (fn [n]
+           (let [t (* interval n)]
+             (f/frame t t)))
+         (range))))
 
 (defn screen-at
   "Returns screen state (lines + cursor) at given time (in seconds)."
