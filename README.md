@@ -30,7 +30,8 @@ Features:
 * looped playback,
 * starting playback at specific time,
 * keyboard shortcuts,
-* multiple color schemes,
+* multiple color schemes for standard 16 colors,
+* 256 color palette / 24-bit true color (ISO-8613-3),
 * full-screen mode.
 
 You can see the player in action on [asciinema.org](https://asciinema.org).
