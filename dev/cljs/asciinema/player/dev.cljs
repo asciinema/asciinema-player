@@ -6,6 +6,7 @@
             [asciinema.player.source :as source]
             [asciinema.player.view :as view]
             [asciinema.player.format.asciicast-v0 :as v0]
+            [asciinema.player.format.asciicast-v1 :as v1]
             [clojure.walk :as walk]
             [cljs.core.async :refer [chan >! <! put!]]
             [schema.core :as s]
@@ -140,8 +141,8 @@
 ;;     (def v1-json (<! (fetch-json v1-url)))))
 
 ;; (go
-;;   (let [v1-frames (p/build-v1-frames v1-json)]
-;;     (time (last v1-frames))))
+;;   (let [v1-frames (v1/build-v1-frames v1-json)]
+;;     (time (last (take 500 v1-frames)))))
 
 ;; (let [v1-frames (p/build-v1-frames v1-json)]
 ;;   (-> v1-frames (nth 45) last p/vt->frame :lines vec (nth 13) ffirst))
