@@ -915,7 +915,7 @@
   (let [{{old-state :state} :parser} vt
         [new-state actions] (parse old-state input)]
     (-> vt
-        (assoc-in [:parser :state] new-state)
+        (update :parser assoc :state new-state)
         (execute-actions actions input))))
 
 (defn feed [vt inputs]
