@@ -702,7 +702,7 @@
     vt))
 
 (defn clear [vt input]
-  (update vt :parser merge {:intermediate-chars [] :param-chars []}))
+  (update vt :parser assoc :intermediate-chars [] :param-chars []))
 
 (defn collect [vt input]
   (update-in vt [:parser :intermediate-chars] conj input))
