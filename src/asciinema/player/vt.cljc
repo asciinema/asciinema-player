@@ -464,7 +464,7 @@
                         (vec (concat top-lines [curr-line] bottom-lines))))))
 
 (defn clear-screen [{:keys [width height char-attrs] :as vt}]
-  (assoc-in vt [:lines] (empty-screen width height char-attrs)))
+  (assoc vt :lines (empty-screen width height char-attrs)))
 
 (defn execute-ed [vt]
   (let [n (get-param vt 0 0)]
