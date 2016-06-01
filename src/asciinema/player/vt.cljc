@@ -251,7 +251,7 @@
              :next-print-wraps false
              :origin-mode origin-mode
              :auto-wrap-mode auto-wrap-mode)
-      (update-in [:cursor] merge cursor)))
+      (update :cursor merge cursor)))
 
 (defn set-mode [vt intermediate param]
   (match [intermediate param]
@@ -320,7 +320,7 @@
 
 (defn execute-hts [{{:keys [x]} :cursor :keys [width] :as vt}]
   (if (< 0 x width)
-    (update-in vt [:tabs] conj x)
+    (update vt :tabs conj x)
     vt))
 
 (defn execute-ri [{:keys [top-margin] {y :y} :cursor :as vt}]
@@ -530,9 +530,9 @@
 (defn execute-ctc [{{:keys [x]} :cursor :keys [width] :as vt}]
   (let [n (get-param vt 0 0)]
     (condp = n
-      0 (if (< 0 x width) (update-in vt [:tabs] conj x) vt)
-      2 (update-in vt [:tabs] disj x)
-      5 (update-in vt [:tabs] empty)
+      0 (if (< 0 x width) (update vt :tabs conj x) vt)
+      2 (update vt :tabs disj x)
+      5 (update vt :tabs empty)
       vt)))
 
 (defn execute-ech [{{:keys [x y]} :cursor :keys [width char-attrs] :as vt}]
@@ -550,8 +550,8 @@
 (defn execute-tbc [{{:keys [x]} :cursor :as vt}]
   (let [n (get-param vt 0 0)]
     (condp = n
-      0 (update-in vt [:tabs] disj x)
-      3 (update-in vt [:tabs] empty)
+      0 (update vt :tabs disj x)
+      3 (update vt :tabs empty)
       vt)))
 
 (defn execute-sm [vt]
@@ -563,13 +563,13 @@
     (reduce #(reset-mode %1 intermediate %2) vt (get-params vt))))
 
 (defn reset-attrs [vt]
-  (update-in vt [:char-attrs] empty))
+  (update vt :char-attrs empty))
 
 (defn set-attr [vt attr-name value]
   (assoc-in vt [:char-attrs attr-name] value))
 
 (defn unset-attr [vt attr-name]
-  (update-in vt [:char-attrs] dissoc attr-name))
+  (update vt :char-attrs dissoc attr-name))
 
 (defn execute-sgr [vt]
   (let [params (or (seq (get-params vt)) [0])]
@@ -648,7 +648,7 @@
   vt)
 
 (defn replace-char [line x cell]
-  (assoc-in line [x] cell))
+  (assoc line x cell))
 
 (defn insert-char [line x cell]
   (vec (concat
@@ -702,7 +702,7 @@
     vt))
 
 (defn clear [vt input]
-  (update-in vt [:parser] merge {:intermediate-chars [] :param-chars []}))
+  (update vt :parser merge {:intermediate-chars [] :param-chars []}))
 
 (defn collect [vt input]
   (update-in vt [:parser :intermediate-chars] conj input))
