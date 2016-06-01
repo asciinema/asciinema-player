@@ -468,7 +468,7 @@
 
 (defn execute-ed [vt]
   (let [n (get-param vt 0 0)]
-    (condp = n
+    (case n
       0 (clear-to-end-of-screen vt)
       1 (clear-to-beginning-of-screen vt)
       2 (clear-screen vt)
@@ -477,7 +477,7 @@
 (defn execute-el [{:keys [width height char-attrs] {:keys [x y]} :cursor :as vt}]
   (let [n (get-param vt 0 0)]
     (update-in vt [:lines y] (fn [line]
-                               (condp = n
+                               (case n
                                  0 (clear-line-right line x char-attrs)
                                  1 (clear-line-left line x char-attrs)
                                  2 (empty-line width char-attrs)
@@ -529,7 +529,7 @@
 
 (defn execute-ctc [{{:keys [x]} :cursor :keys [width] :as vt}]
   (let [n (get-param vt 0 0)]
-    (condp = n
+    (case n
       0 (if (< 0 x width) (update vt :tabs conj x) vt)
       2 (update vt :tabs disj x)
       5 (update vt :tabs empty)
@@ -549,7 +549,7 @@
 
 (defn execute-tbc [{{:keys [x]} :cursor :as vt}]
   (let [n (get-param vt 0 0)]
-    (condp = n
+    (case n
       0 (update vt :tabs disj x)
       3 (update vt :tabs empty)
       vt)))
@@ -684,7 +684,7 @@
     (do-print vt input)))
 
 (defn execute [vt input]
-  (if-let [action (condp = input
+  (if-let [action (case input
                     0x08 execute-bs
                     0x09 execute-ht
                     0x0a execute-lf
@@ -722,7 +722,7 @@
          :else vt))
 
 (defn csi-dispatch [vt input]
-  (if-let [action (condp = input
+  (if-let [action (case input
                     0x40 execute-ich
                     0x41 execute-cuu
                     0x42 execute-cud
