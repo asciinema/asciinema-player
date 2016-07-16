@@ -31,6 +31,7 @@
       this.opt('cols', 'width', 0, parseInt),
       this.opt('rows', 'height', 0, parseInt),
       this.opt('autoplay', 'autoPlay', true, Boolean),
+      this.opt('preload', 'preload', true, Boolean),
       this.opt('loop', 'loop', true, Boolean),
       this.opt('start-at', 'startAt', 0, parseInt),
       this.opt('speed', 'speed', 1, parseFloat),
