@@ -43,7 +43,7 @@
       this.opt('author-img-url', 'authorImgURL')
     );
 
-    asciinema_player.core.CreatePlayer(this, this.getAttribute('src'), opts);
+    asciinema.player.js.CreatePlayer(this, this.getAttribute('src'), opts);
   };
 
   document.registerElement('asciinema-player', { prototype: AsciinemaPlayerProto });
