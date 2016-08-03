@@ -233,29 +233,34 @@
 (defn player-class-name [theme-name]
   (str "asciinema-theme-" theme-name))
 
+(defn has-modifiers? [dom-event]
+  (some #(aget dom-event %) ["altKey" "shiftKey" "metaKey" "ctrlKey"]))
+
 (defn key-press->message [dom-event]
-  (case (.-key dom-event)
-    " " (m/->TogglePlay)
-    "f" :toggle-fullscreen
-    "0" (m/->Seek 0.0)
-    "1" (m/->Seek 0.1)
-    "2" (m/->Seek 0.2)
-    "3" (m/->Seek 0.3)
-    "4" (m/->Seek 0.4)
-    "5" (m/->Seek 0.5)
-    "6" (m/->Seek 0.6)
-    "7" (m/->Seek 0.7)
-    "8" (m/->Seek 0.8)
-    "9" (m/->Seek 0.9)
-    ">" (m/->SpeedUp)
-    "<" (m/->SpeedDown)
-    nil))
+  (when-not (has-modifiers? dom-event)
+    (case (.-key dom-event)
+      " " (m/->TogglePlay)
+      "f" :toggle-fullscreen
+      "0" (m/->Seek 0.0)
+      "1" (m/->Seek 0.1)
+      "2" (m/->Seek 0.2)
+      "3" (m/->Seek 0.3)
+      "4" (m/->Seek 0.4)
+      "5" (m/->Seek 0.5)
+      "6" (m/->Seek 0.6)
+      "7" (m/->Seek 0.7)
+      "8" (m/->Seek 0.8)
+      "9" (m/->Seek 0.9)
+      ">" (m/->SpeedUp)
+      "<" (m/->SpeedDown)
+      nil)))
 
 (defn key-down->message [dom-event]
-  (case (.-which dom-event)
-    37 (m/->Rewind)
-    39 (m/->FastForward)
-    nil))
+  (when-not (has-modifiers? dom-event)
+    (case (.-which dom-event)
+      37 (m/->Rewind)
+      39 (m/->FastForward)
+      nil)))
 
 (defn handle-key-press [dom-event]
   (when-let [msg (key-press->message dom-event)]
