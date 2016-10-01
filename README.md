@@ -12,7 +12,7 @@ asciinema player is an open-source terminal session player written in
 ClojureScript. Contrary to other "video" players asciinema player doesn't play
 heavy-weight video files (`.mp4`, `.webm` etc) but instead it plays light-weight
 terminal session files called
-[asciicasts](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v1.md).
+[asciicasts](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v1.md) (simple `.json` files).
 
 Asciicast is a capture of terminal's raw output and thus the player comes with
 its own terminal emulator based on
@@ -22,8 +22,14 @@ about (input is handled by your terminal+shell at the time of recording anyway)
 and its handling of escape sequences is fully compatible with most modern
 terminal emulators like xterm, Gnome Terminal, iTerm, mosh etc.
 
-Features:
+You can see the player in action on [asciinema.org](https://asciinema.org).
 
+If you don't want to depend on asciinema.org and you prefer to host the player
+and the recordings yourself then read on, it's very simple.
+
+## Features
+
+* HTML5 `<asciinema-player>` element you can use in your website's markup
 * copy-paste of terminal content (it's just a text after all!),
 * predefined and custom font sizes,
 * custom playback speeds,
@@ -34,15 +40,12 @@ Features:
 * 256 color palette / 24-bit true color (ISO-8613-3),
 * full-screen mode.
 
-You can see the player in action on [asciinema.org](https://asciinema.org).
+## Self-hosting quick start
 
-If you don't want to depend on asciinema.org and you prefer to host the player
-and the recordings yourself then read on, it's very simple.
+The following example shows how to use asciinema player on you own website,
+without depending on asciinema.org.
 
-## Quick start
-
-The following example assumes you have obtained terminal session recording file
-by either:
+It assumes you have obtained terminal session recording file by either:
 
 * recording terminal session to a local file with `asciinema rec demo.json`
   ([more details on recording](https://github.com/asciinema/asciinema)),
@@ -57,135 +60,107 @@ only need `asciinema-player.js` and `asciinema-player.css` files.
 
 ### Use the player in your HTML page
 
-First, add player files (`asciinema-player.js` and `asciinema-player.css`)
-together with the recording `demo.json` file to your site assets.
+First, add `asciinema-player.js`, `asciinema-player.css`and the `.json` file
+with your recording to your site's assets.
 
-Then add necessary includes to your document's `<head>`:
-
-```html
-<link rel="stylesheet" type="text/css" href="/asciinema-player.css" />
-<script src="/asciinema-player.js"></script>
-```
-
-Now, add empty `<div>` element in your markup where you want the player to show
-up, assigning it `id` attribute. Then initialize the player with this id and the
-URL of the `.json` file containing the recording:
-
-```html
-<div id="player-container"></div>
-<script>
-  asciinema.player.js.CreatePlayer('player-container', '/demo.json');
-</script>
-```
-
-Complete example:
+Then add necessary includes to your HTML document:
 
 ```html
 <html>
 <head>
+  ...
   <link rel="stylesheet" type="text/css" href="/asciinema-player.css" />
-  <script src="/asciinema-player.js"></script>
+  ...
 </head>
 <body>
-  <div id="player-container"></div>
-  <script>
-    asciinema.player.js.CreatePlayer('player-container', '/demo.json');
-  </script>
+  ...
+  <asciinema-player src="/demo.json">
+  ...
+  <script src="/asciinema-player.js"></script>
 </body>
 </html>
 ```
 
-## API
+## `<asciinema-player>` element attributes
 
-Create the player widget with the following JavaScript code:
+### `cols`
 
-```javascript
-asciinema.player.js.CreatePlayer(parent, asciicastURL, options)
-```
+Number of columns of player's terminal.
 
-where:
-
-* `parent` - DOM element into which the player should be inserted (as the only child),
-* `asciicastURL` - URL of the asciicast JSON file to play,
-* `options` - (optional) options object (see below).
-
-### Options
-
-#### `width`
-
-Width of the player (as a number of terminal columns).
-
-When not set it defaults to 80 (until asciicast gets loaded) and to width saved
-in the asciicast file (after it gets loaded).
+When not set it defaults to 80 (until asciicast gets loaded) and to terminal
+width saved in the asciicast file (after it gets loaded).
 
 It's recommended to set it to the same value as in asciicast file to prevent
 player to resize itself from 80x24 to the actual dimensions of the asciicast
 when it gets loaded.
 
-#### `height`
+### `rows`
 
-Height of the player (as a number of terminal lines).
+Number of lines of player's terminal.
 
-When not set it defaults to 24 (until asciicast gets loaded) and to height saved
-in the asciicast file (after it gets loaded).
+When not set it defaults to 24 (until asciicast gets loaded) and to terminal
+height saved in the asciicast file (after it gets loaded).
 
-Same recommendation as for `width` applies here.
+Same recommendation as for `cols` applies here.
 
-#### `autoPlay`
+### `autoplay`
 
-Set to true if playback should start automatically. Defaults to `false`.
+Set this attribute to any value if playback should start automatically. Defaults
+to no autoplay.
 
-#### `preload`
+### `preload`
 
-Set to true if the recording should be preloaded on player's initialization.
-Defaults to `false`.
+Set this attribute to any value if the recording should be preloaded on player's
+initialization. Defaults to no preload.
 
-#### `loop`
+### `loop`
 
-Set to true if playback should be looped. Defaults to `false`.
+Set this attribute to any value if playback should be looped. Defaults to no
+looping.
 
-#### `startAt`
+### `start-at`
 
 Start playback at given time.
 
 Supported formats:
 
 * 123 (number of seconds)
-* "2:03" (string in format "mm:ss")
-* "1:02:03" (string in format "hh:mm:ss")
+* 2:03 ("mm:ss")
+* 1:02:03 ("hh:mm:ss")
 
 Defaults to 0.
 
-#### `speed`
+### `speed`
 
 Playback speed. Defaults to 1 (normal speed). 2 means 2x faster.
 
-#### `poster`
+### `poster`
 
 Poster (preview) to display before playback start.
 
 The following poster specifications are supported:
 
-* `"npt:2:34"` - show recording "frame" at given time
-* `"data:text/plain,Poster text"` - show given text
+* `npt:2:34` - show recording "frame" at given time
+* `data:text/plain,Poster text` - show given text
 
-The easiest way of specifying a poster is to use `"npt:2:34"` format. This will
+The easiest way of specifying a poster is to use `npt:2:34` format. This will
 preload the recording and display terminal contents from the recording at 2 min
 34 s.
 
-Alternatively, a `poster` value of `"data:text/plain,This will be printed as
-poster\n\rThis in second line"` will display arbitrary text. All
-[ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code) can be used
-to add color and move the cursor around to produce good looking poster. You need
-to replace usual `\xXX` hex syntax with Unicode `\u00XX` though.
+Alternatively, a `poster` value of `data:text/plain,This will be printed as
+poster\n\rThis in second line` will display arbitrary text.
+All [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code) can be
+used to add color and move the cursor around to produce good looking poster. You
+need to replace usual `\xXX` hex syntax with Unicode `\u00XX` though.
 
 Example of text poster with cursor positioning:
 
     data:text/plain,I'm regular \u001b[1;32mI'm bold green\u001b[3BI'm 3 lines down
 
-Defaults to "frame" at `startAt` (or blank terminal when `startAt` is 0).
+Defaults to screen contents at `start-at` (or blank terminal when `start-at` is
+0).
 
-#### `fontSize`
+### `font-size`
 
 Size of the terminal font.
 
@@ -198,7 +173,7 @@ Possible values:
 
 Defaults to `small`.
 
-#### `theme`
+### `theme`
 
 Terminal color theme.
 
@@ -212,38 +187,27 @@ One of:
 
 Defaults to `asciinema`.
 
-#### `title`
+### `title`
 
 Title of the asciicast, displayed in the titlebar in fullscreen mode.
 
-#### `author`
+### `author`
 
 Author of the asciicast, displayed in the titlebar in fullscreen mode.
 
-#### `authorURL`
+### `author-url`
 
 URL of the author's homepage/profile. Author name (`author` above) is linked to
 this URL.
 
-#### `authorImgURL`
+### `author-img-url`
 
 URL of the author's image, displayed in the titlebar in fullscreen mode.
 
 ### Example usage with options
 
 ```html
-<div id="player-container"></div>
-<script>
-  asciinema.player.js.CreatePlayer(
-    "player-container",
-    "/demo.json",
-    {
-      speed: 2,
-      theme: "solarized-dark",
-      poster: "data:text/plain,\u001b[5;5HAwesome \u001b[1;33mdemo!"
-    }
-  );
-</script>
+<asciinema-player src="/demo.json" speed="2" theme="solarized-dark" poster="data:text/plain,\u001b[5;5HAwesome \u001b[1;33mdemo!"></asciinema-player>
 ```
 
 ## Keyboard shortcuts
