@@ -29,7 +29,7 @@ and the recordings yourself then read on, it's very simple.
 
 ## Features
 
-* HTML5 `<asciinema-player>` element you can use in your website's markup
+* HTML5 `<asciinema-player>` element you can use in your website's markup,
 * copy-paste of terminal content (it's just a text after all!),
 * predefined and custom font sizes,
 * custom playback speeds,
@@ -42,7 +42,7 @@ and the recordings yourself then read on, it's very simple.
 
 ## Self-hosting quick start
 
-The following example shows how to use asciinema player on you own website,
+The following example shows how to use asciinema player on your own website,
 without depending on asciinema.org.
 
 It assumes you have obtained terminal session recording file by either:
