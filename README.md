@@ -2,9 +2,9 @@
 
 [![Build Status](https://travis-ci.org/asciinema/asciinema-player.svg?branch=master)](https://travis-ci.org/asciinema/asciinema-player)
 
-Web player for terminal session recordings (as produced by
-[asciinema recorder](https://github.com/asciinema/asciinema)) that you can use
-on your website.
+Web player for terminal session recordings (as produced
+by [asciinema recorder](https://github.com/asciinema/asciinema)) that you can
+use on your website by simply adding `<asciinema-player>` tag.
 
 ## About
 
