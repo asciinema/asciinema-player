@@ -74,7 +74,7 @@ Then add necessary includes to your HTML document:
 </head>
 <body>
   ...
-  <asciinema-player src="/demo.json">
+  <asciinema-player src="/demo.json"></asciinema-player>
   ...
   <script src="/asciinema-player.js"></script>
 </body>
