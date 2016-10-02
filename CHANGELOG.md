@@ -1,5 +1,9 @@
 # asciinema player changelog
 
+## 2.3.0 (2016-10-02)
+
+* `<asciinema-player>` HTML5 element for even simpler self-hosting
+
 ## 2.2.0 (2016-04-22)
 
 * New option: `preload`, for prefetching of recording on player initialization
