@@ -4,16 +4,15 @@
   :license {:name "GNU GPL v3"
             :url "http://www.gnu.org/licenses/gpl-3.0.txt"}
 
-  :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/clojurescript "1.7.170"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
+                 [org.clojure/clojurescript "1.9.293"]
                  [org.clojure/core.async "0.2.374"]
                  [reagent "0.5.1"]
                  [devcards "0.2.0-3"]
                  [org.clojure/test.check "0.8.2"]
                  [org.clojure/core.match "0.3.0-alpha4"]
-                 [prismatic/schema "1.1.0"]
-                 [com.cognitect/transit-cljs "0.8.237"] ; to prevent warning
-                 [cljs-ajax "0.3.11"]]
+                 [prismatic/schema "1.1.3"]
+                 [cljs-ajax "0.5.8"]]
 
   :plugins [[lein-cljsbuild "1.1.2"]
             [lein-figwheel "0.5.0-2"]
@@ -56,7 +55,7 @@
                                              :optimizations :none}}
                        :test {:source-paths ["src" "test"]
                               :compiler {:output-to "resources/public/js/test.js"
-                                         :source-map "resources/public/js/test.js.map"
+                                         :source-map true
                                          :optimizations :none
                                          :pretty-print false
                                          :main "asciinema.player.runner"}}
