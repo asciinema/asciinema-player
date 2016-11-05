@@ -1,5 +1,6 @@
 (ns asciinema.player.view
   (:require [clojure.string :as string]
+            [reagent.core :as reagent]
             [reagent.ratom :refer-macros [reaction]]
             [cljs.core.async :refer [chan >! <! put! alts! timeout dropping-buffer pipe]]
             [asciinema.player.messages :as m]
@@ -326,11 +327,17 @@
         loaded (reaction (:loaded @player))
         {:keys [title author author-url author-img-url]} @player]
     (pipe user-activity-ch msg-ch)
-    (fn []
-      [:div.asciinema-player-wrapper {:tab-index -1 :on-key-press on-key-press :on-key-down on-key-down :on-mouse-move on-mouse-move :class-name @wrapper-class-name}
-       [:div.asciinema-player {:class-name @player-class-name}
-        [terminal width height font-size screen cursor-on]
-        [recorded-control-bar playing current-time total-time msg-ch]
-        (when (or title author) [title-bar title author author-url author-img-url])
-        (when-not (or @loading @loaded) [start-overlay msg-ch])
-        (when @loading [loading-overlay])]])))
+    (reagent/create-class
+     {:display-name "asciinema-player"
+      :reagent-render (fn [player msg-ch]
+                        [:div.asciinema-player-wrapper {:tab-index -1
+                                                        :on-key-press on-key-press
+                                                        :on-key-down on-key-down
+                                                        :on-mouse-move on-mouse-move
+                                                        :class-name @wrapper-class-name}
+                         [:div.asciinema-player {:class-name @player-class-name}
+                          [terminal width height font-size screen cursor-on]
+                          [recorded-control-bar playing current-time total-time msg-ch]
+                          (when (or title author) [title-bar title author author-url author-img-url])
+                          (when-not (or @loading @loaded) [start-overlay msg-ch])
+                          (when @loading [loading-overlay])]])})))
