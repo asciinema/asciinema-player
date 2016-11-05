@@ -4,6 +4,7 @@
 
 * Fixed `<asciinema-player>` element loading under Chrome
 * Upgraded Reagent (and thus React) dependency
+* Changed paths of build artifacts
 
 ## 2.3.0 (2016-10-02)
 

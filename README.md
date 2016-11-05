@@ -254,7 +254,7 @@ To build stand-alone `.js` and `.css` files run:
     lein cljsbuild once release
     lein less once
 
-This produces `resources/public/js/release.js` and `resources/public/css/main.css`.
+This produces `resources/public/js/asciinema-player.js` and `resources/public/css/asciinema-player.css`.
 
 ## Contributing
 
