@@ -1,6 +1,7 @@
 (ns asciinema.player.js
   (:require [clojure.set :refer [rename-keys]]
-            [asciinema.player.core :as p]))
+            [asciinema.player.core :as p]
+            [asciinema.player.element])) ; DON'T REMOVE
 
 (defn ^:export CreatePlayer
   "JavaScript API for creating the player."
@@ -15,3 +16,9 @@
                                    :startAt :start-at
                                    :authorImgURL :author-img-url}))]
      (p/create-player dom-node url options))))
+
+;; This has to be executed *after* asciinema.player.js.CreatePlayer is defined,
+;; as browsers implementing CustomElement natively (like Chrome) call element's
+;; attachedCallback synchronously.
+
+(js/registerAsciinemaPlayerElement)

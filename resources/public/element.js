@@ -1,4 +1,4 @@
-(function() {
+function registerAsciinemaPlayerElement() {
   var AsciinemaPlayerProto = Object.create(HTMLElement.prototype);
 
   function merge() {
@@ -55,4 +55,4 @@
   };
 
   document.registerElement('asciinema-player', { prototype: AsciinemaPlayerProto });
-})();
+};

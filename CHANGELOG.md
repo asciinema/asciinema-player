@@ -1,5 +1,9 @@
 # asciinema player changelog
 
+## 2.3.1 (2016-11-05)
+
+* Fixed `<asciinema-player>` element loading under Chrome
+
 ## 2.3.0 (2016-10-02)
 
 * `<asciinema-player>` HTML5 element for even simpler self-hosting

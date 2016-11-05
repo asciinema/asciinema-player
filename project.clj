@@ -43,6 +43,8 @@
                                         :output-to "resources/public/js/dev.js"
                                         :output-dir "resources/public/js/dev"
                                         :source-map true
+                                        :foreign-libs [{:file "public/element.js"
+                                                        :provides ["asciinema.player.element"]}]
                                         :optimizations :none
                                         :pretty-print true}}
                        :devcards {:source-paths ["src" "dev/cards" ]
@@ -52,17 +54,23 @@
                                              :output-to "resources/public/js/devcards.js"
                                              :output-dir "resources/public/js/devcards"
                                              :source-map-timestamp true
+                                             :foreign-libs [{:file "public/element.js"
+                                                             :provides ["asciinema.player.element"]}]
                                              :optimizations :none}}
                        :test {:source-paths ["src" "test"]
                               :compiler {:output-to "resources/public/js/test.js"
                                          :source-map true
+                                         :foreign-libs [{:file "public/element.js"
+                                                         :provides ["asciinema.player.element"]}]
                                          :optimizations :none
                                          :pretty-print false
                                          :main "asciinema.player.runner"}}
                        :release {:source-paths ["src"]
                                  :compiler {:output-to "resources/public/js/release.js"
                                             :output-dir "resources/public/js/release"
-                                            :preamble ["license.js" "public/CustomEvent.js" "public/CustomElements.min.js" "public/element.js"]
+                                            :preamble ["license.js" "public/CustomEvent.js" "public/CustomElements.min.js"]
+                                            :foreign-libs [{:file "public/element.js"
+                                                            :provides ["asciinema.player.element"]}]
                                             :optimizations :advanced
                                             :elide-asserts true
                                             :pretty-print  false}}}}
