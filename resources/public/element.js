@@ -77,6 +77,14 @@ function registerAsciinemaPlayerElement() {
     this.player = undefined;
   };
 
+  AsciinemaPlayerProto.play = function() {
+    this.player.play();
+  };
+
+  AsciinemaPlayerProto.pause = function() {
+    this.player.pause();
+  };
+
   Object.defineProperty(AsciinemaPlayerProto, "duration", {
     get: function() {
       return this.player.getDuration() || 0;

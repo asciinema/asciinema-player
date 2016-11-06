@@ -111,6 +111,12 @@
 (def get-current-time :current-time)
 (def get-duration :duration)
 
+(defn play [{:keys [source]}]
+  (source/start source))
+
+(defn pause [{:keys [source]}]
+  (source/stop source))
+
 (defn seek [{:keys [duration source] :as player} new-time]
   (source/seek source new-time))
 

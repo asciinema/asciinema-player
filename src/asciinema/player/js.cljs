@@ -21,7 +21,9 @@
          player (p/create-player dom-node url options)]
      (clj->js {:getCurrentTime #(p/get-current-time @player)
                :setCurrentTime #(p/seek @player %)
-               :getDuration #(p/get-duration @player)}))))
+               :getDuration #(p/get-duration @player)
+               :play #(p/play @player)
+               :pause #(p/pause @player)}))))
 
 (defn ^:export UnmountPlayer
   "JavaScript API for unmounting the player from given DOM node."

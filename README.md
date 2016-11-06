@@ -247,6 +247,29 @@ document.getElementById('player').currentTime; // 1.23
 document.getElementById('player').currentTime = 33;
 ```
 
+### Methods
+
+#### play
+
+`play` method attempts to begin playback of the recording. If the recording
+hasn't been preloaded then it tries to load it, and then starts the playback.
+
+```javascript
+document.getElementById('player').play();
+```
+
+NOTE: If you want to synchronize asciinema player's playback with other elements
+on the page (for example `<audio>` element) then you should wait for the `play`
+event to occur, which signifies actual start of the playback.
+
+#### pause
+
+`pause` method pauses playback.
+
+```javascript
+document.getElementById('player').pause();
+```
+
 ### Events
 
 #### loadedmetadata, loadeddata, canplay, canplaythrough
