@@ -14,6 +14,7 @@
 
 (defprotocol Source
   (init [this] "Initializes the source")
+  (close [this] "Closes the source, stopping all processes and connections")
   (start [this] "Starts the playback")
   (stop [this] "Stops the playback")
   (toggle [this] "Toggles the playback on/off")
@@ -232,6 +233,9 @@
         (when poster-time
           (show-poster this poster-time msg-ch)))
       msg-ch))
+  (close [this]
+    (stop this)
+    (reset! command-ch nil))
   (start [this]
     (put! @command-ch [:start]))
   (stop [this]
@@ -283,6 +287,8 @@
     (when auto-play?
       (start this))
     @msg-ch)
+  (close [this]
+    (stop this))
   (start [this]
     (when-not @stop-ch
       (let [command-ch (chan)]
@@ -343,6 +349,8 @@
     (reset! msg-ch (chan))
     (when auto-play?
       (start this)))
+  (close [this]
+    (stop this)) ; TODO disconnect ES
   (start [this]
     (when-not @started?
       (reset! started? true)

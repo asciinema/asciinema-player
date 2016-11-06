@@ -1,14 +1,14 @@
 (ns asciinema.player.core
   (:require [reagent.core :as reagent :refer [atom]]
             [asciinema.player.view :as view]
+            [asciinema.player.screen :as screen]
             [asciinema.player.vt :as vt]
             [asciinema.player.messages :as m]
             [asciinema.player.processing]
-            [asciinema.player.source :as source :refer [make-source]]
+            [asciinema.player.source :refer [make-source]]
             [schema.core :as s]
             [cljs.core.async :refer [chan >! <! put! timeout dropping-buffer]]
-            [clojure.string :as str]
-            [clojure.set :as set])
+            [clojure.string :as str])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 (defn parse-npt [t]
@@ -17,7 +17,7 @@
           components (map * (reverse numbers) (iterate (partial * 60) 1))]
       (apply + components))))
 
-(s/defn parse-json-poster :- (s/protocol view/TerminalView)
+(s/defn parse-json-poster :- (s/protocol screen/Screen)
   [json :- s/Str]
   (let [lines (-> json
                   (.replace (js/RegExp. "\\s" "g") "")
@@ -26,7 +26,7 @@
                   (js->clj :keywordize-keys true))]
     {:lines lines}))
 
-(s/defn parse-text-poster :- (s/protocol view/TerminalView)
+(s/defn parse-text-poster :- (s/protocol screen/Screen)
   [text :- s/Str
    width :- s/Num
    height :- s/Num]
@@ -86,39 +86,19 @@
   [& args]
   (atom (apply make-player args)))
 
-(defn start-message-loop!
-  "Starts message processing loop. Updates Reagent atom with the result applying
-  a message to player state."
-  [player-atom initial-channels]
-  (let [channels (atom initial-channels)]
-    (go-loop []
-      (let [[message channel] (alts! (seq @channels))]
-        (when (nil? message)
-          (swap! channels disj channel))
-
-        (when (satisfies? m/Update message)
-          (swap! player-atom #(m/update-player message %)))
-
-        (when (satisfies? m/ChannelSource message)
-          (swap! channels set/union (m/get-channels message @player-atom))))
-      (recur))))
-
 (defn mount-player-with-ratom
-  "Mounts player's Reagent component in DOM and starts message loop."
-  [player-atom source-ch dom-node]
-  (let [ui-ch (chan)]
-    (start-message-loop! player-atom #{ui-ch source-ch})
-    (reagent/render-component [view/player player-atom ui-ch] dom-node)
-    nil)) ; TODO: return JS object with control functions (play/pause) here
+  "Mounts player's Reagent component at given DOM element."
+  [player-atom dom-node]
+  (reagent/render-component [view/player-component player-atom] dom-node)
+  nil) ; TODO: return JS object with control functions (play/pause) here
 
 (defn create-player
-  "Creates the player with the state built from given options by starting
-  message processing loop and mounting Reagent component in DOM."
+  "Creates initial player state and mounts player's Reagent component at given
+  DOM element."
   [dom-node url options]
   (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)
-        player-ratom (make-player-ratom url options)
-        source-ch (source/init (:source @player-ratom))]
-    (mount-player-with-ratom player-ratom source-ch dom-node)))
+        player-ratom (make-player-ratom url options)]
+    (mount-player-with-ratom player-ratom dom-node)))
 
 (defn unmount-player
   "Unmounts player's Reagent component from given DOM element."

@@ -1,18 +1,17 @@
 (ns asciinema.player.view
   (:require [clojure.string :as string]
+            [clojure.set :as set]
             [reagent.core :as reagent]
             [reagent.ratom :refer-macros [reaction]]
             [cljs.core.async :refer [chan >! <! put! alts! timeout dropping-buffer pipe]]
             [asciinema.player.messages :as m]
+            [asciinema.player.source :as source]
             [asciinema.player.util :as util]
+            [asciinema.player.screen :as screen]
             [asciinema.player.fullscreen :as fullscreen])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
-(defprotocol TerminalView
-  (lines [this])
-  (cursor [this]))
-
-(extend-protocol TerminalView
+(extend-protocol screen/Screen
   cljs.core/PersistentArrayMap
   (lines [this]
     (:lines this))
@@ -121,14 +120,14 @@
   (let [class-name (reaction (terminal-class-name @font-size))
         style (reaction (terminal-style @width @height @font-size))]
     (fn []
-      (let [{cursor-x :x cursor-y :y cursor-visible :visible} (cursor @screen)]
+      (let [{cursor-x :x cursor-y :y cursor-visible :visible} (screen/cursor @screen)]
         [:pre.asciinema-terminal
          {:class-name @class-name :style @style}
          (map-indexed (fn [idx parts]
                         (let [cursor-x (when (and cursor-visible (= idx cursor-y)) cursor-x)
                               parts (if cursor-x (insert-cursor parts cursor-x) parts)]
                           ^{:key idx} [line parts cursor-on]))
-                      (lines @screen))]))))
+                      (screen/lines @screen))]))))
 
 (def logo-raw-svg "<defs> <mask id=\"small-triangle-mask\"> <rect width=\"100%\" height=\"100%\" fill=\"white\"/> <polygon points=\"508.01270189221935 433.01270189221935, 208.0127018922194 259.8076211353316, 208.01270189221927 606.217782649107\" fill=\"black\"></polygon> </mask> </defs> <polygon points=\"808.0127018922194 433.01270189221935, 58.01270189221947 -1.1368683772161603e-13, 58.01270189221913 866.0254037844386\" mask=\"url(#small-triangle-mask)\" fill=\"white\"></polygon> <polyline points=\"481.2177826491071 333.0127018922194, 134.80762113533166 533.0127018922194\" stroke=\"white\" stroke-width=\"90\"></polyline>")
 
@@ -307,12 +306,27 @@
      (recur))
    output))
 
-(defn player [player msg-ch]
-  (let [mouse-moves-ch (chan (dropping-buffer 1))
-        user-activity-ch (activity-chan mouse-moves-ch 3000 (chan 1 (map m/->ShowHud)))
-        on-mouse-move (send! mouse-moves-ch true)
-        on-key-press (send-value! msg-ch handle-key-press)
-        on-key-down (send-value! msg-ch handle-key-down)
+(defn start-message-loop!
+  "Starts message processing loop. Updates Reagent atom with the result of
+  applying a message to player state."
+  [player-atom initial-channels]
+  (let [channels (atom initial-channels)]
+    (go-loop []
+      (let [[message channel] (alts! (seq @channels))]
+        (when (nil? message)
+          (swap! channels disj channel))
+
+        (when (satisfies? m/Update message)
+          (swap! player-atom #(m/update-player message %)))
+
+        (when (satisfies? m/ChannelSource message)
+          (swap! channels set/union (m/get-channels message @player-atom))))
+      (recur))))
+
+(defn player* [player ui-ch mouse-moves-ch]
+  (let [on-mouse-move (send! mouse-moves-ch true)
+        on-key-press (send-value! ui-ch handle-key-press)
+        on-key-down (send-value! ui-ch handle-key-down)
         wrapper-class-name (reaction (when (:show-hud @player) "hud"))
         player-class-name (reaction (player-class-name (:theme @player)))
         width (reaction (or (:width @player) 80))
@@ -326,18 +340,30 @@
         loading (reaction (:loading @player))
         loaded (reaction (:loaded @player))
         {:keys [title author author-url author-img-url]} @player]
-    (pipe user-activity-ch msg-ch)
-    (reagent/create-class
-     {:display-name "asciinema-player"
-      :reagent-render (fn [player msg-ch]
-                        [:div.asciinema-player-wrapper {:tab-index -1
-                                                        :on-key-press on-key-press
-                                                        :on-key-down on-key-down
-                                                        :on-mouse-move on-mouse-move
-                                                        :class-name @wrapper-class-name}
-                         [:div.asciinema-player {:class-name @player-class-name}
-                          [terminal width height font-size screen cursor-on]
-                          [recorded-control-bar playing current-time total-time msg-ch]
-                          (when (or title author) [title-bar title author author-url author-img-url])
-                          (when-not (or @loading @loaded) [start-overlay msg-ch])
-                          (when @loading [loading-overlay])]])})))
+    (fn []
+      [:div.asciinema-player-wrapper {:tab-index -1
+                                      :on-key-press on-key-press
+                                      :on-key-down on-key-down
+                                      :on-mouse-move on-mouse-move
+                                      :class-name @wrapper-class-name}
+       [:div.asciinema-player {:class-name @player-class-name}
+        [terminal width height font-size screen cursor-on]
+        [recorded-control-bar playing current-time total-time ui-ch]
+        (when (or title author) [title-bar title author author-url author-img-url])
+        (when-not (or @loading @loaded) [start-overlay ui-ch])
+        (when @loading [loading-overlay])]])))
+
+(defn player-component [player]
+  (let [ui-ch (chan)
+        mouse-moves-ch (chan (dropping-buffer 1))]
+    (fn []
+      (reagent/create-class
+       {:display-name "asciinema-player"
+        :reagent-render #(player* player ui-ch mouse-moves-ch)
+        :component-did-mount (fn [this]
+                               (let [source-ch (source/init (:source @player))
+                                     user-activity-ch (activity-chan mouse-moves-ch 3000 (chan 1 (map m/->ShowHud)))]
+                                 (pipe user-activity-ch ui-ch)
+                                 (start-message-loop! player #{ui-ch source-ch})))
+        :component-will-unmount (fn [this]
+                                  (source/close (:source @player)))}))))

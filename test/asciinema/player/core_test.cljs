@@ -1,7 +1,7 @@
 (ns asciinema.player.core-test
   (:require-macros [cljs.test :refer (is deftest testing)])
   (:require [cljs.test]
-            [asciinema.player.view :as view]
+            [asciinema.player.screen :as screen]
             [asciinema.player.core :as c]))
 
 (deftest test-make-player
@@ -91,6 +91,6 @@
       (is (= (c/parse-poster base64-poster 8 2) {:screen {:lines poster}})))
     (testing "text poster"
       (let [{:keys [screen]} (c/parse-poster text-poster 8 2)]
-        (is (= (view/lines screen) [[["foo     " {}]]
+        (is (= (screen/lines screen) [[["foo     " {}]]
                                     [["bar" {}] ["baz" {:fg 1}] ["  " {}]]]))
-        (is (= (view/cursor screen) {:x 6 :y 1 :visible true}))))))
+        (is (= (screen/cursor screen) {:x 6 :y 1 :visible true}))))))

@@ -1,7 +1,7 @@
 (ns asciinema.player.format.asciicast-v1
   (:require [schema.core :as s]
             [asciinema.player.vt :as vt]
-            [asciinema.player.view :as view]))
+            [asciinema.player.screen :as screen]))
 
 (def StdoutFrame [(s/one s/Num "delay") (s/one s/Str "text to print")])
 
@@ -28,7 +28,7 @@
    :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
    :frames (build-v1-frames asciicast)})
 
-(extend-protocol view/TerminalView
+(extend-protocol screen/Screen
   vt/VT
   (lines [this]
     (vt/compact-lines (:lines this)))

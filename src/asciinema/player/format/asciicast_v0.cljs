@@ -1,7 +1,7 @@
 (ns asciinema.player.format.asciicast-v0
   (:require [schema.core :as s]
             [asciinema.player.vt :as vt]
-            [asciinema.player.view :as view]))
+            [asciinema.player.screen :as screen]))
 
 (def Fragment vt/Fragment) ; TODO decouple from vt
 
@@ -42,7 +42,7 @@
      :duration (reduce #(+ %1 (first %2)) 0 asciicast)
      :frames (build-v0-frames asciicast)}))
 
-(extend-protocol view/TerminalView
+(extend-protocol screen/Screen
   LegacyScreen
   (lines [this]
     (vals (:lines this)))
