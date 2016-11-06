@@ -12,9 +12,9 @@ function registerAsciinemaPlayerElement() {
     return merged;
   }
 
-  AsciinemaPlayerProto.opt = function(attrName, optName, defaultValue, coerceFn) {
+  function attribute(element, attrName, optName, defaultValue, coerceFn) {
     var obj = {};
-    var value = this.getAttribute(attrName);
+    var value = element.getAttribute(attrName);
     if (value !== null) {
       if (value === '' && defaultValue !== undefined) {
         value = defaultValue;
@@ -30,20 +30,20 @@ function registerAsciinemaPlayerElement() {
     var self = this;
 
     var opts = merge(
-      this.opt('cols', 'width', 0, parseInt),
-      this.opt('rows', 'height', 0, parseInt),
-      this.opt('autoplay', 'autoPlay', true, Boolean),
-      this.opt('preload', 'preload', true, Boolean),
-      this.opt('loop', 'loop', true, Boolean),
-      this.opt('start-at', 'startAt', 0, parseInt),
-      this.opt('speed', 'speed', 1, parseFloat),
-      this.opt('poster', 'poster'),
-      this.opt('font-size', 'fontSize'),
-      this.opt('theme', 'theme'),
-      this.opt('title', 'title'),
-      this.opt('author', 'author'),
-      this.opt('author-url', 'authorURL'),
-      this.opt('author-img-url', 'authorImgURL'),
+      attribute(this, 'cols', 'width', 0, parseInt),
+      attribute(this, 'rows', 'height', 0, parseInt),
+      attribute(this, 'autoplay', 'autoPlay', true, Boolean),
+      attribute(this, 'preload', 'preload', true, Boolean),
+      attribute(this, 'loop', 'loop', true, Boolean),
+      attribute(this, 'start-at', 'startAt', 0, parseInt),
+      attribute(this, 'speed', 'speed', 1, parseFloat),
+      attribute(this, 'poster', 'poster'),
+      attribute(this, 'font-size', 'fontSize'),
+      attribute(this, 'theme', 'theme'),
+      attribute(this, 'title', 'title'),
+      attribute(this, 'author', 'author'),
+      attribute(this, 'author-url', 'authorURL'),
+      attribute(this, 'author-img-url', 'authorImgURL'),
       {
         onCanPlay: function() {
           self.dispatchEvent(new CustomEvent("loadedmetadata"));
