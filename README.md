@@ -227,6 +227,16 @@ allowing for programmatical control over the player.
 
 ### Properties
 
+#### duration
+
+`duration` property gives the length of the recording in seconds, or zero if no
+recording data is available (for ex. before `loadedmetadata` event is
+triggered).
+
+```javascript
+document.getElementById('player').duration; // 123.45
+```
+
 #### currentTime
 
 `currentTime` property gives the current playback time in seconds. Setting this
@@ -251,6 +261,10 @@ one of them, e.g. `canplaythrough` (all 4 are supported to make it more in line
 with HTMLVideoElement).
 
 ```javascript
+document.getElementById('player').addEventListener('loadedmetadata', function(e) {
+  console.log("duration is", this.duration);
+}
+
 document.getElementById('player').addEventListener('canplaythrough, function(e) {
   console.log("all ready to play");
 }

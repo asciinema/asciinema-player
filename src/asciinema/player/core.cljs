@@ -109,6 +109,7 @@
     (reagent/unmount-component-at-node dom-node)))
 
 (def get-current-time :current-time)
+(def get-duration :duration)
 
 (defn seek [{:keys [duration source] :as player} new-time]
   (source/seek source new-time))

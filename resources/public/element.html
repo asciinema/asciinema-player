@@ -21,6 +21,7 @@
 
      player.addEventListener('loadedmetadata', function(e) {
        console.log('got "loadedmetadata" event');
+       console.log("duration is", this.duration);
      })
 
      player.addEventListener('loadeddata', function(e) {
