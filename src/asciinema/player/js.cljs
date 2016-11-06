@@ -14,7 +14,9 @@
                                    :snapshot :poster
                                    :authorURL :author-url
                                    :startAt :start-at
-                                   :authorImgURL :author-img-url}))
+                                   :authorImgURL :author-img-url
+                                   :onPlay :on-play
+                                   :onPause :on-pause}))
          player (p/create-player dom-node url options)]
      (clj->js {:getCurrentTime #(p/get-current-time @player)
                :setCurrentTime #(p/seek @player %)}))))

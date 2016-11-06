@@ -12,9 +12,20 @@
     <asciinema-player id="player" src="/asciicasts/frames-10386.json" loop></asciinema-player>
 
     <script>
-     document.getElementById('player').addEventListener('attached', function(e) {
+     var player = document.getElementById('player');
+
+     player.addEventListener('attached', function(e) {
        console.log('got "attached" event');
        /* this.currentTime = 33;*/
+     })
+
+     player.addEventListener('play', function(e) {
+       console.log('got "play" event');
+       console.log("we're at", this.currentTime);
+     })
+
+     player.addEventListener('pause', function(e) {
+       console.log('got "pause" event');
      })
     </script>
 

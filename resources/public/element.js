@@ -27,6 +27,8 @@ function registerAsciinemaPlayerElement() {
   };
 
   AsciinemaPlayerProto.createdCallback = function() {
+    var self = this;
+
     var opts = merge(
       this.opt('cols', 'width', 0, parseInt),
       this.opt('rows', 'height', 0, parseInt),
@@ -41,7 +43,11 @@ function registerAsciinemaPlayerElement() {
       this.opt('title', 'title'),
       this.opt('author', 'author'),
       this.opt('author-url', 'authorURL'),
-      this.opt('author-img-url', 'authorImgURL')
+      this.opt('author-img-url', 'authorImgURL'),
+      {
+        onPlay: function() { self.dispatchEvent(new CustomEvent("play")); },
+        onPause: function() { self.dispatchEvent(new CustomEvent("pause")); }
+      }
     );
 
     this.player = asciinema.player.js.CreatePlayer(this, this.getAttribute('src'), opts);

@@ -117,12 +117,19 @@
 
 (extend-type m/SetPlaying
   m/Update
-  (update-player [this player]
-    (let [playing (:playing this)
-          player (assoc player :playing playing :loaded true)]
-      (if playing
-        (start-blinking player)
-        (stop-blinking player))))
+  (update-player [{new-playing :playing} {current-playing :playing on-play :on-play on-pause :on-pause :as player}]
+    (if (= current-playing new-playing)
+      player
+      (let [player (assoc player :playing new-playing :loaded true)]
+        (if new-playing
+          (do
+            (when on-play
+              (on-play))
+            (start-blinking player))
+          (do
+            (when on-pause
+              (on-pause))
+            (stop-blinking player))))))
 
   m/ChannelSource
   (get-channels [this player]

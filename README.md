@@ -220,8 +220,10 @@ URL of the author's image, displayed in the titlebar in fullscreen mode.
 
 ## Controlling the player programmatically
 
-The player's DOM element has several properties and methods mimicking
-[HTMLVideoElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLVideoElement), allowing for programmatical control over the player.
+The player's DOM element provides several properties, methods and events
+mimicking
+[HTMLVideoElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLVideoElement),
+allowing for programmatical control over the player.
 
 ### Properties
 
@@ -233,6 +235,29 @@ value seeks the recording to the new time.
 ```javascript
 document.getElementById('player').currentTime; // 1.23
 document.getElementById('player').currentTime = 33;
+```
+
+### Events
+
+#### play
+
+The `play` event is fired when playback has begun.
+
+```javascript
+document.getElementById('player').addEventListener('play', function(e) {
+  console.log("it's playing");
+  console.log("we're at", this.currentTime);
+}
+```
+
+#### pause
+
+The `pause` event is fired when playback has been paused.
+
+```javascript
+document.getElementById('player').addEventListener('paused, function(e) {
+  console.log("it's paused");
+}
 ```
 
 ## Keyboard shortcuts
