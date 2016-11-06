@@ -149,7 +149,9 @@ preload the recording and display terminal contents from the recording at 2 min
 
 Example:
 
-    <asciinema-player src="..." poster="npt:2:34"></asciinema-player>
+```html
+<asciinema-player src="..." poster="npt:2:34"></asciinema-player>
+```
 
 Alternatively, a `poster` value of `data:text/plain,This will be printed as
 poster\n\rThis in second line` will display arbitrary text.
@@ -159,7 +161,9 @@ need to replace usual `\xXX` hex syntax with Unicode `\u00XX` though.
 
 Example of using text poster with cursor positioning:
 
-    <asciinema-player src="..." poster="data:text/plain,I'm regular \u001b[1;32mI'm bold green\u001b[3BI'm 3 lines down"></asciinema-player>
+```html
+<asciinema-player src="..." poster="data:text/plain,I'm regular \u001b[1;32mI'm bold green\u001b[3BI'm 3 lines down"></asciinema-player>
+```
 
 Defaults to screen contents at `start-at` (or blank terminal when `start-at` is
 0).
