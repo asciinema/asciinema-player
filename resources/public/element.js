@@ -24,7 +24,7 @@ function registerAsciinemaPlayerElement() {
       obj[optName] = value;
     }
     return obj;
-  }
+  };
 
   AsciinemaPlayerProto.createdCallback = function() {
     var opts = merge(
@@ -52,6 +52,10 @@ function registerAsciinemaPlayerElement() {
     setTimeout(function() {
       self.dispatchEvent(new CustomEvent("attached"));
     }, 0);
+  };
+
+  AsciinemaPlayerProto.detachedCallback = function() {
+    asciinema.player.js.UnmountPlayer(this);
   };
 
   document.registerElement('asciinema-player', { prototype: AsciinemaPlayerProto });

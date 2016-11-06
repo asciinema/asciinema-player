@@ -120,4 +120,10 @@
         source-ch (source/init (:source @player-ratom))]
     (mount-player-with-ratom player-ratom source-ch dom-node)))
 
+(defn unmount-player
+  "Unmounts player's Reagent component from given DOM element."
+  [dom-node]
+  (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)]
+    (reagent/unmount-component-at-node dom-node)))
+
 (enable-console-print!)

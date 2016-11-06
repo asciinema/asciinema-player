@@ -17,6 +17,11 @@
                                    :authorImgURL :author-img-url}))]
      (p/create-player dom-node url options))))
 
+(defn ^:export UnmountPlayer
+  "JavaScript API for unmounting the player from given DOM node."
+  [dom-node]
+  (p/unmount-player dom-node))
+
 ;; This has to be executed *after* asciinema.player.js.CreatePlayer is defined,
 ;; as browsers implementing CustomElement natively (like Chrome) call element's
 ;; attachedCallback synchronously.
