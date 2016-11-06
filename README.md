@@ -218,6 +218,23 @@ URL of the author's image, displayed in the titlebar in fullscreen mode.
 <asciinema-player src="/demo.json" speed="2" theme="solarized-dark" loop="loop" poster="data:text/plain,\u001b[5;5HAwesome \u001b[1;33mdemo!"></asciinema-player>
 ```
 
+## Controlling the player programmatically
+
+The player's DOM element has several properties and methods mimicking
+[HTMLVideoElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLVideoElement), allowing for programmatical control over the player.
+
+### Properties
+
+#### currentTime
+
+`currentTime` property gives the current playback time in seconds. Setting this
+value seeks the recording to the new time.
+
+```javascript
+document.getElementById('player').currentTime; // 1.23
+document.getElementById('player').currentTime = 33;
+```
+
 ## Keyboard shortcuts
 
 The following keyboard shortcuts are currently available (when the player

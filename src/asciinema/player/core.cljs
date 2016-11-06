@@ -5,7 +5,7 @@
             [asciinema.player.vt :as vt]
             [asciinema.player.messages :as m]
             [asciinema.player.processing]
-            [asciinema.player.source :refer [make-source]]
+            [asciinema.player.source :as source :refer [make-source]]
             [schema.core :as s]
             [cljs.core.async :refer [chan >! <! put! timeout dropping-buffer]]
             [clojure.string :as str])
@@ -98,12 +98,18 @@
   [dom-node url options]
   (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)
         player-ratom (make-player-ratom url options)]
-    (mount-player-with-ratom player-ratom dom-node)))
+    (mount-player-with-ratom player-ratom dom-node)
+    player-ratom))
 
 (defn unmount-player
   "Unmounts player's Reagent component from given DOM element."
   [dom-node]
   (let [dom-node (if (string? dom-node) (.getElementById js/document dom-node) dom-node)]
     (reagent/unmount-component-at-node dom-node)))
+
+(def get-current-time :current-time)
+
+(defn seek [{:keys [duration source] :as player} new-time]
+  (source/seek source new-time))
 
 (enable-console-print!)

@@ -44,7 +44,7 @@ function registerAsciinemaPlayerElement() {
       this.opt('author-img-url', 'authorImgURL')
     );
 
-    asciinema.player.js.CreatePlayer(this, this.getAttribute('src'), opts);
+    this.player = asciinema.player.js.CreatePlayer(this, this.getAttribute('src'), opts);
   };
 
   AsciinemaPlayerProto.attachedCallback = function() {
@@ -56,7 +56,18 @@ function registerAsciinemaPlayerElement() {
 
   AsciinemaPlayerProto.detachedCallback = function() {
     asciinema.player.js.UnmountPlayer(this);
+    this.player = undefined;
   };
+
+  Object.defineProperty(AsciinemaPlayerProto, "currentTime", {
+    get: function() {
+      return this.player.getCurrentTime();
+    },
+
+    set: function(value) {
+      this.player.setCurrentTime(value);
+    }
+  });
 
   document.registerElement('asciinema-player', { prototype: AsciinemaPlayerProto });
 };

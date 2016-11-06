@@ -14,8 +14,10 @@
                                    :snapshot :poster
                                    :authorURL :author-url
                                    :startAt :start-at
-                                   :authorImgURL :author-img-url}))]
-     (p/create-player dom-node url options))))
+                                   :authorImgURL :author-img-url}))
+         player (p/create-player dom-node url options)]
+     (clj->js {:getCurrentTime #(p/get-current-time @player)
+               :setCurrentTime #(p/seek @player %)}))))
 
 (defn ^:export UnmountPlayer
   "JavaScript API for unmounting the player from given DOM node."

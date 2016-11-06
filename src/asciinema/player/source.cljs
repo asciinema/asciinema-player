@@ -212,7 +212,8 @@
                           (recur start-at new-speed end-ch stop-ch))
           :internal/rewind (recur 0 speed nil nil)
           :internal/seek (let [start-at arg
-                               {:keys [frames]} (<! (@recording-ch-fn true))]
+                               {:keys [frames duration]} (<! (@recording-ch-fn true))
+                               start-at (util/adjust-to-range start-at 0 duration)]
                            (>! msg-ch (m/->UpdateTime start-at))
                            (>! msg-ch (m/->UpdateScreen (screen-at start-at frames)))
                            (recur start-at speed end-ch stop-ch)))))
