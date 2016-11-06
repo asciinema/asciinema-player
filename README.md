@@ -314,7 +314,7 @@ document.getElementById('player').addEventListener('play', function(e) {
 The `pause` event is fired when playback has been paused.
 
 ```javascript
-document.getElementById('player').addEventListener('paused', function(e) {
+document.getElementById('player').addEventListener('pause', function(e) {
   console.log("it's paused");
 }
 ```
