@@ -265,7 +265,7 @@ document.getElementById('player').addEventListener('loadedmetadata', function(e)
   console.log("duration is", this.duration);
 }
 
-document.getElementById('player').addEventListener('canplaythrough, function(e) {
+document.getElementById('player').addEventListener('canplaythrough', function(e) {
   console.log("all ready to play");
 }
 ```
@@ -291,7 +291,7 @@ document.getElementById('player').addEventListener('play', function(e) {
 The `pause` event is fired when playback has been paused.
 
 ```javascript
-document.getElementById('player').addEventListener('paused, function(e) {
+document.getElementById('player').addEventListener('paused', function(e) {
   console.log("it's paused");
 }
 ```
