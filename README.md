@@ -239,6 +239,28 @@ document.getElementById('player').currentTime = 33;
 
 ### Events
 
+#### loadedmetadata, loadeddata, canplay, canplaythrough
+
+The `loadedmetadata`, `loadeddata`, `canplay` and `canplaythrough` events are
+fired (all of them, in this order) when the recording has been loaded and is
+ready to play. The recordings are always fully fetched (you can't partially load
+JSON) so there's no difference in the amount of metadata/data available between
+these 4 events - when either event occurs the player already has all the
+information for smooth playback. In other words, it's enough to listen to only
+one of them, e.g. `canplaythrough` (all 4 are supported to make it more in line
+with HTMLVideoElement).
+
+```javascript
+document.getElementById('player').addEventListener('canplaythrough, function(e) {
+  console.log("all ready to play");
+}
+```
+
+NOTE: The player starts fetching the recording either when `preload` attribute
+is set (in this case these events may not be immediately followed by `play`
+event), or when user starts the playback (in this case these events are
+immediately followed by `play` event).
+
 #### play
 
 The `play` event is fired when playback has begun.

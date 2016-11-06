@@ -45,8 +45,20 @@ function registerAsciinemaPlayerElement() {
       this.opt('author-url', 'authorURL'),
       this.opt('author-img-url', 'authorImgURL'),
       {
-        onPlay: function() { self.dispatchEvent(new CustomEvent("play")); },
-        onPause: function() { self.dispatchEvent(new CustomEvent("pause")); }
+        onCanPlay: function() {
+          self.dispatchEvent(new CustomEvent("loadedmetadata"));
+          self.dispatchEvent(new CustomEvent("loadeddata"));
+          self.dispatchEvent(new CustomEvent("canplay"));
+          self.dispatchEvent(new CustomEvent("canplaythrough"));
+        },
+
+        onPlay: function() {
+          self.dispatchEvent(new CustomEvent("play"));
+        },
+
+        onPause: function() {
+          self.dispatchEvent(new CustomEvent("pause"));
+        }
       }
     );
 

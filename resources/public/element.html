@@ -19,6 +19,22 @@
        /* this.currentTime = 33;*/
      })
 
+     player.addEventListener('loadedmetadata', function(e) {
+       console.log('got "loadedmetadata" event');
+     })
+
+     player.addEventListener('loadeddata', function(e) {
+       console.log('got "loadeddata" event');
+     })
+
+     player.addEventListener('canplay', function(e) {
+       console.log('got "canplay" event');
+     })
+
+     player.addEventListener('canplaythrough', function(e) {
+       console.log('got "canplaythrough" event');
+     })
+
      player.addEventListener('play', function(e) {
        console.log('got "play" event');
        console.log("we're at", this.currentTime);

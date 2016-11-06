@@ -66,19 +66,22 @@
 ;;; Source originated messages
 
 (extend-protocol m/Update
-  m/Resize
-  (update-player [this {player-width :width player-height :height :as player}]
-    (-> player
-        (assoc :width (or player-width (:width this)))
-        (assoc :height (or player-height (:height this)))))
-
-  m/SetDuration
-  (update-player [this player]
-    (assoc player :duration (:duration this)))
+  m/SetMetadata
+  (update-player [{:keys [width height duration]} {player-width :width player-height :height :as player}]
+    (assoc player
+           :width (or player-width width)
+           :height (or player-height height)
+           :duration duration))
 
   m/SetLoading
   (update-player [this player]
     (assoc player :loading (:loading this)))
+
+  m/TriggerCanPlay
+  (update-player [this {:keys [on-can-play] :as player}]
+    (when on-can-play
+      (on-can-play))
+    player)
 
   m/UpdateTime
   (update-player [this player]

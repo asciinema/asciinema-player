@@ -87,14 +87,14 @@
                             :handler #(deliver (recording-fn %))
                             :error-handler #(println %)}))))
 
-(defn report-duration-and-size
+(defn report-metadata
   "Waits for recording to load and then reports its size and duration to the
   player."
   [{:keys [recording-ch-fn]} msg-ch]
   (go
     (let [{:keys [duration width height]} (<! (@recording-ch-fn false))]
-      (>! msg-ch (m/->SetDuration duration))
-      (>! msg-ch (m/->Resize width height)))))
+      (>! msg-ch (m/->SetMetadata width height duration))
+      (>! msg-ch (m/->TriggerCanPlay)))))
 
 (defn show-poster
   "Forces loading of recording and sends 'poster' at a given time to the
@@ -226,7 +226,7 @@
       (reset! command-ch (start-event-loop! this msg-ch))
       (let [f (make-recording-ch-fn url recording-fn)]
         (reset! recording-ch-fn f)
-        (report-duration-and-size this msg-ch))
+        (report-metadata this msg-ch))
       (when preload?
         (@recording-ch-fn true))
       (if auto-play?

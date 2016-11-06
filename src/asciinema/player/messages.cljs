@@ -28,13 +28,13 @@
 
 ;;; Source originated messages
 
-(defrecord Resize [width height])
-
-(defrecord SetDuration [duration])
+(defrecord SetMetadata [width height duration])
 
 (defrecord SetLoading [loading])
 
 (defrecord SetPlaying [playing])
+
+(defrecord TriggerCanPlay [])
 
 (defrecord UpdateScreen [screen])
 

@@ -15,6 +15,7 @@
                                    :authorURL :author-url
                                    :startAt :start-at
                                    :authorImgURL :author-img-url
+                                   :onCanPlay :on-can-play
                                    :onPlay :on-play
                                    :onPause :on-pause}))
          player (p/create-player dom-node url options)]
