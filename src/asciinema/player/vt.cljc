@@ -686,7 +686,7 @@
   (if-let [action (case input
                     0x08 execute-bs
                     0x09 execute-ht
-                    0x0a execute-lf
+                    0x0a execute-nel
                     0x0b execute-lf
                     0x0c execute-lf
                     0x0d execute-cr

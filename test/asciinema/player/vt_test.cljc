@@ -490,6 +490,11 @@
                             [["EF" {:fg 1}] ["  " {}]]
                             [["    " {}]]])
           (expect-cursor vt 2 1 true))
+        (let [vt (feed-str vt "\nEF")]
+          (expect-lines vt [[["ABCD" {:fg 1}]]
+                            [["EF" {:fg 1}] ["  " {}]]
+                            [["    " {}]]])
+          (expect-cursor vt 2 1 true))
         (let [vt (-> vt
                      (feed-csi "1;4H") ; move to the current position (in place)
                      (feed-str "EF"))] ; next-print-wraps should have been reset above
@@ -514,6 +519,11 @@
                           [["CCCC" {:fg 1}]]])
         (expect-cursor vt 4 2 true)
         (let [vt (feed-str vt "DD")]
+          (expect-lines vt [[["BBBB" {:fg 1}]]
+                            [["CCCC" {:fg 1}]]
+                            [["DD  " {:fg 1}]]])
+          (expect-cursor vt 2 2 true))
+        (let [vt (feed-str vt "\nDD")]
           (expect-lines vt [[["BBBB" {:fg 1}]]
                             [["CCCC" {:fg 1}]]
                             [["DD  " {:fg 1}]]])
@@ -861,8 +871,8 @@
           (is (= x 19))
           (is (= y 1)))))
 
-    (testing "0x0a (LF), 0x0b (VT), 0x0c (FF), 0x84 (IND)"
-      (doseq [ch [0x0a 0x0b 0x0c 0x84]]
+    (testing "0x0b (VT), 0x0c (FF), 0x84 (IND)"
+      (doseq [ch [0x0b 0x0c 0x84]]
         (test-lf #(feed-one % ch))))
 
     (testing "0x0d (CR)"
@@ -873,8 +883,8 @@
         (is (= x 0))
         (is (= y 1))))
 
-    (testing "0x85 (NEL)"
-      (doseq [ch [0x85]]
+    (testing "0x0a (LF), 0x85 (NEL)"
+      (doseq [ch [0x0a 0x85]]
         (test-nel #(feed-one % ch))))
 
     (testing "0x88 (HTS)"
