@@ -433,7 +433,6 @@
         new-x (adjust-to-range (dec ps2) 0 (dec width))
         new-y (adjust-y-to-limits vt (dec ps1))]
     (-> vt
-        (assoc :next-print-wraps false)
         (move-cursor-to-col new-x)
         (move-cursor-to-row new-y))))
 
