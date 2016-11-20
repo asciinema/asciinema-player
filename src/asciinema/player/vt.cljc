@@ -3,6 +3,7 @@
   #?(:cljs (:require-macros [asciinema.player.macros :refer [events]]))
   (:require [asciinema.player.util :refer [adjust-to-range]]
             [schema.core :as s #?@(:cljs [:include-macros true])]
+            #?(:cljs [asciinema.player.codepoint-polyfill])
             #?(:clj [asciinema.player.macros :refer [events]])
             #?(:clj [clojure.core.match :refer [match]]
                :cljs [cljs.core.match :refer-macros [match]])))
@@ -921,13 +922,13 @@
   (reduce feed-one vt inputs))
 
 (defn feed-str [vt str]
-  (let [codes (mapv #(#?(:clj .codePointAt :cljs .charCodeAt) str %) (range (count str)))]
+  (let [codes (mapv #(#?(:clj .codePointAt :cljs .codePointAt) str %) (range (count str)))]
     (feed vt codes)))
 
 (s/defn chars->string :- s/Str
   [chars :- [CodePoint]]
   #?(:clj (String. (int-array chars) 0 (count chars))
-     :cljs (apply js/String.fromCharCode chars)))
+     :cljs (apply js/String.fromCodePoint chars)))
 
 (s/defn compact-line :- FragmentLine
   "Joins together all neighbouring cells having the same color attributes,

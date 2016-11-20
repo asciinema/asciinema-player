@@ -61,7 +61,9 @@
                               :compiler {:output-to "resources/public/js/test.js"
                                          :source-map true
                                          :foreign-libs [{:file "public/element.js"
-                                                         :provides ["asciinema.player.element"]}]
+                                                         :provides ["asciinema.player.element"]}
+                                                        {:file "public/codepoint-polyfill.js"
+                                                         :provides ["asciinema.player.codepoint-polyfill"]}]
                                          :optimizations :none
                                          :pretty-print false
                                          :main "asciinema.player.runner"}}
