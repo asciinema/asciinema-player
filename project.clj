@@ -70,8 +70,11 @@
                                             :output-dir "resources/public/js/release"
                                             :preamble ["license.js" "public/CustomEvent.js" "public/CustomElements.min.js"]
                                             :foreign-libs [{:file "public/element.js"
-                                                            :provides ["asciinema.player.element"]}]
+                                                            :provides ["asciinema.player.element"]}
+                                                           {:file "public/fromCodePoint.js"
+                                                            :provides ["asciinema.player.from-code-point"]}]
                                             :optimizations :advanced
+                                            :parallel-build true
                                             :elide-asserts true
                                             :pretty-print  false}}}}
 
