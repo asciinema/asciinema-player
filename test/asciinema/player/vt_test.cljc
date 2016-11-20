@@ -10,7 +10,7 @@
             #?(:clj [clojure.test.check.clojure-test :refer [defspec]])
             [schema.test]
             #?(:clj [asciinema.player.test-macros :refer [property-tests-multiplier]])
-            [asciinema.player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines]]))
+            [asciinema.player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines dump-sgr dump]]))
 
 (use-fixtures :once schema.test/validate-schemas)
 
@@ -1799,7 +1799,7 @@
     (is (= (get-params vt) [0 0 12 0 23 1]))))
 
 (def gen-ascii-rubbish (gen/vector (gen/choose 0 0x9f) 1 100))
-(def gen-unicode-rubbish (gen/vector (gen/choose 0 0x10ffff) 1 100))
+(def gen-unicode-rubbish (gen/vector (gen/choose 0 0x10ffff) 1 5))
 
 (defspec test-parser-state-for-random-input
   {:num-tests (* 100 (property-tests-multiplier))}
@@ -1840,3 +1840,41 @@
                              (feed rubbish))
                       {{new-x :x new-y :y} :cursor :keys [next-print-wraps]} vt]
                   (not (and next-print-wraps (< new-x 20))))))
+
+(def gen-color (gen/one-of [(gen/return nil)
+                            (gen/choose 0 7)
+                            (gen/choose 16 231)
+                            (gen/tuple (gen/choose 0 255) (gen/choose 0 255) (gen/choose 0 255))]))
+
+(defspec test-dump-sgr
+  {:num-tests (* 1000 (property-tests-multiplier))}
+  (prop/for-all [fg gen-color
+                 bg gen-color
+                 bold gen/boolean
+                 italic gen/boolean
+                 underline gen/boolean
+                 blink gen/boolean
+                 inverse gen/boolean]
+                (let [attrs (cond-> {}
+                              fg (assoc :fg fg)
+                              bg (assoc :bg bg)
+                              bold (assoc :bold bold)
+                              italic (assoc :italic italic)
+                              underline (assoc :underline underline)
+                              blink (assoc :blink blink)
+                              inverse (assoc :inverse inverse))
+                      sgr (dump-sgr attrs)
+                      new-vt (feed-str vt-80x24 sgr)
+                      new-attrs (:char-attrs new-vt)]
+                  (= attrs new-attrs))))
+
+(defspec test-dump
+  {:num-tests (* 1000 (property-tests-multiplier))}
+  (prop/for-all [rubbish (gen/vector (gen/one-of [(gen/choose 0 0xd7ff)
+                                                  ; skip Unicode surrogates and private use area
+                                                  (gen/choose 0xf900 0xffff)]) 10 100)]
+    (let [blank-vt (make-vt 10 5)
+          vt (feed blank-vt rubbish)
+          text (dump vt)
+          new-vt (feed-str blank-vt text)]
+      (= (:lines vt) (:lines new-vt)))))

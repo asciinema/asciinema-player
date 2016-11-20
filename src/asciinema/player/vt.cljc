@@ -3,6 +3,7 @@
   #?(:cljs (:require-macros [asciinema.player.macros :refer [events]]))
   (:require [asciinema.player.util :refer [adjust-to-range]]
             [schema.core :as s #?@(:cljs [:include-macros true])]
+            [clojure.string :as str]
             #?(:cljs [asciinema.player.codepoint-polyfill])
             #?(:clj [asciinema.player.macros :refer [events]])
             #?(:clj [clojure.core.match :refer [match]]
@@ -947,3 +948,33 @@
 
 (defn compact-lines [lines]
   (map compact-line lines))
+
+(defn dump-color [base c]
+  (match c
+         [r g b] (str (+ base 8) ";2;" r ";" g ";" b)
+         (_ :guard #(<= 16 %)) (str (+ base 8) ";5;" c)
+         :else (str (+ base c))))
+
+(def dump-fg (partial dump-color 30))
+(def dump-bg (partial dump-color 40))
+
+(defn dump-sgr [{:keys [fg bg bold italic underline blink inverse]}]
+  (str
+   (cond-> "\u001b[0"
+     fg (str ";" (dump-fg fg))
+     bg (str ";" (dump-bg bg))
+     bold (str ";1")
+     italic (str ";3")
+     underline (str ";4")
+     blink (str ";5")
+     inverse (str ";7"))
+   "m"))
+
+(defn dump-fragment [[text attrs]]
+  (str (dump-sgr attrs) text))
+
+(defn dump-line [line]
+  (str/replace (str/join (map dump-fragment line)) #"\u0020+$" ""))
+
+(defn dump [vt]
+  (str/join "\n" (map dump-line (-> vt :lines compact-lines))))
