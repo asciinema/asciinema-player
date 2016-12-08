@@ -1799,7 +1799,7 @@
     (is (= (get-params vt) [0 0 12 0 23 1]))))
 
 (def gen-ascii-rubbish (gen/vector (gen/choose 0 0x9f) 1 100))
-(def gen-unicode-rubbish (gen/vector (gen/choose 0 0x10ffff) 1 5))
+(def gen-unicode-rubbish (gen/vector (gen/choose 0 0x10ffff) 1 100))
 
 (defspec test-parser-state-for-random-input
   {:num-tests (* 100 (property-tests-multiplier))}
