@@ -9,7 +9,7 @@
                  [org.clojure/core.async "0.2.374"]
                  [reagent "0.6.0"]
                  [devcards "0.2.2" :exclusions [cljsjs/react]]
-                 [org.clojure/test.check "0.8.2"]
+                 [org.clojure/test.check "0.9.0"]
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [prismatic/schema "1.1.3"]
                  [cljs-ajax "0.5.8"]]
