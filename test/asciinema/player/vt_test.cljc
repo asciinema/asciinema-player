@@ -1798,8 +1798,62 @@
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] [0x3b 0x3b 0x31 0x32 0x3b 0x3b 0x32 0x33 0x3b 0x31 0x3b]))]
     (is (= (get-params vt) [0 0 12 0 23 1]))))
 
-(def gen-ascii-rubbish (gen/vector (gen/choose 0 0x9f) 1 100))
 (def gen-unicode-rubbish (gen/vector (gen/choose 0 0x10ffff) 1 100))
+
+(def gen-color (gen/one-of [(gen/return nil)
+                            (gen/choose 0 15)
+                            (gen/choose 16 231)
+                            (gen/tuple (gen/choose 0 255) (gen/choose 0 255) (gen/choose 0 255))]))
+
+(def gen-ctl-seq (gen/let [char (gen/elements (reduce into #{} [(range 0x00 0x18)
+                                                                [0x19]
+                                                                (range 0x1c 0x20)]))]
+                   [char]))
+
+(def gen-intermediate (gen/elements (range 0x20 0x30)))
+
+(def gen-finalizer (gen/elements (reduce into #{} [(range 0x30 0x50)
+                                                   (range 0x51 0x58)
+                                                   [0x59]
+                                                   [0x5a]
+                                                   [0x5c]
+                                                   (range 0x60 0x7f)])))
+
+(def gen-esc-seq (gen/let [intermediates (gen/vector gen-intermediate 0 2)
+                           finalizer gen-finalizer]
+                   (apply concat [[0x1b] intermediates [finalizer]])))
+
+(def gen-param (gen/elements (range 0x30 0x3a)))
+
+(def gen-params (gen/vector (gen/one-of [gen-param
+                                         gen-param
+                                         (gen/return 0x3b)]) 0 5))
+
+(def gen-csi-seq (gen/let [params gen-params
+                           finalizer (gen/elements (range 0x40 0x7f))]
+                   (apply concat [[0x1b 0x5b] params [finalizer]])))
+
+(def gen-sgr-seq (gen/let [params gen-params]
+                   (apply concat [[0x1b 0x5b] params [0x6d]])))
+
+(def gen-ascii-char (gen/choose 0x20 0x7f))
+
+(def gen-char (gen/one-of [gen-ascii-char
+                           gen-ascii-char
+                           gen-ascii-char
+                           gen-ascii-char
+                           gen-ascii-char
+                           (gen/choose 0x80 0xd7ff)
+                           ; skip Unicode surrogates and private use area
+                           (gen/choose 0xf900 0xffff)]))
+
+(def gen-text (gen/vector gen-char 1 10))
+
+(def gen-input (gen/one-of [gen-ctl-seq
+                            gen-esc-seq
+                            gen-csi-seq
+                            gen-sgr-seq
+                            gen-text]))
 
 (defspec test-parser-state-for-random-input
   {:num-tests (* 100 (property-tests-multiplier))}
@@ -1811,10 +1865,10 @@
   {:num-tests (* 100 (property-tests-multiplier))}
   (prop/for-all [x (gen/choose 0 19)
                  y (gen/choose 0 9)
-                 rubbish gen-ascii-rubbish]
+                 input gen-input]
                 (let [vt (-> (make-vt 20 10)
                              (move-cursor x y)
-                             (feed rubbish))
+                             (feed input))
                       {:keys [next-print-wraps] {:keys [x y]} :cursor} vt]
                   (and (or (< -1 x 20) (and (= x 20) (true? next-print-wraps)))
                        (< -1 y 10)))))
@@ -1823,10 +1877,10 @@
   {:num-tests (* 100 (property-tests-multiplier))}
   (prop/for-all [x (gen/choose 0 19)
                  y (gen/choose 0 9)
-                 rubbish gen-ascii-rubbish]
+                 input gen-input]
                 (let [vt (-> (make-vt 20 10)
                              (move-cursor x y)
-                             (feed rubbish))
+                             (feed input))
                       {:keys [lines]} vt]
                   (and (= 10 (count lines))
                        (every? #(= 20 (count %)) lines)))))
@@ -1834,17 +1888,12 @@
 (defspec test-no-wrapping-after-moved-from-right-margin
   {:num-tests (* 100 (property-tests-multiplier))}
   (prop/for-all [y (gen/choose 0 9)
-                 rubbish gen-ascii-rubbish]
+                 input gen-input]
                 (let [vt (-> (make-vt 20 10)
                              (move-cursor 19 y)
-                             (feed rubbish))
+                             (feed input))
                       {{new-x :x new-y :y} :cursor :keys [next-print-wraps]} vt]
                   (not (and next-print-wraps (< new-x 20))))))
-
-(def gen-color (gen/one-of [(gen/return nil)
-                            (gen/choose 0 7)
-                            (gen/choose 16 231)
-                            (gen/tuple (gen/choose 0 255) (gen/choose 0 255) (gen/choose 0 255))]))
 
 (defspec test-dump-sgr
   {:num-tests (* 1000 (property-tests-multiplier))}
@@ -1869,12 +1918,10 @@
                   (= attrs new-attrs))))
 
 (defspec test-dump
-  {:num-tests (* 1000 (property-tests-multiplier))}
-  (prop/for-all [rubbish (gen/vector (gen/one-of [(gen/choose 0 0xd7ff)
-                                                  ; skip Unicode surrogates and private use area
-                                                  (gen/choose 0xf900 0xffff)]) 10 100)]
+  {:num-tests (* 100 (property-tests-multiplier))}
+  (prop/for-all [input (gen/vector gen-input 5 100)]
     (let [blank-vt (make-vt 10 5)
-          vt (feed blank-vt rubbish)
+          vt (reduce feed blank-vt input)
           text (dump vt)
           new-vt (feed-str blank-vt text)]
       (= (:lines vt) (:lines new-vt)))))
