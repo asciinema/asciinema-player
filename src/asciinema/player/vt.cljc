@@ -953,8 +953,9 @@
 (defn dump-color [base c]
   (match c
          [r g b] (str (+ base 8) ";2;" r ";" g ";" b)
-         (_ :guard #(<= 16 %)) (str (+ base 8) ";5;" c)
-         :else (str (+ base c))))
+         (_ :guard #(< % 8)) (str (+ base c))
+         (_ :guard #(< % 16)) (str (+ base 52 c))
+         :else (str (+ base 8) ";5;" c)))
 
 (def dump-fg (partial dump-color 30))
 (def dump-bg (partial dump-color 40))
