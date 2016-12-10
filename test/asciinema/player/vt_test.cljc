@@ -1798,7 +1798,7 @@
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] [0x3b 0x3b 0x31 0x32 0x3b 0x3b 0x32 0x33 0x3b 0x31 0x3b]))]
     (is (= (get-params vt) [0 0 12 0 23 1]))))
 
-(def gen-unicode-rubbish (gen/vector (gen/choose 0 0x10ffff) 1 100))
+(def gen-unicode-rubbish (gen/vector (gen/choose 0 0x10ffff) 1 20))
 
 (def gen-color (gen/one-of [(gen/return nil)
                             (gen/choose 0 15)
