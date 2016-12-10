@@ -476,7 +476,8 @@
       vt)))
 
 (defn execute-el [{:keys [width height char-attrs] {:keys [x y]} :cursor :as vt}]
-  (let [n (get-param vt 0 0)]
+  (let [n (get-param vt 0 0)
+        x (min x (dec width))]
     (update-in vt [:lines y] (fn [line]
                                (case n
                                  0 (clear-line-right line x char-attrs)
