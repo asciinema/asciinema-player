@@ -976,7 +976,7 @@
   (str (dump-sgr attrs) text))
 
 (defn dump-line [line]
-  (str/replace (str/join (map dump-fragment line)) #"\u0020+$" ""))
+  (str/replace (str/join (map dump-fragment line)) #"\u001b\[0m\u0020+$" ""))
 
 (defn dump [vt]
   (str/join "\n" (map dump-line (-> vt :lines compact-lines))))
