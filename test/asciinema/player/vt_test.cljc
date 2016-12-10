@@ -1896,7 +1896,7 @@
                   (not (and next-print-wraps (< new-x 20))))))
 
 (defspec test-dump-sgr
-  {:num-tests (* 1000 (property-tests-multiplier))}
+  {:num-tests (* 100 (property-tests-multiplier))}
   (prop/for-all [fg gen-color
                  bg gen-color
                  bold gen/boolean
