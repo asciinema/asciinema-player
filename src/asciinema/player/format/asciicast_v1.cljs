@@ -1,6 +1,6 @@
 (ns asciinema.player.format.asciicast-v1
   (:require [schema.core :as s]
-            [asciinema.player.vt :as vt]
+            [asciinema.vt :as vt]
             [asciinema.player.screen :as screen]))
 
 (def StdoutFrame [(s/one s/Num "delay") (s/one s/Str "text to print")])

@@ -1,4 +1,4 @@
-(ns asciinema.player.vt-test
+(ns asciinema.vt-test
   #?(:cljs (:require-macros [cljs.test :refer [is are deftest testing]]
                             [clojure.test.check.clojure-test :refer [defspec]]
                             [asciinema.player.test-macros :refer [property-tests-multiplier]]))
@@ -10,7 +10,7 @@
             #?(:clj [clojure.test.check.clojure-test :refer [defspec]])
             [schema.test]
             #?(:clj [asciinema.player.test-macros :refer [property-tests-multiplier]])
-            [asciinema.player.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines dump-sgr dump]]))
+            [asciinema.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines dump-sgr dump]]))
 
 (use-fixtures :once schema.test/validate-schemas)
 

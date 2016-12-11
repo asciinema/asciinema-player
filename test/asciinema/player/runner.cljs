@@ -2,7 +2,7 @@
   (:require [doo.runner :refer-macros [doo-tests]]
             [asciinema.player.core-test]
             [asciinema.player.view-test]
-            [asciinema.player.vt-test]
+            [asciinema.vt-test]
             [asciinema.player.frames-test]
             [asciinema.player.source-test]
             [asciinema.player.util-test]))
@@ -12,7 +12,7 @@
 (doo-tests
   'asciinema.player.core-test
   'asciinema.player.view-test
-  'asciinema.player.vt-test
+  'asciinema.vt-test
   'asciinema.player.frames-test
   'asciinema.player.source-test
   'asciinema.player.util-test)

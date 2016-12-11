@@ -2,7 +2,7 @@
   (:require [reagent.core :as reagent :refer [atom]]
             [asciinema.player.view :as view]
             [asciinema.player.screen :as screen]
-            [asciinema.player.vt :as vt]
+            [asciinema.vt :as vt]
             [asciinema.player.messages :as m]
             [asciinema.player.processing]
             [asciinema.player.source :as source :refer [make-source]]

@@ -1,11 +1,11 @@
-(ns asciinema.player.vt
+(ns asciinema.vt
   (:refer-clojure :exclude [print])
-  #?(:cljs (:require-macros [asciinema.player.macros :refer [events]]))
+  #?(:cljs (:require-macros [asciinema.vt-macros :refer [events]]))
   (:require [asciinema.player.util :refer [adjust-to-range]]
             [schema.core :as s #?@(:cljs [:include-macros true])]
             [clojure.string :as str]
             #?(:cljs [asciinema.player.codepoint-polyfill])
-            #?(:clj [asciinema.player.macros :refer [events]])
+            #?(:clj [asciinema.vt-macros :refer [events]])
             #?(:clj [clojure.core.match :refer [match]]
                :cljs [cljs.core.match :refer-macros [match]])))
 

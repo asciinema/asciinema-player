@@ -1,6 +1,6 @@
 (ns asciinema.player.format.asciicast-v0
   (:require [schema.core :as s]
-            [asciinema.player.vt :as vt]
+            [asciinema.vt :as vt]
             [asciinema.player.screen :as screen]))
 
 (def Fragment vt/Fragment) ; TODO decouple from vt

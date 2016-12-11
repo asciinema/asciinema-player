@@ -6,7 +6,7 @@
             [asciinema.player.format.asciicast-v0 :as v0]
             [asciinema.player.format.asciicast-v1 :as v1]
             [asciinema.player.frames :as f]
-            [asciinema.player.vt :as vt]
+            [asciinema.vt :as vt]
             [asciinema.player.messages :as m]
             [asciinema.player.util :as util]
             [asciinema.player.patch :refer [js->clj]])

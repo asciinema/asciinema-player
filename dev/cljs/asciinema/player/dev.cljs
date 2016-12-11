@@ -1,7 +1,7 @@
 (ns asciinema.player.dev
   (:refer-clojure :exclude [compare])
   (:require [asciinema.player.core :as p]
-            [asciinema.player.vt :as vt]
+            [asciinema.vt :as vt]
             [asciinema.player.util :as util]
             [asciinema.player.source :as source]
             [asciinema.player.view :as view]
