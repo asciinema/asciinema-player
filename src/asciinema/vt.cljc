@@ -1,13 +1,16 @@
 (ns asciinema.vt
   (:refer-clojure :exclude [print])
   #?(:cljs (:require-macros [asciinema.vt-macros :refer [events]]))
-  (:require [asciinema.player.util :refer [adjust-to-range]]
+  (:require [asciinema.vt.screen :as screen]
+            [asciinema.player.util :refer [adjust-to-range]]
             [schema.core :as s #?@(:cljs [:include-macros true])]
             [clojure.string :as str]
             #?(:cljs [asciinema.player.codepoint-polyfill])
             #?(:clj [asciinema.vt-macros :refer [events]])
             #?(:clj [clojure.core.match :refer [match]]
-               :cljs [cljs.core.match :refer-macros [match]])))
+               :cljs [cljs.core.match :refer-macros [match]])
+            #?(:cljs [asciinema.vt.screen :refer [Screen]]))
+  #?(:clj (:import [asciinema.vt.screen Screen])))
 
 ;; References:
 ;; http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
@@ -20,324 +23,92 @@
 ;; http://www.shaels.net/index.php/propterm/documents
 ;; http://vt100.net/docs/vt102-ug/chapter5.html
 
-(def CodePoint s/Num)
-
-(def Color (s/if vector?
-             [(s/one s/Num "r") (s/one s/Num "g") (s/one s/Num "b")]
-             s/Num))
-
-(def CharAttrs {(s/optional-key :fg) Color
-                (s/optional-key :bg) Color
-                (s/optional-key :bold) s/Bool
-                (s/optional-key :italic) s/Bool
-                (s/optional-key :underline) s/Bool
-                (s/optional-key :blink) s/Bool
-                (s/optional-key :inverse) s/Bool})
-
-(def Cell [(s/one CodePoint "unicode codepoint") (s/one CharAttrs "text attributes")])
-
-(def CellLine [Cell])
-
-(def Fragment [(s/one s/Str "text") (s/one CharAttrs "text attributes")])
-
-(def FragmentLine [Fragment])
-
-(def Tabs #?(:clj clojure.lang.PersistentTreeSet :cljs cljs.core/PersistentTreeSet))
-
-(def Charset (s/pred ifn?))
-
 (def Parser {:state s/Keyword
              :intermediate-chars [s/Num]
              :param-chars [s/Num]})
 
-(def Cursor {:x s/Num
-             :y s/Num
-             :visible s/Bool})
-
-(def SavedCursor {:cursor {:x s/Num :y s/Num}
-                  :char-attrs CharAttrs
-                  :origin-mode s/Bool
-                  :auto-wrap-mode s/Bool})
-
 (s/defrecord VT
-    [width :- s/Num
-     height :- s/Num
-     top-margin :- s/Num
-     bottom-margin :- s/Num
-     parser :- Parser
-     tabs :- Tabs
-     cursor :- Cursor
-     char-attrs :- CharAttrs
-     charset-fn :- Charset
-     insert-mode :- s/Bool
-     auto-wrap-mode :- s/Bool
-     new-line-mode :- s/Bool
-     next-print-wraps :- s/Bool
-     origin-mode :- s/Bool
-     buffer :- s/Keyword
-     lines :- [CellLine]
-     saved :- SavedCursor
-     other-buffer-lines :- (s/maybe [CellLine])
-     other-buffer-saved :- SavedCursor])
-
-(def space 0x20)
-
-(def normal-char-attrs {})
-
-(def default-charset identity)
-
-(def special-charset {96  9830, 97  9618, 98  9225, 99  9228,
-                      100 9229, 101 9226, 102 176,  103 177,
-                      104 9252, 105 9227, 106 9496, 107 9488,
-                      108 9484, 109 9492, 110 9532, 111 9146,
-                      112 9147, 113 9472, 114 9148, 115 9149,
-                      116 9500, 117 9508, 118 9524, 119 9516,
-                      120 9474, 121 8804, 122 8805, 123 960,
-                      124 8800, 125 163,  126 8901})
+    [parser :- Parser
+     screen :- Screen])
 
 (def initial-parser {:state :ground
                      :intermediate-chars []
                      :param-chars []})
 
-(def initial-cursor {:x 0
-                     :y 0
-                     :visible true})
-
-(def initial-saved-cursor {:cursor {:x 0 :y 0}
-                           :char-attrs normal-char-attrs
-                           :origin-mode false
-                           :auto-wrap-mode true})
-
-(s/defn default-tabs :- Tabs
-  [width]
-  (apply sorted-set (range 8 width 8)))
-
-(s/defn cell :- Cell
-  [ch :- CodePoint
-   char-attrs :- CharAttrs]
-  (vector ch char-attrs))
-
-(s/defn empty-cell :- Cell
-  [char-attrs]
-  (cell space char-attrs))
-
-(s/defn empty-line :- CellLine
-  ([width] (empty-line width normal-char-attrs))
-  ([width char-attrs]
-   (vec (repeat width (empty-cell char-attrs)))))
-
-(s/defn empty-screen :- [CellLine]
-  ([width height] (empty-screen width height normal-char-attrs))
-  ([width height char-attrs]
-   (let [line (empty-line width char-attrs)]
-     (vec (repeat height line)))))
-
 (s/defn make-vt :- VT
   [width :- s/Num
    height :- s/Num]
-  (map->VT {:width width
-            :height height
-            :top-margin 0
-            :bottom-margin (dec height)
-            :parser initial-parser
-            :tabs (default-tabs width)
-            :cursor initial-cursor
-            :char-attrs normal-char-attrs
-            :charset-fn default-charset
-            :insert-mode false
-            :auto-wrap-mode true
-            :new-line-mode false
-            :next-print-wraps false
-            :origin-mode false
-            :buffer :primary
-            :lines (empty-screen width height)
-            :saved initial-saved-cursor
-            :other-buffer-lines nil
-            :other-buffer-saved initial-saved-cursor}))
+  (map->VT {:parser initial-parser
+            :screen (screen/blank-screen width height)}))
 
 ;; helper functions
 
-(defn show-cursor
-  ([vt] (show-cursor vt true))
-  ([vt show?]
-   (assoc-in vt [:cursor :visible] show?)))
-
-(defn set-margin [vt top bottom]
-  (assoc vt :top-margin top :bottom-margin bottom))
-
-(defn scroll-up-lines [lines n filler]
-  (let [n (min n (count lines))]
-    (concat
-     (drop n lines)
-     (repeat n filler))))
-
-(defn scroll-up
-  ([vt] (scroll-up vt 1))
-  ([{:keys [width top-margin bottom-margin char-attrs] :as vt} n]
-   (let [filler (empty-line width char-attrs)]
-     (update vt :lines (fn [lines]
-                         (vec (concat
-                               (take top-margin lines)
-                               (scroll-up-lines (subvec lines top-margin (inc bottom-margin)) n filler)
-                               (drop (inc bottom-margin) lines))))))))
-
-(defn scroll-down-lines [lines n filler]
-  (let [height (count lines)
-        n (min n height)]
-    (concat
-     (repeat n filler)
-     (take (- height n) lines))))
-
-(defn scroll-down
-  ([vt] (scroll-down vt 1))
-  ([{:keys [width top-margin bottom-margin char-attrs] :as vt} n]
-   (let [filler (empty-line width char-attrs)]
-     (update vt :lines (fn [lines]
-                         (vec (concat
-                               (take top-margin lines)
-                               (scroll-down-lines (subvec lines top-margin (inc bottom-margin)) n filler)
-                               (drop (inc bottom-margin) lines))))))))
-
-(defn move-cursor-to-col [vt x]
-  (-> vt
-      (assoc-in [:cursor :x] x)
-      (assoc :next-print-wraps false)))
-
-(defn move-cursor-to-row [{:keys [width] {:keys [x]} :cursor :as vt} y]
-  (-> vt
-      (assoc-in [:cursor :x] (min x (dec width)))
-      (assoc-in [:cursor :y] y)
-      (assoc :next-print-wraps false)))
-
-(defn move-cursor-to-home [{:keys [origin-mode top-margin] :as vt}]
-  (let [top (if origin-mode top-margin 0)]
-    (-> vt
-        (move-cursor-to-col 0)
-        (move-cursor-to-row top))))
-
-(defn move-cursor-down [{:keys [bottom-margin height] {y :y} :cursor :as vt}]
-  (let [last-row (dec height)]
-    (cond (= y bottom-margin) (scroll-up vt)
-          (< y last-row) (move-cursor-to-row vt (inc y))
-          :else vt)))
-
-(defn switch-to-alternate-buffer [{:keys [buffer width height char-attrs] :as vt}]
-  (if (= buffer :primary)
-    (assoc vt
-           :buffer :alternate
-           :other-buffer-lines (:lines vt)
-           :other-buffer-saved (:saved vt)
-           :lines (empty-screen width height char-attrs)
-           :saved (:other-buffer-saved vt))
-    vt))
-
-(defn switch-to-primary-buffer [{:keys [buffer] :as vt}]
-  (if (= buffer :alternate)
-    (assoc vt
-           :buffer :primary
-           :other-buffer-lines nil
-           :other-buffer-saved (:saved vt)
-           :lines (:other-buffer-lines vt)
-           :saved (:other-buffer-saved vt))
-    vt))
-
-(defn save-cursor [{{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode] :as vt}]
-  (assoc vt :saved {:cursor {:x x :y y}
-                    :char-attrs char-attrs
-                    :origin-mode origin-mode
-                    :auto-wrap-mode auto-wrap-mode}))
-
-(defn restore-cursor [{{:keys [cursor char-attrs origin-mode auto-wrap-mode]} :saved :as vt}]
-  (-> vt
-      (assoc :char-attrs char-attrs
-             :next-print-wraps false
-             :origin-mode origin-mode
-             :auto-wrap-mode auto-wrap-mode)
-      (update :cursor merge cursor)))
-
 (defn set-mode [vt intermediate param]
   (match [intermediate param]
-         [nil 4] (assoc vt :insert-mode true)
-         [nil 20] (assoc vt :new-line-mode true)
-         [0x3f 6] (-> vt (assoc :origin-mode true) move-cursor-to-home)
-         [0x3f 7] (assoc vt :auto-wrap-mode true)
-         [0x3f 25] (show-cursor vt)
-         [0x3f 47] (switch-to-alternate-buffer vt)
-         [0x3f 1047] (switch-to-alternate-buffer vt)
-         [0x3f 1048] (save-cursor vt)
-         [0x3f 1049] (-> vt save-cursor switch-to-alternate-buffer)
+         [nil 4] (update vt :screen screen/enable-insert-mode)
+         [nil 20] (update vt :screen screen/enable-new-line-mode)
+         [0x3f 6] (update vt :screen #(-> % screen/enable-origin-mode screen/move-cursor-to-home))
+         [0x3f 7] (update vt :screen screen/enable-auto-wrap-mode)
+         [0x3f 25] (update vt :screen screen/show-cursor)
+         [0x3f 47] (update vt :screen screen/switch-to-alternate-buffer)
+         [0x3f 1047] (update vt :screen screen/switch-to-alternate-buffer)
+         [0x3f 1048] (update vt :screen screen/save-cursor)
+         [0x3f 1049] (update vt :screen #(-> % screen/save-cursor screen/switch-to-alternate-buffer))
          :else vt))
 
 (defn reset-mode [vt intermediate param]
   (match [intermediate param]
-         [nil 4] (assoc vt :insert-mode false)
-         [nil 20] (assoc vt :new-line-mode false)
-         [0x3f 6] (-> vt (assoc :origin-mode false) move-cursor-to-home)
-         [0x3f 7] (assoc vt :auto-wrap-mode false)
-         [0x3f 25] (show-cursor vt false)
-         [0x3f 47] (switch-to-primary-buffer vt)
-         [0x3f 1047] (switch-to-primary-buffer vt)
-         [0x3f 1048] (restore-cursor vt)
-         [0x3f 1049] (-> vt switch-to-primary-buffer restore-cursor)
+         [nil 4] (update vt :screen screen/disable-insert-mode)
+         [nil 20] (update vt :screen screen/disable-new-line-mode)
+         [0x3f 6] (update vt :screen #(-> % screen/disable-origin-mode screen/move-cursor-to-home))
+         [0x3f 7] (update vt :screen screen/disable-auto-wrap-mode)
+         [0x3f 25] (update vt :screen screen/hide-cursor)
+         [0x3f 47] (update vt :screen screen/switch-to-primary-buffer)
+         [0x3f 1047] (update vt :screen screen/switch-to-primary-buffer)
+         [0x3f 1048] (update vt :screen screen/restore-cursor)
+         [0x3f 1049] (update vt :screen #(-> % screen/switch-to-primary-buffer screen/restore-cursor))
          :else vt))
 
 ;; control functions
 
-(defn execute-bs [{{:keys [x]} :cursor :as vt}]
-  (move-cursor-to-col vt (max (dec x) 0)))
-
-(defn move-cursor-to-next-tab [{{:keys [x]} :cursor :keys [tabs width] :as vt} n]
-  (let [n (dec n)
-        right-margin (dec width)
-        next-tabs (drop-while (partial >= x) tabs)
-        new-x (nth next-tabs n right-margin)]
-    (move-cursor-to-col vt new-x)))
-
-(defn move-cursor-to-prev-tab [{{:keys [x]} :cursor :keys [tabs width] :as vt} n]
-  (let [n (dec n)
-        prev-tabs (take-while (partial > x) tabs)
-        new-x (nth (reverse prev-tabs) n 0)]
-    (move-cursor-to-col vt new-x)))
+(defn execute-bs [vt]
+  (update vt :screen screen/move-cursor-left))
 
 (defn execute-ht [vt]
-  (move-cursor-to-next-tab vt 1))
+  (update vt :screen screen/move-cursor-to-next-tab 1))
 
 (defn execute-cr [vt]
-  (move-cursor-to-col vt 0))
+  (update vt :screen screen/move-cursor-to-col! 0))
 
-(defn execute-lf [{:keys [new-line-mode] :as vt}]
-  (let [vt (move-cursor-down vt)]
-    (if new-line-mode
-      (execute-cr vt)
-      vt)))
+(defn execute-lf [vt]
+  (update vt :screen screen/line-feed))
 
 (defn execute-so [vt]
-  (assoc vt :charset-fn special-charset))
+  (update vt :screen screen/set-special-charset))
 
 (defn execute-si [vt]
-  (assoc vt :charset-fn default-charset))
+  (update vt :screen screen/set-default-charset))
 
 (defn execute-nel [vt]
-  (-> vt move-cursor-down execute-cr))
+  (update vt :screen screen/new-line))
 
-(defn execute-hts [{{:keys [x]} :cursor :keys [width] :as vt}]
-  (if (< 0 x width)
-    (update vt :tabs conj x)
-    vt))
+(defn execute-hts [vt]
+  (update vt :screen screen/set-horizontal-tab))
 
-(defn execute-ri [{:keys [top-margin] {y :y} :cursor :as vt}]
-  (cond (= y top-margin) (scroll-down vt)
-        (> y 0) (move-cursor-to-row vt (dec y))
-        :else vt))
+(defn execute-ri [vt]
+  (update vt :screen screen/reverse-index))
 
-(defn execute-decaln [{:keys [width height] :as vt}]
-  (assoc vt :lines (vec (repeat height (vec (repeat width [0x45 normal-char-attrs]))))))
+(defn execute-decaln [vt]
+  (update vt :screen screen/test-pattern))
 
 (defn execute-sc [vt]
-  (save-cursor vt))
+  (update vt :screen screen/save-cursor))
 
 (defn execute-rc [vt]
-  (restore-cursor vt))
+  (update vt :screen screen/restore-cursor))
+
+(defn execute-ris [vt]
+  (make-vt (-> vt :screen screen/width) (-> vt :screen screen/height)))
 
 (defn split-coll [elem coll]
   (loop [coll coll
@@ -372,188 +143,108 @@
       default
       v)))
 
-(defn execute-ich [{{:keys [x y]} :cursor :keys [width char-attrs] :as vt}]
+(defn execute-ich [vt]
   (let [n (get-param vt 0 1)]
-    (update-in vt [:lines y] (fn [line]
-                               (vec (take width (concat (take x line)
-                                                        (repeat n [space char-attrs])
-                                                        (drop x line))))))))
+    (update vt :screen screen/insert-characters n)))
 
-(defn execute-cuu [{:keys [top-margin] {:keys [y]} :cursor :as vt}]
-  (let [n (get-param vt 0 1)
-        new-y (if (< y top-margin)
-                (max 0 (- y n))
-                (max top-margin (- y n)))]
-    (move-cursor-to-row vt new-y)))
+(defn execute-cuu [vt]
+  (let [n (get-param vt 0 1)]
+    (update vt :screen screen/cursor-up n)))
 
-(defn execute-cud [{{y :y} :cursor :keys [bottom-margin height] :as vt}]
-  (let [n (get-param vt 0 1)
-        new-y (if (> y bottom-margin)
-                (min (dec height) (+ y n))
-                (min bottom-margin (+ y n)))]
-    (move-cursor-to-row vt new-y)))
+(defn execute-cud [vt]
+  (let [n (get-param vt 0 1)]
+    (update vt :screen screen/cursor-down n)))
 
-(defn execute-cuf [{{x :x} :cursor :keys [width] :as vt}]
-  (let [n (get-param vt 0 1)
-        new-x (min (+ x n) (dec width))]
-    (move-cursor-to-col vt new-x)))
+(defn execute-cuf [vt]
+  (let [n (get-param vt 0 1)]
+    (update vt :screen screen/cursor-forward n)))
 
-(defn execute-cub [{{x :x} :cursor :keys [width] :as vt}]
-  (let [n (get-param vt 0 1)
-        new-x (max (- x n) 0)]
-    (move-cursor-to-col vt new-x)))
+(defn execute-cub [vt]
+  (let [n (get-param vt 0 1)]
+    (update vt :screen screen/cursor-backward n)))
 
 (defn execute-cnl [vt]
-  (-> vt
-      execute-cud
-      (move-cursor-to-col 0)))
+  (let [n (get-param vt 0 1)]
+    (update vt :screen #(-> %
+                            (screen/cursor-down n)
+                            (screen/move-cursor-to-col! 0)))))
 
 (defn execute-cpl [vt]
-  (-> vt
-      execute-cuu
-      (move-cursor-to-col 0)))
+  (let [n (get-param vt 0 1)]
+    (update vt :screen #(-> %
+                            (screen/cursor-up n)
+                            (screen/move-cursor-to-col! 0)))))
 
-(defn execute-cha [{width :width :as vt}]
-  (let [n (get-param vt 0 1)
-        new-x (if (<= n width) (dec n) (dec width))]
-    (move-cursor-to-col vt new-x)))
+(defn execute-cha [vt]
+  (let [x (dec (get-param vt 0 1))]
+    (update vt :screen screen/move-cursor-to-col x)))
 
-(defn top-limit [{:keys [origin-mode top-margin] :as vt}]
-  (if origin-mode top-margin 0))
-
-(defn bottom-limit [{:keys [origin-mode bottom-margin height] :as vt}]
-  (if origin-mode bottom-margin (dec height)))
-
-(defn adjust-y-to-limits [vt y]
-  (let [top (top-limit vt)
-        bottom (bottom-limit vt)]
-    (adjust-to-range (+ top y) top bottom)))
-
-(defn execute-cup [{:keys [width height] :as vt}]
-  (let [ps1 (get-param vt 0 1)
-        ps2 (get-param vt 1 1)
-        new-x (adjust-to-range (dec ps2) 0 (dec width))
-        new-y (adjust-y-to-limits vt (dec ps1))]
-    (-> vt
-        (move-cursor-to-col new-x)
-        (move-cursor-to-row new-y))))
+(defn execute-cup [vt]
+  (let [y (dec (get-param vt 0 1))
+        x (dec (get-param vt 1 1))]
+    (update vt :screen screen/move-cursor x y)))
 
 (defn execute-cht [vt]
   (let [n (get-param vt 0 1)]
-    (move-cursor-to-next-tab vt n)))
-
-(defn clear-line-right [line x char-attrs]
-  (vec (concat (take x line)
-               (repeat (- (count line) x) (empty-cell char-attrs)))))
-
-(defn clear-to-end-of-screen [{{:keys [x y]} :cursor :keys [width height char-attrs] :as vt}]
-  (update vt :lines (fn [lines]
-                      (let [top-lines (take y lines)
-                            curr-line (clear-line-right (nth lines y) x char-attrs)
-                            bottom-lines (repeat (- height y 1) (empty-line width char-attrs))]
-                        (vec (concat top-lines [curr-line] bottom-lines))))))
-
-(defn clear-line-left [line x char-attrs]
-  (vec (concat (repeat (inc x) (empty-cell char-attrs))
-               (drop (inc x) line))))
-
-(defn clear-to-beginning-of-screen [{{:keys [x y]} :cursor :keys [width height char-attrs] :as vt}]
-  (update vt :lines (fn [lines]
-                      (let [top-lines (repeat y (empty-line width char-attrs))
-                            curr-line (clear-line-left (nth lines y) x char-attrs)
-                            bottom-lines (drop (inc y) lines)]
-                        (vec (concat top-lines [curr-line] bottom-lines))))))
-
-(defn clear-screen [{:keys [width height char-attrs] :as vt}]
-  (assoc vt :lines (empty-screen width height char-attrs)))
+    (update vt :screen screen/move-cursor-to-next-tab n)))
 
 (defn execute-ed [vt]
   (let [n (get-param vt 0 0)]
-    (case n
-      0 (clear-to-end-of-screen vt)
-      1 (clear-to-beginning-of-screen vt)
-      2 (clear-screen vt)
-      vt)))
+    (update vt :screen (case n
+                         0 screen/clear-to-end-of-screen
+                         1 screen/clear-to-beginning-of-screen
+                         2 screen/clear-screen
+                         identity))))
 
-(defn execute-el [{:keys [width height char-attrs] {:keys [x y]} :cursor :as vt}]
-  (let [n (get-param vt 0 0)
-        x (min x (dec width))]
-    (update-in vt [:lines y] (fn [line]
-                               (case n
-                                 0 (clear-line-right line x char-attrs)
-                                 1 (clear-line-left line x char-attrs)
-                                 2 (empty-line width char-attrs)
-                                 line)))))
+(defn execute-el [vt]
+  (let [n (get-param vt 0 0)]
+    (update vt :screen (case n
+                         0 screen/clear-to-end-of-line
+                         1 screen/clear-to-beginning-of-line
+                         2 screen/clear-line
+                         identity))))
 
 (defn execute-su [vt]
   (let [n (get-param vt 0 1)]
-    (scroll-up vt n)))
+    (update vt :screen screen/scroll-up n)))
 
 (defn execute-sd [vt]
   (let [n (get-param vt 0 1)]
-    (scroll-down vt n)))
+    (update vt :screen screen/scroll-down n)))
 
-(defn execute-il [{:keys [bottom-margin width height char-attrs] {y :y} :cursor :as vt}]
-  (let [n (get-param vt 0 1)
-        filler (empty-line width char-attrs)]
-    (update vt :lines (fn [lines]
-                        (vec (if (<= y bottom-margin)
-                               (concat
-                                (take y lines)
-                                (scroll-down-lines (subvec lines y (inc bottom-margin)) n filler)
-                                (drop (inc bottom-margin) lines))
-                               (concat
-                                (take y lines)
-                                (scroll-down-lines (drop y lines) n filler))))))))
+(defn execute-il [vt]
+  (let [n (get-param vt 0 1)]
+    (update vt :screen screen/insert-lines n)))
 
-(defn execute-dl [{:keys [bottom-margin width height char-attrs] {y :y} :cursor :as vt}]
-  (let [n (get-param vt 0 1)
-        filler (empty-line width char-attrs)]
-    (update vt :lines (fn [lines]
-                        (vec (if (<= y bottom-margin)
-                               (concat
-                                (take y lines)
-                                (scroll-up-lines (subvec lines y (inc bottom-margin)) n filler)
-                                (drop (inc bottom-margin) lines))
-                               (concat
-                                (take y lines)
-                                (scroll-up-lines (drop y lines) n filler))))))))
+(defn execute-dl [vt]
+  (let [n (get-param vt 0 1)]
+    (update vt :screen screen/delete-lines n)))
 
-(defn execute-dch [{{:keys [x y]} :cursor :keys [width char-attrs] :as vt}]
-  (let [vt (if (>= x width) (move-cursor-to-col vt (dec width)) vt)
-        x (get-in vt [:cursor :x])
-        n (min (get-param vt 0 1) (- width x))]
-    (update-in vt [:lines y] (fn [line]
-                               (vec (concat
-                                     (take x line)
-                                     (drop (+ x n) line)
-                                     (repeat n (empty-cell char-attrs))))))))
+(defn execute-dch [vt]
+  (let [n (get-param vt 0 1)]
+    (update vt :screen screen/delete-characters n)))
 
-(defn execute-ctc [{{:keys [x]} :cursor :keys [width] :as vt}]
+(defn execute-ctc [vt]
   (let [n (get-param vt 0 0)]
     (case n
-      0 (if (< 0 x width) (update vt :tabs conj x) vt)
-      2 (update vt :tabs disj x)
-      5 (update vt :tabs empty)
+      0 (update vt :screen screen/set-horizontal-tab)
+      2 (update vt :screen screen/clear-horizontal-tab)
+      5 (update vt :screen screen/clear-all-horizontal-tabs)
       vt)))
 
-(defn execute-ech [{{:keys [x y]} :cursor :keys [width char-attrs] :as vt}]
-  (let [n (min (get-param vt 0 1) (- width x))]
-    (update-in vt [:lines y] (fn [line]
-                               (vec (concat
-                                     (take x line)
-                                     (repeat n (empty-cell char-attrs))
-                                     (drop (+ x n) line)))))))
+(defn execute-ech [vt]
+  (let [n (get-param vt 0 1)]
+    (update vt :screen screen/erase-characters n)))
 
 (defn execute-cbt [vt]
   (let [n (get-param vt 0 1)]
-    (move-cursor-to-prev-tab vt n)))
+    (update vt :screen screen/move-cursor-to-prev-tab n)))
 
-(defn execute-tbc [{{:keys [x]} :cursor :as vt}]
+(defn execute-tbc [vt]
   (let [n (get-param vt 0 0)]
     (case n
-      0 (update vt :tabs disj x)
-      3 (update vt :tabs empty)
+      0 (update vt :screen screen/clear-horizontal-tab)
+      3 (update vt :screen screen/clear-all-horizontal-tabs)
       vt)))
 
 (defn execute-sm [vt]
@@ -564,126 +255,78 @@
   (let [intermediate (get-intermediate vt 0)]
     (reduce #(reset-mode %1 intermediate %2) vt (get-params vt))))
 
-(defn reset-attrs [vt]
-  (update vt :char-attrs empty))
-
-(defn set-attr [vt attr-name value]
-  (assoc-in vt [:char-attrs attr-name] value))
-
-(defn unset-attr [vt attr-name]
-  (update vt :char-attrs dissoc attr-name))
+(defn execute-sgr* [screen params]
+  (loop [screen screen
+         params params]
+    (if (seq params)
+      (let [x (first params)]
+        (case x
+          0  (recur (screen/reset-char-attrs screen) (rest params))
+          1  (recur (screen/set-attr screen :bold true) (rest params))
+          3  (recur (screen/set-attr screen :italic true) (rest params))
+          4  (recur (screen/set-attr screen :underline true) (rest params))
+          5  (recur (screen/set-attr screen :blink true) (rest params))
+          7  (recur (screen/set-attr screen :inverse true) (rest params))
+          21 (recur (screen/unset-attr screen :bold) (rest params))
+          22 (recur (screen/unset-attr screen :bold) (rest params))
+          23 (recur (screen/unset-attr screen :italic) (rest params))
+          24 (recur (screen/unset-attr screen :underline) (rest params))
+          25 (recur (screen/unset-attr screen :blink) (rest params))
+          27 (recur (screen/unset-attr screen :inverse) (rest params))
+          (30 31 32 33 34 35 36 37) (recur (screen/set-attr screen :fg (- x 30)) (rest params))
+          38 (case (second params)
+               2 (let [[r g b] (take 3 (drop 2 params))]
+                   (if b ; all r, g and b are not nil
+                     (recur (screen/set-attr screen :fg [r g b]) (drop 5 params))
+                     (recur screen (drop 2 params))))
+               5 (if-let [fg (first (drop 2 params))]
+                   (recur (screen/set-attr screen :fg fg) (drop 3 params))
+                   (recur screen (drop 2 params)))
+               (recur screen (rest params)))
+          39 (recur (screen/unset-attr screen :fg) (rest params))
+          (40 41 42 43 44 45 46 47) (recur (screen/set-attr screen :bg (- x 40)) (rest params))
+          48 (case (second params)
+               2 (let [[r g b] (take 3 (drop 2 params))]
+                   (if b ; all r, g and b are not nil
+                     (recur (screen/set-attr screen :bg [r g b]) (drop 5 params))
+                     (recur screen (drop 2 params))))
+               5 (if-let [bg (first (drop 2 params))]
+                   (recur (screen/set-attr screen :bg bg) (drop 3 params))
+                   (recur screen (drop 2 params)))
+               (recur screen (rest params)))
+          49 (recur (screen/unset-attr screen :bg) (rest params))
+          (90 91 92 93 94 95 96 97) (recur (screen/set-attr screen :fg (- x 82)) (rest params))
+          (100 101 102 103 104 105 106 107) (recur (screen/set-attr screen :bg (- x 92)) (rest params))
+          (recur screen (rest params))))
+      screen)))
 
 (defn execute-sgr [vt]
   (let [params (or (seq (get-params vt)) [0])]
-    (loop [vt vt
-           params params]
-      (if (seq params)
-        (let [x (first params)]
-          (case x
-            0  (recur (reset-attrs vt) (rest params))
-            1  (recur (set-attr vt :bold true) (rest params))
-            3  (recur (set-attr vt :italic true) (rest params))
-            4  (recur (set-attr vt :underline true) (rest params))
-            5  (recur (set-attr vt :blink true) (rest params))
-            7  (recur (set-attr vt :inverse true) (rest params))
-            21 (recur (unset-attr vt :bold) (rest params))
-            22 (recur (unset-attr vt :bold) (rest params))
-            23 (recur (unset-attr vt :italic) (rest params))
-            24 (recur (unset-attr vt :underline) (rest params))
-            25 (recur (unset-attr vt :blink) (rest params))
-            27 (recur (unset-attr vt :inverse) (rest params))
-            (30 31 32 33 34 35 36 37) (recur (set-attr vt :fg (- x 30)) (rest params))
-            38 (case (second params)
-                 2 (let [[r g b] (take 3 (drop 2 params))]
-                     (if b ; all r, g and b are not nil
-                       (recur (set-attr vt :fg [r g b]) (drop 5 params))
-                       (recur vt (drop 2 params))))
-                 5 (if-let [fg (first (drop 2 params))]
-                     (recur (set-attr vt :fg fg) (drop 3 params))
-                     (recur vt (drop 2 params)))
-                 (recur vt (rest params)))
-            39 (recur (unset-attr vt :fg) (rest params))
-            (40 41 42 43 44 45 46 47) (recur (set-attr vt :bg (- x 40)) (rest params))
-            48 (case (second params)
-                 2 (let [[r g b] (take 3 (drop 2 params))]
-                     (if b ; all r, g and b are not nil
-                       (recur (set-attr vt :bg [r g b]) (drop 5 params))
-                       (recur vt (drop 2 params))))
-                 5 (if-let [bg (first (drop 2 params))]
-                     (recur (set-attr vt :bg bg) (drop 3 params))
-                     (recur vt (drop 2 params)))
-                 (recur vt (rest params)))
-            49 (recur (unset-attr vt :bg) (rest params))
-            (90 91 92 93 94 95 96 97) (recur (set-attr vt :fg (- x 82)) (rest params))
-            (100 101 102 103 104 105 106 107) (recur (set-attr vt :bg (- x 92)) (rest params))
-            (recur vt (rest params))))
-        vt))))
+    (update vt :screen execute-sgr* params)))
 
 (defn execute-vpa [vt]
-  (let [n (get-param vt 0 1)
-        new-y (adjust-y-to-limits vt (dec n))]
-    (move-cursor-to-row vt new-y)))
+  (let [n (dec (get-param vt 0 1))]
+    (update vt :screen screen/move-cursor-to-row-within-margins n)))
 
-(defn execute-decstr [{:keys [height] :as vt}]
+(defn execute-decstr [vt]
   (if (= (get-intermediate vt 0) 0x21)
-    (-> vt
-        show-cursor
-        (set-margin 0 (dec height))
-        (assoc :insert-mode false
-               :origin-mode false
-               :char-attrs normal-char-attrs
-               :saved initial-saved-cursor))
+    (update vt :screen screen/soft-reset)
     vt))
 
-(defn execute-decstbm [{:keys [height] :as vt}]
+(defn execute-decstbm [vt]
   (let [top (dec (get-param vt 0 1))
-        bottom (dec (get-param vt 1 height))]
-    (if (< -1 top bottom height)
-      (-> vt
-          (set-margin top bottom)
-          move-cursor-to-home)
-      vt)))
+        bottom (some-> vt (get-param 1 nil) dec)]
+    (update vt :screen #(-> %
+                            (screen/set-margins top bottom)
+                            screen/move-cursor-to-home))))
 
 ;; parser actions
 
 (defn ignore [vt input]
   vt)
 
-(defn replace-char [line x cell]
-  (assoc line x cell))
-
-(defn insert-char [line x cell]
-  (vec (concat
-        (take x line)
-        [cell]
-        (take (- (count line) x 1) (drop x line)))))
-
-(defn wrap [{{:keys [y]} :cursor :keys [height] :as vt}]
-  (let [vt (move-cursor-to-col vt 0)]
-    (if (= height (inc y))
-      (scroll-up vt)
-      (move-cursor-to-row vt (inc y)))))
-
-(defn do-print [{:keys [width height char-attrs auto-wrap-mode insert-mode charset-fn] {:keys [x y]} :cursor :as vt} input]
-  (let [input (if (< 95 input 127) (charset-fn input) input)
-        cell (cell input char-attrs)]
-    (if (= width (inc x))
-      (if auto-wrap-mode
-        (-> vt
-            (assoc-in [:lines y x] cell)
-            (move-cursor-to-col (inc x))
-            (assoc :next-print-wraps true))
-        (-> vt
-            (assoc-in [:lines y x] cell)))
-      (let [f (if insert-mode insert-char replace-char)]
-        (-> vt
-            (update-in [:lines y] f x cell)
-            (move-cursor-to-col (inc x)))))))
-
-(defn print [{:keys [auto-wrap-mode next-print-wraps] :as vt} input]
-  (if (and auto-wrap-mode next-print-wraps)
-    (do-print (wrap vt) input)
-    (do-print vt input)))
+(defn print [vt input]
+  (update vt :screen screen/print input))
 
 (defn execute [vt input]
   (if-let [action (case input
@@ -717,7 +360,7 @@
          [nil (_ :guard #(<= 0x40 % 0x5f))] (execute vt (+ input 0x40))
          [nil 0x37] (execute-sc vt)
          [nil 0x38] (execute-rc vt)
-         [nil 0x63] (make-vt (:width vt) (:height vt))
+         [nil 0x63] (execute-ris vt)
          [0x23 0x38] (execute-decaln vt)
          [0x28 0x30] (execute-so vt)
          [0x28 _] (execute-si vt)
@@ -927,29 +570,6 @@
   (let [codes (mapv #(#?(:clj .codePointAt :cljs .codePointAt) str %) (range (count str)))]
     (feed vt codes)))
 
-(s/defn chars->string :- s/Str
-  [chars :- [CodePoint]]
-  #?(:clj (String. (int-array chars) 0 (count chars))
-     :cljs (apply js/String.fromCodePoint chars)))
-
-(s/defn compact-line :- FragmentLine
-  "Joins together all neighbouring cells having the same color attributes,
-  converting unicode codepoints to strings."
-  [line :- CellLine]
-  (let [[cell & cells] line]
-    (loop [segments []
-           chars [(first cell)]
-           attrs (last cell)
-           cells cells]
-      (if-let [[char new-attrs] (first cells)]
-        (if (= new-attrs attrs)
-          (recur segments (conj chars char) attrs (rest cells))
-          (recur (conj segments [(chars->string chars) attrs]) [char] new-attrs (rest cells)))
-        (conj segments [(chars->string chars) attrs])))))
-
-(defn compact-lines [lines]
-  (map compact-line lines))
-
 (defn dump-color [base c]
   (match c
          [r g b] (str (+ base 8) ";2;" r ";" g ";" b)
@@ -979,4 +599,4 @@
   (str/replace (str/join (map dump-fragment line)) #"\u001b\[0m\u0020+$" ""))
 
 (defn dump [vt]
-  (str/join "\n" (map dump-line (-> vt :lines compact-lines))))
+  (str/join "\n" (map dump-line (-> vt :screen screen/lines))))

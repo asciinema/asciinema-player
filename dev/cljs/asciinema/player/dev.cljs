@@ -94,10 +94,10 @@
           (print n "/" (count v1-stdout)))
         (if-let [str (get v1-stdout n)]
           (let [vt (vt/feed-str prev-vt str)
-                prev-lines (vt/compact-lines (:lines prev-vt))
-                prev-cursor (:cursor prev-vt)
-                actual-lines (vt/compact-lines (:lines vt))
-                actual-cursor (:cursor vt)
+                prev-lines (-> prev-vt :screen screen/lines)
+                prev-cursor (-> prev-vt :screen screen/cursor)
+                actual-lines (-> vt :screen screen/lines)
+                actual-cursor (-> vt :screen screen/cursor)
                 expected-lines (get-in v0-frames [n :lines])
                 expected-cursor (get-in v0-frames [n :cursor])]
             (when (>= n check-from)

@@ -1,7 +1,7 @@
 (ns asciinema.vt-test
   #?(:cljs (:require-macros [cljs.test :refer [is are deftest testing]]
                             [clojure.test.check.clojure-test :refer [defspec]]
-                            [asciinema.player.test-macros :refer [property-tests-multiplier]]))
+                            [asciinema.player.test-macros :refer [property-tests-multiplier expect-lines expect-first-line expect-tabs expect-cursor]]))
   (:require #?(:clj [clojure.test :refer [is are deftest testing use-fixtures]]
                :cljs [cljs.test :refer-macros [use-fixtures]])
             [clojure.test.check :as tc]
@@ -9,24 +9,13 @@
             [clojure.test.check.properties :as prop #?@(:cljs [:include-macros true])]
             #?(:clj [clojure.test.check.clojure-test :refer [defspec]])
             [schema.test]
-            #?(:clj [asciinema.player.test-macros :refer [property-tests-multiplier]])
-            [asciinema.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params initial-saved-cursor compact-lines dump-sgr dump]]))
+            #?(:clj [asciinema.player.test-macros :refer [property-tests-multiplier expect-lines expect-first-line expect-tabs expect-cursor]])
+            [asciinema.vt :as vt :refer [parse make-vt feed feed-one feed-str get-params dump-sgr dump]]
+            [asciinema.vt.screen :as screen]))
 
 (use-fixtures :once schema.test/validate-schemas)
 
 (def vt-80x24 (make-vt 80 24))
-
-(defn expect-lines [{lines :lines} expected]
-  (is (= (compact-lines lines) expected)))
-
-(defn expect-cursor
-  ([{{:keys [x y]} :cursor} expected-x expected-y]
-   (is (= x expected-x))
-   (is (= y expected-y)))
-  ([{{:keys [x y visible]} :cursor} expected-x expected-y expected-visible]
-   (is (= x expected-x))
-   (is (= y expected-y))
-   (is (= visible expected-visible))))
 
 (defn test-event [initial-state input expected-state expected-actions]
   (is (= (parse initial-state input) [expected-state expected-actions])))
@@ -399,19 +388,19 @@
 
 (deftest make-vt-test
   (let [vt (make-vt 80 24)]
-    (is (= (:tabs vt) #{8 16 24 32 40 48 56 64 72}))
-    (is (= (-> vt :char-attrs) vt/normal-char-attrs))
-    (is (= (-> vt :saved) vt/initial-saved-cursor))
     (is (= (-> vt :parser :intermediate-chars) []))
     (is (= (-> vt :parser :param-chars) []))
-    (is (= (-> vt :insert-mode) false))
-    (is (= (-> vt :auto-wrap-mode) true))
-    (is (= (-> vt :new-line-mode) false))
-    (is (= (-> vt :top-margin) 0))
-    (is (= (-> vt :bottom-margin) 23))
-    (is (= (-> vt :origin-mode) false)))
+    (is (= (-> vt :screen :tabs) #{8 16 24 32 40 48 56 64 72}))
+    (is (= (-> vt :screen :char-attrs) screen/normal-char-attrs))
+    (is (= (-> vt :screen :saved) screen/initial-saved-cursor))
+    (is (= (-> vt :screen :insert-mode) false))
+    (is (= (-> vt :screen :auto-wrap-mode) true))
+    (is (= (-> vt :screen :new-line-mode) false))
+    (is (= (-> vt :screen :top-margin) 0))
+    (is (= (-> vt :screen :bottom-margin) 23))
+    (is (= (-> vt :screen :origin-mode) false)))
   (let [vt (make-vt 20 5)]
-    (is (= (:tabs vt) #{8 16}))))
+    (is (= (-> vt :screen :tabs) #{8 16}))))
 
 (defn feed-esc [vt str]
   (let [codes (mapv #(#?(:clj .codePointAt :cljs .charCodeAt) str %) (range (count str)))]
@@ -433,7 +422,7 @@
   (feed-csi vt "1m"))
 
 (defn hide-cursor [vt]
-  (assoc-in vt [:cursor :visible] false))
+  (update vt :screen screen/hide-cursor))
 
 (deftest print-test
   (let [vt (-> (make-vt 4 3)
@@ -616,202 +605,172 @@
                           [["FFFF" {}]]
                           [["G   " {}]]])
         (expect-cursor vt 2 6))
-    (let [vt (feed-csi vt "20h") ; set new-line mode
-          vt (-> vt (move-cursor 2 1) f)]
-      (expect-cursor vt 0 2)))))
+      (let [vt (feed-csi vt "20h") ; set new-line mode
+            vt (-> vt (move-cursor 2 1) f)]
+        (expect-cursor vt 0 2)))))
 
 (defn test-nel [f]
   (let [vt (-> (make-vt 4 7)
                (feed-str "AAAABBBBCCCCDDDDEEEEFFFFG")
                (set-bg 3))]
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 0) f)]
-      (is (= (compact-lines lines) [[["AAAA" {}]]
-                                    [["BBBB" {}]]
-                                    [["CCCC" {}]]
-                                    [["DDDD" {}]]
-                                    [["EEEE" {}]]
-                                    [["FFFF" {}]]
-                                    [["G   " {}]]]))
-      (is (= x 0))
-      (is (= y 1)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 1) f)]
-      (is (= (compact-lines lines) [[["AAAA" {}]]
-                                    [["BBBB" {}]]
-                                    [["CCCC" {}]]
-                                    [["DDDD" {}]]
-                                    [["EEEE" {}]]
-                                    [["FFFF" {}]]
-                                    [["G   " {}]]]))
-      (is (= x 0))
-      (is (= y 2)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 6) f)]
-      (is (= (compact-lines lines) [[["BBBB" {}]]
-                                    [["CCCC" {}]]
-                                    [["DDDD" {}]]
-                                    [["EEEE" {}]]
-                                    [["FFFF" {}]]
-                                    [["G   " {}]]
-                                    [["    " {:bg 3}]]]))
-      (is (= x 0))
-      (is (= y 6)))
+    (let [vt (-> vt (move-cursor 0 0) f)]
+      (expect-lines vt [[["AAAA" {}]]
+                        [["BBBB" {}]]
+                        [["CCCC" {}]]
+                        [["DDDD" {}]]
+                        [["EEEE" {}]]
+                        [["FFFF" {}]]
+                        [["G   " {}]]])
+      (expect-cursor vt 0 1))
+    (let [vt (-> vt (move-cursor 1 1) f)]
+      (expect-lines vt [[["AAAA" {}]]
+                        [["BBBB" {}]]
+                        [["CCCC" {}]]
+                        [["DDDD" {}]]
+                        [["EEEE" {}]]
+                        [["FFFF" {}]]
+                        [["G   " {}]]])
+      (expect-cursor vt 0 2))
+    (let [vt (-> vt (move-cursor 2 6) f)]
+      (expect-lines vt [[["BBBB" {}]]
+                        [["CCCC" {}]]
+                        [["DDDD" {}]]
+                        [["EEEE" {}]]
+                        [["FFFF" {}]]
+                        [["G   " {}]]
+                        [["    " {:bg 3}]]])
+      (expect-cursor vt 0 6))
     (let [vt (feed-csi vt "3;5r")] ; set scroll region 3-5
-      (let [vt (-> vt (move-cursor 2 1) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= (compact-lines lines) [[["AAAA" {}]]
-                                      [["BBBB" {}]]
-                                      [["CCCC" {}]]
-                                      [["DDDD" {}]]
-                                      [["EEEE" {}]]
-                                      [["FFFF" {}]]
-                                      [["G   " {}]]]))
-        (is (= x 0))
-        (is (= y 2)))
-      (let [vt (-> vt (move-cursor 2 3) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= (compact-lines lines) [[["AAAA" {}]]
-                                      [["BBBB" {}]]
-                                      [["CCCC" {}]]
-                                      [["DDDD" {}]]
-                                      [["EEEE" {}]]
-                                      [["FFFF" {}]]
-                                      [["G   " {}]]]))
-        (is (= x 0))
-        (is (= y 4)))
-      (let [vt (-> vt (move-cursor 2 4) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= (compact-lines lines) [[["AAAA" {}]]
-                                      [["BBBB" {}]]
-                                      [["DDDD" {}]]
-                                      [["EEEE" {}]]
-                                      [["    " {:bg 3}]]
-                                      [["FFFF" {}]]
-                                      [["G   " {}]]]))
-        (is (= x 0))
-        (is (= y 4)))
-      (let [vt (-> vt (move-cursor 2 5) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= (compact-lines lines) [[["AAAA" {}]]
-                                      [["BBBB" {}]]
-                                      [["CCCC" {}]]
-                                      [["DDDD" {}]]
-                                      [["EEEE" {}]]
-                                      [["FFFF" {}]]
-                                      [["G   " {}]]]))
-        (is (= x 0))
-        (is (= y 6)))
-      (let [vt (-> vt (move-cursor 2 6) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= (compact-lines lines) [[["AAAA" {}]]
-                                      [["BBBB" {}]]
-                                      [["CCCC" {}]]
-                                      [["DDDD" {}]]
-                                      [["EEEE" {}]]
-                                      [["FFFF" {}]]
-                                      [["G   " {}]]]))
-        (is (= x 0))
-        (is (= y 6))))))
+      (let [vt (-> vt (move-cursor 2 1) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 0 2))
+      (let [vt (-> vt (move-cursor 2 3) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 0 4))
+      (let [vt (-> vt (move-cursor 2 4) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["    " {:bg 3}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 0 4))
+      (let [vt (-> vt (move-cursor 2 5) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 0 6))
+      (let [vt (-> vt (move-cursor 2 6) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 0 6)))))
 
 (defn test-hts [f]
   (let [vt (make-vt 20 3)]
-    (let [{tabs :tabs} (-> vt (move-cursor 0 0) f)]
-      (is (= tabs #{8 16})))
-    (let [{tabs :tabs} (-> vt (move-cursor 1 0) f)]
-      (is (= tabs #{1 8 16})))
-    (let [{tabs :tabs} (-> vt (move-cursor 11 0) f)]
-      (is (= tabs #{8 11 16})))
-    (let [{tabs :tabs} (-> vt (move-cursor 19 0) f)]
-      (is (= tabs #{8 16 19})))))
+    (expect-tabs (-> vt (move-cursor 0 0) f) #{8 16})
+    (expect-tabs (-> vt (move-cursor 1 0) f) #{1 8 16})
+    (expect-tabs (-> vt (move-cursor 11 0) f) #{8 11 16})
+    (expect-tabs (-> vt (move-cursor 19 0) f) #{8 16 19})))
 
 (defn test-ri [f]
   (let [vt (-> (make-vt 4 7)
                (feed-str "AAAABBBBCCCCDDDDEEEEFFFFG")
                (set-bg 3))]
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 0 6) f)]
-      (is (= (compact-lines lines) [[["AAAA" {}]]
-                                    [["BBBB" {}]]
-                                    [["CCCC" {}]]
-                                    [["DDDD" {}]]
-                                    [["EEEE" {}]]
-                                    [["FFFF" {}]]
-                                    [["G   " {}]]]))
-      (is (= x 0))
-      (is (= y 5)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 1 5) f)]
-      (is (= (compact-lines lines) [[["AAAA" {}]]
-                                    [["BBBB" {}]]
-                                    [["CCCC" {}]]
-                                    [["DDDD" {}]]
-                                    [["EEEE" {}]]
-                                    [["FFFF" {}]]
-                                    [["G   " {}]]]))
-      (is (= x 1))
-      (is (= y 4)))
-    (let [{lines :lines {x :x y :y} :cursor} (-> vt (move-cursor 2 0) f)]
-      (is (= (compact-lines lines) [[["    " {:bg 3}]]
-                                    [["AAAA" {}]]
-                                    [["BBBB" {}]]
-                                    [["CCCC" {}]]
-                                    [["DDDD" {}]]
-                                    [["EEEE" {}]]
-                                    [["FFFF" {}]]]))
-      (is (= x 2))
-      (is (= y 0)))
+    (let [vt (-> vt (move-cursor 0 6) f)]
+      (expect-lines vt [[["AAAA" {}]]
+                        [["BBBB" {}]]
+                        [["CCCC" {}]]
+                        [["DDDD" {}]]
+                        [["EEEE" {}]]
+                        [["FFFF" {}]]
+                        [["G   " {}]]])
+      (expect-cursor vt 0 5))
+    (let [vt (-> vt (move-cursor 1 5) f)]
+      (expect-lines vt [[["AAAA" {}]]
+                        [["BBBB" {}]]
+                        [["CCCC" {}]]
+                        [["DDDD" {}]]
+                        [["EEEE" {}]]
+                        [["FFFF" {}]]
+                        [["G   " {}]]])
+      (expect-cursor vt 1 4))
+    (let [vt (-> vt (move-cursor 2 0) f)]
+      (expect-lines vt [[["    " {:bg 3}]]
+                        [["AAAA" {}]]
+                        [["BBBB" {}]]
+                        [["CCCC" {}]]
+                        [["DDDD" {}]]
+                        [["EEEE" {}]]
+                        [["FFFF" {}]]])
+      (expect-cursor vt 2 0))
     (let [vt (feed-csi vt "3;5r")] ; set scroll region 3-5
-      (let [vt (-> vt (move-cursor 2 5) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= (compact-lines lines) [[["AAAA" {}]]
-                                      [["BBBB" {}]]
-                                      [["CCCC" {}]]
-                                      [["DDDD" {}]]
-                                      [["EEEE" {}]]
-                                      [["FFFF" {}]]
-                                      [["G   " {}]]]))
-        (is (= x 2))
-        (is (= y 4)))
-      (let [vt (-> vt (move-cursor 2 3) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= (compact-lines lines) [[["AAAA" {}]]
-                                      [["BBBB" {}]]
-                                      [["CCCC" {}]]
-                                      [["DDDD" {}]]
-                                      [["EEEE" {}]]
-                                      [["FFFF" {}]]
-                                      [["G   " {}]]]))
-        (is (= x 2))
-        (is (= y 2)))
-      (let [vt (-> vt (move-cursor 2 2) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= (compact-lines lines) [[["AAAA" {}]]
-                                      [["BBBB" {}]]
-                                      [["    " {:bg 3}]]
-                                      [["CCCC" {}]]
-                                      [["DDDD" {}]]
-                                      [["FFFF" {}]]
-                                      [["G   " {}]]]))
-        (is (= x 2))
-        (is (= y 2)))
-      (let [vt (-> vt (move-cursor 2 1) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= (compact-lines lines) [[["AAAA" {}]]
-                                      [["BBBB" {}]]
-                                      [["CCCC" {}]]
-                                      [["DDDD" {}]]
-                                      [["EEEE" {}]]
-                                      [["FFFF" {}]]
-                                      [["G   " {}]]]))
-        (is (= x 2))
-        (is (= y 0)))
-      (let [vt (-> vt (move-cursor 2 0) f)
-            {lines :lines {x :x y :y} :cursor} vt]
-        (is (= (compact-lines lines) [[["AAAA" {}]]
-                                      [["BBBB" {}]]
-                                      [["CCCC" {}]]
-                                      [["DDDD" {}]]
-                                      [["EEEE" {}]]
-                                      [["FFFF" {}]]
-                                      [["G   " {}]]]))
-        (is (= x 2))
-        (is (= y 0))))))
+      (let [vt (-> vt (move-cursor 2 5) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 2 4))
+      (let [vt (-> vt (move-cursor 2 3) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 2 2))
+      (let [vt (-> vt (move-cursor 2 2) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["    " {:bg 3}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 2 2))
+      (let [vt (-> vt (move-cursor 2 1) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 2 0))
+      (let [vt (-> vt (move-cursor 2 0) f)]
+        (expect-lines vt [[["AAAA" {}]]
+                          [["BBBB" {}]]
+                          [["CCCC" {}]]
+                          [["DDDD" {}]]
+                          [["EEEE" {}]]
+                          [["FFFF" {}]]
+                          [["G   " {}]]])
+        (expect-cursor vt 2 0)))))
 
 (deftest control-char-test
   (let [vt (make-vt 4 3)]
@@ -840,48 +799,37 @@
       (is (= vt (feed-one vt 0x07))))
 
     (testing "0x08 (BS)"
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (feed-one 0x08))]
-        (is (= x 0))
-        (is (= y 0)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (feed-one 0x08))]
-        (is (= x 1))
-        (is (= y 0)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 2) (feed-one 0x08))]
-        (is (= x 0))
-        (is (= y 2))))
+      (let [vt (-> vt (move-cursor 0 0) (feed-one 0x08))]
+        (expect-cursor vt 0 0))
+      (let [vt (-> vt (move-cursor 2 0) (feed-one 0x08))]
+        (expect-cursor vt 1 0))
+      (let [vt (-> vt (move-cursor 0 2) (feed-one 0x08))]
+        (expect-cursor vt 0 2)))
 
     (testing "0x09 (HT)"
       (let [vt (make-vt 20 3)]
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (feed-one 0x09))]
-          (is (= x 8))
-          (is (= y 0)))
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (feed-one 0x09))]
-          (is (= x 8))
-          (is (= y 0)))
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 8 1) (feed-one 0x09))]
-          (is (= x 16))
-          (is (= y 1)))
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 9 1) (feed-one 0x09))]
-          (is (= x 16))
-          (is (= y 1)))
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 16 1) (feed-one 0x09))]
-          (is (= x 19))
-          (is (= y 1)))
-        (let [{{x :x y :y} :cursor} (-> vt (move-cursor 19 1) (feed-one 0x09))]
-          (is (= x 19))
-          (is (= y 1)))))
+        (let [vt (-> vt (move-cursor 0 0) (feed-one 0x09))]
+          (expect-cursor vt 8 0))
+        (let [vt (-> vt (move-cursor 2 0) (feed-one 0x09))]
+          (expect-cursor vt 8 0))
+        (let [vt (-> vt (move-cursor 8 1) (feed-one 0x09))]
+          (expect-cursor vt 16 1))
+        (let [vt (-> vt (move-cursor 9 1) (feed-one 0x09))]
+          (expect-cursor vt 16 1))
+        (let [vt (-> vt (move-cursor 16 1) (feed-one 0x09))]
+          (expect-cursor vt 19 1))
+        (let [vt (-> vt (move-cursor 19 1) (feed-one 0x09))]
+          (expect-cursor vt 19 1))))
 
     (testing "0x0b (VT), 0x0c (FF), 0x84 (IND)"
       (doseq [ch [0x0b 0x0c 0x84]]
         (test-lf #(feed-one % ch))))
 
     (testing "0x0d (CR)"
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 1) (feed-one 0x0d))]
-        (is (= x 0))
-        (is (= y 1)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 1) (feed-one 0x0d))]
-        (is (= x 0))
-        (is (= y 1))))
+      (let [vt (-> vt (move-cursor 0 1) (feed-one 0x0d))]
+        (expect-cursor vt 0 1))
+      (let [vt (-> vt (move-cursor 2 1) (feed-one 0x0d))]
+        (expect-cursor vt 0 1)))
 
     (testing "0x0a (LF), 0x85 (NEL)"
       (doseq [ch [0x0a 0x85]]
@@ -909,13 +857,11 @@
   (testing "ESC #8 (DECALN)"
     (let [vt (-> (make-vt 4 3)
                  (move-cursor 2 1)
-                 (feed-esc "#8"))
-          {lines :lines {x :x y :y} :cursor} vt]
-      (is (= (compact-lines lines) [[["EEEE" {}]]
-                                    [["EEEE" {}]]
-                                    [["EEEE" {}]]]))
-      (is (= x 2))
-      (is (= y 1))))
+                 (feed-esc "#8"))]
+      (expect-lines vt [[["EEEE" {}]]
+                        [["EEEE" {}]]
+                        [["EEEE" {}]]])
+      (expect-cursor vt 2 1)))
 
   (testing "ESC 7 (SC), CSI ?1048h"
     (let [vt (-> (make-vt 80 24)
@@ -925,7 +871,7 @@
                  (feed-csi "?7l") ; reset auto-wrap mode
                  (move-cursor 4 5))]
       (doseq [f [#(feed-esc % "7") #(feed-csi % "?1048h")]]
-        (let [{:keys [saved]} (f vt)]
+        (let [saved (-> vt f :screen screen/saved)]
           (is (= saved {:cursor {:x 4 :y 5}
                         :char-attrs {:fg 1}
                         :origin-mode true
@@ -937,32 +883,28 @@
                    (move-cursor 79 10)
                    (feed-str " ") ; print on the edge
                    f)] ; restore cursor
-        (is (false? (:next-print-wraps vt))))
+        (is (not (-> vt :screen screen/next-print-wraps?))))
       (let [vt (-> vt-80x24
                    (set-fg 1)
                    (feed-csi "?6h") ; set origin mode
                    (feed-csi "?7l") ; reset auto-wrap mode
                    (move-cursor 4 5))]
-        (let [vt (f vt) ; restore cursor, there was no save (SC) so far
-              {{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode]} vt]
-          (is (= x 0))
-          (is (= y 0))
-          (is (= char-attrs vt/normal-char-attrs))
-          (is (false? origin-mode))
-          (is (true? auto-wrap-mode)))
+        (let [vt (f vt)] ; restore cursor, there was no save (SC) so far
+          (expect-cursor vt 0 0)
+          (is (= (-> vt :screen screen/char-attrs) screen/normal-char-attrs))
+          (is (not (-> vt :screen screen/origin-mode?)))
+          (is (-> vt :screen screen/auto-wrap-mode?)))
         (let [vt (-> vt
                      (feed-esc "7") ; save cursor
                      (feed-csi "?6l") ; reset origin mode
                      (feed-csi "?7h") ; set auto-wrap mode
                      (feed-csi "m") ; reset char attrs
                      (feed-csi "42m") ; set bg=2
-                     f) ; restore cursor
-              {{:keys [x y]} :cursor :keys [char-attrs origin-mode auto-wrap-mode]} vt]
-          (is (= x 4))
-          (is (= y 5))
-          (is (= char-attrs {:fg 1}))
-          (is (true? origin-mode))
-          (is (false? auto-wrap-mode))))))
+                     f)] ; restore cursor
+          (expect-cursor vt 4 5)
+          (is (= (-> vt :screen screen/char-attrs) {:fg 1}))
+          (is (-> vt :screen screen/origin-mode?))
+          (is (not (-> vt :screen screen/auto-wrap-mode?)))))))
 
   (testing "ESC c (RIS)"
     (let [initial-vt (make-vt 4 3)
@@ -978,584 +920,468 @@
                  (feed-str "ABCD")
                  (set-bg 3)
                  (move-cursor 1 0))]
-      (let [vt (feed-csi vt "@")
-            {{x :x y :y} :cursor [line0 & _] :lines} vt]
-        (is (= x 1))
-        (is (= y 0))
-        (is (= line0 [[0x41 {}] [0x20 {:bg 3}] [0x42 {}] [0x43 {}] [0x44 {}]])))
-      (let [vt (feed-csi vt "2@")
-            {{x :x y :y} :cursor [line0 & _] :lines} vt]
-        (is (= x 1))
-        (is (= y 0))
-        (is (= line0 [[0x41 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x42 {}] [0x43 {}]])))))
+      (let [vt (feed-csi vt "@")]
+        (expect-first-line vt [["A" {}] [" " {:bg 3}] ["BCD" {}]])
+        (expect-cursor vt 1 0))
+      (let [vt (feed-csi vt "2@")]
+        (expect-first-line vt [["A" {}] ["  " {:bg 3}] ["BC" {}]])
+        (expect-cursor vt 1 0))))
 
   (testing "CSI A (CUU), CSI e (VPR)"
     (let [vt (make-vt 5 10)]
       (doseq [ch ["A" "e"]]
         (let [vt (-> vt
                      (move-cursor 1 0)
-                     (feed-csi ch))
-              {{x :x y :y} :cursor} vt]
-          (is (= x 1))
-          (is (= y 0)))
+                     (feed-csi ch))]
+          (expect-cursor vt 1 0))
         (let [vt (-> vt
                      (move-cursor 1 2)
-                     (feed-csi ch))
-              {{x :x y :y} :cursor} vt]
-          (is (= x 1))
-          (is (= y 1)))
+                     (feed-csi ch))]
+          (expect-cursor vt 1 1))
         (let [vt (-> vt
                      (move-cursor 1 2)
-                     (feed-csi "4" ch))
-              {{x :x y :y} :cursor} vt]
-          (is (= x 1))
-          (is (= y 0)))
+                     (feed-csi "4" ch))]
+          (expect-cursor vt 1 0))
         (let [vt (feed-csi vt "4;8r")] ; set scroll region
           (let [vt (-> vt
                        (move-cursor 1 2)
-                       (feed-csi ch))
-                {{y :y} :cursor} vt]
-            (is (= y 1)))
+                       (feed-csi ch))]
+            (expect-cursor vt 1 1))
           (let [vt (-> vt
                        (move-cursor 1 6)
-                       (feed-csi "5" ch))
-                {{y :y} :cursor} vt]
-            (is (= y 3)))
+                       (feed-csi "5" ch))]
+            (expect-cursor vt 1 3))
           (let [vt (-> vt
                        (move-cursor 1 9)
-                       (feed-csi "9" ch))
-                {{y :y} :cursor} vt]
-            (is (= y 3)))))))
+                       (feed-csi "9" ch))]
+            (expect-cursor vt 1 3))))))
 
   (testing "CSI B (CUD)"
     (let [vt (make-vt 5 10)]
       (let [vt (-> vt
                    (move-cursor 1 0)
-                   (feed-csi "B"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 1))
-        (is (= y 1)))
+                   (feed-csi "B"))]
+        (expect-cursor vt 1 1))
       (let [vt (-> vt
                    (move-cursor 1 9)
-                   (feed-csi "B"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 1))
-        (is (= y 9)))
+                   (feed-csi "B"))]
+        (expect-cursor vt 1 9))
       (let [vt (-> vt
                    (move-cursor 1 7)
-                   (feed-csi "4B"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 1))
-        (is (= y 9)))
+                   (feed-csi "4B"))]
+        (expect-cursor vt 1 9))
       (let [vt (feed-csi vt "4;8r")] ; set scroll region
         (let [vt (-> vt
                      (move-cursor 1 1)
-                     (feed-csi "20B"))
-              {{y :y} :cursor} vt]
-          (is (= y 7)))
+                     (feed-csi "20B"))]
+          (expect-cursor vt 1 7))
         (let [vt (-> vt
                      (move-cursor 1 6)
-                     (feed-csi "5B"))
-              {{y :y} :cursor} vt]
-          (is (= y 7)))
+                     (feed-csi "5B"))]
+          (expect-cursor vt 1 7))
         (let [vt (-> vt
                      (move-cursor 1 8)
-                     (feed-csi "B"))
-              {{y :y} :cursor} vt]
-          (is (= y 9))))))
+                     (feed-csi "B"))]
+          (expect-cursor vt 1 9)))))
 
   (testing "CSI C (CUF), CSI a (HPR)"
     (let [vt (make-vt 5 3)]
       (doseq [ch ["C" "a"]]
         (let [vt (-> vt
                      (move-cursor 1 0)
-                     (feed-csi ch))
-              {{x :x y :y} :cursor} vt]
-          (is (= x 2))
-          (is (= y 0)))
+                     (feed-csi ch))]
+          (expect-cursor vt 2 0))
         (let [vt (-> vt
                      (move-cursor 4 0)
-                     (feed-csi ch))
-              {{x :x y :y} :cursor} vt]
-          (is (= x 4))
-          (is (= y 0)))
+                     (feed-csi ch))]
+          (expect-cursor vt 4 0))
         (let [vt (-> vt
                      (move-cursor 2 1)
-                     (feed-csi "4" ch))
-              {{x :x y :y} :cursor} vt]
-          (is (= x 4))
-          (is (= y 1))))))
+                     (feed-csi "4" ch))]
+          (expect-cursor vt 4 1)))))
 
   (testing "CSI D (CUB)"
     (let [vt (make-vt 5 3)]
       (let [vt (-> vt
                    (move-cursor 3 0)
-                   (feed-csi "D"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 2))
-        (is (= y 0)))
+                   (feed-csi "D"))]
+        (expect-cursor vt 2 0))
       (let [vt (-> vt
                    (move-cursor 0 1)
-                   (feed-csi "D"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 1)))
+                   (feed-csi "D"))]
+        (expect-cursor vt 0 1))
       (let [vt (-> vt
                    (move-cursor 2 1)
-                   (feed-csi "4D"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 1)))))
+                   (feed-csi "4D"))]
+        (expect-cursor vt 0 1))))
 
   (testing "CSI E (CNL)"
     (let [vt (make-vt 5 3)]
       (let [vt (-> vt
                    (move-cursor 1 0)
-                   (feed-csi "E"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 1)))
+                   (feed-csi "E"))]
+        (expect-cursor vt 0 1))
       (let [vt (-> vt
                    (move-cursor 1 2)
-                   (feed-csi "E"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 2)))
+                   (feed-csi "E"))]
+        (expect-cursor vt 0 2))
       (let [vt (-> vt
                    (move-cursor 1 1)
-                   (feed-csi "4E"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 2)))))
+                   (feed-csi "4E"))]
+        (expect-cursor vt 0 2))))
 
   (testing "CSI F (CPL)"
     (let [vt (make-vt 5 3)]
       (let [vt (-> vt
                    (move-cursor 1 0)
-                   (feed-csi "F"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 0)))
+                   (feed-csi "F"))]
+        (expect-cursor vt 0 0))
       (let [vt (-> vt
                    (move-cursor 1 2)
-                   (feed-csi "F"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 1)))
+                   (feed-csi "F"))]
+        (expect-cursor vt 0 1))
       (let [vt (-> vt
                    (move-cursor 1 2)
-                   (feed-csi "4F"))
-            {{x :x y :y} :cursor} vt]
-        (is (= x 0))
-        (is (= y 0)))))
+                   (feed-csi "4F"))]
+        (expect-cursor vt 0 0))))
 
   (testing "CSI G (CHA), CSI ` (HPA)"
     (let [vt (-> (make-vt 5 3)
                  (move-cursor 1 1))]
       (doseq [ch ["G" "`"]]
-        (let [vt (feed-csi vt ch)
-              {{x :x y :y} :cursor} vt]
-          (is (= x 0))
-          (is (= y 1)))
-        (let [vt (feed-csi vt "3" ch)
-              {{x :x y :y} :cursor} vt]
-          (is (= x 2))
-          (is (= y 1)))
-        (let [vt (feed-csi vt "8" ch)
-              {{x :x y :y} :cursor} vt]
-          (is (= x 4))
-          (is (= y 1))))))
+        (let [vt (feed-csi vt ch)]
+          (expect-cursor vt 0 1))
+        (let [vt (feed-csi vt "3" ch)]
+          (expect-cursor vt 2 1))
+        (let [vt (feed-csi vt "8" ch)]
+          (expect-cursor vt 4 1)))))
 
   (testing "CSI H (CUP), CSI f (HVP)"
     (let [vt (-> (make-vt 20 10)
                  (move-cursor 1 1))]
       (doseq [ch ["H" "f"]]
-        (let [vt (feed-csi vt ch)
-              {{x :x y :y} :cursor} vt]
-          (is (= x 0))
-          (is (= y 0)))
-        (let [vt (feed-csi vt "3" ch)
-              {{x :x y :y} :cursor} vt]
-          (is (= x 0))
-          (is (= y 2)))
-        (let [vt (feed-csi vt ";3" ch)
-              {{x :x y :y} :cursor} vt]
-          (is (= x 2))
-          (is (= y 0)))
-        (let [vt (feed-csi vt "3;4" ch)
-              {{x :x y :y} :cursor} vt]
-          (is (= x 3))
-          (is (= y 2)))
-        (let [vt (feed-csi vt "15;25" ch)
-              {{x :x y :y} :cursor} vt]
-          (is (= x 19))
-          (is (= y 9)))
+        (let [vt (feed-csi vt ch)]
+          (expect-cursor vt 0 0))
+        (let [vt (feed-csi vt "3" ch)]
+          (expect-cursor vt 0 2))
+        (let [vt (feed-csi vt ";3" ch)]
+          (expect-cursor vt 2 0))
+        (let [vt (feed-csi vt "3;4" ch)]
+          (expect-cursor vt 3 2))
+        (let [vt (feed-csi vt "15;25" ch)]
+          (expect-cursor vt 19 9))
         (let [vt (feed-csi vt "4;6r")] ; set scroll region
-          (let [vt (feed-csi vt "3;8" ch)
-                {{x :x y :y} :cursor} vt]
-            (is (= x 7))
-            (is (= y 2)))
-          (let [vt (feed-csi vt "5;8" ch)
-                {{x :x y :y} :cursor} vt]
-            (is (= x 7))
-            (is (= y 4)))
-          (let [vt (feed-csi vt "15;25" ch)
-                {{x :x y :y} :cursor} vt]
-            (is (= x 19))
-            (is (= y 9)))
+          (let [vt (feed-csi vt "3;8" ch)]
+            (expect-cursor vt 7 2))
+          (let [vt (feed-csi vt "5;8" ch)]
+            (expect-cursor vt 7 4))
+          (let [vt (feed-csi vt "15;25" ch)]
+            (expect-cursor vt 19 9))
           (let [vt (feed-csi vt "?6h")] ; set origin mode
-            (let [vt (feed-csi vt "2;7" ch)
-                  {{x :x y :y} :cursor} vt]
-              (is (= x 6))
-              (is (= y 4)))
-            (let [vt (feed-csi vt "15;25" ch)
-                  {{x :x y :y} :cursor} vt]
-              (is (= x 19))
-              (is (= y 5))))))))
+            (let [vt (feed-csi vt "2;7" ch)]
+              (expect-cursor vt 6 4))
+            (let [vt (feed-csi vt "15;25" ch)]
+              (expect-cursor vt 19 5)))))))
 
   (testing "CSI I (CHT)"
     (let [vt (-> (make-vt 80 3) (move-cursor 20 0))]
-      (let [{{x :x y :y} :cursor} (feed-csi vt "I")]
-        (is (= x 24))
-        (is (= y 0)))
-      (let [{{x :x y :y} :cursor} (feed-csi vt "3I")]
-        (is (= x 40))
-        (is (= y 0)))))
+      (let [vt (feed-csi vt "I")]
+        (expect-cursor vt 24 0))
+      (let [vt (feed-csi vt "3I")]
+        (expect-cursor vt 40 0))))
 
   (testing "CSI J (ED)"
     (let [vt (-> (make-vt 4 3)
                  (feed-str "ABCDEFGHIJ")
                  (set-bg 3)
                  (move-cursor 1 1))]
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "J")]
-        (is (= (compact-lines lines) [[["ABCD" {}]]
-                                      [["E" {}] ["   " {:bg 3}]]
-                                      [["    " {:bg 3}]]]))
-        (is (= x 1))
-        (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "1J")]
-        (is (= (compact-lines lines) [[["    " {:bg 3}]]
-                                      [["  " {:bg 3}] ["GH" {}]]
-                                      [["IJ  " {}]]]))
-        (is (= x 1))
-        (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2J")]
-        (is (= (compact-lines lines) [[["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]]))
-        (is (= x 1))
-        (is (= y 1)))))
+      (let [vt (feed-csi vt "J")]
+        (expect-lines vt [[["ABCD" {}]]
+                          [["E" {}] ["   " {:bg 3}]]
+                          [["    " {:bg 3}]]])
+        (expect-cursor vt 1 1))
+      (let [vt (feed-csi vt "1J")]
+        (expect-lines vt [[["    " {:bg 3}]]
+                          [["  " {:bg 3}] ["GH" {}]]
+                          [["IJ  " {}]]])
+        (expect-cursor vt 1 1))
+      (let [vt (feed-csi vt "2J")]
+        (expect-lines vt [[["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]])
+        (expect-cursor vt 1 1))))
 
   (testing "CSI K (EL)"
     (let [vt (-> (make-vt 6 2)
                  (feed-str "ABCDEF")
                  (set-bg 3)
                  (move-cursor 3 0))]
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "K")]
-        (is (= line0 [[0x41 {}] [0x42 {}] [0x43 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]))
-        (is (= x 3))
-        (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "1K")]
-        (is (= line0 [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x45 {}] [0x46 {}]]))
-        (is (= x 3))
-        (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "2K")]
-        (is (= line0 [[0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]))
-        (is (= x 3))
-        (is (= y 0)))))
+      (let [vt (feed-csi vt "K")]
+        (expect-first-line vt [["ABC" {}] ["   " {:bg 3}]])
+        (expect-cursor vt 3 0))
+      (let [vt (feed-csi vt "1K")]
+        (expect-first-line vt [["    " {:bg 3}] ["EF" {}]])
+        (expect-cursor vt 3 0))
+      (let [vt (feed-csi vt "2K")]
+        (expect-first-line vt [["      " {:bg 3}]])
+        (expect-cursor vt 3 0))))
 
   (testing "CSI L (IL)"
     (let [vt (-> (make-vt 4 4)
                  (feed-str "ABCDEFGHIJKLMN")
                  (set-bg 3)
                  (move-cursor 2 1))]
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "L")]
-        (is (= (compact-lines lines) [[["ABCD" {}]]
-                                      [["    " {:bg 3}]]
-                                      [["EFGH" {}]]
-                                      [["IJKL" {}]]]))
-        (is (= x 2))
-        (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2L")]
-        (is (= (compact-lines lines) [[["ABCD" {}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["EFGH" {}]]]))
-        (is (= x 2))
-        (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10L")]
-        (is (= (compact-lines lines) [[["ABCD" {}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]]))
-        (is (= x 2))
-        (is (= y 1)))
+      (let [vt (feed-csi vt "L")]
+        (expect-lines vt [[["ABCD" {}]]
+                          [["    " {:bg 3}]]
+                          [["EFGH" {}]]
+                          [["IJKL" {}]]])
+        (expect-cursor vt 2 1))
+      (let [vt (feed-csi vt "2L")]
+        (expect-lines vt [[["ABCD" {}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["EFGH" {}]]])
+        (expect-cursor vt 2 1))
+      (let [vt (feed-csi vt "10L")]
+        (expect-lines vt [[["ABCD" {}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]])
+        (expect-cursor vt 2 1))
       (let [vt (-> vt
                    (feed-csi "2;3r") ; set scroll region
                    (move-cursor 2 0))]
-        (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2L")]
-          (is (= (compact-lines lines) [[["    " {:bg 3}]]
-                                        [["    " {:bg 3}]]
-                                        [["ABCD" {}]]
-                                        [["MN  " {}]]]))
-          (is (= x 2))
-          (is (= y 0)))
-        (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10L")]
-          (is (= (compact-lines lines) [[["    " {:bg 3}]]
-                                        [["    " {:bg 3}]]
-                                        [["    " {:bg 3}]]
-                                        [["MN  " {}]]]))
-          (is (= x 2))
-          (is (= y 0))))))
+        (let [vt (feed-csi vt "2L")]
+          (expect-lines vt [[["    " {:bg 3}]]
+                            [["    " {:bg 3}]]
+                            [["ABCD" {}]]
+                            [["MN  " {}]]])
+          (expect-cursor vt 2 0))
+        (let [vt (feed-csi vt "10L")]
+          (expect-lines vt [[["    " {:bg 3}]]
+                            [["    " {:bg 3}]]
+                            [["    " {:bg 3}]]
+                            [["MN  " {}]]])
+          (expect-cursor vt 2 0)))))
 
   (testing "CSI M (DL)"
     (let [vt (-> (make-vt 4 4)
                  (feed-str "ABCDEFGHIJKLM")
                  (move-cursor 2 1))]
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "M")]
-        (is (= (compact-lines lines) [[["ABCD" {}]]
-                                      [["IJKL" {}]]
-                                      [["M   " {}]]
-                                      [["    " {}]]]))
-        (is (= x 2))
-        (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2M")]
-        (is (= (compact-lines lines) [[["ABCD" {}]]
-                                      [["M   " {}]]
-                                      [["    " {}]]
-                                      [["    " {}]]]))
-        (is (= x 2))
-        (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10M")]
-        (is (= (compact-lines lines) [[["ABCD" {}]]
-                                      [["    " {}]]
-                                      [["    " {}]]
-                                      [["    " {}]]]))
-        (is (= x 2))
-        (is (= y 1)))
+      (let [vt (feed-csi vt "M")]
+        (expect-lines vt [[["ABCD" {}]]
+                          [["IJKL" {}]]
+                          [["M   " {}]]
+                          [["    " {}]]])
+        (expect-cursor vt 2 1))
+      (let [vt (feed-csi vt "2M")]
+        (expect-lines vt [[["ABCD" {}]]
+                          [["M   " {}]]
+                          [["    " {}]]
+                          [["    " {}]]])
+        (expect-cursor vt 2 1))
+      (let [vt (feed-csi vt "10M")]
+        (expect-lines vt [[["ABCD" {}]]
+                          [["    " {}]]
+                          [["    " {}]]
+                          [["    " {}]]])
+        (expect-cursor vt 2 1))
       (let [vt (-> vt
                    (feed-csi "2;3r") ; set scroll region
                    (move-cursor 2 0))]
-        (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2M")]
-          (is (= (compact-lines lines) [[["IJKL" {}]]
-                                        [["    " {}]]
-                                        [["    " {}]]
-                                        [["M   " {}]]]))
-          (is (= x 2))
-          (is (= y 0)))
-        (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "20M")]
-          (is (= (compact-lines lines) [[["    " {}]]
-                                        [["    " {}]]
-                                        [["    " {}]]
-                                        [["M   " {}]]]))
-          (is (= x 2))
-          (is (= y 0))))))
+        (let [vt (feed-csi vt "2M")]
+          (expect-lines vt [[["IJKL" {}]]
+                            [["    " {}]]
+                            [["    " {}]]
+                            [["M   " {}]]])
+          (expect-cursor vt 2 0))
+        (let [vt (feed-csi vt "20M")]
+          (expect-lines vt [[["    " {}]]
+                            [["    " {}]]
+                            [["    " {}]]
+                            [["M   " {}]]])
+          (expect-cursor vt 2 0)))))
 
   (testing "CSI P (DCH)"
     (let [vt (-> (make-vt 7 1)
                  (feed-str "ABCDEF")
                  (move-cursor 2 0))]
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "P")]
-        (is (= line0 [[0x41 {}] [0x42 {}] [0x44 {}] [0x45 {}] [0x46 {}] [0x20 {}] [0x20 {}]]))
-        (is (= x 2))
-        (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "2P")]
-        (is (= line0 [[0x41 {}] [0x42 {}] [0x45 {}] [0x46 {}] [0x20 {}] [0x20 {}] [0x20 {}]]))
-        (is (= x 2))
-        (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "10P")]
-        (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}] [0x20 {}]]))
-        (is (= x 2))
-        (is (= y 0)))))
+      (let [vt (feed-csi vt "P")]
+        (expect-first-line vt [["ABDEF  " {}]])
+        (expect-cursor vt 2 0))
+      (let [vt (feed-csi vt "2P")]
+        (expect-first-line vt [["ABEF   " {}]])
+        (expect-cursor vt 2 0))
+      (let [vt (feed-csi vt "10P")]
+        (expect-first-line vt [["AB     " {}]])
+        (expect-cursor vt 2 0))))
 
   (testing "CSI S (SU)"
     (let [vt (-> (make-vt 4 5)
                  (feed-str "ABCDEFGHIJKLMNOPQR")
                  (set-bg 3)
                  (move-cursor 2 1))]
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "S")]
-        (is (= (compact-lines lines) [[["EFGH" {}]]
-                                      [["IJKL" {}]]
-                                      [["MNOP" {}]]
-                                      [["QR  " {}]]
-                                      [["    " {:bg 3}]]]))
-        (is (= x 2))
-        (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2S")]
-        (is (= (compact-lines lines) [[["IJKL" {}]]
-                                      [["MNOP" {}]]
-                                      [["QR  " {}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]]))
-        (is (= x 2))
-        (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10S")]
-        (is (= (compact-lines lines) [[["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]]))
-        (is (= x 2))
-        (is (= y 1)))
+      (let [vt (feed-csi vt "S")]
+        (expect-lines vt [[["EFGH" {}]]
+                          [["IJKL" {}]]
+                          [["MNOP" {}]]
+                          [["QR  " {}]]
+                          [["    " {:bg 3}]]])
+        (expect-cursor vt 2 1))
+      (let [vt (feed-csi vt "2S")]
+        (expect-lines vt [[["IJKL" {}]]
+                          [["MNOP" {}]]
+                          [["QR  " {}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]])
+        (expect-cursor vt 2 1))
+      (let [vt (feed-csi vt "10S")]
+        (expect-lines vt [[["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]])
+        (expect-cursor vt 2 1))
       (let [vt (-> vt
                    (feed-csi "2;4r")
                    (move-cursor 2 0))
-            {lines :lines {x :x y :y} :cursor} (feed-csi vt "2S")]
-        (is (= (compact-lines lines) [[["ABCD" {}]]
-                                      [["MNOP" {}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["QR  " {}]]]))
-        (is (= x 2))
-        (is (= y 0)))))
+            vt (feed-csi vt "2S")]
+        (expect-lines vt [[["ABCD" {}]]
+                          [["MNOP" {}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["QR  " {}]]])
+        (expect-cursor vt 2 0))))
 
   (testing "CSI T (SD)"
     (let [vt (-> (make-vt 4 5)
                  (feed-str "ABCDEFGHIJKLMNOPQR")
                  (set-bg 3)
                  (move-cursor 2 1))]
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "T")]
-        (is (= (compact-lines lines) [[["    " {:bg 3}]]
-                                      [["ABCD" {}]]
-                                      [["EFGH" {}]]
-                                      [["IJKL" {}]]
-                                      [["MNOP" {}]]]))
-        (is (= x 2))
-        (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "2T")]
-        (is (= (compact-lines lines) [[["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["ABCD" {}]]
-                                      [["EFGH" {}]]
-                                      [["IJKL" {}]]]))
-        (is (= x 2))
-        (is (= y 1)))
-      (let [{lines :lines {x :x y :y} :cursor} (feed-csi vt "10T")]
-        (is (= (compact-lines lines) [[["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]]))
-        (is (= x 2))
-        (is (= y 1)))
+      (let [vt (feed-csi vt "T")]
+        (expect-lines vt [[["    " {:bg 3}]]
+                          [["ABCD" {}]]
+                          [["EFGH" {}]]
+                          [["IJKL" {}]]
+                          [["MNOP" {}]]])
+        (expect-cursor vt 2 1))
+      (let [vt (feed-csi vt "2T")]
+        (expect-lines vt [[["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["ABCD" {}]]
+                          [["EFGH" {}]]
+                          [["IJKL" {}]]])
+        (expect-cursor vt 2 1))
+      (let [vt (feed-csi vt "10T")]
+        (expect-lines vt [[["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]])
+        (expect-cursor vt 2 1))
       (let [vt (-> vt
                    (feed-csi "2;4r")
                    (move-cursor 2 0))
-            {lines :lines {x :x y :y} :cursor} (feed-csi vt "2T")]
-        (is (= (compact-lines lines) [[["ABCD" {}]]
-                                      [["    " {:bg 3}]]
-                                      [["    " {:bg 3}]]
-                                      [["EFGH" {}]]
-                                      [["QR  " {}]]]))
-        (is (= x 2))
-        (is (= y 0)))))
+            vt (feed-csi vt "2T")]
+        (expect-lines vt [[["ABCD" {}]]
+                          [["    " {:bg 3}]]
+                          [["    " {:bg 3}]]
+                          [["EFGH" {}]]
+                          [["QR  " {}]]])
+        (expect-cursor vt 2 0))))
 
   (testing "CSI W (CTC)"
     (let [vt (-> (make-vt 30 24))]
-      (let [{:keys [tabs]} (-> vt (move-cursor 5 0) (feed-csi "W"))]
-        (is (= tabs #{5 8 16 24})))
-      (let [{:keys [tabs]} (-> vt (move-cursor 5 0) (feed-csi "0W"))]
-        (is (= tabs #{5 8 16 24})))
-      (let [{:keys [tabs]} (-> vt (move-cursor 16 0) (feed-csi "2W"))]
-        (is (= tabs #{8 24})))
-      (let [{:keys [tabs]} (-> vt (feed-csi "5W"))]
-        (is (= tabs #{})))))
+      (let [vt (-> vt (move-cursor 5 0) (feed-csi "W"))]
+        (expect-tabs vt #{5 8 16 24}))
+      (let [vt (-> vt (move-cursor 5 0) (feed-csi "0W"))]
+        (expect-tabs vt #{5 8 16 24}))
+      (let [vt (-> vt (move-cursor 16 0) (feed-csi "2W"))]
+        (expect-tabs vt #{8 24}))
+      (let [vt (-> vt (feed-csi "5W"))]
+        (expect-tabs vt #{}))))
 
   (testing "CSI X (ECH)"
     (let [vt (-> (make-vt 7 1)
                  (feed-str "ABCDEF")
                  (set-bg 3)
                  (move-cursor 2 0))]
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "X")]
-        (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {:bg 3}] [0x44 {}] [0x45 {}] [0x46 {}] [0x20 {}]]))
-        (is (= x 2))
-        (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "2X")]
-        (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x45 {}] [0x46 {}] [0x20 {}]]))
-        (is (= x 2))
-        (is (= y 0)))
-      (let [{[line0 & _] :lines {x :x y :y} :cursor} (feed-csi vt "100X")]
-        (is (= line0 [[0x41 {}] [0x42 {}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}] [0x20 {:bg 3}]]))
-        (is (= x 2))
-        (is (= y 0)))
-      ))
+      (let [vt (feed-csi vt "X")]
+        (expect-first-line vt [["AB" {}] [" " {:bg 3}] ["DEF " {}]])
+        (expect-cursor vt 2 0))
+      (let [vt (feed-csi vt "2X")]
+        (expect-first-line vt [["AB" {}] ["  " {:bg 3}] ["EF " {}]])
+        (expect-cursor vt 2 0))
+      (let [vt (feed-csi vt "100X")]
+        (expect-first-line vt [["AB" {}] ["     " {:bg 3}] ])
+        (expect-cursor vt 2 0))))
 
   (testing "CSI Z"
     (let [vt (make-vt 20 3)]
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 0 0) (feed-csi "Z"))]
-        (is (= x 0))
-        (is (= y 0)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 2 0) (feed-csi "2Z"))]
-        (is (= x 0))
-        (is (= y 0)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 8 1) (feed-csi "Z"))]
-        (is (= x 0))
-        (is (= y 1)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 9 1) (feed-csi "Z"))]
-        (is (= x 8))
-        (is (= y 1)))
-      (let [{{x :x y :y} :cursor} (-> vt (move-cursor 18 1) (feed-csi "2Z"))]
-        (is (= x 8))
-        (is (= y 1)))))
+      (let [vt (-> vt (move-cursor 0 0) (feed-csi "Z"))]
+        (expect-cursor vt 0 0))
+      (let [vt (-> vt (move-cursor 2 0) (feed-csi "2Z"))]
+        (expect-cursor vt 0 0))
+      (let [vt (-> vt (move-cursor 8 1) (feed-csi "Z"))]
+        (expect-cursor vt 0 1))
+      (let [vt (-> vt (move-cursor 9 1) (feed-csi "Z"))]
+        (expect-cursor vt 8 1))
+      (let [vt (-> vt (move-cursor 18 1) (feed-csi "2Z"))]
+        (expect-cursor vt 8 1))))
 
   (testing "CSI d (VPA)"
     (let [vt (-> (make-vt 80 24)
                  (move-cursor 15 1))]
-      (let [{{:keys [x y]} :cursor} (feed-csi vt "d")]
-        (is (= x 15))
-        (is (= y 0)))
-      (let [{{:keys [x y]} :cursor} (feed-csi vt "5d")]
-        (is (= x 15))
-        (is (= y 4)))
+      (let [vt (feed-csi vt "d")]
+        (expect-cursor vt 15 0))
+      (let [vt (feed-csi vt "5d")]
+        (expect-cursor vt 15 4))
       (let [vt (feed-csi vt "10;15r")] ; set scroll region
-        (let [{{:keys [x y]} :cursor} (feed-csi vt "5d")]
-          (is (= y 4)))
+        (let [vt (feed-csi vt "5d")]
+          (expect-cursor vt 0 4))
         (let [vt (feed-csi vt "?6h")] ; set origin mode
-          (let [{{:keys [x y]} :cursor} (feed-csi vt "3d")]
-            (is (= y 11)))
-          (let [{{:keys [x y]} :cursor} (feed-csi vt "8d")]
-            (is (= y 14)))))))
+          (let [vt (feed-csi vt "3d")]
+            (expect-cursor vt 0 11))
+          (let [vt (feed-csi vt "8d")]
+            (expect-cursor vt 0 14))))))
 
   (testing "CSI g (TBC)"
     (let [vt (-> (make-vt 45 24)
                  (move-cursor 24 0))]
-      (let [{:keys [tabs]} (feed-csi vt "g")]
-        (is (= tabs #{8 16 32 40})))
-      (let [{:keys [tabs]} (feed-csi vt "3g")]
-        (is (= tabs #{})))))
+      (let [vt (feed-csi vt "g")]
+        (expect-tabs vt #{8 16 32 40}))
+      (let [vt (feed-csi vt "3g")]
+        (expect-tabs vt #{}))))
 
   (testing "CSI 4h (SM)"
-    (let [vt (make-vt 80 24)
-          {:keys [insert-mode]} (feed-csi vt "4h")]
-      (is (= insert-mode true))))
+    (let [vt (-> (make-vt 80 24)
+                 (feed-csi "4h"))]
+      (is (-> vt :screen screen/insert-mode?))))
 
   (testing "CSI 20h (SM)"
-    (let [vt (make-vt 80 24)
-          {:keys [new-line-mode]} (feed-csi vt "20h")]
-      (is (= new-line-mode true))))
+    (let [vt (-> (make-vt 80 24)
+                 (feed-csi "20h"))]
+      (is (-> vt :screen screen/new-line-mode?))))
 
   (testing "CSI ?6h (DECSM)" ; set origin mode
     (let [vt (-> (make-vt 80 24)
                  (feed-csi "3;5r") ; set scroll region
                  (move-cursor 1 1)
-                 (feed-csi "?6h"))
-          {:keys [origin-mode] {:keys [x y]} :cursor} vt]
-      (is (= origin-mode true))
-      (is (= x 0))
-      (is (= y 2))))
+                 (feed-csi "?6h"))]
+      (is (-> vt :screen screen/origin-mode?))
+      (expect-cursor vt 0 2)))
 
   (testing "CSI ?7h (DECSM)" ; set auto-wrap mode
     (let [vt (-> (make-vt 80 24)
-                 (feed-csi "?7h"))
-          {:keys [auto-wrap-mode]} vt]
-      (is (= auto-wrap-mode true))))
+                 (feed-csi "?7h"))]
+      (is (-> vt :screen screen/auto-wrap-mode?))))
 
   (testing "CSI ?25h (DECSM)" ; show cursor
     (let [vt (-> (make-vt 80 24)
                  hide-cursor
-                 (feed-csi "?25h")) ; show cursor
-          {{:keys [visible]} :cursor} vt]
-      (is (= visible true))))
+                 (feed-csi "?25h"))] ; show cursor
+      (expect-cursor vt 0 0 true)))
 
   (testing "CSI ?47h, CSI ?1047h (DECSM)" ; switch to alternate buffer
     (let [vt (make-vt 4 3)]
@@ -1564,24 +1390,20 @@
           (let [vt (-> vt
                        (feed-str "ABC\n\rDE")
                        (set-bg 2)
-                       (feed-csi cseq))
-                {:keys [lines] {:keys [x y]} :cursor} vt]
-            (is (= x 2))
-            (is (= y 1))
-            (is (= (compact-lines lines) [[["    " {:bg 2}]]
-                                          [["    " {:bg 2}]]
-                                          [["    " {:bg 2}]]]))))
+                       (feed-csi cseq))]
+            (expect-cursor vt 2 1)
+            (expect-lines vt [[["    " {:bg 2}]]
+                              [["    " {:bg 2}]]
+                              [["    " {:bg 2}]]])))
         (testing "when in alternate buffer"
           (let [vt (-> vt
                        (feed-csi cseq)
                        (feed-str "ABC\n\rDE")
-                       (feed-csi cseq))
-                {:keys [lines] {:keys [x y]} :cursor} vt]
-            (is (= x 2))
-            (is (= y 1))
-            (is (= (compact-lines lines) [[["ABC " {}]]
-                                          [["DE  " {}]]
-                                          [["    " {}]]])))))))
+                       (feed-csi cseq))]
+            (expect-cursor vt 2 1)
+            (expect-lines vt [[["ABC " {}]]
+                              [["DE  " {}]]
+                              [["    " {}]]]))))))
 
   (testing "CSI ?1049h (DECSM)" ; save cursor and switch to alternate buffer
     (let [vt (make-vt 4 3)]
@@ -1589,65 +1411,56 @@
         (let [vt (-> vt
                      (feed-str "ABC\n\rDE")
                      (set-bg 2)
-                     (feed-csi "?1049h"))
-              {:keys [lines] {:keys [x y]} :cursor} vt]
-          (is (= x 2))
-          (is (= y 1))
-          (is (= (compact-lines lines) [[["    " {:bg 2}]]
-                                        [["    " {:bg 2}]]
-                                        [["    " {:bg 2}]]]))))
+                     (feed-csi "?1049h"))]
+          (expect-cursor vt 2 1)
+          (expect-lines vt [[["    " {:bg 2}]]
+                            [["    " {:bg 2}]]
+                            [["    " {:bg 2}]]])))
       (testing "when in alternate buffer"
         (let [vt (-> vt
                      (feed-csi "?1049h")
                      (feed-str "ABC\n\rDE")
-                     (feed-csi "?1049h"))
-              {:keys [lines] {:keys [x y]} :cursor} vt]
-          (is (= x 2))
-          (is (= y 1))
-          (is (= (compact-lines lines) [[["ABC " {}]]
-                                        [["DE  " {}]]
-                                        [["    " {}]]]))))))
+                     (feed-csi "?1049h"))]
+          (expect-cursor vt 2 1)
+          (expect-lines vt [[["ABC " {}]]
+                            [["DE  " {}]]
+                            [["    " {}]]])))))
 
   (testing "CSI ?h (DECSM)" ; set multiple modes
     (let [vt (-> (make-vt 80 24)
-                 (feed-csi "?6;7;25h"))
-          {:keys [origin-mode auto-wrap-mode] {cursor-visible :visible} :cursor} vt]
-      (is (true? origin-mode))
-      (is (true? auto-wrap-mode))
-      (is (true? cursor-visible))))
+                 (feed-csi "?6;7;25h"))]
+      (is (-> vt :screen screen/origin-mode?))
+      (is (-> vt :screen screen/auto-wrap-mode?))
+      (is (-> vt :screen screen/cursor :visible))))
 
   (testing "CSI 4l (RM)"
-    (let [vt (make-vt 80 24)
-          {:keys [insert-mode]} (feed-csi vt "4l")]
-      (is (= insert-mode false))))
+    (let [vt (-> (make-vt 80 24)
+                 (feed-csi "4l"))]
+      (is (not (-> vt :screen screen/insert-mode?)))))
 
   (testing "CSI 20l (RM)"
-    (let [vt (make-vt 80 24)
-          {:keys [new-line-mode]} (feed-csi vt "20l")]
-      (is (= new-line-mode false))))
+    (let [vt (-> (make-vt 80 24)
+                 (feed-csi "20l"))]
+      (is (not (-> vt :screen screen/new-line-mode?)))))
 
   (testing "CSI ?6l (DECRM)" ; reset origin mode
     (let [vt (-> (make-vt 20 10)
                  (feed-csi "3;5r") ; set scroll region
                  (feed-csi "?6h") ; set origin mode
                  (move-cursor 1 1)
-                 (feed-csi "?6l"))
-          {:keys [origin-mode] {:keys [x y]} :cursor} vt]
-      (is (= origin-mode false))
-      (is (= x 0))
-      (is (= y 0))))
+                 (feed-csi "?6l"))]
+      (is (not (-> vt :screen screen/origin-mode?)))
+      (expect-cursor vt 0 0)))
 
   (testing "CSI ?7l (DECRM)"
     (let [vt (-> (make-vt 80 24)
-                 (feed-csi "?7l"))
-          {:keys [auto-wrap-mode]} vt]
-      (is (= auto-wrap-mode false))))
+                 (feed-csi "?7l"))]
+      (is (not (-> vt :screen screen/auto-wrap-mode?)))))
 
   (testing "CSI ?25l (DECRM)" ; hide cursor
     (let [vt (-> (make-vt 80 24)
-                 (feed-csi "?25l"))
-          {{:keys [visible]} :cursor} vt]
-      (is (= visible false))))
+                 (feed-csi "?25l"))]
+      (expect-cursor vt 0 0 false)))
 
   (testing "CSI ?47l, ?1047l (DECRM)" ; switch back to primary buffer
     (let [vt (make-vt 4 3)]
@@ -1655,39 +1468,33 @@
         (testing "when in primary buffer"
           (let [vt (-> vt
                        (feed-str "ABC\n\rDE")
-                       (feed-csi cseq))
-                {:keys [lines] {:keys [x y]} :cursor} vt]
-            (is (= x 2))
-            (is (= y 1))
-            (is (= (compact-lines lines) [[["ABC " {}]]
-                                          [["DE  " {}]]
-                                          [["    " {}]]]))))
+                       (feed-csi cseq))]
+            (expect-cursor vt 2 1)
+            (expect-lines vt [[["ABC " {}]]
+                              [["DE  " {}]]
+                              [["    " {}]]])))
         (testing "when in alternate buffer"
           (let [vt (-> vt
                        (feed-str "ABC\n\rDE")
                        (set-bg 2)
                        (feed-csi "?1047h") ; set alternate buffer
                        (feed-str "\n\rX")
-                       (feed-csi cseq))
-                {:keys [lines] {:keys [x y]} :cursor} vt]
-            (is (= x 1))
-            (is (= y 2))
-            (is (= (compact-lines lines) [[["ABC " {}]]
-                                          [["DE  " {}]]
-                                          [["    " {}]]])))))))
+                       (feed-csi cseq))]
+            (expect-cursor vt 1 2)
+            (expect-lines vt [[["ABC " {}]]
+                              [["DE  " {}]]
+                              [["    " {}]]]))))))
 
   (testing "CSI ?1049l (DECRM)" ; switch back to primary buffer and restore cursor
     (let [vt (make-vt 4 3)]
       (testing "when in primary buffer"
         (let [vt (-> vt
                      (feed-str "ABC\n\rDE")
-                     (feed-csi "?1049l"))
-              {:keys [lines] {:keys [x y]} :cursor} vt]
-          (is (= x 0))
-          (is (= y 0))
-          (is (= (compact-lines lines) [[["ABC " {}]]
-                                        [["DE  " {}]]
-                                        [["    " {}]]]))))
+                     (feed-csi "?1049l"))]
+          (expect-cursor vt 0 0)
+          (expect-lines vt [[["ABC " {}]]
+                            [["DE  " {}]]
+                            [["    " {}]]])))
       (testing "when in alternate buffer"
         (let [vt (-> vt
                      (feed-str "ABC\n\rDE")
@@ -1695,29 +1502,26 @@
                      (feed-csi "?1049h")
                      (feed-str "\n\rXYZ")
                      (feed-esc "7")
-                     (feed-csi "?1049l"))
-              {:keys [lines] {:keys [x y]} :cursor} vt]
-          (is (= x 2))
-          (is (= y 1))
-          (is (= (compact-lines lines) [[["ABC " {}]]
-                                        [["DE  " {}]]
-                                        [["    " {}]]]))))))
+                     (feed-csi "?1049l"))]
+          (expect-cursor vt 2 1)
+          (expect-lines vt [[["ABC " {}]]
+                            [["DE  " {}]]
+                            [["    " {}]]])))))
 
   (testing "CSI ?l (DECRM)" ; reset multiple modes
     (let [vt (make-vt 80 24)]
       (testing "resetting multiple modes"
-        (let [vt (feed-csi vt "?6;7;25l")
-              {:keys [origin-mode auto-wrap-mode] {cursor-visible :visible} :cursor} vt]
-          (is (false? origin-mode))
-          (is (false? auto-wrap-mode))
-          (is (false? cursor-visible))))))
+        (let [vt (feed-csi vt "?6;7;25l")]
+          (is (not (-> vt :screen screen/origin-mode?)))
+          (is (not (-> vt :screen screen/auto-wrap-mode?)))
+          (is (not (-> vt :screen screen/cursor :visible)))))))
 
   (testing "CSI m (SGR)"
     (let [vt (make-vt 21 1)
           all-on-params "1;3;4;5;7;31;42m"
           all-on-attrs {:bold true :italic true :underline true :blink true
                         :inverse true :fg 1 :bg 2}
-          compare-attrs #(= (-> %1 (feed-csi %2) (feed-str "A") :lines ffirst last) %3)]
+          compare-attrs #(= (-> %1 (feed-csi %2) (feed-str "A") :screen screen/lines ffirst last) %3)]
       (are [input-str expected-attrs] (compare-attrs vt input-str expected-attrs)
         "1m" {:bold true}
         "3m" {:italic true}
@@ -1733,8 +1537,8 @@
         all-on-params all-on-attrs)
       (let [vt (feed-csi vt all-on-params)]
         (are [input-str expected-attrs] (compare-attrs vt input-str expected-attrs)
-          "m" vt/normal-char-attrs ; implicit 0 param
-          "0m" vt/normal-char-attrs ; explicit 0 param
+          "m" screen/normal-char-attrs ; implicit 0 param
+          "0m" screen/normal-char-attrs ; explicit 0 param
           "21m" (dissoc all-on-attrs :bold)
           "22m" (dissoc all-on-attrs :bold)
           "23m" (dissoc all-on-attrs :italic)
@@ -1755,40 +1559,37 @@
                  (set-fg 1)
                  (feed-esc "7") ; save cursor
                  (feed-csi "!p"))] ; soft reset
-      (is (= (compact-lines (:lines vt)) [[["ABCD" {}]]
-                                          [["EFGH" {}]]
-                                          [["I   " {}]]
-                                          [["    " {}]]]))
-      (is (= (:cursor vt) {:x 2 :y 2 :visible true}))
-      (is (= (:char-attrs vt) vt/normal-char-attrs))
-      (is (= (:insert-mode vt) false))
-      (is (= (:origin-mode vt) false))
-      (is (= (:top-margin vt) 0))
-      (is (= (:bottom-margin vt) 3))
-      (is (= (:saved vt) initial-saved-cursor))))
+      (expect-lines vt [[["ABCD" {}]]
+                        [["EFGH" {}]]
+                        [["I   " {}]]
+                        [["    " {}]]])
+      (expect-cursor vt 2 2 true)
+      (is (= (-> vt :screen screen/char-attrs) screen/normal-char-attrs))
+      (is (not (-> vt :screen screen/insert-mode?)))
+      (is (not (-> vt :screen screen/origin-mode?)))
+      (is (= (-> vt :screen screen/top-margin) 0))
+      (is (= (-> vt :screen screen/bottom-margin) 3))
+      (is (= (-> vt :screen screen/saved) screen/initial-saved-cursor))))
 
   (testing "CSI r (DECSTBM)"
     (let [vt (make-vt 80 24)]
-      (let [{:keys [top-margin bottom-margin] {:keys [x y]} :cursor} (feed-csi vt "r")]
-        (is (= top-margin 0))
-        (is (= bottom-margin 23))
-        (is (= x 0))
-        (is (= y 0)))
+      (let [vt (feed-csi vt "r")]
+        (is (= (-> vt :screen screen/top-margin) 0))
+        (is (= (-> vt :screen screen/bottom-margin) 23))
+        (expect-cursor vt 0 0))
       (let [vt (-> vt
                    (move-cursor 20 10)
-                   (feed-csi "5;15r"))
-            {:keys [top-margin bottom-margin] {:keys [x y]} :cursor} vt]
-        (is (= top-margin 4))
-        (is (= bottom-margin 14))
-        (is (= x 0))
-        (is (= y 0)))
+                   (feed-csi "5;15r"))]
+        (is (= (-> vt :screen screen/top-margin) 0))
+        (is (= (-> vt :screen screen/bottom-margin) 23))
+        (expect-cursor vt 0 0))
       (let [vt (-> vt
                    (feed-csi "?6h") ; set origin mode
                    (move-cursor 20 10)
-                   (feed-csi "5;15r")) ; set scroll region
-            {{:keys [x y]} :cursor} vt]
-        (is (= x 0))
-        (is (= y 4))))))
+                   (feed-csi "5;15r"))] ; set scroll region
+        (is (= (-> vt :screen screen/top-margin) 4))
+        (is (= (-> vt :screen screen/bottom-margin) 14))
+        (expect-cursor vt 0 4)))))
 
 (deftest get-params-test
   (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] []))]
@@ -1869,8 +1670,8 @@
                 (let [vt (-> (make-vt 20 10)
                              (move-cursor x y)
                              (feed input))
-                      {:keys [next-print-wraps] {:keys [x y]} :cursor} vt]
-                  (and (or (< -1 x 20) (and (= x 20) (true? next-print-wraps)))
+                      {:keys [x y]} (-> vt :screen screen/cursor)]
+                  (and (or (< -1 x 20) (and (= x 20) (-> vt :screen screen/next-print-wraps?)))
                        (< -1 y 10)))))
 
 (defspec test-row-and-column-count-for-random-input
@@ -1881,7 +1682,7 @@
                 (let [vt (-> (make-vt 20 10)
                              (move-cursor x y)
                              (feed input))
-                      {:keys [lines]} vt]
+                      lines (-> vt :screen :lines)]
                   (and (= 10 (count lines))
                        (every? #(= 20 (count %)) lines)))))
 
@@ -1892,7 +1693,8 @@
                 (let [vt (-> (make-vt 20 10)
                              (move-cursor 19 y)
                              (feed input))
-                      {{new-x :x new-y :y} :cursor :keys [next-print-wraps]} vt]
+                      new-x (-> vt :screen screen/cursor :x)
+                      next-print-wraps (-> vt :screen screen/next-print-wraps?)]
                   (not (and next-print-wraps (< new-x 20))))))
 
 (defspec test-dump-sgr
@@ -1914,14 +1716,14 @@
                               inverse (assoc :inverse inverse))
                       sgr (dump-sgr attrs)
                       new-vt (feed-str vt-80x24 sgr)
-                      new-attrs (:char-attrs new-vt)]
+                      new-attrs (-> new-vt :screen screen/char-attrs)]
                   (= attrs new-attrs))))
 
 (defspec test-dump
   {:num-tests (* 100 (property-tests-multiplier))}
   (prop/for-all [input (gen/vector gen-input 5 100)]
-    (let [blank-vt (make-vt 10 5)
-          vt (reduce feed blank-vt input)
-          text (dump vt)
-          new-vt (feed-str blank-vt text)]
-      (= (:lines vt) (:lines new-vt)))))
+                (let [blank-vt (make-vt 10 5)
+                      vt (reduce feed blank-vt input)
+                      text (dump vt)
+                      new-vt (feed-str blank-vt text)]
+                  (= (-> vt :screen screen/lines) (-> new-vt :screen screen/lines)))))

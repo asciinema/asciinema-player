@@ -1,9 +1,10 @@
 (ns asciinema.player.format.asciicast-v0
   (:require [schema.core :as s]
             [asciinema.vt :as vt]
-            [asciinema.player.screen :as screen]))
+            [asciinema.vt.screen :as screen]
+            [asciinema.player.screen :as ps]))
 
-(def Fragment vt/Fragment) ; TODO decouple from vt
+(def Fragment screen/Fragment) ; TODO decouple from vt
 
 (def Diff {(s/optional-key :cursor) {(s/optional-key :x) s/Num
                                      (s/optional-key :y) s/Num
@@ -42,7 +43,7 @@
      :duration (reduce #(+ %1 (first %2)) 0 asciicast)
      :frames (build-v0-frames asciicast)}))
 
-(extend-protocol screen/Screen
+(extend-protocol ps/Screen
   LegacyScreen
   (lines [this]
     (vals (:lines this)))
