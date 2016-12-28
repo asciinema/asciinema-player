@@ -135,7 +135,7 @@
                                     (map reduce-param groups)))))
 
 (defn get-params [vt]
-  (get-cached-params (get-in vt [:parser :param-chars])))
+  (get-cached-params (-> vt :parser :param-chars)))
 
 (defn get-param [vt n default]
   (let [v (nth (get-params vt) n 0)]
