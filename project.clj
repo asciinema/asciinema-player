@@ -78,7 +78,6 @@
                                                            {:file "public/codepoint-polyfill.js"
                                                             :provides ["asciinema.player.codepoint-polyfill"]}]
                                             :optimizations :advanced
-                                            :parallel-build true
                                             :elide-asserts true
                                             :pretty-print  false}}}}
 
