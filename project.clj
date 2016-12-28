@@ -44,7 +44,9 @@
                                         :output-dir "resources/public/js/dev"
                                         :source-map true
                                         :foreign-libs [{:file "public/element.js"
-                                                        :provides ["asciinema.player.element"]}]
+                                                        :provides ["asciinema.player.element"]}
+                                                       {:file "public/codepoint-polyfill.js"
+                                                        :provides ["asciinema.player.codepoint-polyfill"]}]
                                         :optimizations :none
                                         :pretty-print true}}
                        :devcards {:source-paths ["src" "dev/cards" ]
@@ -73,8 +75,8 @@
                                             :preamble ["license.js" "public/CustomEvent.js" "public/CustomElements.min.js"]
                                             :foreign-libs [{:file "public/element.js"
                                                             :provides ["asciinema.player.element"]}
-                                                           {:file "public/fromCodePoint.js"
-                                                            :provides ["asciinema.player.from-code-point"]}]
+                                                           {:file "public/codepoint-polyfill.js"
+                                                            :provides ["asciinema.player.codepoint-polyfill"]}]
                                             :optimizations :advanced
                                             :parallel-build true
                                             :elide-asserts true
