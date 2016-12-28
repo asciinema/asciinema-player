@@ -554,17 +554,17 @@
 (defn execute-actions [vt actions input]
   (reduce (fn [vt f] (f vt input)) vt actions))
 
-(s/defn #?@(:clj [feed-one] :cljs [^:never-validate feed-one]) :- VT
-  [vt :- VT
-   input :- s/Num]
-  (let [{{old-state :state} :parser} vt
-        [new-state actions] (parse old-state input)]
-    (-> vt
-        (update :parser assoc :state new-state)
-        (execute-actions actions input))))
-
 (defn feed [vt inputs]
-  (reduce feed-one vt inputs))
+  (loop [vt vt
+         parser-state (-> vt :parser :state)
+         inputs inputs]
+    (if-let [input (first inputs)]
+      (let [[new-parser-state actions] (parse parser-state input)]
+          (recur (execute-actions vt actions input) new-parser-state (rest inputs)))
+      (assoc-in vt [:parser :state] parser-state))))
+
+(defn feed-one [vt input]
+  (feed vt [input]))
 
 (defn feed-str [vt str]
   (let [codes (mapv #(#?(:clj .codePointAt :cljs .codePointAt) str %) (range (count str)))]
