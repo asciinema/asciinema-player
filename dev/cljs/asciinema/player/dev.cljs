@@ -135,14 +135,18 @@
 
 ;; (compare "21195.json" 1)
 
-;; (go
-;;   (let [asciicast-filename "20055.json"
-;;         v1-url (str "/asciicasts/" asciicast-filename)]
-;;     (def v1-json (<! (fetch-json v1-url)))))
+(comment
 
-;; (go
-;;   (let [v1-frames (v1/build-v1-frames v1-json)]
-;;     (time (last (take 500 v1-frames)))))
+  (go
+    (let [asciicast-filename "20055.json"
+          v1-url (str "/asciicasts/" asciicast-filename)]
+      (def v1-json (<! (fetch-json v1-url)))))
+
+  (go
+    (let [v1-frames (v1/build-v1-frames v1-json)]
+      (time (last v1-frames))))
+
+)
 
 ;; (let [v1-frames (p/build-v1-frames v1-json)]
 ;;   (-> v1-frames (nth 45) last p/vt->frame :lines vec (nth 13) ffirst))
