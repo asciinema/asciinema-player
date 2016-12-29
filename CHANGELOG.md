@@ -1,5 +1,12 @@
 # asciinema player changelog
 
+## 2.4.0 (2016-12-30)
+
+* New properties, methods and events on `<asciinema-player>` DOM element
+* Improvements to player's element initialization and shutdown
+* Performance optimizations
+* Various terminal emulation fixes
+
 ## 2.3.1 (2016-11-05)
 
 * Fixed `<asciinema-player>` element loading under Chrome
