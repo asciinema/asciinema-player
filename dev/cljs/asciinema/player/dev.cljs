@@ -157,7 +157,7 @@
        (loop [state :ground
               codes codes]
          (if-let [input (first codes)]
-           (let [[new-state _] (vt/parse state (first codes))]
+           (let [[new-state _] (vt/parse state input)]
              (recur new-state (rest codes)))
            state)))))
 
