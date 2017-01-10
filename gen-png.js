@@ -25,7 +25,7 @@ page.zoomFactor = scale;
 var server;
 
 if (!(/^https?:\/\//.test(jsonUrl))) {
-  console.log('input is local file, starting server...');
+  console.log('Input is local file, starting server...');
 
   var path = jsonUrl;
   jsonUrl = "http://localhost:" + localServerPort + "/";
@@ -38,7 +38,7 @@ if (!(/^https?:\/\//.test(jsonUrl))) {
       response.write(fs.read(path));
       response.close();
     } catch (e) {
-      console.log("error serving asciicast file:", e);
+      console.log("Error serving asciicast file:", e);
       response.statusCode = 500;
       response.write('');
       response.close();
@@ -48,7 +48,7 @@ if (!(/^https?:\/\//.test(jsonUrl))) {
 
 function exit(code) {
   if (server) {
-    console.log('shutting down local server...');
+    console.log('Shutting down local server...');
     server.close();
   }
 
