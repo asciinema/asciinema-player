@@ -3,18 +3,17 @@
 var system = require('system');
 var fs = require('fs');
 
-if (system.args.length < 5) {
-  console.log("usage: " + system.args[0] + " <asciicast-url> <image-path> <format> <poster> <scale>");
-  console.log("   ex: " + system.args[0] + " demo.json shot.png png npt:10 2");
+if (system.args.length < 4) {
+  console.log("usage: " + system.args[0] + " <asciicast-url> <image-path> <poster> <scale>");
+  console.log("   ex: " + system.args[0] + " demo.json shot.png npt:10 2");
   exit(1);
 }
 
 var pageUrl = "gen-png.html";
 var jsonUrl = system.args[1];
 var imagePath = system.args[2];
-var format = system.args[3];
-var poster = system.args[4];
-var scale = parseInt(system.args[5], 10);
+var poster = system.args[3];
+var scale = parseInt(system.args[4], 10);
 var localServerPort = 4444;
 
 var page = require('webpage').create();
@@ -88,7 +87,7 @@ page.onCallback = function(data) {
   };
 
   setTimeout(function () {
-    page.render(imagePath, { format: format });
+    page.render(imagePath);
     exit(0);
   }, 10); // need to wait a bit for poster to render
 };

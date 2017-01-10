@@ -7,6 +7,5 @@ phantomjs \
   gen-png.js \
   $1 \
   $2 \
-  png \
   npt:$3 \
   2
