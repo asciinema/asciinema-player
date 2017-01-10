@@ -92,6 +92,8 @@ page.onCallback = function(data) {
   }, 10); // need to wait a bit for poster to render
 };
 
+console.log('Fetching asciicast...');
+
 page.open(pageUrl, function(status) {
   if (status !== "success") {
     console.log("Failed to load " + url);
