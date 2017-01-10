@@ -86,10 +86,10 @@ page.onCallback = function(data) {
     height: rect.height * scale
   };
 
-  setTimeout(function () {
-    page.render(imagePath);
-    exit(0);
-  }, 10); // need to wait a bit for poster to render
+  console.log('Saving screenshot to ' + imagePath + '...');
+  page.render(imagePath);
+  console.log('Done.');
+  exit(0);
 };
 
 console.log('Fetching asciicast...');
@@ -105,13 +105,15 @@ page.open(pageUrl, function(status) {
       preload: true,
       poster: poster,
       onCanPlay: function() {
-        var elements = document.querySelectorAll('.asciinema-player');
+        setTimeout(function() { // wait for terminal to resize and poster to render
+          var elements = document.querySelectorAll('.asciinema-player');
 
-        if (elements.length > 0) {
-          window.callPhantom({ rect: elements[0].getBoundingClientRect() });
-        } else {
-          window.callPhantom({ rect: undefined });
-        }
+          if (elements.length > 0) {
+            window.callPhantom({ rect: elements[0].getBoundingClientRect() });
+          } else {
+            window.callPhantom({ rect: undefined });
+          }
+        }, 10);
       }
     };
 
