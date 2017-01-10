@@ -1,28 +1,60 @@
 #!/usr/bin/env phantomjs
 
 var system = require('system');
+var fs = require('fs');
 
-if (system.args.length < 6) {
-  console.log("usage: " + system.args[0] + " <asciicast-url> <image-path> <format> <poster> <selector> <scale>");
-  console.log("   ex: " + system.args[0] + " demo.json shot.png png npt:10 '#player' 2");
-  phantom.exit(1);
+if (system.args.length < 5) {
+  console.log("usage: " + system.args[0] + " <asciicast-url> <image-path> <format> <poster> <scale>");
+  console.log("   ex: " + system.args[0] + " demo.json shot.png png npt:10 2");
+  exit(1);
 }
 
-var url = "gen-png.html";
-var asciicastUrl = system.args[1];
+var pageUrl = "gen-png.html";
+var jsonUrl = system.args[1];
 var imagePath = system.args[2];
 var format = system.args[3];
 var poster = system.args[4];
-var selector = system.args[5];
-var scale = parseInt(system.args[6], 10);
+var scale = parseInt(system.args[5], 10);
+var localServerPort = 4444;
 
 var page = require('webpage').create();
 page.settings.localToRemoteUrlAccessEnabled = true;
-page.settings.ignoreSslErrors = true;
-page.settings.webSecurityEnabled = false;
-
 page.viewportSize = { width: 9999, height: 9999 };
 page.zoomFactor = scale;
+
+var server;
+
+if (!(/^https?:\/\//.test(jsonUrl))) {
+  console.log('input is local file, starting server...');
+
+  var path = jsonUrl;
+  jsonUrl = "http://localhost:" + localServerPort + "/";
+
+  server = require('webserver').create();
+  server.listen(localServerPort, function(request, response) {
+    try {
+      response.statusCode = 200;
+      response.setHeader('Content-Type', 'application/json; charset=utf-8');
+      response.write(fs.read(path));
+      response.close();
+    } catch (e) {
+      console.log("error serving asciicast file:", e);
+      response.statusCode = 500;
+      response.write('');
+      response.close();
+    }
+  });
+}
+
+function exit(code) {
+  if (server) {
+    console.log('shutting down local server...');
+    server.close();
+  }
+
+  var code = code === undefined ? 0 : code;
+  phantom.exit(code);
+}
 
 page.onConsoleMessage = function(msg) {
   console.log('console.log: ' + msg);
@@ -30,34 +62,21 @@ page.onConsoleMessage = function(msg) {
 
 page.onError = function(msg, trace) {
   console.log('Script error: ' + msg);
-  phantom.exit(1);
+  exit(1);
 };
 
 page.onResourceError = function(resourceError) {
   console.log('Unable to load resource (#' + resourceError.id + ', URL:' + resourceError.url + ')');
   console.log('Error code: ' + resourceError.errorCode + '. Description: ' + resourceError.errorString);
-  phantom.exit(1);
+  exit(1);
 };
 
-page.open(url, function(status) {
-  if (status !== "success") {
-    console.log("Failed to load " + url);
-    phantom.exit(1);
-  }
-
-  var rect = page.evaluate(function(asciicastUrl, poster, selector) {
-    asciinema.player.js.CreatePlayer('player', asciicastUrl, { preload: true, poster: poster });
-
-    var elements = document.querySelectorAll(selector);
-
-    if (elements.length > 0) {
-      return elements[0].getBoundingClientRect();
-    }
-  }, asciicastUrl, poster, selector);
+page.onCallback = function(data) {
+  var rect = data.rect;
 
   if (!rect) {
     console.log("Couldn't get geometry of requested DOM element");
-    phantom.exit(1);
+    exit(1);
     return;
   }
 
@@ -68,13 +87,35 @@ page.open(url, function(status) {
     height: rect.height * scale
   };
 
-  // console.log("waiting");
   setTimeout(function () {
-    // console.log("rendering");
     page.render(imagePath, { format: format });
-    phantom.exit(0);
+    exit(0);
+  }, 10); // need to wait a bit for poster to render
+};
 
-  }, 2000);
+page.open(pageUrl, function(status) {
+  if (status !== "success") {
+    console.log("Failed to load " + url);
+    exit(1);
+  }
+
+  var rect = page.evaluate(function(jsonUrl, poster) {
+    var opts = {
+      preload: true,
+      poster: poster,
+      onCanPlay: function() {
+        var elements = document.querySelectorAll('.asciinema-player');
+
+        if (elements.length > 0) {
+          window.callPhantom({ rect: elements[0].getBoundingClientRect() });
+        } else {
+          window.callPhantom({ rect: undefined });
+        }
+      }
+    };
+
+    asciinema.player.js.CreatePlayer('player', jsonUrl, opts);
+  }, jsonUrl, poster);
 });
 
 // vim: ft=javascript
