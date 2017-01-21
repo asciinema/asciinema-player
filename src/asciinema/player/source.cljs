@@ -1,7 +1,7 @@
 (ns asciinema.player.source
   (:refer-clojure :exclude [js->clj])
   (:require [cljs.core.async :refer [chan >! <! put! close! timeout poll!]]
-            [ajax.core :as http]
+            [goog.net.XhrIo :as xhr]
             [schema.core :as s]
             [asciinema.player.format.asciicast-v0 :as v0]
             [asciinema.player.format.asciicast-v1 :as v1]
@@ -81,11 +81,11 @@
         value-ch))))
 
 (defn make-recording-ch-fn [url recording-fn]
-  (lazy-promise-chan (fn [deliver]
-                       (http/GET url
-                           {:response-format :raw
-                            :handler #(deliver (recording-fn %))
-                            :error-handler #(println %)}))))
+  (lazy-promise-chan
+   (fn [deliver]
+     (xhr/send url (fn [event]
+                     (let [res (-> event .-target .getResponseText)]
+                       (deliver (recording-fn res))))))))
 
 (defn report-metadata
   "Waits for recording to load and then reports its size and duration to the

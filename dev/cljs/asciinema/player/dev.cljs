@@ -11,7 +11,7 @@
             [clojure.walk :as walk]
             [cljs.core.async :refer [chan >! <! put!]]
             [schema.core :as s]
-            [ajax.core :refer [GET]])
+            [goog.net.XhrIo :as xhr])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 ;; (s/set-fn-validation! true)
@@ -65,12 +65,12 @@
 
 (defn fetch-json [url]
   (let [ch (chan)]
-    (GET url
-         {:response-format :raw
-          :handler (fn [res]
-                     (put! ch (-> res
-                                  js/JSON.parse
-                                  (js->clj :keywordize-keys true))))})
+    (xhr/send url (fn [event]
+                    (put! ch (-> event
+                                 .-target
+                                 .getResponseText
+                                 js/JSON.parse
+                                 (js->clj :keywordize-keys true)))))
     ch))
 
 (defn feed-verbose [vt str]

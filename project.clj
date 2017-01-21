@@ -11,8 +11,7 @@
                  [devcards "0.2.2" :exclusions [cljsjs/react]]
                  [org.clojure/test.check "0.9.0"]
                  [org.clojure/core.match "0.3.0-alpha4"]
-                 [prismatic/schema "1.1.3"]
-                 [cljs-ajax "0.5.8"]]
+                 [prismatic/schema "1.1.3"]]
 
   :plugins [[lein-cljsbuild "1.1.2"]
             [lein-figwheel "0.5.0-2"]
