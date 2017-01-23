@@ -112,6 +112,17 @@
 (defn- get-transition [rules input]
   (some (fn [[pred cfg]] (when (pred input) cfg)) rules))
 
+(defn- wrap-action [thing f]
+  `(~f ~thing ~'input))
+
+(defn- compose-actions [exit-action transition-action entry-action]
+  (let [form (cond-> 'vt
+               exit-action (wrap-action exit-action)
+               transition-action (wrap-action transition-action)
+               entry-action (wrap-action entry-action))]
+    `(fn [~'vt ~'input]
+       ~form)))
+
 (defn parse* [current-state input]
   (let [current-state-cfg (get states current-state)
         transition (or (get-transition anywhere-state input)
@@ -121,9 +132,9 @@
       (let [new-state-cfg (get states new-state)
             exit-action (:on-exit current-state-cfg)
             entry-action (:on-enter new-state-cfg)
-            actions (vec (remove nil? [exit-action transition-action entry-action]))]
+            actions (compose-actions exit-action transition-action entry-action)]
         [new-state actions])
-      [current-state (if transition-action [transition-action] [])])))
+      [current-state (or transition-action (fn [vt input] vt))])))
 
 (defmacro build-lookup-table []
   (apply merge (for [state (keys states)]

@@ -429,16 +429,13 @@
   (let [input (if (>= input 0xa0) 0x41 input)]
     (-> states current-state (get input))))
 
-(defn execute-actions [vt actions input]
-  (reduce (fn [vt f] (f vt input)) vt actions))
-
 (defn feed [vt inputs]
   (loop [vt vt
          parser-state (-> vt :parser :state)
          inputs inputs]
     (if-let [input (first inputs)]
       (let [[new-parser-state actions] (parse parser-state input)]
-          (recur (execute-actions vt actions input) new-parser-state (rest inputs)))
+          (recur (actions vt input) new-parser-state (rest inputs)))
       (assoc-in vt [:parser :state] parser-state))))
 
 (defn feed-one [vt input]
