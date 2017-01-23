@@ -142,11 +142,23 @@
           v1-url (str "/asciicasts/" asciicast-filename)]
       (def v1-json (<! (fetch-json v1-url)))))
 
-  ;; benchmark vt/feed
+  ;; benchmark v1-frames
 
   (go
     (let [v1-frames (v1/build-v1-frames v1-json)]
       (time (last v1-frames))))
+
+  ;; benchmark vt/feed
+
+  (go
+    (let [strings (->> (get v1-json :stdout) (map second))
+          frames (map (fn [string] (mapv #(.codePointAt string %) (range (count string)))) strings)]
+      (time
+       (loop [vt (vt/make-vt 80 24)
+              frames frames]
+         (if-let [inputs (first frames)]
+           (recur (vt/feed vt inputs) (rest frames))
+           vt)))))
 
   ;; benchmark vt/parse
 
