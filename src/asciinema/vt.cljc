@@ -69,7 +69,40 @@
          [0x3f 1049] (update vt :screen #(-> % screen/switch-to-primary-buffer screen/restore-cursor))
          :else vt))
 
-;; control functions
+(defn split-coll [elem coll]
+  (loop [coll coll
+         parts []
+         part []]
+    (if-let [e (first coll)]
+      (if (= e elem)
+        (recur (rest coll) (conj parts part) [])
+        (recur (rest coll) parts (conj part e)))
+      (if (seq part)
+        (conj parts part)
+        parts))))
+
+(defn reduce-param [chars]
+  (let [digits (map #(- % 0x30) chars)
+        components (map * (reverse digits) (iterate (partial * 10) 1))]
+    (reduce + 0 components)))
+
+(defn get-intermediate [vt n]
+  (get-in vt [:parser :intermediate-chars n]))
+
+(def get-cached-params (memoize (fn [chars]
+                                  (let [groups (split-coll 0x3b chars)]
+                                    (map reduce-param groups)))))
+
+(defn get-params [vt]
+  (get-cached-params (-> vt :parser :param-chars)))
+
+(defn get-param [vt n default]
+  (let [v (nth (get-params vt) n 0)]
+    (if (zero? v)
+      default
+      v)))
+
+;; terminal control functions
 
 (defn execute-bs [vt]
   (update vt :screen screen/move-cursor-left))
@@ -109,39 +142,6 @@
 
 (defn execute-ris [vt]
   (make-vt (-> vt :screen screen/width) (-> vt :screen screen/height)))
-
-(defn split-coll [elem coll]
-  (loop [coll coll
-         parts []
-         part []]
-    (if-let [e (first coll)]
-      (if (= e elem)
-        (recur (rest coll) (conj parts part) [])
-        (recur (rest coll) parts (conj part e)))
-      (if (seq part)
-        (conj parts part)
-        parts))))
-
-(defn reduce-param [chars]
-  (let [digits (map #(- % 0x30) chars)
-        components (map * (reverse digits) (iterate (partial * 10) 1))]
-    (reduce + 0 components)))
-
-(defn get-intermediate [vt n]
-  (get-in vt [:parser :intermediate-chars n]))
-
-(def get-cached-params (memoize (fn [chars]
-                                  (let [groups (split-coll 0x3b chars)]
-                                    (map reduce-param groups)))))
-
-(defn get-params [vt]
-  (get-cached-params (-> vt :parser :param-chars)))
-
-(defn get-param [vt n default]
-  (let [v (nth (get-params vt) n 0)]
-    (if (zero? v)
-      default
-      v)))
 
 (defn execute-ich [vt]
   (let [n (get-param vt 0 1)]
