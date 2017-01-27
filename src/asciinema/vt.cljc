@@ -429,13 +429,36 @@
   (let [input (if (>= input 0xa0) 0x41 input)]
     (-> states current-state (get input))))
 
+(def action-mapping
+  {:execute execute
+   :print print
+   :clear clear
+   :collect collect
+   :esc-dispatch esc-dispatch
+   :ignore ignore
+   :csi-dispatch csi-dispatch
+   :param param
+   :hook hook
+   :put put
+   :unhook unhook
+   :osc-start osc-start
+   :osc-put osc-put
+   :osc-end osc-end})
+
+(defn execute-actions [vt actions input]
+  (loop [vt vt
+         actions actions]
+    (if-let [action (first actions)]
+      ((action-mapping action) vt input)
+      vt)))
+
 (defn feed [vt inputs]
   (loop [vt vt
          parser-state (-> vt :parser :state)
          inputs inputs]
     (if-let [input (first inputs)]
       (let [[new-parser-state actions] (parse parser-state input)]
-          (recur (actions vt input) new-parser-state (rest inputs)))
+          (recur (execute-actions vt actions input) new-parser-state (rest inputs)))
       (assoc-in vt [:parser :state] parser-state))))
 
 (defn feed-one [vt input]
