@@ -1,12 +1,11 @@
 (ns asciinema.vt
   (:refer-clojure :exclude [print])
-  #?(:cljs (:require-macros [asciinema.vt-macros :refer [build-lookup-table]]))
   (:require [asciinema.vt.screen :as screen]
+            [asciinema.vt.parser :as parser]
             [asciinema.player.util :refer [adjust-to-range]]
             [schema.core :as s #?@(:cljs [:include-macros true])]
             [clojure.string :as str]
             #?(:cljs [asciinema.player.codepoint-polyfill])
-            #?(:clj [asciinema.vt-macros :refer [build-lookup-table]])
             #?(:clj [clojure.core.match :refer [match]]
                :cljs [cljs.core.match :refer-macros [match]])
             #?(:cljs [asciinema.vt.screen :refer [Screen]]))
@@ -423,19 +422,36 @@
 
 ;; end actions
 
-(def states (build-lookup-table))
+(def action-mapping
+  {:execute execute
+   :print print
+   :clear clear
+   :collect collect
+   :esc-dispatch esc-dispatch
+   :ignore ignore
+   :csi-dispatch csi-dispatch
+   :param param
+   :hook hook
+   :put put
+   :unhook unhook
+   :osc-start osc-start
+   :osc-put osc-put
+   :osc-end osc-end})
 
-(defn parse [current-state input]
-  (let [input (if (>= input 0xa0) 0x41 input)]
-    (-> states current-state (get input))))
+(defn execute-actions [vt actions input]
+  (loop [vt vt
+         actions actions]
+    (if (seq actions)
+      (recur ((action-mapping (first actions)) vt input) (next actions))
+      vt)))
 
 (defn feed [vt inputs]
   (loop [vt vt
          parser-state (-> vt :parser :state)
          inputs inputs]
     (if-let [input (first inputs)]
-      (let [[new-parser-state actions] (parse parser-state input)]
-          (recur (actions vt input) new-parser-state (rest inputs)))
+      (let [[new-parser-state actions] (parser/parse parser-state input)]
+          (recur (execute-actions vt actions input) new-parser-state (rest inputs)))
       (assoc-in vt [:parser :state] parser-state))))
 
 (defn feed-one [vt input]
