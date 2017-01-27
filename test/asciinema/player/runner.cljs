@@ -3,6 +3,7 @@
             [asciinema.player.core-test]
             [asciinema.player.view-test]
             [asciinema.vt-test]
+            [asciinema.vt.parser-test]
             [asciinema.player.frames-test]
             [asciinema.player.source-test]
             [asciinema.player.util-test]))
@@ -13,6 +14,7 @@
   'asciinema.player.core-test
   'asciinema.player.view-test
   'asciinema.vt-test
+  'asciinema.vt.parser-test
   'asciinema.player.frames-test
   'asciinema.player.source-test
   'asciinema.player.util-test)

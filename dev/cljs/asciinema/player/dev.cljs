@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [compare])
   (:require [asciinema.player.core :as p]
             [asciinema.vt :as vt]
+            [asciinema.vt.parser :as parser]
             [asciinema.player.util :as util]
             [asciinema.player.source :as source]
             [asciinema.player.view :as view]
@@ -169,7 +170,7 @@
        (loop [state :ground
               codes codes]
          (if-let [input (first codes)]
-           (let [[new-state _] (vt/parse state input)]
+           (let [[new-state _] (parser/parse state input)]
              (recur new-state (rest codes)))
            state)))))
 
