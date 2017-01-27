@@ -441,7 +441,7 @@
 (defn execute-actions [vt actions input]
   (loop [vt vt
          actions actions]
-    (if actions
+    (if (seq actions)
       (recur ((action-mapping (first actions)) vt input) (next actions))
       vt)))
 
