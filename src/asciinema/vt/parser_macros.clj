@@ -141,4 +141,4 @@
 
 (defmacro build-lookup-table []
   (apply merge (for [state (keys states)]
-                 {state (mapv (partial parse* state) (range 256))})))
+                 {state (mapv (partial parse* state) (range 0xa0))})))
