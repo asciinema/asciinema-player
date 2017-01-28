@@ -1288,7 +1288,7 @@
                             gen-text]))
 
 (defspec test-parser-state-for-random-input
-  {:num-tests (* 100 (property-tests-multiplier))}
+  {:num-tests (* 10 (property-tests-multiplier))}
   (prop/for-all [rubbish gen-unicode-rubbish]
                 (let [vt (-> (make-vt 80 24) (feed rubbish))]
                   (keyword? (-> vt :parser :state)))))
