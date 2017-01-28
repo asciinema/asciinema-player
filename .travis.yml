@@ -1,8 +1,7 @@
 language: clojure
-before_install: yes y | sudo lein upgrade
+lein: 2.6.1
 script:
   - env PROPERTY_TESTS_MULTIPLIER=10 lein test
   - lein doo phantom test once
   - lein cljsbuild once release
   - lein less once
-sudo: true
