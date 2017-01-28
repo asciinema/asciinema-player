@@ -1,6 +1,6 @@
 (defproject player "0.1.0-SNAPSHOT"
   :description "asciinema player"
-  :url "http://example.com/FIXME"
+  :url "https://github.com/asciinema/asciinema-player"
   :license {:name "GNU GPL v3"
             :url "http://www.gnu.org/licenses/gpl-3.0.txt"}
 
