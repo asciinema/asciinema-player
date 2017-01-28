@@ -459,11 +459,12 @@
                             (vec (concat top-lines [curr-line] bottom-lines))))))
 
 (defn clear-to-beginning-of-screen [{{:keys [x y]} :cursor :keys [width height char-attrs] :as screen}]
-  (update screen :lines (fn [lines]
-                          (let [top-lines (repeat y (blank-line width char-attrs))
-                                curr-line (clear-line-left (nth lines y) x char-attrs)
-                                bottom-lines (drop (inc y) lines)]
-                            (vec (concat top-lines [curr-line] bottom-lines))))))
+  (let [x (min x (dec width))]
+    (update screen :lines (fn [lines]
+                            (let [top-lines (repeat y (blank-line width char-attrs))
+                                  curr-line (clear-line-left (nth lines y) x char-attrs)
+                                  bottom-lines (drop (inc y) lines)]
+                              (vec (concat top-lines [curr-line] bottom-lines)))))))
 
 (defn erase-characters [{{:keys [x y]} :cursor :keys [width char-attrs] :as screen} n]
   (let [n (min n (- width x))]
