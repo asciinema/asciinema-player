@@ -82,7 +82,7 @@
 
 (defn reduce-param [chars]
   (let [digits (map #(- % 0x30) chars)
-        components (map * (reverse digits) (iterate (partial * 10) 1))]
+        components (map * (reverse digits) (iterate #(* 10 %) 1))]
     (reduce + 0 components)))
 
 (defn get-intermediate [vt n]

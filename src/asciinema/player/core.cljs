@@ -14,7 +14,7 @@
 (defn parse-npt [t]
   (when t
     (let [numbers (map js/parseFloat (str/split (str t) #":"))
-          components (map * (reverse numbers) (iterate (partial * 60) 1))]
+          components (map * (reverse numbers) (iterate #(* 60 %) 1))]
       (apply + components))))
 
 (s/defn parse-json-poster :- (s/protocol screen/Screen)

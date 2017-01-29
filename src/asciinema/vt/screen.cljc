@@ -368,13 +368,13 @@
 (defn move-cursor-to-next-tab [{{:keys [x]} :cursor :keys [tabs width] :as screen} n]
   (let [n (dec n)
         right-margin (dec width)
-        next-tabs (drop-while (partial >= x) tabs)
+        next-tabs (drop-while #(>= x %) tabs)
         new-x (nth next-tabs n right-margin)]
     (move-cursor-to-col screen new-x)))
 
 (defn move-cursor-to-prev-tab [{{:keys [x]} :cursor :keys [tabs width] :as screen} n]
   (let [n (dec n)
-        prev-tabs (take-while (partial > x) tabs)
+        prev-tabs (take-while #(> x %) tabs)
         new-x (nth (reverse prev-tabs) n 0)]
     (move-cursor-to-col screen new-x)))
 
