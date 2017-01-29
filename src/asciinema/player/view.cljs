@@ -73,13 +73,8 @@
 (def part-props-memoized (memoize part-props))
 
 (defn part [[text attrs] cursor-on]
-  (let [attrs (update attrs :cursor #(and % cursor-on))]
+  (let [attrs (update attrs :cursor #(and % @cursor-on))]
     [:span (part-props-memoized attrs) text]))
-
-(def part-memoized (memoize part))
-
-(defn line [parts cursor-on]
-  [:span.line (doall (map-indexed (fn [idx p] ^{:key idx} [part-memoized p @cursor-on]) parts))])
 
 (defn split-part-with-cursor [[text attrs] position]
   (let [left-chars (take position text)
@@ -105,6 +100,10 @@
           (concat left (split-part-with-cursor part idx) (rest right))))
       left)))
 
+(defn line [parts cursor-x cursor-on]
+  (let [parts (if @cursor-x (insert-cursor @parts @cursor-x) @parts)]
+    [:span.line (doall (map-indexed (fn [idx p] ^{:key idx} [part p cursor-on]) parts))]))
+
 (def named-font-sizes #{"small" "medium" "big"})
 
 (defn terminal-class-name [font-size]
@@ -118,16 +117,24 @@
 
 (defn terminal [width height font-size screen cursor-on]
   (let [class-name (reaction (terminal-class-name @font-size))
-        style (reaction (terminal-style @width @height @font-size))]
+        style (reaction (terminal-style @width @height @font-size))
+        lines (reaction (screen/lines @screen))
+        line-reactions (mapv (fn [n]
+                               (reaction (get @lines n)))
+                             (range (count @lines)))
+        cursor (reaction (screen/cursor @screen))
+        cursor-x (reaction (:x @cursor))
+        cursor-y (reaction (:y @cursor))
+        cursor-visible (reaction (:visible @cursor))]
     (fn []
-      (let [{cursor-x :x cursor-y :y cursor-visible :visible} (screen/cursor @screen)]
-        [:pre.asciinema-terminal
-         {:class-name @class-name :style @style}
-         (map-indexed (fn [idx parts]
-                        (let [cursor-x (when (and cursor-visible (= idx cursor-y)) cursor-x)
-                              parts (if cursor-x (insert-cursor parts cursor-x) parts)]
-                          ^{:key idx} [line parts cursor-on]))
-                      (screen/lines @screen))]))))
+      [:pre.asciinema-terminal
+       {:class-name @class-name :style @style}
+       (map-indexed (fn [idx parts]
+                      (let [cursor-x (reaction (and @cursor-visible
+                                                    (= idx @cursor-y)
+                                                    @cursor-x))]
+                        ^{:key idx} [line parts cursor-x cursor-on]))
+                    line-reactions)])))
 
 (def logo-raw-svg "<defs> <mask id=\"small-triangle-mask\"> <rect width=\"100%\" height=\"100%\" fill=\"white\"/> <polygon points=\"508.01270189221935 433.01270189221935, 208.0127018922194 259.8076211353316, 208.01270189221927 606.217782649107\" fill=\"black\"></polygon> </mask> </defs> <polygon points=\"808.0127018922194 433.01270189221935, 58.01270189221947 -1.1368683772161603e-13, 58.01270189221913 866.0254037844386\" mask=\"url(#small-triangle-mask)\" fill=\"white\"></polygon> <polyline points=\"481.2177826491071 333.0127018922194, 134.80762113533166 533.0127018922194\" stroke=\"white\" stroke-width=\"90\"></polyline>")
 

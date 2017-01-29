@@ -46,6 +46,6 @@
 (extend-protocol ps/Screen
   LegacyScreen
   (lines [this]
-    (vals (:lines this)))
+    (-> this :lines vals vec))
   (cursor [this]
     (:cursor this)))

@@ -545,7 +545,7 @@
         (conj segments [(chars->string chars) attrs])))))
 
 (defn compact-lines [lines]
-  (map compact-line lines))
+  (mapv compact-line lines))
 
 (defn lines [screen]
   (-> screen :lines compact-lines))
