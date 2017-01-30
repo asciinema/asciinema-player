@@ -22,12 +22,8 @@
 ;; http://www.shaels.net/index.php/propterm/documents
 ;; http://vt100.net/docs/vt102-ug/chapter5.html
 
-(def Parser {:state s/Keyword
-             :intermediate-chars [s/Num]
-             :param-chars [s/Num]})
-
 (s/defrecord VT
-    [parser :- Parser
+    [parser :- parser/Parser
      screen :- Screen])
 
 (def initial-parser {:state :ground
