@@ -30,3 +30,9 @@
     (is (= (f/frame-at 8 frames) [8 :baz]))
     (is (= (f/frame-at 9 frames) [8 :baz]))
     (is (= (f/frame-at 10 frames) [8 :baz]))))
+
+(deftest test-skip-duplicates
+  (is (= (f/skip-duplicates [[1 :a] [2 :b] [3 :b] [4 :b] [5 :c] [6 :d] [7 :d] [8 :e]])
+         [[1 :a] [2 :b] [5 :c] [6 :d] [8 :e]]))
+  (is (= (f/skip-duplicates [[1 :a] [2 :a] [3 :b] [4 :c] [5 :c]])
+         [[1 :a] [3 :b] [4 :c]])))

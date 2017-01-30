@@ -57,3 +57,18 @@
   "Returns frame at given time (or the last one before given time)."
   [seconds frames]
   (last (take-while (partial frame-before-or-at? seconds) frames)))
+
+(defn- skip-duplicates* [v1 frames]
+  (lazy-seq
+   (loop [frames frames]
+     (when (seq frames)
+       (let [[_ v2 :as f2] (first frames)]
+         (if (= v1 v2)
+           (recur (rest frames))
+           (cons f2 (skip-duplicates* v2 (rest frames)))))))))
+
+(defn skip-duplicates
+  "Returns frames with subsequent duplicate frames removed."
+  [frames]
+  (let [[_ v1 :as f1] (first frames)]
+    (cons f1 (skip-duplicates* v1 (next frames)))))
