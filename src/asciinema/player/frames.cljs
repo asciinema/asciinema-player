@@ -72,3 +72,23 @@
   [frames]
   (let [[_ v1 :as f1] (first frames)]
     (cons f1 (skip-duplicates* v1 (next frames)))))
+
+(defn at-hz
+  "Returns frames at requested frame rate (hz)."
+  [hz reduce-fn frames]
+  (let [frame-time (/ 1.0 hz)]
+    (letfn [(reduce-frames* [frames]
+              (lazy-seq
+               (when (seq frames)
+                 (let [[t1 v1 :as f1] (first frames)
+                       q1 (quot t1 frame-time)]
+                   (loop [v1 v1
+                          frames (rest frames)]
+                     (if (seq frames)
+                       (let [[t2 v2 :as f2] (first frames)
+                             q2 (quot t2 frame-time)]
+                         (if (= q1 q2)
+                           (recur (reduce-fn v1 v2) (rest frames))
+                           (cons [(* q1 frame-time) v1] (reduce-frames* frames))))
+                       (cons [(* q1 frame-time) v1] nil)))))))]
+      (reduce-frames* frames))))
