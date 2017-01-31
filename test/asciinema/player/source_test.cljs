@@ -5,8 +5,8 @@
 
 (deftest initialize-asciicast-test
   (testing "pre v1 format"
-    (let [asciicast [[1.0 {:lines {0 [["foo" {}] ["bar" {}]] 1 [["foobar" {}]]}}]
-                     [2.0 {:lines {0 [["baz" {}] ["qux" {}]] 1 [["quuuux" {}]]}}]]
+    (let [asciicast [[1.0 {:lines {:0 [["foo" {}] ["bar" {}]] :1 [["foobar" {}]]}}]
+                     [2.0 {:lines {:0 [["baz" {}] ["qux" {}]] :1 [["quuuux" {}]]}}]]
           asciicast (s/initialize-asciicast asciicast)]
       (is (= (select-keys asciicast [:width :height :duration])
              {:width 6 :height 2 :duration 3.0}))))
