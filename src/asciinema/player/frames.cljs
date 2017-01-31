@@ -7,7 +7,7 @@
   (vector time (f data)))
 
 (defn map-frame-data [f frames]
-  (map (partial update-frame-data f) frames))
+  (map #(update-frame-data f %) frames))
 
 (defn interleave-frames
   "Returns lazy seq of interleaved frames coming from two collections."

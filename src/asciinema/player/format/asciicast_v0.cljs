@@ -2,6 +2,7 @@
   (:require [schema.core :as s]
             [asciinema.vt :as vt]
             [asciinema.vt.screen :as screen]
+            [asciinema.player.frames :as frames]
             [asciinema.player.screen :as ps]))
 
 (def Fragment screen/Fragment) ; TODO decouple from vt
@@ -24,14 +25,21 @@
 (defn fix-line-diff-keys [line-diff]
   (into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) line-diff)))
 
-(defn reduce-v0-frame [[prev-time screen] [curr-time diff]]
+(defn reduce-time [[prev-time _] [curr-time data]]
+  [(+ prev-time curr-time) data])
+
+(defn reduce-screen [[prev-time screen] [curr-time diff]]
   (let [diff (update diff :lines fix-line-diff-keys)]
-    (vector (+ prev-time curr-time) (merge-with merge screen diff))))
+    [curr-time (merge-with merge screen diff)]))
 
 (defn build-v0-frames [diffs]
   (let [screen (map->LegacyScreen {:lines (sorted-map)
                                    :cursor {:x 0 :y 0 :visible true}})]
-    (reductions reduce-v0-frame [0 screen] diffs)))
+    (->> diffs
+         (reductions reduce-time)
+         (frames/at-hz 30 #(merge-with merge %1 %2))
+         (reductions reduce-screen [0 screen])
+         frames/skip-duplicates)))
 
 (s/defn initialize-asciicast
   [asciicast :- AsciicastV0]
