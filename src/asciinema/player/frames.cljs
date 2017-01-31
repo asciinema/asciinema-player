@@ -70,8 +70,9 @@
 (defn skip-duplicates
   "Returns frames with subsequent duplicate frames removed."
   [frames]
-  (let [[_ v1 :as f1] (first frames)]
-    (cons f1 (skip-duplicates* v1 (next frames)))))
+  (lazy-seq
+   (let [[_ v1 :as f1] (first frames)]
+     (cons f1 (skip-duplicates* v1 (next frames))))))
 
 (defn at-hz
   "Returns frames at requested frame rate (hz)."
