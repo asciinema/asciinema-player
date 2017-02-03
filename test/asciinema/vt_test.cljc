@@ -19,8 +19,8 @@
 
 (deftest make-vt-test
   (let [vt (make-vt 80 24)]
-    (is (= (-> vt :parser :intermediate-chars) []))
-    (is (= (-> vt :parser :param-chars) []))
+    (is (= (-> vt :parser-intermediates) []))
+    (is (= (-> vt :parser-params) []))
     (is (= (-> vt :screen :tabs) #{8 16 24 32 40 48 56 64 72}))
     (is (= (-> vt :screen :char-attrs) screen/normal-char-attrs))
     (is (= (-> vt :screen :saved) screen/initial-saved-cursor))
@@ -1223,11 +1223,11 @@
         (expect-cursor vt 0 4)))))
 
 (deftest get-params-test
-  (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] []))]
+  (let [vt (-> (make-vt 4 3) (assoc-in [:parser-params] []))]
     (is (= (get-params vt) [])))
-  (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] [0x33]))]
+  (let [vt (-> (make-vt 4 3) (assoc-in [:parser-params] [0x33]))]
     (is (= (get-params vt) [3])))
-  (let [vt (-> (make-vt 4 3) (assoc-in [:parser :param-chars] [0x3b 0x3b 0x31 0x32 0x3b 0x3b 0x32 0x33 0x3b 0x31 0x3b]))]
+  (let [vt (-> (make-vt 4 3) (assoc-in [:parser-params] [0x3b 0x3b 0x31 0x32 0x3b 0x3b 0x32 0x33 0x3b 0x31 0x3b]))]
     (is (= (get-params vt) [0 0 12 0 23 1]))))
 
 (def gen-unicode-rubbish (gen/vector (gen/choose 0 0x10ffff) 1 20))
@@ -1291,7 +1291,7 @@
   {:num-tests (* 10 (property-tests-multiplier))}
   (prop/for-all [rubbish gen-unicode-rubbish]
                 (let [vt (-> (make-vt 80 24) (feed rubbish))]
-                  (keyword? (-> vt :parser :state)))))
+                  (keyword? (-> vt :parser-state)))))
 
 (defspec test-cursor-position-for-random-input
   {:num-tests (* 100 (property-tests-multiplier))}

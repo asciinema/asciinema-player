@@ -23,17 +23,17 @@
 ;; http://vt100.net/docs/vt102-ug/chapter5.html
 
 (s/defrecord VT
-    [parser :- parser/Parser
+    [parser-state :- s/Keyword
+     parser-params :- [s/Int]
+     parser-intermediates :- [s/Int]
      screen :- Screen])
-
-(def initial-parser {:state :ground
-                     :intermediate-chars []
-                     :param-chars []})
 
 (s/defn make-vt :- VT
   [width :- s/Num
    height :- s/Num]
-  (map->VT {:parser initial-parser
+  (map->VT {:parser-state :ground
+            :parser-params []
+            :parser-intermediates []
             :screen (screen/blank-screen width height)}))
 
 ;; helper functions
@@ -82,14 +82,14 @@
     (reduce + 0 components)))
 
 (defn get-intermediate [vt n]
-  (get-in vt [:parser :intermediate-chars n]))
+  (-> vt :parser-intermediates (get n)))
 
 (def get-cached-params (memoize (fn [chars]
                                   (let [groups (split-coll 0x3b chars)]
                                     (map reduce-param groups)))))
 
 (defn get-params [vt]
-  (get-cached-params (-> vt :parser :param-chars)))
+  (get-cached-params (:parser-params vt)))
 
 (defn get-param [vt n default]
   (let [v (nth (get-params vt) n 0)]
@@ -342,13 +342,13 @@
     vt))
 
 (defn clear [vt input]
-  (update vt :parser assoc :intermediate-chars [] :param-chars []))
+  (assoc vt :parser-intermediates [] :parser-params []))
 
 (defn collect [vt input]
-  (update-in vt [:parser :intermediate-chars] conj input))
+  (assoc vt :parser-intermediates (conj (:parser-intermediates vt) input)))
 
 (defn param [vt input]
-  (update-in vt [:parser :param-chars] conj input))
+  (assoc vt :parser-params (conj (:parser-params vt) input)))
 
 (defn esc-dispatch [vt input]
   (match [(get-intermediate vt 0) input]
@@ -443,12 +443,12 @@
 
 (defn feed [vt inputs]
   (loop [vt vt
-         parser-state (-> vt :parser :state)
+         parser-state (:parser-state vt)
          inputs inputs]
     (if-let [input (first inputs)]
       (let [[new-parser-state actions] (parser/parse parser-state input)]
           (recur (execute-actions vt actions input) new-parser-state (rest inputs)))
-      (assoc-in vt [:parser :state] parser-state))))
+      (assoc vt :parser-state parser-state))))
 
 (defn feed-one [vt input]
   (feed vt [input]))

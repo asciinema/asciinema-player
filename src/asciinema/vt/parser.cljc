@@ -3,10 +3,6 @@
             #?(:clj [asciinema.vt.parser-macros :refer [build-lookup-table]]))
   #?(:cljs (:require-macros [asciinema.vt.parser-macros :refer [build-lookup-table]])))
 
-(s/defschema Parser {:state s/Keyword
-                     :intermediate-chars [s/Num]
-                     :param-chars [s/Num]})
-
 (def states (build-lookup-table))
 
 (defn parse [current-state input]
