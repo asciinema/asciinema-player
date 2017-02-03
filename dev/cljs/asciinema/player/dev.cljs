@@ -154,12 +154,14 @@
   (go
     (let [strings (->> (get v1-json :stdout) (map second))
           frames (map (fn [string] (mapv #(.codePointAt string %) (range (count string)))) strings)]
-      (time
-       (loop [vt (vt/make-vt 80 24)
-              frames frames]
-         (if-let [inputs (first frames)]
-           (recur (vt/feed vt inputs) (rest frames))
-           vt)))))
+      (dotimes [_ 4]
+        (time
+         (loop [vt (vt/make-vt 80 24)
+                frames frames]
+           (if-let [inputs (first frames)]
+             (recur (vt/feed vt inputs) (rest frames))
+             vt))))
+      (println "done.")))
 
   ;; benchmark vt/parse
 
