@@ -195,6 +195,8 @@ One of:
 
 Defaults to `asciinema`.
 
+You can also [use a custom theme](https://github.com/asciinema/asciinema-player/wiki/Custom-terminal-themes).
+
 ### `title`
 
 Title of the asciicast, displayed in the titlebar in fullscreen mode.
