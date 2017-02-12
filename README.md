@@ -35,6 +35,7 @@ and the recordings yourself then read on, it's very simple.
 * custom playback speeds,
 * looped playback,
 * starting playback at specific time,
+* programmatic control via methods/events/properties on the HTML element,
 * keyboard shortcuts,
 * multiple color schemes for standard 16 colors,
 * 256 color palette / 24-bit true color (ISO-8613-3),
