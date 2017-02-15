@@ -93,3 +93,8 @@
                            (cons [(* q1 frame-time) v1] (reduce-frames* frames))))
                        (cons [(* q1 frame-time) v1] nil)))))))]
       (reduce-frames* frames))))
+
+(defn to-absolute-time [frames]
+  (reductions (fn [[prev-time _] [curr-time data]]
+                [(+ prev-time curr-time) data])
+              frames))

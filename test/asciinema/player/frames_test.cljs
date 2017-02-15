@@ -61,3 +61,7 @@
           [1.2333333333333334 "ij"]
           [1.25 "k"]
           [1.2666666666666666 "lm"]])))
+
+(deftest test-to-absolute-time
+  (is (= (f/to-absolute-time [[1 :a] [2 :b] [3 :c] [4 :d]])
+         [[1 :a] [3 :b] [6 :c] [10 :d]])))

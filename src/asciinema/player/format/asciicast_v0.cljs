@@ -25,9 +25,6 @@
 (defn fix-line-diff-keys [line-diff]
   (into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) line-diff)))
 
-(defn reduce-time [[prev-time _] [curr-time data]]
-  [(+ prev-time curr-time) data])
-
 (defn reduce-screen [[prev-time screen] [curr-time diff]]
   (let [diff (update diff :lines fix-line-diff-keys)]
     [curr-time (merge-with merge screen diff)]))
@@ -36,7 +33,7 @@
   (let [screen (map->LegacyScreen {:lines (sorted-map)
                                    :cursor {:x 0 :y 0 :visible true}})]
     (->> diffs
-         (reductions reduce-time)
+         frames/to-absolute-time
          (frames/at-hz 30 #(merge-with merge %1 %2))
          (reductions reduce-screen [0 screen])
          frames/skip-duplicates)))
