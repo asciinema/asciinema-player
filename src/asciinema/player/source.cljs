@@ -171,9 +171,8 @@
 
 (defn start-event-loop!
   "Main event loop of the Recording."
-  [{:keys [recording-ch-fn start-at speed loop?] :as source} msg-ch]
-  (let [command-ch (chan 10)
-        pri-ch (chan 10)]
+  [{:keys [recording-ch-fn start-at speed loop?] :as source} command-ch msg-ch]
+  (let [pri-ch (chan 10)]
     (go-loop [start-at start-at
               speed speed
               end-ch nil
@@ -210,23 +209,21 @@
                             (>! pri-ch [:stop])
                             (>! pri-ch [:start]))
                           (recur start-at new-speed end-ch stop-ch))
+          :exit nil
           :internal/rewind (recur 0 speed nil nil)
           :internal/seek (let [start-at arg
                                {:keys [frames duration]} (<! (@recording-ch-fn true))
                                start-at (util/adjust-to-range start-at 0 duration)]
                            (>! msg-ch (m/->UpdateTime start-at))
                            (>! msg-ch (m/->UpdateScreen (screen-at start-at frames)))
-                           (recur start-at speed end-ch stop-ch)))))
-    command-ch))
+                           (recur start-at speed end-ch stop-ch)))))))
 
-(defrecord Recording [url start-at speed auto-play? loop? preload? poster-time recording-fn recording-ch-fn stop-ch command-ch]
+(defrecord Recording [recording-ch-fn command-ch start-at speed auto-play? loop? preload? poster-time]
   Source
   (init [this]
     (let [msg-ch (chan)]
-      (reset! command-ch (start-event-loop! this msg-ch))
-      (let [f (make-recording-ch-fn url recording-fn)]
-        (reset! recording-ch-fn f)
-        (report-metadata this msg-ch))
+      (start-event-loop! this command-ch msg-ch)
+      (report-metadata this msg-ch)
       (when preload?
         (@recording-ch-fn true))
       (if auto-play?
@@ -235,34 +232,34 @@
           (show-poster this poster-time msg-ch)))
       msg-ch))
   (close [this]
-    (stop this)
-    (reset! command-ch nil))
+    (put! command-ch [:stop])
+    (put! command-ch [:exit]))
   (start [this]
-    (put! @command-ch [:start]))
+    (put! command-ch [:start]))
   (stop [this]
-    (put! @command-ch [:stop]))
+    (put! command-ch [:stop]))
   (toggle [this]
-    (put! @command-ch [:toggle]))
+    (put! command-ch [:toggle]))
   (seek [this time]
-    (put! @command-ch [:seek time]))
+    (put! command-ch [:seek time]))
   (change-speed [this speed]
-    (put! @command-ch [:change-speed speed])))
+    (put! command-ch [:change-speed speed])))
 
 (defmethod make-source :asciicast [url {:keys [start-at speed auto-play loop preload poster-time]}]
-  (->Recording url
-               start-at
-               speed auto-play
-               loop
-               preload
-               poster-time
-               (fn [json]
-                 (-> json
-                     js/JSON.parse
-                     (js->clj :keywordize-keys true)
-                     initialize-asciicast))
-               (atom nil)
-               (atom nil)
-               (atom nil)))
+  (let [recording-ch-fn (make-recording-ch-fn url (fn [json]
+                                                    (-> json
+                                                        js/JSON.parse
+                                                        (js->clj :keywordize-keys true)
+                                                        initialize-asciicast)))
+        command-ch (chan 10)]
+    (->Recording (atom recording-ch-fn)
+                 command-ch
+                 start-at
+                 speed
+                 auto-play
+                 loop
+                 preload
+                 poster-time)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

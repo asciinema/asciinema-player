@@ -16,7 +16,6 @@
         (is (zero? (:current-time player)))
         (is (= (:theme player) "asciinema"))
         (is (= (:font-size player) "small"))
-        (is (= (:url source) "https://..."))
         (is (= (:speed source) 1))
         (is (zero? (:start-at source)))
         (is (false? (:auto-play? source)))
