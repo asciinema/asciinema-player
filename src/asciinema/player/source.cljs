@@ -170,7 +170,7 @@
       stopped-at)))
 
 (defn start-event-loop!
-  "Main event loop of the PrerecordedSource."
+  "Main event loop of the Recording."
   [{:keys [recording-ch-fn start-at speed loop?] :as source} msg-ch]
   (let [command-ch (chan 10)
         pri-ch (chan 10)]
@@ -219,7 +219,7 @@
                            (recur start-at speed end-ch stop-ch)))))
     command-ch))
 
-(defrecord PrerecordedSource [url start-at speed auto-play? loop? preload? poster-time recording-fn recording-ch-fn stop-ch command-ch]
+(defrecord Recording [url start-at speed auto-play? loop? preload? poster-time recording-fn recording-ch-fn stop-ch command-ch]
   Source
   (init [this]
     (let [msg-ch (chan)]
@@ -248,16 +248,17 @@
   (change-speed [this speed]
     (put! @command-ch [:change-speed speed])))
 
-(defn prerecorded-source [url start-at speed auto-play? loop? preload poster-time recording-fn]
-  (->PrerecordedSource url start-at speed auto-play? loop? preload poster-time recording-fn (atom nil) (atom nil) (atom nil)))
+(defn recording [url start-at speed auto-play? loop? preload poster-time recording-fn]
+  (->Recording url start-at speed auto-play? loop? preload poster-time recording-fn (atom nil) (atom nil) (atom nil)))
+
 
 (defmethod make-source :asciicast [url {:keys [start-at speed auto-play loop preload poster-time]}]
-  (prerecorded-source url start-at speed auto-play loop preload poster-time
-                      (fn [json]
-                        (-> json
-                            js/JSON.parse
-                            (js->clj :keywordize-keys true)
-                            initialize-asciicast))))
+  (recording url start-at speed auto-play loop preload poster-time
+                   (fn [json]
+                     (-> json
+                         js/JSON.parse
+                         (js->clj :keywordize-keys true)
+                         initialize-asciicast))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
