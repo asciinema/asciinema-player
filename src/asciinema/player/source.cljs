@@ -345,7 +345,7 @@
                              (when-let [command-ch @es-ch]
                                (put! command-ch (.-data event)))))))
 
-(defrecord StreamSource [msg-ch url auto-play? started?]
+(defrecord Stream [msg-ch url auto-play? started?]
   Source
   (init [this]
     (reset! msg-ch (chan))
@@ -367,4 +367,4 @@
     nil))
 
 (defmethod make-source :stream [url {:keys [auto-play]}]
-  (->StreamSource (atom nil) url auto-play (atom false)))
+  (->Stream (atom nil) url auto-play (atom false)))
