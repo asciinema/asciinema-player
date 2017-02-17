@@ -248,17 +248,21 @@
   (change-speed [this speed]
     (put! @command-ch [:change-speed speed])))
 
-(defn recording [url start-at speed auto-play? loop? preload poster-time recording-fn]
-  (->Recording url start-at speed auto-play? loop? preload poster-time recording-fn (atom nil) (atom nil) (atom nil)))
-
-
 (defmethod make-source :asciicast [url {:keys [start-at speed auto-play loop preload poster-time]}]
-  (recording url start-at speed auto-play loop preload poster-time
-                   (fn [json]
-                     (-> json
-                         js/JSON.parse
-                         (js->clj :keywordize-keys true)
-                         initialize-asciicast))))
+  (->Recording url
+               start-at
+               speed auto-play
+               loop
+               preload
+               poster-time
+               (fn [json]
+                 (-> json
+                     js/JSON.parse
+                     (js->clj :keywordize-keys true)
+                     initialize-asciicast))
+               (atom nil)
+               (atom nil)
+               (atom nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
