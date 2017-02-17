@@ -281,7 +281,7 @@
           (recur))))
     (>! msg-ch (m/->SetPlaying false))))
 
-(defrecord RandomSource [speed auto-play? width height msg-ch stdout-ch stop-ch]
+(defrecord JunkPrinter [speed auto-play? width height msg-ch stdout-ch stop-ch]
   Source
   (init [this]
     (reset! msg-ch (chan))
@@ -310,7 +310,7 @@
     nil))
 
 (defmethod make-source :random [_ {:keys [url width height speed auto-play]}]
-  (->RandomSource speed auto-play width height (atom nil) (atom nil) (atom nil)))
+  (->JunkPrinter speed auto-play width height (atom nil) (atom nil) (atom nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
