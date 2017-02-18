@@ -14,7 +14,7 @@
                  [prismatic/schema "1.1.3"]]
 
   :plugins [[lein-cljsbuild "1.1.2"]
-            [lein-figwheel "0.5.0-2"]
+            [lein-figwheel "0.5.9"]
             [lein-less "1.7.5"]
             [lein-doo "0.1.6"]
             [lein-kibit "0.1.2"]]
