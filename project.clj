@@ -16,7 +16,7 @@
   :plugins [[lein-cljsbuild "1.1.5"]
             [lein-figwheel "0.5.9"]
             [lein-less "1.7.5"]
-            [lein-doo "0.1.6"]
+            [lein-doo "0.1.7"]
             [lein-kibit "0.1.2"]]
 
   :min-lein-version "2.5.3"
