@@ -88,30 +88,15 @@
                        (deliver (recording-fn res))))))))
 
 (defn report-metadata
-  "Waits for recording to load and then reports its size and duration to the
-  player."
-  [{:keys [recording-ch-fn]} msg-ch]
-  (go
-    (let [{:keys [duration width height]} (<! (@recording-ch-fn false))]
-      (>! msg-ch (m/->SetMetadata width height duration))
-      (>! msg-ch (m/->TriggerCanPlay)))))
+  "Reports recording dimensions and duration to the player."
+  [{:keys [width height duration]} msg-ch]
+  (put! msg-ch (m/->SetMetadata width height duration))
+  (put! msg-ch (m/->TriggerCanPlay)))
 
 (defn show-poster
-  "Forces loading of recording and sends 'poster' at a given time to the
-  player."
-  [{:keys [recording-ch-fn]} time msg-ch]
-  (go
-    (let [{:keys [frames]} (<! (@recording-ch-fn true))]
-      (>! msg-ch (m/->UpdateScreen (screen-at time frames))))))
-
-(defn show-loading
-  "Reports 'loading' to the player until the recording is loaded."
-  [{:keys [recording-ch-fn]} msg-ch]
-  (when-not (poll! (@recording-ch-fn false))
-    (go
-      (>! msg-ch (m/->SetLoading true))
-      (<! (@recording-ch-fn false))
-      (>! msg-ch (m/->SetLoading false)))))
+  "Sends 'poster' at a given time to the player."
+  [{:keys [frames]} time msg-ch]
+  (put! msg-ch (m/->UpdateScreen (screen-at time frames))))
 
 (defn emit-coll
   "Starts sending frames as events with a given name, stopping when out-ch
@@ -169,9 +154,9 @@
       (>! msg-ch (m/->SetPlaying false))
       stopped-at)))
 
-(defn start-event-loop!
+(defn start-event-loop
   "Main event loop of the Recording."
-  [{:keys [recording-ch-fn start-at speed loop?] :as source} command-ch msg-ch]
+  [{:keys [start-at speed loop? command-ch]} msg-ch data]
   (let [pri-ch (chan 10)]
     (go-loop [start-at start-at
               speed speed
@@ -183,12 +168,10 @@
         (condp = command
           :start (if stop-ch
                    (recur start-at speed end-ch stop-ch)
-                   (do
-                     (show-loading source msg-ch)
-                     (let [{:keys [frames duration]} (<! (@recording-ch-fn true))
-                           stop-ch (chan)
-                           end-ch (play! msg-ch frames duration start-at speed loop? stop-ch)]
-                       (recur nil speed end-ch stop-ch))))
+                   (let [{:keys [frames duration]} data
+                         stop-ch (chan)
+                         end-ch (play! msg-ch frames duration start-at speed loop? stop-ch)]
+                     (recur nil speed end-ch stop-ch)))
           :stop (if stop-ch
                   (do
                     (close! stop-ch)
@@ -212,35 +195,49 @@
           :exit nil
           :internal/rewind (recur 0 speed nil nil)
           :internal/seek (let [start-at arg
-                               {:keys [frames duration]} (<! (@recording-ch-fn true))
+                               {:keys [frames duration]} data
                                start-at (util/adjust-to-range start-at 0 duration)]
                            (>! msg-ch (m/->UpdateTime start-at))
                            (>! msg-ch (m/->UpdateScreen (screen-at start-at frames)))
                            (recur start-at speed end-ch stop-ch)))))))
 
-(defrecord Recording [recording-ch-fn command-ch start-at speed auto-play? loop? preload? poster-time]
+(defn start-preloader [{:keys [recording-ch-fn command-ch force-load-ch preload? poster-time] :as recording} msg-ch]
+  (go
+    (let [recording-ch (recording-ch-fn (or preload? poster-time))
+          [v c] (alts! [recording-ch force-load-ch])
+          data (condp = c
+                 recording-ch v
+                 force-load-ch (do
+                                 (>! msg-ch (m/->SetLoading true))
+                                 (let [data (<! (recording-ch-fn true))]
+                                   (>! msg-ch (m/->SetLoading false))
+                                   data)))]
+      (when poster-time
+        (show-poster data poster-time msg-ch))
+      (report-metadata data msg-ch)
+      (start-event-loop recording msg-ch data))))
+
+(defrecord Recording [recording-ch-fn command-ch force-load-ch start-at speed auto-play? loop? preload? poster-time]
   Source
   (init [this]
     (let [msg-ch (chan)]
-      (start-event-loop! this command-ch msg-ch)
-      (report-metadata this msg-ch)
-      (when preload?
-        (@recording-ch-fn true))
-      (if auto-play?
-        (start this)
-        (when poster-time
-          (show-poster this poster-time msg-ch)))
+      (start-preloader this msg-ch)
+      (when auto-play?
+        (start this))
       msg-ch))
   (close [this]
     (put! command-ch [:stop])
     (put! command-ch [:exit]))
   (start [this]
+    (close! force-load-ch)
     (put! command-ch [:start]))
   (stop [this]
     (put! command-ch [:stop]))
   (toggle [this]
+    (close! force-load-ch)
     (put! command-ch [:toggle]))
   (seek [this time]
+    (close! force-load-ch)
     (put! command-ch [:seek time]))
   (change-speed [this speed]
     (put! command-ch [:change-speed speed])))
@@ -251,9 +248,11 @@
                                                         js/JSON.parse
                                                         (js->clj :keywordize-keys true)
                                                         initialize-asciicast)))
-        command-ch (chan 10)]
-    (->Recording (atom recording-ch-fn)
+        command-ch (chan 10)
+        force-load-ch (chan)]
+    (->Recording recording-ch-fn
                  command-ch
+                 force-load-ch
                  start-at
                  speed
                  auto-play
