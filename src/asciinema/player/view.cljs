@@ -8,7 +8,8 @@
             [asciinema.player.source :as source]
             [asciinema.player.util :as util]
             [asciinema.player.screen :as screen]
-            [asciinema.player.fullscreen :as fullscreen])
+            [asciinema.player.fullscreen :as fullscreen]
+            [clojure.string :as str])
   (:require-macros [cljs.core.async.macros :refer [go-loop]]))
 
 (extend-protocol screen/Screen
@@ -78,11 +79,11 @@
 
 (defn split-part-with-cursor [[text attrs] position]
   (let [left-chars (take position text)
-        left-part (if (seq left-chars) [(apply str left-chars) attrs])
+        left-part (if (seq left-chars) [(str/join left-chars) attrs])
         cursor-attrs (assoc attrs :cursor true)
         center-part [(nth text position) cursor-attrs]
         right-chars (drop (inc position) text)
-        right-part (if (seq right-chars) [(apply str right-chars) attrs])]
+        right-part (if (seq right-chars) [(str/join right-chars) attrs])]
     (remove nil? (vector left-part center-part right-part))))
 
 (defn insert-cursor

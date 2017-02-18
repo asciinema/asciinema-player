@@ -34,7 +34,7 @@
 (defn parse-poster [poster width height]
   (when poster
     (if (string? poster)
-      (condp #(= (.indexOf %2 %1) 0) poster
+      (condp #(zero? (.indexOf %2 %1)) poster
         "data:application/json;base64," {:screen (-> poster (.substring 29) parse-json-poster)}
         "data:text/plain," {:screen (-> poster (.substring 16) (parse-text-poster width height))}
         "npt:" {:time (-> poster (.substring 4) parse-npt)}
@@ -53,7 +53,7 @@
         vt-height (or height 24)
         start-at (or (parse-npt start-at) 0)
         {poster-screen :screen poster-time :time} (parse-poster poster vt-width vt-height)
-        poster-time (or poster-time (when (and (not poster-screen) (> start-at 0)) start-at))
+        poster-time (or poster-time (when (and (not poster-screen) (pos? start-at)) start-at))
         source (make-source url {:type type
                                  :width vt-width
                                  :height vt-height

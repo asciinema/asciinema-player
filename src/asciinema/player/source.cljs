@@ -129,9 +129,8 @@
                    (do
                      (>! msg-ch v)
                      (recur start-at sub-ch elapsed-time))
-                   (if loop?
-                     (recur 0 (emit-coll (f/frames-for-playback 0 speed frames)) (util/timer speed))
-                     nil))
+                   (when loop?
+                     (recur 0 (emit-coll (f/frames-for-playback 0 speed frames)) (util/timer speed))))
           stop-ch (do
                     (close! sub-ch)
                     (+ start-at (elapsed-time))))))))

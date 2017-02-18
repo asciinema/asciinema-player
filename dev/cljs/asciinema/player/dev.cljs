@@ -12,7 +12,8 @@
             [clojure.walk :as walk]
             [cljs.core.async :refer [chan >! <! put!]]
             [schema.core :as s]
-            [goog.net.XhrIo :as xhr])
+            [goog.net.XhrIo :as xhr]
+            [clojure.string :as str])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 ;; (s/set-fn-validation! true)
@@ -91,7 +92,7 @@
       (print "comparing...")
       (loop [n 0
              prev-vt (vt/make-vt (:width v1-json) (:height v1-json))]
-        (when (= (mod n 100) 0)
+        (when (zero? (mod n 100))
           (print n "/" (count v1-stdout)))
         (if-let [str (get v1-stdout n)]
           (let [vt (vt/feed-str prev-vt str)
@@ -152,7 +153,7 @@
   ;; benchmark vt/feed
 
   (go
-    (let [strings (->> (get v1-json :stdout) (map second))
+    (let [strings (map second (get v1-json :stdout))
           frames (map (fn [string] (mapv #(.codePointAt string %) (range (count string)))) strings)]
       (dotimes [_ 4]
         (time
@@ -166,7 +167,7 @@
   ;; benchmark vt/parse
 
   (go
-    (let [data (apply str (->> (get v1-json :stdout) (map second)))
+    (let [data (str/join (map second (get v1-json :stdout)))
           codes (mapv #(.codePointAt data %) (range (count data)))]
       (time
        (loop [state :ground
