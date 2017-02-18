@@ -5,7 +5,7 @@
             :url "http://www.gnu.org/licenses/gpl-3.0.txt"}
 
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/clojurescript "1.9.293"]
+                 [org.clojure/clojurescript "1.9.473"]
                  [org.clojure/core.async "0.2.374"]
                  [reagent "0.6.0"]
                  [devcards "0.2.2" :exclusions [cljsjs/react]]
