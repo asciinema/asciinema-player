@@ -7,9 +7,7 @@
             [asciinema.player.processing]
             [asciinema.player.source :as source :refer [make-source]]
             [schema.core :as s]
-            [cljs.core.async :refer [chan >! <! put! timeout dropping-buffer]]
-            [clojure.string :as str])
-  (:require-macros [cljs.core.async.macros :refer [go-loop]]))
+            [clojure.string :as str]))
 
 (defn parse-npt [t]
   (when t
