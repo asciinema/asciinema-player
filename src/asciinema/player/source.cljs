@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [js->clj])
   (:require [cljs.core.async :refer [chan >! <! put! close! timeout poll!]]
             [goog.net.XhrIo :as xhr]
-            [schema.core :as s]
             [asciinema.player.format.asciicast-v0 :as v0]
             [asciinema.player.format.asciicast-v1 :as v1]
             [asciinema.player.frames :as f]
