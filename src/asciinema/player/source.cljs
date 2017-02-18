@@ -114,7 +114,7 @@
       (>! msg-ch (m/->SetLoading false)))))
 
 (defn emit-coll
-  "Starts sending frames as events with a given name, stopping when stop-ch
+  "Starts sending frames as events with a given name, stopping when out-ch
   closes."
   [coll]
   (let [out-ch (chan)]
