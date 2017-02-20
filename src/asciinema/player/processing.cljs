@@ -3,7 +3,8 @@
             [asciinema.player.util :as util]
             [asciinema.player.messages :as m]
             [asciinema.player.frames :as f]
-            [asciinema.player.source :as source]))
+            [asciinema.player.source :as source]
+            [reagent.core :as reagent]))
 
 ;;; UI originated messages
 
@@ -80,6 +81,7 @@
   m/TriggerCanPlay
   (update-player [this {:keys [on-can-play] :as player}]
     (when on-can-play
+      (reagent/flush)
       (on-can-play))
     player)
 
