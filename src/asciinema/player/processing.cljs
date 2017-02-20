@@ -1,6 +1,6 @@
 (ns asciinema.player.processing
   (:require [cljs.core.async :refer [chan close!]]
-   [asciinema.player.util :as util]
+            [asciinema.player.util :as util]
             [asciinema.player.messages :as m]
             [asciinema.player.frames :as f]
             [asciinema.player.source :as source]))
