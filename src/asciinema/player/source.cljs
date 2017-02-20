@@ -58,8 +58,8 @@
   (last (f/frame-at seconds screen-frames)))
 
 (defn lazy-promise-chan
-  "Returns a function f returning a promise channel. The calculation of the
-  promise value is triggered by calling f with truthy value."
+  "Returns a function returning a promise channel. The calculation of the
+  promise value is triggered by calling returned function with truthy value."
   ;; TODO simplify it with async/promise-chan when it gets fixed (http://dev.clojure.org/jira/browse/ASYNC-159)
   [f]
   (let [force-ch (chan)
@@ -79,12 +79,22 @@
           (>! value-ch @value))
         value-ch))))
 
-(defn make-recording-ch-fn [url recording-fn]
+(defn parse-json [json]
+  (-> json
+      js/JSON.parse
+      (js->clj :keywordize-keys true)))
+
+(defn make-recording-ch-fn [thing]
   (lazy-promise-chan
    (fn [deliver]
-     (xhr/send url (fn [event]
-                     (let [res (-> event .-target .getResponseText)]
-                       (deliver (recording-fn res))))))))
+     (cond
+       (string? thing) (xhr/send thing (fn [event]
+                                         (let [res (-> event .-target .getResponseText)]
+                                           (deliver (-> res
+                                                        parse-json
+                                                        initialize-asciicast)))))
+       (or (:stdout thing)
+           (sequential? thing)) (deliver (initialize-asciicast thing))))))
 
 (defn report-metadata
   "Reports recording dimensions and duration to the player."
@@ -241,11 +251,7 @@
     (put! command-ch [:change-speed speed])))
 
 (defmethod make-source :asciicast [url {:keys [start-at speed auto-play loop preload poster-time]}]
-  (let [recording-ch-fn (make-recording-ch-fn url (fn [json]
-                                                    (-> json
-                                                        js/JSON.parse
-                                                        (js->clj :keywordize-keys true)
-                                                        initialize-asciicast)))
+  (let [recording-ch-fn (make-recording-ch-fn url)
         command-ch (chan 10)
         force-load-ch (chan)]
     (->Recording recording-ch-fn

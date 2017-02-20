@@ -7,7 +7,8 @@
   "JavaScript API for creating the player."
   ([dom-node url] (CreatePlayer dom-node url {}))
   ([dom-node url options]
-   (let [options (-> options
+   (let [url (js->clj url :keywordize-keys true)
+         options (-> options
                      (js->clj :keywordize-keys true)
                      (rename-keys {:autoPlay :auto-play
                                    :fontSize :font-size

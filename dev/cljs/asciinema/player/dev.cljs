@@ -62,9 +62,6 @@
 
 ;; (reload)
 
-(defn start-dev []
-  (reload))
-
 (defn fetch-json [url]
   (let [ch (chan)]
     (xhr/send url (fn [event]
@@ -74,6 +71,15 @@
                                  js/JSON.parse
                                  (js->clj :keywordize-keys true)))))
     ch))
+
+(defn start-dev []
+  (reload))
+
+(defn create-player-with-recording []
+  (go
+    (let [dom-node (. js/document (getElementById "player"))
+          asciicast (<! (fetch-json "/asciicasts/21195.json"))]
+      (p/create-player dom-node asciicast {}))))
 
 (defn feed-verbose [vt str]
   (let [codes (map #(.charCodeAt % 0) str)]
