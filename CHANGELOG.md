@@ -1,5 +1,14 @@
 # asciinema player changelog
 
+## 2.4.1 (2017-02-20)
+
+* Fixed \e[1J handling when cursor is over last column
+* Fixed NPT poster rendering
+* Animation frame-rate is now capped to 30 FPS
+* Corrected Solarized Light theme colors
+* `CreatePlayer` can now accept parsed JSON asciicast as `url` arg
+* Various performance optimizations
+
 ## 2.4.0 (2016-12-30)
 
 * New properties, methods and events on `<asciinema-player>` DOM element
