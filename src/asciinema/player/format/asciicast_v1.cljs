@@ -25,18 +25,12 @@
 (defn- vt-cursor [vt]
   (-> vt :screen screen/cursor))
 
-(defn- vt->map [vt]
-  {:lines (vt-lines vt)
-   :cursor (vt-cursor vt)})
-
 (defn build-v1-frames [{:keys [stdout width height]}]
   (let [vt (vt/make-vt width height)]
     (->> stdout
          frames/to-absolute-time
          (frames/at-hz 30 #(.concat %1 %2))
-         (reductions reduce-vt [0 vt])
-         (frames/map-frame-data vt->map)
-         frames/skip-duplicates)))
+         (reductions reduce-vt [0 vt]))))
 
 (s/defn initialize-asciicast
   [asciicast :- AsciicastV1]
