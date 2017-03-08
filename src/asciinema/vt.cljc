@@ -454,7 +454,8 @@
   (feed vt [input]))
 
 (defn feed-str [vt str]
-  (let [codes (mapv #(#?(:clj .codePointAt :cljs .codePointAt) str %) (range (count str)))]
+  (let [codes #?(:clj (mapv #(.codePointAt str %) (range (count str)))
+                 :cljs (mapv #(.codePointAt % 0) str))]
     (feed vt codes)))
 
 (defn dump-color [base c]
