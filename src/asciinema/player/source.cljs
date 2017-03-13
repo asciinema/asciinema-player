@@ -115,17 +115,21 @@
     (go
       (let [elapsed-time (util/timer)]
         (loop [coll coll
-               wall-time (elapsed-time)]
-          (if-let [[time data] (first coll)]
-            (let [ahead (- time wall-time)]
+               late-data nil]
+          (if (seq coll)
+            (let [[time data] (first coll)
+                  wall-time (elapsed-time)
+                  ahead (- time wall-time)]
               (if (pos? ahead)
-                (let [timeout-ch (timeout (* 1000 ahead))]
-                  (<! timeout-ch)
+                (when (or (nil? late-data) (>! out-ch late-data))
+                  (<! (timeout (* 1000 ahead)))
                   (when (>! out-ch data)
-                    (recur (rest coll) (elapsed-time))))
-                (when (>! out-ch data)
-                  (recur (rest coll) wall-time))))
-            (close! out-ch)))))
+                    (recur (rest coll) nil)))
+                (recur (rest coll) data)))
+            (do
+              (when late-data
+                (>! out-ch late-data))
+              (close! out-ch))))))
     out-ch))
 
 (defn play-frames [msg-ch frames start-at speed loop? stop-ch]
