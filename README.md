@@ -17,7 +17,7 @@ terminal session files called
 Asciicast is a capture of terminal's raw output and thus the player comes with
 its own terminal emulator based on
 [Paul Williams' parser for ANSI-compatible video terminals](http://vt100.net/emu/dec_ansi_parser).
-It covers only the display part of the emulation as this is what the player is
+It covers only the output part of the emulation as this is what the player is
 about (input is handled by your terminal+shell at the time of recording anyway)
 and its handling of escape sequences is fully compatible with most modern
 terminal emulators like xterm, Gnome Terminal, iTerm, mosh etc.
