@@ -487,4 +487,4 @@
   (str/replace (str/join (map dump-fragment line)) #"\u001b\[0m\u0020+$" ""))
 
 (defn dump [vt]
-  (str/join "\n" (map dump-line (-> vt :screen screen/lines))))
+  (str/join "\r\n" (map dump-line (-> vt :screen screen/lines))))
