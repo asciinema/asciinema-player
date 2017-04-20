@@ -209,6 +209,14 @@
                            (>! msg-ch (m/->UpdateScreen (screen-at start-at frames)))
                            (recur start-at speed end-ch stop-ch)))))))
 
+(defn dorun-when-idle [coll]
+  (when-let [ric (util/window-prop "requestIdleCallback")]
+    (letfn [(make-cb [coll]
+              (fn []
+                (when (seq coll)
+                  (ric (make-job (rest coll))))))]
+      (ric (make-cb coll)))))
+
 (defn start-preloader [{:keys [recording-ch-fn command-ch force-load-ch preload? poster-time] :as recording} msg-ch]
   (go
     (let [recording-ch (recording-ch-fn (or preload? poster-time))
@@ -223,7 +231,8 @@
       (when poster-time
         (show-poster data poster-time msg-ch))
       (report-metadata data msg-ch)
-      (start-event-loop recording msg-ch data))))
+      (start-event-loop recording msg-ch data)
+      (dorun-when-idle (:frames data)))))
 
 (defrecord Recording [recording-ch-fn command-ch force-load-ch start-at speed auto-play? loop? preload? poster-time]
   Source
