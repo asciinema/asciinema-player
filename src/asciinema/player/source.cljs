@@ -214,7 +214,7 @@
     (letfn [(make-cb [coll]
               (fn []
                 (when (seq coll)
-                  (ric (make-job (rest coll))))))]
+                  (ric (make-cb (rest coll))))))]
       (ric (make-cb coll)))))
 
 (defn start-preloader [{:keys [recording-ch-fn command-ch force-load-ch preload? poster-time] :as recording} msg-ch]
