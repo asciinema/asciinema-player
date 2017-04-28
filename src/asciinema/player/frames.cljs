@@ -98,3 +98,11 @@
   (reductions (fn [[prev-time _] [curr-time data]]
                 [(+ prev-time curr-time) data])
               frames))
+
+(defn to-relative-time
+  ([frames] (to-relative-time frames 0))
+  ([frames base-time]
+   (lazy-seq
+    (when (seq frames)
+      (let [[t v] (first frames)]
+        (cons [(- t base-time) v] (to-relative-time (rest frames) t)))))))
