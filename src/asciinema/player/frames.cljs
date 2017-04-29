@@ -32,6 +32,9 @@
   [speed [time data]]
   (vector (/ time speed) data))
 
+(defn accelerate-xf [speed]
+  (map (partial accelerate-frame speed)))
+
 (defn frame-before?
   "Returns true if frame is scheduled before given time, otherwise returns
   false."
@@ -44,7 +47,7 @@
   [start-at speed frames]
   (sequence (comp (drop-while (partial frame-before? start-at))
                   (map (partial translate-frame (- start-at)))
-                  (map (partial accelerate-frame speed)))
+                  (accelerate-xf speed))
             frames))
 
 (defn frame-before-or-at?
