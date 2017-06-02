@@ -9,7 +9,7 @@ use on your website by simply adding `<asciinema-player>` tag.
 ## About
 
 asciinema player is an open-source terminal session player written in
-ClojureScript. Contrary to other "video" players asciinema player doesn't play
+ClojureScript. Contrary to other _video_ players asciinema player doesn't play
 heavy-weight video files (`.mp4`, `.webm` etc) but instead it plays light-weight
 terminal session files called
 [asciicasts](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v1.md) (simple `.json` files).
