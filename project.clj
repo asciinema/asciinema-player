@@ -1,8 +1,8 @@
 (defproject player "0.1.0-SNAPSHOT"
   :description "asciinema player"
   :url "https://github.com/asciinema/asciinema-player"
-  :license {:name "GNU GPL v3"
-            :url "http://www.gnu.org/licenses/gpl-3.0.txt"}
+  :license {:name "Apache 2.0"
+            :url "http://www.apache.org/licenses/LICENSE-2.0"}
 
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/clojurescript "1.9.473"]
