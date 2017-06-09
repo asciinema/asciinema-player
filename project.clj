@@ -71,6 +71,7 @@
                        :release {:source-paths ["src"]
                                  :compiler {:output-to "resources/public/js/asciinema-player.js"
                                             :output-dir "resources/public/js/release"
+                                            :closure-defines {goog.DEBUG false}
                                             :preamble ["license.js" "public/CustomEvent.js" "public/CustomElements.min.js"]
                                             :foreign-libs [{:file "public/element.js"
                                                             :provides ["asciinema.player.element"]}
