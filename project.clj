@@ -5,13 +5,13 @@
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
 
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/clojurescript "1.9.473"]
+                 [org.clojure/clojurescript "1.9.660"]
                  [org.clojure/core.async "0.2.374"]
                  [reagent "0.6.2"]
                  [devcards "0.2.2" :exclusions [cljsjs/react]]
                  [org.clojure/test.check "0.9.0"]
                  [org.clojure/core.match "0.3.0-alpha4"]
-                 [prismatic/schema "1.1.3"]]
+                 [prismatic/schema "1.1.6"]]
 
   :plugins [[lein-cljsbuild "1.1.5"]
             [lein-figwheel "0.5.9"]
