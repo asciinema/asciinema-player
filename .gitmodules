@@ -1,0 +1,3 @@
+[submodule "vt"]
+	path = vt
+	url = https://github.com/asciinema/vt.git

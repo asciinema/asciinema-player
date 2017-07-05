@@ -23,7 +23,7 @@
 
   :clean-targets ^{:protect false} ["resources/public/js" "target" "out"]
 
-  :source-paths ["src"]
+  :source-paths ["src" "vt/src"]
 
   :profiles {:dev {:dependencies [[com.cemerick/piggieback "0.2.1"]
                                   [org.clojure/tools.nrepl "0.2.10"]
@@ -45,7 +45,7 @@
                                         :foreign-libs [{:file "public/element.js"
                                                         :provides ["asciinema.player.element"]}
                                                        {:file "public/codepoint-polyfill.js"
-                                                        :provides ["asciinema.player.codepoint-polyfill"]}]
+                                                        :provides ["asciinema.vt.codepoint-polyfill"]}]
                                         :optimizations :none
                                         :pretty-print true}}
                        :devcards {:source-paths ["src" "dev/cards" ]
@@ -64,7 +64,7 @@
                                          :foreign-libs [{:file "public/element.js"
                                                          :provides ["asciinema.player.element"]}
                                                         {:file "public/codepoint-polyfill.js"
-                                                         :provides ["asciinema.player.codepoint-polyfill"]}]
+                                                         :provides ["asciinema.vt.codepoint-polyfill"]}]
                                          :optimizations :none
                                          :pretty-print false
                                          :main "asciinema.player.runner"}}
@@ -76,7 +76,7 @@
                                             :foreign-libs [{:file "public/element.js"
                                                             :provides ["asciinema.player.element"]}
                                                            {:file "public/codepoint-polyfill.js"
-                                                            :provides ["asciinema.player.codepoint-polyfill"]}]
+                                                            :provides ["asciinema.vt.codepoint-polyfill"]}]
                                             :optimizations :advanced
                                             :elide-asserts true
                                             :source-map "resources/public/js/asciinema-player.js.map"
