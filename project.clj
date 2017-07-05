@@ -8,7 +8,7 @@
                  [org.clojure/clojurescript "1.9.660"]
                  [org.clojure/core.async "0.2.374"]
                  [reagent "0.7.0"]
-                 [devcards "0.2.2" :exclusions [cljsjs/react]]
+                 [devcards "0.2.2" :exclusions [cljsjs/react cljsjs/create-react-class cljsjs/react-dom-server cljsjs/react-dom]]
                  [org.clojure/test.check "0.9.0"]
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [prismatic/schema "1.1.6"]]
