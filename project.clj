@@ -21,7 +21,7 @@
 
   :min-lein-version "2.5.3"
 
-  :clean-targets ^{:protect false} ["resources/public/js" "target"]
+  :clean-targets ^{:protect false} ["resources/public/js" "target" "out"]
 
   :source-paths ["src"]
 
