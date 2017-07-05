@@ -79,6 +79,7 @@
                                                             :provides ["asciinema.player.codepoint-polyfill"]}]
                                             :optimizations :advanced
                                             :elide-asserts true
+                                            :source-map "resources/public/js/asciinema-player.js.map"
                                             :pretty-print  false}}}}
 
   :figwheel {:http-server-root "public"
