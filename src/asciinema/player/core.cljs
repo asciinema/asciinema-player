@@ -89,7 +89,7 @@
   "Mounts player's Reagent component at given DOM element."
   [player-atom dom-node]
   (reagent/render-component [view/player-component player-atom] dom-node)
-  nil) ; TODO: return JS object with control functions (play/pause) here
+  nil)
 
 (defn create-player
   "Creates initial player state and mounts player's Reagent component at given
