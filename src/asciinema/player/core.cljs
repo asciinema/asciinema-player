@@ -28,7 +28,7 @@
   [text :- s/Str
    width :- s/Num
    height :- s/Num]
-  (-> (vt/make-vt width height)
+  (-> (vt/make-vt (or width 80) (or height 24))
       (vt/feed-str text)))
 
 (defn parse-poster [poster width height]
@@ -49,14 +49,12 @@
   [url {:keys [type width height start-at speed loop auto-play preload poster font-size theme]
         :or {speed 1 loop false auto-play false preload false font-size "small" theme "asciinema"}
         :as options}]
-  (let [vt-width (or width 80)
-        vt-height (or height 24)
-        start-at (or (parse-npt start-at) 0)
-        {poster-screen :screen poster-time :time} (parse-poster poster vt-width vt-height)
+  (let [start-at (or (parse-npt start-at) 0)
+        {poster-screen :screen poster-time :time} (parse-poster poster width height)
         poster-time (or poster-time (when (and (not poster-screen) (pos? start-at)) start-at))
         source (make-source url {:type type
-                                 :width vt-width
-                                 :height vt-height
+                                 :width width
+                                 :height height
                                  :start-at start-at
                                  :speed speed
                                  :auto-play auto-play

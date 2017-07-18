@@ -29,18 +29,18 @@
 
 (defmulti initialize-asciicast
   "Given fetched asciicast extracts width, height and frames into a map."
-  (fn [asciicast]
+  (fn [asciicast _ _]
     (if (vector? asciicast)
       0
       (:version asciicast))))
 
-(defmethod initialize-asciicast 0 [asciicast]
+(defmethod initialize-asciicast 0 [asciicast _ _]
   (v0/initialize-asciicast asciicast))
 
-(defmethod initialize-asciicast 1 [asciicast]
-  (v1/initialize-asciicast asciicast))
+(defmethod initialize-asciicast 1 [asciicast vt-width vt-height]
+  (v1/initialize-asciicast asciicast vt-width vt-height))
 
-(defmethod initialize-asciicast :default [asciicast]
+(defmethod initialize-asciicast :default [asciicast _ _]
   (throw (str "unsupported asciicast version: " (:version asciicast))))
 
 (defn time-frames
@@ -84,7 +84,7 @@
       js/JSON.parse
       (js->clj :keywordize-keys true)))
 
-(defn make-recording-ch-fn [thing]
+(defn make-recording-ch-fn [thing vt-width vt-height]
   (lazy-promise-chan
    (fn [deliver]
      (cond
@@ -92,9 +92,9 @@
                                          (let [res (-> event .-target .getResponseText)]
                                            (deliver (-> res
                                                         parse-json
-                                                        initialize-asciicast)))))
+                                                        (initialize-asciicast vt-width vt-height))))))
        (or (:stdout thing)
-           (sequential? thing)) (deliver (initialize-asciicast thing))))))
+           (sequential? thing)) (deliver (initialize-asciicast thing vt-width vt-height))))))
 
 (defn report-metadata
   "Reports recording dimensions and duration to the player."
@@ -259,8 +259,8 @@
   (change-speed [this speed]
     (put! command-ch [:change-speed speed])))
 
-(defmethod make-source :asciicast [url {:keys [start-at speed auto-play loop preload poster-time]}]
-  (let [recording-ch-fn (make-recording-ch-fn url)
+(defmethod make-source :asciicast [url {:keys [width height start-at speed auto-play loop preload poster-time]}]
+  (let [recording-ch-fn (make-recording-ch-fn url width height)
         command-ch (chan 10)
         force-load-ch (chan)]
     (->Recording recording-ch-fn

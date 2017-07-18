@@ -25,7 +25,7 @@
 (defn- vt-cursor [vt]
   (-> vt :screen screen/cursor))
 
-(defn build-v1-frames [{:keys [stdout width height]}]
+(defn build-v1-frames [stdout width height]
   (let [vt (vt/make-vt width height)]
     (->> stdout
          frames/to-absolute-time
@@ -33,11 +33,16 @@
          (reductions reduce-vt [0 vt]))))
 
 (s/defn initialize-asciicast
-  [asciicast :- AsciicastV1]
-  {:width (:width asciicast)
-   :height (:height asciicast)
-   :duration (reduce #(+ %1 (first %2)) 0 (:stdout asciicast))
-   :frames (build-v1-frames asciicast)})
+  [asciicast :- AsciicastV1
+   vt-width :- s/Num
+   vt-height :- s/Num]
+  (let [width (or vt-width (:width asciicast))
+        height (or vt-height (:height asciicast))
+        stdout (:stdout asciicast)]
+    {:width width
+     :height height
+     :duration (reduce #(+ %1 (first %2)) 0 stdout)
+     :frames (build-v1-frames stdout width height)}))
 
 (extend-protocol ps/Screen
   vt/VT
