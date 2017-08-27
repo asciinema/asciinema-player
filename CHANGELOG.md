@@ -1,5 +1,14 @@
 # asciinema player changelog
 
+## 2.5.0 (2017-08-27)
+
+* License changed to Apache Software License V2
+* Smaller file size of JS bundle
+* Performance improvements
+* `cols`/`rows` now affect internal VT size in addition to window size
+* Fixed Unicode handling for codepoints >= 0x100000
+* Fixed speed-up (>) / slow-down (<) keys
+
 ## 2.4.1 (2017-02-20)
 
 * Fixed \e[1J handling when cursor is over last column

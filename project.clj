@@ -1,4 +1,4 @@
-(defproject player "0.1.0-SNAPSHOT"
+(defproject player "2.5.0-SNAPSHOT"
   :description "asciinema player"
   :url "https://github.com/asciinema/asciinema-player"
   :license {:name "Apache 2.0"
