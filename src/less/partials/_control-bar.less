@@ -1,37 +1,18 @@
-@inactive-controls: #999;
 @active-controls: #bbb;
+// @inactive-controls: #999;
 
 .asciinema-player {
-  &:hover {
-    .control-bar {
-      color: @active-controls;
-
-      .progressbar {
-        .bar {
-          .gutter {
-            span {
-              background-color: @active-controls;
-            }
-          }
-        }
-      }
-
-      svg.icon {
-        path {
-          fill: @active-controls;
-        }
-      }
-    }
-  }
-
   .control-bar {
     width: 100%;
     height: 32px;
-    background-color: #000;
-    color: @inactive-controls;
-    border-top: 1px solid #222;
+    background-color: rgba(0,0,0,0.5);
+    color: @active-controls;
     box-sizing: content-box;
     line-height: 1;
+    position: absolute;
+    bottom: -35px;
+    left: 0;
+    transition: bottom 0.15s linear;
 
     * {
       box-sizing: inherit;
@@ -40,7 +21,7 @@
 
     svg.icon {
       path {
-        fill: @inactive-controls;
+        fill: @active-controls;
       }
     }
 
@@ -111,7 +92,7 @@
           span {
             display: inline-block;
             height: 100%;
-            background-color: @inactive-controls;
+            background-color: @active-controls;
             border-radius: 3px;
           }
         }
@@ -151,6 +132,10 @@
 }
 
 .asciinema-player-wrapper {
+  &.hud .control-bar {
+    bottom: 0px;
+  }
+
   .in-fullscreen() {
     .fullscreen-button {
       svg:first-child {
@@ -160,17 +145,6 @@
       svg:last-child {
         display: inline;
       }
-    }
-
-    .control-bar {
-      position: absolute;
-      bottom: -35px;
-      left: 0;
-      transition: bottom 0.15s linear;
-    }
-
-    &.hud .control-bar {
-      bottom: 0px;
     }
   }
 
