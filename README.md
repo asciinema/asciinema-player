@@ -1,6 +1,8 @@
+_Note: This is README for `development` branch. [See the version for latest stable release](https://github.com/asciinema/asciinema-player/blob/master/README.md)._
+
 # asciinema player
 
-[![Build Status](https://travis-ci.org/asciinema/asciinema-player.svg?branch=master)](https://travis-ci.org/asciinema/asciinema-player)
+[![Build Status](https://travis-ci.org/asciinema/asciinema-player.svg?branch=develop)](https://travis-ci.org/asciinema/asciinema-player)
 
 Web player for terminal session recordings (as produced
 by [asciinema recorder](https://github.com/asciinema/asciinema)) that you can
