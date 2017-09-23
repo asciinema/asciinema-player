@@ -2,8 +2,7 @@
   (:refer-clojure :exclude [js->clj])
   (:require [cljs.core.async :refer [chan >! <! put! close! timeout poll!]]
             [goog.net.XhrIo :as xhr]
-            [asciinema.player.format.asciicast-v0 :as v0]
-            [asciinema.player.format.asciicast-v1 :as v1]
+            [asciinema.player.asciicast :as asciicast]
             [asciinema.player.frames :as f]
             [asciinema.vt :as vt]
             [asciinema.player.messages :as m]
@@ -26,22 +25,6 @@
     (or type :asciicast)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmulti initialize-asciicast
-  "Given fetched asciicast extracts width, height and frames into a map."
-  (fn [asciicast _ _]
-    (if (vector? asciicast)
-      0
-      (:version asciicast))))
-
-(defmethod initialize-asciicast 0 [asciicast _ _]
-  (v0/initialize-asciicast asciicast))
-
-(defmethod initialize-asciicast 1 [asciicast vt-width vt-height]
-  (v1/initialize-asciicast asciicast vt-width vt-height))
-
-(defmethod initialize-asciicast :default [asciicast _ _]
-  (throw (str "unsupported asciicast version: " (:version asciicast))))
 
 (defn time-frames
   "Returns infinite seq of time frames."
@@ -79,22 +62,14 @@
           (>! value-ch @value))
         value-ch))))
 
-(defn parse-json [json]
-  (-> json
-      js/JSON.parse
-      (js->clj :keywordize-keys true)))
-
 (defn make-recording-ch-fn [thing vt-width vt-height]
   (lazy-promise-chan
    (fn [deliver]
-     (cond
-       (string? thing) (xhr/send thing (fn [event]
-                                         (let [res (-> event .-target .getResponseText)]
-                                           (deliver (-> res
-                                                        parse-json
-                                                        (initialize-asciicast vt-width vt-height))))))
-       (or (:stdout thing)
-           (sequential? thing)) (deliver (initialize-asciicast thing vt-width vt-height))))))
+     (if (string? thing)
+       (xhr/send thing (fn [event]
+                         (let [str (-> event .-target .getResponseText)]
+                           (deliver (asciicast/load str vt-width vt-height)))))
+       (deliver (asciicast/load thing vt-width vt-height))))))
 
 (defn report-metadata
   "Reports recording dimensions and duration to the player."

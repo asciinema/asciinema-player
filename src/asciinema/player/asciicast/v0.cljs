@@ -1,4 +1,4 @@
-(ns asciinema.player.format.asciicast-v0
+(ns asciinema.player.asciicast.v0
   (:require [schema.core :as s]
             [asciinema.vt :as vt]
             [asciinema.vt.screen :as screen]
@@ -43,7 +43,8 @@
   (let [frame-0-lines (-> asciicast first last :lines)
         asciicast-width (->> frame-0-lines vals first (map #(count (first %))) (reduce +))
         asciicast-height (count frame-0-lines)]
-    {:width asciicast-width
+    {:version 0
+     :width asciicast-width
      :height asciicast-height
      :duration (reduce #(+ %1 (first %2)) 0 asciicast)
      :frames (build-v0-frames asciicast)}))

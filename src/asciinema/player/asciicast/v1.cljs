@@ -1,9 +1,7 @@
-(ns asciinema.player.format.asciicast-v1
+(ns asciinema.player.asciicast.v1
   (:require [schema.core :as s]
             [asciinema.vt :as vt]
-            [asciinema.vt.screen :as screen]
-            [asciinema.player.frames :as frames]
-            [asciinema.player.screen :as ps]))
+            [asciinema.player.frames :as frames]))
 
 (def StdoutFrame [(s/one s/Num "delay") (s/one s/Str "text to print")])
 
@@ -19,12 +17,6 @@
 (defn reduce-vt [[_ vt] [curr-time str]]
   [curr-time (vt/feed-str vt str)])
 
-(defn- vt-lines [vt]
-  (-> vt :screen screen/lines))
-
-(defn- vt-cursor [vt]
-  (-> vt :screen screen/cursor))
-
 (defn build-v1-frames [stdout width height]
   (let [vt (vt/make-vt width height)]
     (->> stdout
@@ -39,14 +31,8 @@
   (let [width (or vt-width (:width asciicast))
         height (or vt-height (:height asciicast))
         stdout (:stdout asciicast)]
-    {:width width
+    {:version 1
+     :width width
      :height height
      :duration (reduce #(+ %1 (first %2)) 0 stdout)
      :frames (build-v1-frames stdout width height)}))
-
-(extend-protocol ps/Screen
-  vt/VT
-  (lines [this]
-    (vt-lines this))
-  (cursor [this]
-    (vt-cursor this)))
