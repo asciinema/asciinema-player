@@ -31,7 +31,10 @@
 
 (defn load-from-string [thing vt-width vt-height]
   (try
-    (-> thing parse-json (load-from-map vt-width vt-height))
+    (let [thing (parse-json thing)]
+      (cond
+        (sequential? thing) (load-from-seq thing vt-width vt-height)
+        (map? thing) (load-from-map thing vt-width vt-height)))
     (catch :default e
       (try
         (-> thing parse-jsonl (load-from-seq vt-width vt-height))
