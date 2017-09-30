@@ -16,13 +16,11 @@ heavy-weight video files (`.mp4`, `.webm` etc) but instead it plays light-weight
 terminal session files called
 [asciicasts](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v1.md) (simple `.json` files).
 
-Asciicast is a capture of terminal's raw output and thus the player comes with
-its own terminal emulator based on
-[Paul Williams' parser for ANSI-compatible video terminals](http://vt100.net/emu/dec_ansi_parser).
-It covers only the output part of the emulation as this is what the player is
-about (input is handled by your terminal+shell at the time of recording anyway)
-and its handling of escape sequences is fully compatible with most modern
-terminal emulators like xterm, Gnome Terminal, iTerm, mosh etc.
+Asciicast is a capture of terminal's raw output, which has to be interpreted
+during the playback, so the player comes with its own interpreter based on [Paul
+Williams' parser for ANSI-compatible video
+terminals](http://vt100.net/emu/dec_ansi_parser). Its output is fully compatible
+with most widely used terminal emulators like xterm, Gnome Terminal, iTerm etc.
 
 You can see the player in action on [asciinema.org](https://asciinema.org).
 
