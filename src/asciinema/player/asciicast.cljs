@@ -9,7 +9,7 @@
             [asciinema.vt.screen :as screen]
             [clojure.string :as str]))
 
-(def format_error "only asciicast v1 and v2 formats can be opened")
+(def format-error "only asciicast v1 and v2 formats can be opened")
 
 (defn parse-json [json]
   (-> json js/JSON.parse (js->clj :keywordize-keys true)))
@@ -47,7 +47,7 @@
         (sequential? thing) (load-from-seq thing vt-width vt-height)
         (map? thing) (load-from-map thing vt-width vt-height)
         :else nil)
-      (throw format_error)))
+      (throw format-error)))
 
 (defn- vt-lines [vt]
   (-> vt :screen screen/lines))
