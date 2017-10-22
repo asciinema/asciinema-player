@@ -41,13 +41,15 @@
         (catch :default e
           nil)))))
 
-(defn load [thing vt-width vt-height]
-  (or (cond
-        (string? thing) (load-from-string thing vt-width vt-height)
-        (sequential? thing) (load-from-seq thing vt-width vt-height)
-        (map? thing) (load-from-map thing vt-width vt-height)
-        :else nil)
-      (throw format-error)))
+(defn load
+  ([thing] (load thing nil nil))
+  ([thing vt-width vt-height]
+   (or (cond
+         (string? thing) (load-from-string thing vt-width vt-height)
+         (sequential? thing) (load-from-seq thing vt-width vt-height)
+         (map? thing) (load-from-map thing vt-width vt-height)
+         :else nil)
+       (throw format-error))))
 
 (defn- vt-lines [vt]
   (-> vt :screen screen/lines))

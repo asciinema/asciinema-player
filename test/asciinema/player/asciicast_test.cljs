@@ -7,13 +7,13 @@
   (testing "pre-rendered, vec"
     (let [asciicast [[1.0 {:lines {:0 [["foo" {}] ["bar" {}]] :1 [["foobar" {}]]}}]
                      [2.0 {:lines {:0 [["baz" {}] ["qux" {}]] :1 [["quuuux" {}]]}}]]
-          asciicast (a/load asciicast nil nil)]
+          asciicast (a/load asciicast)]
       (is (= (select-keys asciicast [:width :height :duration])
              {:width 6 :height 2 :duration 3.0}))))
 
   (testing "pre-rendered, string"
     (let [asciicast "[[1,{\"lines\":{\"0\":[[\"foo\",{}],[\"bar\",{}]],\"1\":[[\"foobar\",{}]]}}],[2,{\"lines\":{\"0\":[[\"baz\",{}],[\"qux\",{}]],\"1\":[[\"quuuux\",{}]]}}]]"
-          asciicast (a/load asciicast nil nil)]
+          asciicast (a/load asciicast)]
       (is (= (select-keys asciicast [:width :height :duration])
              {:width 6 :height 2 :duration 3.0}))))
 
