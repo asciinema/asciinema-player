@@ -37,6 +37,7 @@ function registerAsciinemaPlayerElement() {
       attribute(this, 'loop', 'loop', true, Boolean),
       attribute(this, 'start-at', 'startAt', 0, parseInt),
       attribute(this, 'speed', 'speed', 1, parseFloat),
+      attribute(this, 'idle-time-limit', 'idleTimeLimit', null, parseFloat),
       attribute(this, 'poster', 'poster'),
       attribute(this, 'font-size', 'fontSize'),
       attribute(this, 'theme', 'theme'),

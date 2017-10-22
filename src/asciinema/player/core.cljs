@@ -46,7 +46,7 @@
 
 (defn make-player
   "Builds initial player for given URL and options."
-  [url {:keys [type width height start-at speed loop auto-play preload poster font-size theme]
+  [url {:keys [type width height start-at speed idle-time-limit loop auto-play preload poster font-size theme]
         :or {speed 1 loop false auto-play false preload false font-size "small" theme "asciinema"}
         :as options}]
   (let [start-at (or (parse-npt start-at) 0)
@@ -57,6 +57,7 @@
                                  :height height
                                  :start-at start-at
                                  :speed speed
+                                 :idle-time-limit idle-time-limit
                                  :auto-play auto-play
                                  :loop loop
                                  :preload preload

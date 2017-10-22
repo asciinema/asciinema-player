@@ -135,6 +135,19 @@ Defaults to 0.
 
 Playback speed. Defaults to 1 (normal speed). 2 means 2x faster.
 
+### `idle-time-limit`
+
+Limit terminal inactivity to given number of seconds.
+
+For example, when set to `2` any inactivity longer than 2 seconds will be
+"compressed" to 2 seconds.
+
+Defaults to:
+
+- `idle_time_limit` from asciicast header (saved when passing `-i <sec>` to
+  `asciinema rec`),
+- no limit, when it was not specified at the time of recording.
+
 ### `poster`
 
 Poster (preview) to display before playback start.

@@ -62,14 +62,14 @@
           (>! value-ch @value))
         value-ch))))
 
-(defn make-recording-ch-fn [thing vt-width vt-height]
+(defn make-recording-ch-fn [thing vt-width vt-height idle-time-limit]
   (lazy-promise-chan
    (fn [deliver]
      (if (string? thing)
        (xhr/send thing (fn [event]
                          (let [str (-> event .-target .getResponseText)]
-                           (deliver (asciicast/load str vt-width vt-height)))))
-       (deliver (asciicast/load thing vt-width vt-height))))))
+                           (deliver (asciicast/load str vt-width vt-height idle-time-limit)))))
+       (deliver (asciicast/load thing vt-width vt-height idle-time-limit))))))
 
 (defn report-metadata
   "Reports recording dimensions and duration to the player."
@@ -234,8 +234,8 @@
   (change-speed [this speed]
     (put! command-ch [:change-speed speed])))
 
-(defmethod make-source :asciicast [url {:keys [width height start-at speed auto-play loop preload poster-time]}]
-  (let [recording-ch-fn (make-recording-ch-fn url width height)
+(defmethod make-source :asciicast [url {:keys [width height start-at speed idle-time-limit auto-play loop preload poster-time]}]
+  (let [recording-ch-fn (make-recording-ch-fn url width height idle-time-limit)
         command-ch (chan 10)
         force-load-ch (chan)]
     (->Recording recording-ch-fn
