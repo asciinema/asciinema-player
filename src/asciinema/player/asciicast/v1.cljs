@@ -14,15 +14,10 @@
                   :env {s/Keyword s/Str}
                   :stdout [StdoutFrame]})
 
-(defn reduce-vt [[_ vt] [curr-time str]]
-  [curr-time (vt/feed-str vt str)])
-
 (defn build-v1-frames [stdout width height]
-  (let [vt (vt/make-vt width height)]
-    (->> stdout
-         frames/to-absolute-time
-         (frames/at-hz 30 #(.concat %1 %2))
-         (reductions reduce-vt [0 vt]))))
+  (sequence (comp (frames/absolute-time-xf)
+                  (frames/data-reductions-xf vt/feed-str (vt/make-vt width height)))
+            stdout))
 
 (s/defn initialize-asciicast
   [asciicast :- AsciicastV1

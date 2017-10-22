@@ -1,6 +1,5 @@
 (ns asciinema.player.asciicast.v0
   (:require [schema.core :as s]
-            [asciinema.vt :as vt]
             [asciinema.vt.screen :as screen]
             [asciinema.player.frames :as frames]
             [asciinema.player.screen :as ps]))
@@ -25,18 +24,16 @@
 (defn fix-line-diff-keys [line-diff]
   (into {} (map (fn [[k v]] [(js/parseInt (name k) 10) v]) line-diff)))
 
-(defn reduce-screen [[prev-time screen] [curr-time diff]]
+(defn reduce-screen [screen diff]
   (let [diff (update diff :lines fix-line-diff-keys)]
-    [curr-time (merge-with merge screen diff)]))
+    (merge-with merge screen diff)))
 
 (defn build-v0-frames [diffs]
   (let [screen (map->LegacyScreen {:lines (sorted-map)
                                    :cursor {:x 0 :y 0 :visible true}})]
-    (->> diffs
-         frames/to-absolute-time
-         (frames/at-hz 30 #(merge-with merge %1 %2))
-         (reductions reduce-screen [0 screen])
-         frames/skip-duplicates)))
+    (sequence (comp (frames/absolute-time-xf)
+                    (frames/data-reductions-xf reduce-screen screen))
+              diffs)))
 
 (s/defn initialize-asciicast
   [asciicast :- AsciicastV0]

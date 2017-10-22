@@ -1,4 +1,5 @@
-(ns asciinema.player.frames)
+(ns asciinema.player.frames
+  (:require [asciinema.player.util :refer [reductions-xf]]))
 
 (defn frame [time data]
   (vector time data))
@@ -97,10 +98,18 @@
                        (cons [(* q1 frame-time) v1] nil)))))))]
       (reduce-frames* frames))))
 
+(defn- reduce-frame [rf [_ acc] [time x]]
+  [time (rf acc x)])
+
+(defn data-reductions-xf [f init]
+  (reductions-xf #(reduce-frame f %1 %2) [0 init]))
+
+(defn absolute-time-xf []
+  (reductions-xf (fn [[prev-time _] [curr-time data]]
+                   [(+ prev-time curr-time) data])))
+
 (defn to-absolute-time [frames]
-  (reductions (fn [[prev-time _] [curr-time data]]
-                [(+ prev-time curr-time) data])
-              frames))
+  (sequence (absolute-time-xf) frames))
 
 (defn to-relative-time
   ([frames] (to-relative-time frames 0))
