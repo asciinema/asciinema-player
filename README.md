@@ -351,6 +351,15 @@ element is focused):
 The project uses [leiningen](http://leiningen.org/) for development and build
 related tasks so make sure you have it installed (as well as Java 7 or 8).
 
+Clone this repository:
+
+    git clone https://github.com/asciinema/asciinema-player
+    cd asciinema-player
+
+Make sure git submodules are fetched and up to date:
+
+    git submodule update --init --recursive
+
 Start local web server with auto-compilation and live code reloading in the browser:
 
     lein figwheel dev
