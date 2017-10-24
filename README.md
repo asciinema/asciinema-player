@@ -379,7 +379,8 @@ Run tests with:
 
 ### Building from source
 
-To build stand-alone `.js` and `.css` files run:
+To build stand-alone `.js` and `.css` files clone repository, initialize git
+submodules (as shown above), then run:
 
     lein cljsbuild once release
     lein less once
