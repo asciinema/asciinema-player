@@ -29,15 +29,17 @@ and the recordings yourself then read on, it's very simple.
 
 ## Features
 
-* HTML5 `<asciinema-player>` element you can use in your website's markup,
+* HTML5 [`<asciinema-player>` element](#use-the-player-in-your-html-page) you can use in your website's markup,
 * copy-paste of terminal content (it's just a text after all!),
-* predefined and custom font sizes,
-* custom playback speeds,
-* looped playback,
-* starting playback at specific time,
-* programmatic control via methods/events/properties on the HTML element,
-* keyboard shortcuts,
-* multiple color schemes for standard 16 colors,
+* [idle time optimization](#idle-time-limit),
+* [predefined and custom font sizes](#font-size),
+* [custom poster](#poster),
+* [custom playback speeds](#speed),
+* [looped playback](#loop),
+* [starting playback at specific time](#start-at),
+* [programmatic control via methods/events/properties on the HTML element](#controlling-the-player-programmatically),
+* [keyboard shortcuts](#keyboard-shortcuts),
+* [multiple color schemes for standard 16 colors](#theme),
 * 256 color palette / 24-bit true color (ISO-8613-3),
 * full-screen mode.
 
