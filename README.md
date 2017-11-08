@@ -14,7 +14,7 @@ asciinema player is an open-source terminal session player written in
 ClojureScript. Contrary to other _video_ players asciinema player doesn't play
 heavy-weight video files (`.mp4`, `.webm` etc) but instead it plays light-weight
 terminal session files called
-[asciicasts](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v1.md) (simple `.json` files).
+[asciicasts](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md).
 
 Asciicast is a capture of terminal's raw output, which has to be interpreted
 during the playback, so the player comes with its own interpreter based on [Paul
@@ -50,10 +50,10 @@ without depending on asciinema.org.
 
 It assumes you have obtained terminal session recording file by either:
 
-* recording terminal session to a local file with `asciinema rec demo.json`
+* recording terminal session to a local file with `asciinema rec demo.cast`
   ([more details on recording](https://github.com/asciinema/asciinema)),
-* downloading an existing recording from asciinema.org by appending `.json` to the
-  asciicast page URL (for example: https://asciinema.org/a/28307.json).
+* downloading an existing recording from asciinema.org by appending `.cast` to the
+  asciicast page URL (for example: https://asciinema.org/a/28307.cast).
 
 ### Download the player
 
@@ -63,7 +63,7 @@ only need `asciinema-player.js` and `asciinema-player.css` files.
 
 ### Use the player in your HTML page
 
-First, add `asciinema-player.js`, `asciinema-player.css`and the `.json` file
+First, add `asciinema-player.js`, `asciinema-player.css`and the `.cast` file
 with your recording to your site's assets.
 
 Then add necessary includes to your HTML document:
@@ -77,7 +77,7 @@ Then add necessary includes to your HTML document:
 </head>
 <body>
   ...
-  <asciinema-player src="/demo.json"></asciinema-player>
+  <asciinema-player src="/demo.cast"></asciinema-player>
   ...
   <script src="/asciinema-player.js"></script>
 </body>
@@ -233,7 +233,7 @@ URL of the author's image, displayed in the titlebar in fullscreen mode.
 ### Example usage with options
 
 ```html
-<asciinema-player src="/demo.json" speed="2" theme="solarized-dark" loop="loop" poster="data:text/plain,\u001b[5;5HAwesome \u001b[1;33mdemo!"></asciinema-player>
+<asciinema-player src="/demo.cast" speed="2" theme="solarized-dark" loop="loop" poster="data:text/plain,\u001b[5;5HAwesome \u001b[1;33mdemo!"></asciinema-player>
 ```
 
 ## Controlling the player programmatically
@@ -295,11 +295,11 @@ document.getElementById('player').pause();
 The `loadedmetadata`, `loadeddata`, `canplay` and `canplaythrough` events are
 fired (all of them, in this order) when the recording has been loaded and is
 ready to play. The recordings are always fully fetched (you can't partially load
-JSON) so there's no difference in the amount of metadata/data available between
-these 4 events - when either event occurs the player already has all the
-information for smooth playback. In other words, it's enough to listen to only
-one of them, e.g. `canplaythrough` (all 4 are supported to make it more in line
-with HTMLVideoElement).
+resource with XHR) so there's no difference in the amount of metadata/data
+available between these 4 events - when either event occurs the player already
+has all the information for smooth playback. In other words, it's enough to
+listen to only one of them, e.g. `canplaythrough` (all 4 are supported to make
+it more in line with HTMLVideoElement).
 
 ```javascript
 document.getElementById('player').addEventListener('loadedmetadata', function(e) {
