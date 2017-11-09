@@ -26,6 +26,21 @@ function registerAsciinemaPlayerElement() {
     return obj;
   };
 
+  function fixEscapeCodes(text) {
+    if (text) {
+      var f = function(match, p1, offset, string) {
+        return String.fromCodePoint(parseInt(p1, 16));
+      };
+
+      return text.
+        replace(/\\u([a-z0-9]{4})/gi, f).
+        replace(/\\x([a-z0-9]{2})/gi, f).
+        replace(/\\e/g, "\x1b");
+    } else {
+      return text;
+    }
+  }
+
   AsciinemaPlayerProto.createdCallback = function() {
     var self = this;
 
@@ -38,7 +53,7 @@ function registerAsciinemaPlayerElement() {
       attribute(this, 'start-at', 'startAt', 0, parseInt),
       attribute(this, 'speed', 'speed', 1, parseFloat),
       attribute(this, 'idle-time-limit', 'idleTimeLimit', null, parseFloat),
-      attribute(this, 'poster', 'poster'),
+      attribute(this, 'poster', 'poster', null, fixEscapeCodes),
       attribute(this, 'font-size', 'fontSize'),
       attribute(this, 'theme', 'theme'),
       attribute(this, 'title', 'title'),
