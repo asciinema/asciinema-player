@@ -1,4 +1,5 @@
-(ns asciinema.player.frames)
+(ns asciinema.player.frames
+  (:require [asciinema.player.util :refer [reductions-xf]]))
 
 (defn frame [time data]
   (vector time data))
@@ -34,6 +35,12 @@
 
 (defn accelerate-xf [speed]
   (map (partial accelerate-frame speed)))
+
+(defn cap-relative-time-xf [time-limit]
+  (map (fn [[t data :as frame]]
+         (if time-limit
+           [(min t time-limit) data]
+           frame))))
 
 (defn frame-before?
   "Returns true if frame is scheduled before given time, otherwise returns
@@ -97,15 +104,29 @@
                        (cons [(* q1 frame-time) v1] nil)))))))]
       (reduce-frames* frames))))
 
-(defn to-absolute-time [frames]
-  (reductions (fn [[prev-time _] [curr-time data]]
-                [(+ prev-time curr-time) data])
-              frames))
+(defn- reduce-frame [rf [_ acc] [time x]]
+  [time (rf acc x)])
 
-(defn to-relative-time
-  ([frames] (to-relative-time frames 0))
-  ([frames base-time]
-   (lazy-seq
-    (when (seq frames)
-      (let [[t v] (first frames)]
-        (cons [(- t base-time) v] (to-relative-time (rest frames) t)))))))
+(defn data-reductions-xf [f init]
+  (reductions-xf #(reduce-frame f %1 %2) [0 init]))
+
+(defn to-absolute-time-xf []
+  (reductions-xf (fn [[prev-time _] [curr-time data]]
+                   [(+ prev-time curr-time) data])))
+
+(defn to-absolute-time [frames]
+  (sequence (to-absolute-time-xf) frames))
+
+(defn to-relative-time-xf []
+  (fn [rf]
+    (let [base-time (volatile! 0)]
+      (fn
+        ([] (rf))
+        ([acc] (rf acc))
+        ([acc [t v]]
+         (let [delta (- t @base-time)]
+           (vreset! base-time t)
+           (rf acc [delta v])))))))
+
+(defn to-relative-time [frames]
+  (sequence (to-relative-time-xf) frames))

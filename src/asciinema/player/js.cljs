@@ -16,6 +16,7 @@
                                    :authorURL :author-url
                                    :startAt :start-at
                                    :authorImgURL :author-img-url
+                                   :idleTimeLimit :idle-time-limit
                                    :onCanPlay :on-can-play
                                    :onPlay :on-play
                                    :onPause :on-pause}))

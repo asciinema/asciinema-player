@@ -12,15 +12,13 @@ asciinema player is an open-source terminal session player written in
 ClojureScript. Contrary to other _video_ players asciinema player doesn't play
 heavy-weight video files (`.mp4`, `.webm` etc) but instead it plays light-weight
 terminal session files called
-[asciicasts](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v1.md) (simple `.json` files).
+[asciicasts](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md).
 
-Asciicast is a capture of terminal's raw output and thus the player comes with
-its own terminal emulator based on
-[Paul Williams' parser for ANSI-compatible video terminals](http://vt100.net/emu/dec_ansi_parser).
-It covers only the output part of the emulation as this is what the player is
-about (input is handled by your terminal+shell at the time of recording anyway)
-and its handling of escape sequences is fully compatible with most modern
-terminal emulators like xterm, Gnome Terminal, iTerm, mosh etc.
+Asciicast is a capture of terminal's raw output, which has to be interpreted
+during the playback, so the player comes with its own interpreter based on [Paul
+Williams' parser for ANSI-compatible video
+terminals](http://vt100.net/emu/dec_ansi_parser). Its output is fully compatible
+with most widely used terminal emulators like xterm, Gnome Terminal, iTerm etc.
 
 You can see the player in action on [asciinema.org](https://asciinema.org).
 
@@ -29,15 +27,17 @@ and the recordings yourself then read on, it's very simple.
 
 ## Features
 
-* HTML5 `<asciinema-player>` element you can use in your website's markup,
+* HTML5 [`<asciinema-player>` element](#use-the-player-in-your-html-page) you can use in your website's markup,
 * copy-paste of terminal content (it's just a text after all!),
-* predefined and custom font sizes,
-* custom playback speeds,
-* looped playback,
-* starting playback at specific time,
-* programmatic control via methods/events/properties on the HTML element,
-* keyboard shortcuts,
-* multiple color schemes for standard 16 colors,
+* [idle time optimization](#idle-time-limit),
+* [predefined and custom font sizes](#font-size),
+* [custom poster](#poster),
+* [custom playback speeds](#speed),
+* [looped playback](#loop),
+* [starting playback at specific time](#start-at),
+* [programmatic control via methods/events/properties on the HTML element](#controlling-the-player-programmatically),
+* [keyboard shortcuts](#keyboard-shortcuts),
+* [multiple color schemes for standard 16 colors](#theme),
 * 256 color palette / 24-bit true color (ISO-8613-3),
 * full-screen mode.
 
@@ -48,10 +48,10 @@ without depending on asciinema.org.
 
 It assumes you have obtained terminal session recording file by either:
 
-* recording terminal session to a local file with `asciinema rec demo.json`
+* recording terminal session to a local file with `asciinema rec demo.cast`
   ([more details on recording](https://github.com/asciinema/asciinema)),
-* downloading an existing recording from asciinema.org by appending `.json` to the
-  asciicast page URL (for example: https://asciinema.org/a/28307.json).
+* downloading an existing recording from asciinema.org by appending `.cast` to the
+  asciicast page URL (for example: https://asciinema.org/a/28307.cast).
 
 ### Download the player
 
@@ -61,7 +61,7 @@ only need `asciinema-player.js` and `asciinema-player.css` files.
 
 ### Use the player in your HTML page
 
-First, add `asciinema-player.js`, `asciinema-player.css`and the `.json` file
+First, add `asciinema-player.js`, `asciinema-player.css`and the `.cast` file
 with your recording to your site's assets.
 
 Then add necessary includes to your HTML document:
@@ -75,7 +75,7 @@ Then add necessary includes to your HTML document:
 </head>
 <body>
   ...
-  <asciinema-player src="/demo.json"></asciinema-player>
+  <asciinema-player src="/demo.cast"></asciinema-player>
   ...
   <script src="/asciinema-player.js"></script>
 </body>
@@ -135,6 +135,19 @@ Defaults to 0.
 
 Playback speed. Defaults to 1 (normal speed). 2 means 2x faster.
 
+### `idle-time-limit`
+
+Limit terminal inactivity to given number of seconds.
+
+For example, when set to `2` any inactivity longer than 2 seconds will be
+"compressed" to 2 seconds.
+
+Defaults to:
+
+- `idle_time_limit` from asciicast header (saved when passing `-i <sec>` to
+  `asciinema rec`),
+- no limit, when it was not specified at the time of recording.
+
 ### `poster`
 
 Poster (preview) to display before playback start.
@@ -155,15 +168,14 @@ Example:
 ```
 
 Alternatively, a `poster` value of `data:text/plain,This will be printed as
-poster\n\rThis in second line` will display arbitrary text.
-All [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code) can be
-used to add color and move the cursor around to produce good looking poster. You
-need to replace usual `\xXX` hex syntax with Unicode `\u00XX` though.
+poster\n\rThis in second line` will display arbitrary text. All [ANSI escape
+codes](https://en.wikipedia.org/wiki/ANSI_escape_code) can be used to add color
+and move the cursor around to produce good looking poster.
 
 Example of using text poster with cursor positioning:
 
 ```html
-<asciinema-player src="..." poster="data:text/plain,I'm regular \u001b[1;32mI'm bold green\u001b[3BI'm 3 lines down"></asciinema-player>
+<asciinema-player src="..." poster="data:text/plain,I'm regular \x1b[1;32mI'm bold green\x1b[3BI'm 3 lines down"></asciinema-player>
 ```
 
 Defaults to screen contents at `start-at` (or blank terminal when `start-at` is
@@ -218,7 +230,7 @@ URL of the author's image, displayed in the titlebar in fullscreen mode.
 ### Example usage with options
 
 ```html
-<asciinema-player src="/demo.json" speed="2" theme="solarized-dark" loop="loop" poster="data:text/plain,\u001b[5;5HAwesome \u001b[1;33mdemo!"></asciinema-player>
+<asciinema-player src="/demo.cast" speed="2" theme="solarized-dark" loop="loop" poster="data:text/plain,\e[5;5HAwesome \e[1;33mdemo!"></asciinema-player>
 ```
 
 ## Controlling the player programmatically
@@ -280,11 +292,11 @@ document.getElementById('player').pause();
 The `loadedmetadata`, `loadeddata`, `canplay` and `canplaythrough` events are
 fired (all of them, in this order) when the recording has been loaded and is
 ready to play. The recordings are always fully fetched (you can't partially load
-JSON) so there's no difference in the amount of metadata/data available between
-these 4 events - when either event occurs the player already has all the
-information for smooth playback. In other words, it's enough to listen to only
-one of them, e.g. `canplaythrough` (all 4 are supported to make it more in line
-with HTMLVideoElement).
+resource with XHR) so there's no difference in the amount of metadata/data
+available between these 4 events - when either event occurs the player already
+has all the information for smooth playback. In other words, it's enough to
+listen to only one of them, e.g. `canplaythrough` (all 4 are supported to make
+it more in line with HTMLVideoElement).
 
 ```javascript
 document.getElementById('player').addEventListener('loadedmetadata', function(e) {
@@ -338,6 +350,15 @@ element is focused):
 The project uses [leiningen](http://leiningen.org/) for development and build
 related tasks so make sure you have it installed (as well as Java 7 or 8).
 
+Clone this repository:
+
+    git clone https://github.com/asciinema/asciinema-player
+    cd asciinema-player
+
+Make sure git submodules are fetched and up to date:
+
+    git submodule update --init --recursive
+
 Start local web server with auto-compilation and live code reloading in the browser:
 
     lein figwheel dev
@@ -357,7 +378,8 @@ Run tests with:
 
 ### Building from source
 
-To build stand-alone `.js` and `.css` files run:
+To build stand-alone `.js` and `.css` files clone repository, initialize git
+submodules (as shown above), then run:
 
     lein cljsbuild once release
     lein less once

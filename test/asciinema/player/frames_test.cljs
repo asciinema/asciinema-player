@@ -63,5 +63,21 @@
           [1.2666666666666666 "lm"]])))
 
 (deftest test-to-absolute-time
+  (is (= (f/to-absolute-time [])
+         []))
+  (is (= (f/to-absolute-time [[1 :a]])
+         [[1 :a]]))
   (is (= (f/to-absolute-time [[1 :a] [2 :b] [3 :c] [4 :d]])
          [[1 :a] [3 :b] [6 :c] [10 :d]])))
+
+(deftest test-to-relative-time
+  (is (= (f/to-relative-time [])
+         []))
+  (is (= (f/to-relative-time [[1 :a]])
+         [[1 :a]]))
+  (is (= (f/to-relative-time [[1 :a] [3 :b] [6.5 :c] [10.0 :d]])
+         [[1 :a] [2 :b] [3.5 :c] [3.5 :d]])))
+
+(deftest cap-relative-time-xf
+  (is (= (sequence (f/cap-relative-time-xf 2.5) [[3 :a] [2 :b] [5 :c] [2 :d] [1 :e]])
+         [[2.5 :a] [2 :b] [2.5 :c] [2 :d] [1 :e]])))

@@ -338,7 +338,12 @@
   (let [on-mouse-move (send! mouse-moves-ch true)
         on-key-press (send-value! ui-ch handle-key-press)
         on-key-down (send-value! ui-ch handle-key-down)
-        wrapper-class-name (reaction (when (:show-hud @player) "hud"))
+        loading (reaction (:loading @player))
+        loaded (reaction (:loaded @player))
+        started (reaction (or @loading @loaded))
+        wrapper-class-name (reaction (when (or (:show-hud @player)
+                                               (not @started))
+                                       "hud"))
         player-class-name (reaction (player-class-name (:theme @player)))
         width (reaction (or (:width @player) 80))
         height (reaction (or (:height @player) 24))
@@ -348,8 +353,6 @@
         playing (reaction (:playing @player))
         current-time (reaction (:current-time @player))
         total-time (reaction (:duration @player))
-        loading (reaction (:loading @player))
-        loaded (reaction (:loaded @player))
         {:keys [title author author-url author-img-url]} @player]
     (fn []
       [:div.asciinema-player-wrapper {:tab-index -1
@@ -361,7 +364,7 @@
         [terminal width height font-size screen cursor-on]
         [recorded-control-bar playing current-time total-time ui-ch]
         (when (or title author) [title-bar title author author-url author-img-url])
-        (when-not (or @loading @loaded) [start-overlay ui-ch])
+        (when-not @started [start-overlay ui-ch])
         (when @loading [loading-overlay])]])))
 
 (defn player-component [player]

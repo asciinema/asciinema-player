@@ -1,4 +1,4 @@
-(defproject player "2.5.0-SNAPSHOT"
+(defproject player "2.6.0"
   :description "asciinema player"
   :url "https://github.com/asciinema/asciinema-player"
   :license {:name "Apache 2.0"
@@ -14,7 +14,7 @@
                  [prismatic/schema "1.1.6"]]
 
   :plugins [[lein-cljsbuild "1.1.5"]
-            [lein-figwheel "0.5.9"]
+            [lein-figwheel "0.5.14"]
             [lein-less "1.7.5"]
             [lein-doo "0.1.7"]
             [lein-kibit "0.1.3"]]
@@ -24,6 +24,7 @@
   :clean-targets ^{:protect false} ["resources/public/js" "target" "out"]
 
   :source-paths ["src" "vt/src"]
+  :resource-paths ["resources" "vt/resources"]
 
   :profiles {:dev {:dependencies [[com.cemerick/piggieback "0.2.1"]
                                   [org.clojure/tools.nrepl "0.2.10"]
@@ -44,7 +45,7 @@
                                         :source-map true
                                         :foreign-libs [{:file "public/element.js"
                                                         :provides ["asciinema.player.element"]}
-                                                       {:file "public/codepoint-polyfill.js"
+                                                       {:file "codepoint-polyfill.js"
                                                         :provides ["asciinema.vt.codepoint-polyfill"]}]
                                         :optimizations :none
                                         :pretty-print true}}
@@ -63,7 +64,7 @@
                                          :source-map true
                                          :foreign-libs [{:file "public/element.js"
                                                          :provides ["asciinema.player.element"]}
-                                                        {:file "public/codepoint-polyfill.js"
+                                                        {:file "codepoint-polyfill.js"
                                                          :provides ["asciinema.vt.codepoint-polyfill"]}]
                                          :optimizations :none
                                          :pretty-print false
@@ -75,7 +76,7 @@
                                             :preamble ["license.js" "public/CustomEvent.js" "public/CustomElements.min.js"]
                                             :foreign-libs [{:file "public/element.js"
                                                             :provides ["asciinema.player.element"]}
-                                                           {:file "public/codepoint-polyfill.js"
+                                                           {:file "codepoint-polyfill.js"
                                                             :provides ["asciinema.vt.codepoint-polyfill"]}]
                                             :optimizations :advanced
                                             :elide-asserts true
