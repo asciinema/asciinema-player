@@ -232,7 +232,7 @@ URL of the author's image, displayed in the titlebar in fullscreen mode.
 ### Example usage with options
 
 ```html
-<asciinema-player src="/demo.cast" speed="2" theme="solarized-dark" loop="loop" poster="data:text/plain,\u001b[5;5HAwesome \u001b[1;33mdemo!"></asciinema-player>
+<asciinema-player src="/demo.cast" speed="2" theme="solarized-dark" loop="loop" poster="data:text/plain,\e[5;5HAwesome \e[1;33mdemo!"></asciinema-player>
 ```
 
 ## Controlling the player programmatically
