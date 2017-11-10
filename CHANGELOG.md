@@ -1,5 +1,13 @@
 # asciinema player changelog
 
+## 2.6.0 (2017-11-10)
+
+* Added support for [asciicast v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) recording format
+* New option: `idle-time-limit`, for optimizing idle time
+* Control bar now auto-hides and shows up again on mouse move
+* Fixed escape seq handling in `poster` attribute
+* Improved memory usage
+
 ## 2.5.0 (2017-08-27)
 
 * License changed to Apache Software License V2
