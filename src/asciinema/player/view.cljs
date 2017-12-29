@@ -42,15 +42,16 @@
                   color)]
       (str prefix color))))
 
-(defn part-class-name [{:keys [fg bg bold blink underline inverse cursor]}]
+(defn part-class-name [{:keys [fg bg bold blink underline inverse italic cursor]}]
   (let [fg-final (if inverse (or bg "bg") fg)
         bg-final (if inverse (or fg "fg") bg)
         fg-class (color-class-name fg-final bold "fg-")
         bg-class (color-class-name bg-final blink "bg-")
         bold-class (when bold "bright")
+        italic-class (when italic "italic")
         underline-class (when underline "underline")
         cursor-class (when cursor "cursor")
-        classes (remove nil? [fg-class bg-class bold-class underline-class cursor-class])]
+        classes (remove nil? [fg-class bg-class bold-class italic-class underline-class cursor-class])]
     (when (seq classes)
       (string/join " " classes))))
 
