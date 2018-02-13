@@ -6,7 +6,6 @@
             [asciinema.player.messages :as m]
             [asciinema.player.processing]
             [asciinema.player.source :as source :refer [make-source]]
-            [schema.core :as s]
             [clojure.string :as str]))
 
 (defn parse-npt [t]
@@ -15,8 +14,7 @@
           components (map * (reverse numbers) (iterate #(* 60 %) 1))]
       (apply + components))))
 
-(s/defn parse-json-poster :- (s/protocol screen/Screen)
-  [json :- s/Str]
+(defn parse-json-poster [json]
   (let [lines (-> json
                   (.replace (js/RegExp. "\\s" "g") "")
                   js/atob
@@ -24,10 +22,7 @@
                   (js->clj :keywordize-keys true))]
     {:lines lines}))
 
-(s/defn parse-text-poster :- (s/protocol screen/Screen)
-  [text :- s/Str
-   width :- s/Num
-   height :- s/Num]
+(defn parse-text-poster [text width height]
   (-> (vt/make-vt (or width 80) (or height 24))
       (vt/feed-str text)))
 
