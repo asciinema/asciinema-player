@@ -4,19 +4,19 @@
   :license {:name "Apache 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
 
-  :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/clojurescript "1.9.671"]
-                 [org.clojure/core.async "0.2.374"]
+  :dependencies [[org.clojure/clojure "1.9.0"]
+                 [org.clojure/clojurescript "1.9.946"]
+                 [org.clojure/core.async "0.4.474"]
                  [reagent "0.7.0"]
                  [devcards "0.2.2" :exclusions [cljsjs/react cljsjs/create-react-class cljsjs/react-dom-server cljsjs/react-dom]]
                  [org.clojure/test.check "0.9.0"]
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [prismatic/schema "1.1.6"]]
 
-  :plugins [[lein-cljsbuild "1.1.5"]
+  :plugins [[lein-cljsbuild "1.1.7"]
             [lein-figwheel "0.5.14"]
             [lein-less "1.7.5"]
-            [lein-doo "0.1.7"]
+            [lein-doo "0.1.8"]
             [lein-kibit "0.1.3"]]
 
   :min-lein-version "2.5.3"
@@ -24,12 +24,11 @@
   :clean-targets ^{:protect false} ["resources/public/js" "target" "out"]
 
   :source-paths ["src" "vt/src"]
-  :resource-paths ["resources" "vt/resources"]
 
   :profiles {:dev {:dependencies [[com.cemerick/piggieback "0.2.1"]
                                   [org.clojure/tools.nrepl "0.2.10"]
                                   [environ "1.0.1"]
-                                  [figwheel-sidecar "0.5.0-1"]]
+                                  [figwheel-sidecar "0.5.14"]]
                    :plugins [[refactor-nrepl "1.1.0"]]
                    :source-paths ["dev/clj" "dev/cljs"]}
              :repl {:plugins [[cider/cider-nrepl "0.10.0"]]}}
@@ -43,9 +42,9 @@
                                         :output-to "resources/public/js/dev.js"
                                         :output-dir "resources/public/js/dev"
                                         :source-map true
-                                        :foreign-libs [{:file "public/element.js"
+                                        :foreign-libs [{:file "resources/public/element.js"
                                                         :provides ["asciinema.player.element"]}
-                                                       {:file "codepoint-polyfill.js"
+                                                       {:file "vt/resources/codepoint-polyfill.js"
                                                         :provides ["asciinema.vt.codepoint-polyfill"]}]
                                         :optimizations :none
                                         :pretty-print true}}
@@ -56,15 +55,15 @@
                                              :output-to "resources/public/js/devcards.js"
                                              :output-dir "resources/public/js/devcards"
                                              :source-map-timestamp true
-                                             :foreign-libs [{:file "public/element.js"
+                                             :foreign-libs [{:file "resources/public/element.js"
                                                              :provides ["asciinema.player.element"]}]
                                              :optimizations :none}}
                        :test {:source-paths ["src" "test"]
                               :compiler {:output-to "resources/public/js/test.js"
                                          :source-map true
-                                         :foreign-libs [{:file "public/element.js"
+                                         :foreign-libs [{:file "resources/public/element.js"
                                                          :provides ["asciinema.player.element"]}
-                                                        {:file "codepoint-polyfill.js"
+                                                        {:file "vt/resources/codepoint-polyfill.js"
                                                          :provides ["asciinema.vt.codepoint-polyfill"]}]
                                          :optimizations :none
                                          :pretty-print false
@@ -74,9 +73,9 @@
                                             :output-dir "resources/public/js/release"
                                             :closure-defines {goog.DEBUG false}
                                             :preamble ["license.js" "public/CustomEvent.js" "public/CustomElements.min.js"]
-                                            :foreign-libs [{:file "public/element.js"
+                                            :foreign-libs [{:file "resources/public/element.js"
                                                             :provides ["asciinema.player.element"]}
-                                                           {:file "codepoint-polyfill.js"
+                                                           {:file "vt/resources/codepoint-polyfill.js"
                                                             :provides ["asciinema.vt.codepoint-polyfill"]}]
                                             :optimizations :advanced
                                             :elide-asserts true
