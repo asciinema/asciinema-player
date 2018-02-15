@@ -1,6 +1,6 @@
 (ns asciinema.player.source
   (:refer-clojure :exclude [js->clj])
-  (:require [cljs.core.async :refer [chan >! <! put! close! timeout poll!]]
+  (:require [cljs.core.async :refer [chan >! <! put! close! timeout poll! promise-chan]]
             [goog.net.XhrIo :as xhr]
             [asciinema.player.asciicast :as asciicast]
             [asciinema.player.frames :as f]
@@ -43,24 +43,17 @@
 (defn lazy-promise-chan
   "Returns a function returning a promise channel. The calculation of the
   promise value is triggered by calling returned function with truthy value."
-  ;; TODO simplify it with async/promise-chan when it gets fixed (http://dev.clojure.org/jira/browse/ASYNC-159)
   [f]
   (let [force-ch (chan)
-        ready-chan (chan)
-        value (atom nil)]
+        value-ch (promise-chan)]
     (go
       (<! force-ch)
       (f (fn [v]
-           (reset! value v)
-           (close! ready-chan))))
+           (put! value-ch v))))
     (fn [force?]
       (when force?
         (close! force-ch))
-      (let [value-ch (chan)]
-        (go
-          (<! ready-chan)
-          (>! value-ch @value))
-        value-ch))))
+      value-ch)))
 
 (defn make-recording-ch-fn [thing vt-width vt-height idle-time-limit]
   (lazy-promise-chan
