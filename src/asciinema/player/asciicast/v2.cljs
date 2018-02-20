@@ -24,7 +24,7 @@
         events (rest asciicast)
         width (or vt-width (:width header))
         height (or vt-height (:height header))
-        idle-time-limit (or idle-time-limit (:idle_time_limit asciicast))]
+        idle-time-limit (or idle-time-limit (:idle_time_limit header))]
     {:version 2
      :width width
      :height height
