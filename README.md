@@ -400,6 +400,6 @@ source [contributors](https://github.com/asciinema/asciinema-player/contributors
 
 ## License
 
-Copyright &copy; 2011-2017 Marcin Kulik.
+Copyright &copy; 2011-2018 Marcin Kulik.
 
 All code is licensed under the Apache License, Version 2.0. See LICENSE file for details.
