@@ -1,5 +1,10 @@
 # asciinema player changelog
 
+## 2.6.1 (2018-02-21)
+
+* Fixed support for idle_time_limit embedded in the v2 recording
+* Add support for italic text style
+
 ## 2.6.0 (2017-11-10)
 
 * Added support for [asciicast v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) recording format
