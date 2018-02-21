@@ -17,7 +17,7 @@ terminal session files called
 Asciicast is a capture of terminal's raw output, which has to be interpreted
 during the playback, so the player comes with its own interpreter based on [Paul
 Williams' parser for ANSI-compatible video
-terminals](http://vt100.net/emu/dec_ansi_parser). Its output is fully compatible
+terminals](https://vt100.net/emu/dec_ansi_parser). Its output is fully compatible
 with most widely used terminal emulators like xterm, Gnome Terminal, iTerm etc.
 
 You can see the player in action on [asciinema.org](https://asciinema.org).
@@ -398,6 +398,6 @@ source [contributors](https://github.com/asciinema/asciinema-player/contributors
 
 ## License
 
-Copyright &copy; 2011-2017 Marcin Kulik.
+Copyright &copy; 2011-2018 Marcin Kulik.
 
 All code is licensed under the Apache License, Version 2.0. See LICENSE file for details.

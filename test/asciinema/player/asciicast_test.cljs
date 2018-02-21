@@ -41,6 +41,13 @@
       (is (= (select-keys (a/load asciicast nil 30 2.5) [:width :height :duration])
              {:width 80 :height 30 :duration 6.0}))))
 
+  (testing "v2 format, vec, with idle_time_limit"
+    (let [asciicast [{:version 2 :width 80 :height 24 :idle_time_limit 2.5}
+                     [1.0 "o" "foo"]
+                     [4.0 "i" "iii"]
+                     [10.0 "o" "bar"]]]
+      (is (= (:duration (a/load asciicast)) 6.0))))
+
   (testing "v2 format, string"
     (let [asciicast "[{\"version\":2,\"width\":80,\"height\":24},[1,\"o\",\"foo\"],[2,\"i\",\"iii\"],[3,\"o\",\"bar\"]]"
           asciicast (a/load asciicast nil 30)]
