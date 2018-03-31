@@ -5,7 +5,7 @@
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
 
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [org.clojure/clojurescript "1.9.946"]
+                 [org.clojure/clojurescript "1.10.238"]
                  [org.clojure/core.async "0.4.474"]
                  [reagent "0.7.0"]
                  [devcards "0.2.2" :exclusions [cljsjs/react cljsjs/create-react-class cljsjs/react-dom-server cljsjs/react-dom]]
@@ -14,9 +14,9 @@
                  [prismatic/schema "1.1.6"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
-            [lein-figwheel "0.5.14"]
+            [lein-figwheel "0.5.15"]
             [lein-less "1.7.5"]
-            [lein-doo "0.1.8"]
+            [lein-doo "0.1.10"]
             [lein-kibit "0.1.3"]]
 
   :min-lein-version "2.5.3"
