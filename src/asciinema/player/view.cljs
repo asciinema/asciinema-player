@@ -335,8 +335,11 @@
           (swap! channels set/union (m/get-channels message @player-atom))))
       (recur))))
 
-(defn player* [player ui-ch mouse-moves-ch]
-  (let [on-mouse-move (send! mouse-moves-ch true)
+(defn player* [player ui-ch]
+  (let [mouse-moves-ch (chan (dropping-buffer 1))
+        on-mouse-move (send! mouse-moves-ch true)
+        on-mouse-enter (send! ui-ch (m/->ShowHud true))
+        on-mouse-leave (send! ui-ch (m/->ShowHud false))
         on-key-press (send-value! ui-ch handle-key-press)
         on-key-down (send-value! ui-ch handle-key-down)
         loading (reaction (:loading @player))
@@ -355,13 +358,18 @@
         current-time (reaction (:current-time @player))
         total-time (reaction (:duration @player))
         {:keys [title author author-url author-img-url]} @player]
+    (pipe
+     (activity-chan mouse-moves-ch 3000 (chan 1 (map m/->ShowHud)))
+     ui-ch)
     (fn []
       [:div.asciinema-player-wrapper {:tab-index -1
                                       :on-key-press on-key-press
                                       :on-key-down on-key-down
-                                      :on-mouse-move on-mouse-move
                                       :class-name @wrapper-class-name}
-       [:div.asciinema-player {:class-name @player-class-name}
+       [:div.asciinema-player {:class-name @player-class-name
+                               :on-mouse-move on-mouse-move
+                               :on-mouse-enter on-mouse-enter
+                               :on-mouse-leave on-mouse-leave}
         [terminal width height font-size screen cursor-on]
         [recorded-control-bar playing current-time total-time ui-ch]
         (when (or title author) [title-bar title author author-url author-img-url])
@@ -369,16 +377,13 @@
         (when @loading [loading-overlay])]])))
 
 (defn player-component [player]
-  (let [ui-ch (chan)
-        mouse-moves-ch (chan (dropping-buffer 1))]
+  (let [ui-ch (chan)]
     (fn []
       (reagent/create-class
        {:display-name "asciinema-player"
-        :reagent-render #(player* player ui-ch mouse-moves-ch)
+        :reagent-render #(player* player ui-ch)
         :component-did-mount (fn [this]
-                               (let [source-ch (source/init (:source @player))
-                                     user-activity-ch (activity-chan mouse-moves-ch 3000 (chan 1 (map m/->ShowHud)))]
-                                 (pipe user-activity-ch ui-ch)
+                               (let [source-ch (source/init (:source @player))]
                                  (start-message-loop! player #{ui-ch source-ch})))
         :component-will-unmount (fn [this]
                                   (source/close (:source @player)))}))))
