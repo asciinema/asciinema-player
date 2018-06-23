@@ -21,7 +21,7 @@
 
 (defn send-value! [ch f]
   (fn [dom-event]
-    (when-let [msg (f dom-event)]
+    (when-some [msg (f dom-event)]
       (put! ch msg)
       (.stopPropagation dom-event))))
 
