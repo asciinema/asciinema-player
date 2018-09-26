@@ -19,23 +19,25 @@
   (let [diff (update diff :lines fix-line-diff-keys)]
     (merge-with merge screen diff)))
 
-(defn build-frames [diffs idle-time-limit]
+(defn build-xf [idle-time-limit]
   (let [screen (map->LegacyScreen {:lines (sorted-map)
                                    :cursor {:x 0 :y 0 :visible true}})]
-    (sequence (comp (frames/cap-relative-time-xf idle-time-limit)
-                    (frames/to-absolute-time-xf)
-                    (frames/data-reductions-xf reduce-screen screen))
-              diffs)))
+    (comp (frames/cap-relative-time-xf idle-time-limit)
+          (frames/to-absolute-time-xf)
+          (frames/data-reductions-xf reduce-screen screen))))
 
 (defn initialize-asciicast [asciicast idle-time-limit]
   (let [frame-0-lines (-> asciicast first last :lines)
         asciicast-width (->> frame-0-lines vals first (map #(count (first %))) (reduce +))
-        asciicast-height (count frame-0-lines)]
+        asciicast-height (count frame-0-lines)
+        xf (build-xf idle-time-limit)]
     {:version 0
      :width asciicast-width
      :height asciicast-height
      :duration (calc-duration asciicast idle-time-limit)
-     :frames (build-frames asciicast idle-time-limit)}))
+     :xf xf
+     :data asciicast
+     :frames (sequence xf asciicast)}))
 
 (extend-protocol ps/Screen
   LegacyScreen
