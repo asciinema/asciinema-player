@@ -1,6 +1,6 @@
 language: clojure
-jdk: openjdk9
-lein: 2.6.1
+jdk: openjdk10
+lein: 2.8.1
 script:
   - lein doo phantom test once
   - lein cljsbuild once release
