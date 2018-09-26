@@ -1,5 +1,5 @@
 language: clojure
-jdk: openjdk10
+jdk: oraclejdk10
 lein: 2.8.1
 script:
   - lein doo phantom test once
