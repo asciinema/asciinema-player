@@ -13,3 +13,4 @@ pom.xml.asc
 /.repl
 .nrepl-history
 node_modules/
+*.tgz
