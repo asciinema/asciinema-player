@@ -12,3 +12,5 @@ pom.xml.asc
 /out
 /.repl
 .nrepl-history
+node_modules/
+*.tgz

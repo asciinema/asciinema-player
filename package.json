@@ -1,0 +1,43 @@
+{
+  "name": "asciinema-player",
+  "title": "asciinema player",
+  "description": "Web player for terminal session recordings.",
+  "version": "2.6.1",
+  "main": "resources/public/js/asciinema-player.js",
+  "homepage": "https://github.com/asciinema/asciinema-player",
+  "author": {
+    "name": "Marcin Kulik",
+    "email": "m@ku1ik.com",
+    "url": "http://ku1ik.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asciinema/asciinema-player.git"
+  },
+  "keywords": [
+    "player",
+    "asciicast",
+    "video",
+    "video-playback",
+    "terminal",
+    "unix",
+    "tty"
+  ],
+  "bugs": {
+    "url": "https://github.com/asciinema/asciinema-player/issues"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {},
+  "files": [
+    "resources/public/js/asciinema-player.js",
+    "resources/public/css/asciinema-player.css"
+  ],
+  "scripts": {
+    "build": "lein cljsbuild once release && lein less once",
+    "prepare": "npm run build",
+    "test": "lein doo phantom test once"
+  },
+  "devDependencies": {
+    "phantomjs": "^2.1.7"
+  }
+}
