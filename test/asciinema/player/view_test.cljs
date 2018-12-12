@@ -24,6 +24,7 @@
     {:fg 1 :bold true} {:class-name "fg-9 bright"}
     {:fg 9 :bold true} {:class-name "fg-9 bright"}
     {:fg 1 :bg 2 :underline true} {:class-name "fg-1 bg-2 underline"}
+    {:fg 1 :bg 2 :strikethrough true} {:class-name "fg-1 bg-2 strikethrough"}
     {:fg [1 2 3] :bg [4 5 6] :bold true :underline true} {:class-name "bright underline" :style {:color "rgb(1,2,3)" :background-color "rgb(4,5,6)"}}
     ;; inversed colors
     {:inverse true} {:class-name "fg-bg bg-fg"}
