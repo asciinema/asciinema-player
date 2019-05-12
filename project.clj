@@ -4,19 +4,18 @@
   :license {:name "Apache 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
 
-  :jvm-opts ["--add-modules" "java.xml.bind"]
-
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [org.clojure/clojurescript "1.10.238"]
+                 [org.clojure/clojurescript "1.10.520"]
                  [org.clojure/core.async "0.4.474"]
+                 [doo "0.1.10"]
                  [reagent "0.7.0"]
                  [devcards "0.2.2" :exclusions [cljsjs/react cljsjs/create-react-class cljsjs/react-dom-server cljsjs/react-dom]]
                  [org.clojure/test.check "0.9.0"]
-                 [org.clojure/core.match "0.3.0-alpha4"]
+                 [org.clojure/core.match "0.3.0-alpha5"]
                  [prismatic/schema "1.1.6"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
-            [lein-figwheel "0.5.15"]
+            [lein-figwheel "0.5.18"]
             [lein-less "1.7.5"]
             [lein-doo "0.1.10"]
             [lein-kibit "0.1.3"]]
@@ -30,7 +29,7 @@
   :profiles {:dev {:dependencies [[com.cemerick/piggieback "0.2.1"]
                                   [org.clojure/tools.nrepl "0.2.10"]
                                   [environ "1.0.1"]
-                                  [figwheel-sidecar "0.5.14"]]
+                                  [figwheel-sidecar "0.5.18"]]
                    :plugins [[refactor-nrepl "1.1.0"]]
                    :source-paths ["dev/clj" "dev/cljs"]}
              :repl {:plugins [[cider/cider-nrepl "0.10.0"]]}}
