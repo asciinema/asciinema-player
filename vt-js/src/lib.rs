@@ -10,11 +10,20 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 // #[macro_use]
 // extern crate serde_derive;
 // use serde::{Serialize, Deserialize};
+// use serde::Serialize;
 
 // extern crate vt;
 
 // use rand::RngCore;
 use vt::VT;
+// use vt::Part;
+
+// #[derive(Serialize)]
+// #[serde(remote = "Part")]
+// struct PartDef(Vec<char>, Pen)
+//     secs: i64,
+//     nanos: i32,
+// }
 
 #[wasm_bindgen]
 extern {
@@ -64,24 +73,33 @@ impl X {
         format!("{:?}", self.vt)
     }
 
-    pub fn dump(&self) -> JsValue {
-        // format!("{:?}", self.vt)
-        // JsValue::from_serde(&self.vt.buffer).unwrap()
+    // pub fn dump(&self) -> JsValue {
+    //     // format!("{:?}", self.vt)
+    //     // JsValue::from_serde(&self.vt.buffer).unwrap()
 
-        let lines: Vec<String> =
-          self.vt
-          .dump()
-          .iter()
-          .map(|parts|
-            parts
-            .iter()
-            .map(|part| part.text())
-            .collect()
-            // String::from("xxx")
-          )
-          .collect();
+    //     let lines: Vec<String> =
+    //       self.vt
+    //       .dump()
+    //       .iter()
+    //       .map(|parts|
+    //         parts
+    //         .iter()
+    //         .map(|part| part.text())
+    //         .collect()
+    //       )
+    //       .collect();
 
-        JsValue::from_serde(&lines).unwrap()
+    //     JsValue::from_serde(&lines).unwrap()
+    // }
+
+    // pub fn get_line(&self, l: usize) -> Result<wasm_bindgen::JsValue, serde_wasm_bindgen::error::Error> { //Result<JsValue, serde_wasm_bindgen::error::Error> {
+    // pub fn get_line(&self, l: usize) -> serde_wasm_bindgen::Result<JsValue> {
+    pub fn get_line(&self, l: usize) -> JsValue {
+    // pub fn get_line(&self, l: usize) -> JsValue {
+        let line = self.vt.get_line(l);
+        // JsValue::from_serde(&line).unwrap()
+        serde_wasm_bindgen::to_value(&line).unwrap()
+        // serde_wasm_bindgen::to_value(&"xxxx").unwrap()
     }
 }
 

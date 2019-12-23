@@ -1,4 +1,4 @@
-const rust = import('./vt-js/pkg/vt_js');
+const vt_module = import('./vt-js/pkg/vt_js');
 
 
 class AsciinemaPlayerCore {
@@ -15,8 +15,7 @@ class AsciinemaPlayerCore {
             this.lines = this.lines.concat(this.newLine());
         }
 
-
-        rust.then(m => {
+        vt_module.then(vt => {
             // m.greet();
             console.log('wasm loaded');
         })
@@ -30,13 +29,14 @@ class AsciinemaPlayerCore {
     }
 
     newAttrs() {
-        return {
-            fg: Math.floor(Math.random() * 8),
-            bg: Math.floor(Math.random() * 8),
-            bold: (Math.random() > 0.7),
-            italic: (Math.random() > 0.8),
-            underline: (Math.random() > 0.8)
-        }
+        return new Map();
+        // {
+        //     fg: Math.floor(Math.random() * 8),
+        //     bg: Math.floor(Math.random() * 8),
+        //     bold: (Math.random() > 0.7),
+        //     italic: (Math.random() > 0.8),
+        //     underline: (Math.random() > 0.8)
+        // }
     }
 
     load() {
@@ -56,12 +56,17 @@ class AsciinemaPlayerCore {
     }
 
     start() {
-        this.nextFrameIndex = 0;
-        this.virtualElapsedTime = 0;
-        this.startedTime = (new Date()).getTime();
-        this.lastFrameTime = this.startedTime;
-        this.scheduleNextFrame();
-        // this.interval = setInterval(this.tick.bind(this), 10);
+        console.log('starting');
+
+        vt_module.then(vt => {
+            console.log('actually starting');
+            this.vt = vt.create(this.width, this.height);
+            this.nextFrameIndex = 0;
+            this.virtualElapsedTime = 0;
+            this.startedTime = (new Date()).getTime();
+            this.lastFrameTime = this.startedTime;
+            this.scheduleNextFrame();
+        })
     }
 
     scheduleNextFrame() {
@@ -78,7 +83,7 @@ class AsciinemaPlayerCore {
             }
 
             setTimeout(this.runFrame, timeout);
-            console.log(`${delay} => ${timeout}`);
+            // console.log(`${delay} => ${timeout}`);
         } else {
             console.log('done');
 
@@ -89,7 +94,8 @@ class AsciinemaPlayerCore {
     }
 
     runFrame() {
-        this.tick();
+        this.vt.feed(this.frames[this.nextFrameIndex][1]);
+        // this.tick();
         this.nextFrameIndex++;
         this.scheduleNextFrame();
     }
@@ -109,13 +115,29 @@ class AsciinemaPlayerCore {
     }
 
     getLines() {
-        for (let index in this.changedLines) {
-            if (this.changedLines.hasOwnProperty(index)) {
-                this.lines[index] = this.getLine(index);
+        // console.log(this.vt.dump());
+        if (this.vt) {
+            // let lines = this.vt.dump();
+
+            // for (let i in this.changedLines) {
+            //     if (this.changedLines.hasOwnProperty(i)) {
+            for (let i = 0; i < this.height; i++) {
+                let segments = this.vt.get_line(i);
+                // if (i == 21) {
+
+                    // console.log(segments);
+                // }
+                this.lines[i] = {id: i, segments: segments};
             }
         }
 
-        this.changedLines = {};
+        // for (let index in this.changedLines) {
+        //     if (this.changedLines.hasOwnProperty(index)) {
+        //         this.lines[index] = this.getLine(index);
+        //     }
+        // }
+
+        // this.changedLines = {};
 
         return this.lines;
     }
