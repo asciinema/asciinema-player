@@ -11,10 +11,6 @@ class AsciinemaPlayerCore {
 
         this.runFrame = this.runFrame.bind(this);
 
-        for (let i = 0; i < 24; i++) {
-            this.lines = this.lines.concat(this.newLine());
-        }
-
         vt_module.then(vt => {
             // m.greet();
             console.log('wasm loaded');
