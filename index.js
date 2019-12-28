@@ -21,7 +21,6 @@ class AsciinemaPlayerCore {
         return fetch(this.url)
             .then(res => res.json())
             .then(asciicast => {
-                // console.log(asciicast);
                 this.width = asciicast['width'];
                 this.height = asciicast['height'];
                 this.frames = asciicast['stdout'];
