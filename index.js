@@ -7,7 +7,7 @@ class AsciinemaPlayerCore {
         this.loop = opts && !!opts.loop;
 
         this.lines = [];
-        this.changedLines = {};
+        this.changedLines = new Map();
 
         this.runFrame = this.runFrame.bind(this);
 
@@ -72,7 +72,11 @@ class AsciinemaPlayerCore {
 
     runFrame() {
         this.vt.feed(this.frames[this.nextFrameIndex][1]);
-        // this.tick();
+
+        for (let i = 0; i < this.height; i++) {
+            this.changedLines.set(i, true);
+        }
+
         this.nextFrameIndex++;
         this.scheduleNextFrame();
     }
@@ -84,18 +88,11 @@ class AsciinemaPlayerCore {
 
     getLines() {
         if (this.vt) {
-            // let lines = this.vt.dump();
-
-            // for (let i in this.changedLines) {
-            //     if (this.changedLines.hasOwnProperty(i)) {
-            for (let i = 0; i < this.height; i++) {
-                let segments = this.vt.get_line(i);
-                // if (i == 21) {
-
-                    // console.log(segments);
-                // }
-                this.lines[i] = {id: i, segments: segments};
+            for (const i of this.changedLines.keys()) {
+                this.lines[i] = {id: i, segments: this.vt.get_line(i)};
             }
+
+            this.changedLines = new Map();
         }
 
         return this.lines;
