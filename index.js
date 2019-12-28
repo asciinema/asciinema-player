@@ -17,24 +17,6 @@ class AsciinemaPlayerCore {
         })
     }
 
-    newLine() {
-        return {
-            id: Math.random(),
-            segments: [['' + Math.random() + ' ', this.newAttrs()], ['' + Math.random() + ' ', this.newAttrs()], ['' + Math.random(), this.newAttrs()]]
-        }
-    }
-
-    newAttrs() {
-        return new Map();
-        // {
-        //     fg: Math.floor(Math.random() * 8),
-        //     bg: Math.floor(Math.random() * 8),
-        //     bold: (Math.random() > 0.7),
-        //     italic: (Math.random() > 0.8),
-        //     underline: (Math.random() > 0.8)
-        // }
-    }
-
     load() {
         return fetch(this.url)
             .then(res => res.json())
@@ -101,17 +83,7 @@ class AsciinemaPlayerCore {
         // clearTimeout(...);
     }
 
-    tick() {
-        if (Math.random() > 0.95) {
-            this.lines = this.lines.slice(1).concat(this.newLine());
-        } else {
-            this.changedLines[Math.floor(Math.random() * 24)] = true;
-            this.changedLines[Math.floor(Math.random() * 24)] = true;
-        }
-    }
-
     getLines() {
-        // console.log(this.vt.dump());
         if (this.vt) {
             // let lines = this.vt.dump();
 
@@ -127,22 +99,7 @@ class AsciinemaPlayerCore {
             }
         }
 
-        // for (let index in this.changedLines) {
-        //     if (this.changedLines.hasOwnProperty(index)) {
-        //         this.lines[index] = this.getLine(index);
-        //     }
-        // }
-
-        // this.changedLines = {};
-
         return this.lines;
-    }
-
-    getLine(index) {
-        return {
-            id: this.lines[index].id,
-            segments: [this.lines[index].segments[0], this.lines[index].segments[1], ['' + Math.random(), this.newAttrs()]]
-        };
     }
 }
 
