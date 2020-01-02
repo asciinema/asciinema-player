@@ -12,7 +12,6 @@ class AsciinemaPlayerCore {
         this.runFrame = this.runFrame.bind(this);
 
         vt_module.then(vt => {
-            // m.greet();
             console.log('wasm loaded');
         })
     }
