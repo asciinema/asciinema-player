@@ -51,9 +51,8 @@ class AsciinemaPlayerCore {
 
         if (nextFrame) {
             const delay = nextFrame[0] * 1000;
-            this.virtualElapsedTime += delay;
             const actualElapsedTime = (new Date()).getTime() - this.startedTime;
-            let timeout = this.virtualElapsedTime - actualElapsedTime;
+            let timeout = (this.virtualElapsedTime + delay) - actualElapsedTime;
 
             if (timeout < 0) {
                 timeout = 0;
@@ -71,13 +70,21 @@ class AsciinemaPlayerCore {
     }
 
     runFrame() {
-        this.vt.feed(this.frames[this.nextFrameIndex][1]);
+        let frame = this.frames[this.nextFrameIndex];
+        let actualElapsedTime;
+
+        do {
+            this.vt.feed(frame[1]);
+            this.virtualElapsedTime += (frame[0] * 1000);
+            this.nextFrameIndex++;
+            frame = this.frames[this.nextFrameIndex];
+            actualElapsedTime = (new Date()).getTime() - this.startedTime;
+        } while (frame && (actualElapsedTime > (this.virtualElapsedTime + frame[0] * 1000)));
 
         for (let i = 0; i < this.height; i++) {
             this.changedLines.set(i, true);
         }
 
-        this.nextFrameIndex++;
         this.scheduleNextFrame();
     }
 
