@@ -92,16 +92,18 @@ class AsciinemaPlayerCore {
         // clearTimeout(...);
     }
 
-    getLines() {
+    getChangedLines() {
+        const lines = new Map();
+
         if (this.vt) {
             for (const i of this.changedLines.keys()) {
-                this.lines[i] = {id: i, segments: this.vt.get_line(i)};
+                lines.set(i, {id: i, segments: this.vt.get_line(i)});
             }
 
             this.changedLines = new Map();
         }
 
-        return this.lines;
+        return lines;
     }
 }
 
