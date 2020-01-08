@@ -21,8 +21,8 @@ pub fn create(w: usize, h: usize) -> VtWrapper {
 
 #[wasm_bindgen]
 impl VtWrapper {
-    pub fn feed(&mut self, s: &str) {
-        self.vt.feed_str(s);
+    pub fn feed(&mut self, s: &str) -> Vec<usize> {
+        self.vt.feed_str(s)
     }
 
     pub fn inspect(&self) -> String {

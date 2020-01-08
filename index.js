@@ -24,6 +24,10 @@ class AsciinemaPlayerCore {
                 this.height = asciicast['height'];
                 this.frames = asciicast['stdout'];
 
+                for (let i = 0; i < this.height; i++) {
+                    this.changedLines.add(i);
+                }
+
                 return {
                     width: this.width,
                     height: this.height
@@ -73,16 +77,14 @@ class AsciinemaPlayerCore {
         let actualElapsedTime;
 
         do {
-            this.vt.feed(frame[1]);
+            const affectedLines = this.vt.feed(frame[1]);
+            affectedLines.forEach(i => this.changedLines.add(i));
+
             this.virtualElapsedTime += (frame[0] * 1000);
             this.nextFrameIndex++;
             frame = this.frames[this.nextFrameIndex];
             actualElapsedTime = (new Date()).getTime() - this.startedTime;
         } while (frame && (actualElapsedTime > (this.virtualElapsedTime + frame[0] * 1000)));
-
-        for (let i = 0; i < this.height; i++) {
-            this.changedLines.add(i);
-        }
 
         this.scheduleNextFrame();
     }
