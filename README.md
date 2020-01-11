@@ -303,11 +303,11 @@ it more in line with HTMLVideoElement).
 ```javascript
 document.getElementById('player').addEventListener('loadedmetadata', function(e) {
   console.log("duration is", this.duration);
-}
+})
 
 document.getElementById('player').addEventListener('canplaythrough', function(e) {
   console.log("all ready to play");
-}
+})
 ```
 
 NOTE: The player starts fetching the recording either when `preload` attribute
@@ -323,7 +323,7 @@ The `play` event is fired when playback has begun.
 document.getElementById('player').addEventListener('play', function(e) {
   console.log("it's playing");
   console.log("we're at", this.currentTime);
-}
+})
 ```
 
 #### pause
@@ -333,7 +333,7 @@ The `pause` event is fired when playback has been paused.
 ```javascript
 document.getElementById('player').addEventListener('pause', function(e) {
   console.log("it's paused");
-}
+})
 ```
 
 ## Keyboard shortcuts
