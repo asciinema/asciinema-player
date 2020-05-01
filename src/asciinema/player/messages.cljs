@@ -36,6 +36,8 @@
 
 (defrecord TriggerCanPlay [])
 
+(defrecord TriggerEnded [])
+
 (defrecord UpdateScreen [screen])
 
 (defrecord UpdateTime [time])

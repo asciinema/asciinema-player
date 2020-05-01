@@ -74,7 +74,11 @@ function registerAsciinemaPlayerElement() {
 
         onPause: function() {
           self.dispatchEvent(new CustomEvent("pause"));
-        }
+        },
+
+        onEnded: function() {
+          self.dispatchEvent(new CustomEvent("ended"));
+        },
       }
     );
 

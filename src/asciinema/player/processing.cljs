@@ -85,6 +85,12 @@
       (on-can-play))
     player)
 
+  m/TriggerEnded
+  (update-player [this {:keys [on-ended] :as player}]
+    (when on-ended
+      (on-ended))
+    player)
+
   m/UpdateTime
   (update-player [this player]
     (assoc player :current-time (:time this))))

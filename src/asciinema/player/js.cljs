@@ -19,7 +19,8 @@
                                    :idleTimeLimit :idle-time-limit
                                    :onCanPlay :on-can-play
                                    :onPlay :on-play
-                                   :onPause :on-pause}))
+                                   :onPause :on-pause
+                                   :onEnded :on-ended}))
          player (p/create-player dom-node url options)]
      (clj->js {:getCurrentTime #(p/get-current-time @player)
                :setCurrentTime #(p/seek @player %)

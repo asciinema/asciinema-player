@@ -72,7 +72,7 @@
             :theme theme
             :show-hud false}
            (select-keys options [:title :author :author-url :author-img-url
-                                 :on-can-play :on-play :on-pause]))))
+                                 :on-can-play :on-play :on-pause :on-ended]))))
 
 (defn make-player-ratom
   "Returns Reagent atom with initial player state."

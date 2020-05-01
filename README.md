@@ -336,6 +336,16 @@ document.getElementById('player').addEventListener('pause', function(e) {
 })
 ```
 
+#### ended
+
+The `ended` event is fired when playback has completed.
+
+```javascript
+document.getElementById('player').addEventListener('ended', function(e) {
+  console.log("it's done");
+})
+```
+
 ## Keyboard shortcuts
 
 The following keyboard shortcuts are currently available (when the player

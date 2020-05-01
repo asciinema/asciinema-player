@@ -107,8 +107,10 @@
                    (do
                      (>! msg-ch v)
                      (recur start-at sub-ch elapsed-time))
-                   (when loop?
-                     (recur 0 (emit-coll (f/frames-for-playback 0 speed frames)) (util/timer speed))))
+                    (do
+                      (>! msg-ch (m/->TriggerEnded))
+                      (when loop?
+                        (recur 0 (emit-coll (f/frames-for-playback 0 speed frames)) (util/timer speed)))))
           stop-ch (do
                     (close! sub-ch)
                     (+ start-at (elapsed-time))))))))
