@@ -12,9 +12,9 @@ default = ["console_error_panic_hook"]
 
 [dependencies]
 # wasm-bindgen = "0.2"
-rand = "0.7"
+rand = "^0.7"
 vt = { path = "../../vt-rs" }
-serde-wasm-bindgen = "0.1.3"
+serde-wasm-bindgen = "^0.1"
 # serde = "1.0.104"
 # serde_derive = "1.0.104"
 
@@ -22,17 +22,17 @@ serde-wasm-bindgen = "0.1.3"
 # logging them with `console.error`. This is great for development, but requires
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
-console_error_panic_hook = { version = "0.1.6", optional = true }
+console_error_panic_hook = { version = "^0.1", optional = true }
 
 # `wee_alloc` is a tiny allocator for wasm that is only ~1K in code size
 # compared to the default allocator's ~10K. It is slower than the default
 # allocator, however.
 #
 # Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
-wee_alloc = { version = "0.4.5", optional = true }
+wee_alloc = { version = "^0.4", optional = true }
 
 [dependencies.web-sys]
-version = "0.3.33"
+version = "^0.3"
 features = [
   "console"
 ]
@@ -43,7 +43,7 @@ features = ["serde-serialize"]
 
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.6"
+wasm-bindgen-test = "^0.3"
 
 # [profile.release]
 # # Tell `rustc` to optimize for small code size.
