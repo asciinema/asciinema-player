@@ -1,4 +1,4 @@
-const vt_module = import('./vt-js/pkg/vt_js');
+import {create} from "./vt-js/pkg/vt_js";
 
 
 class AsciinemaPlayerCore {
@@ -10,10 +10,6 @@ class AsciinemaPlayerCore {
         this.changedLines = new Set();
 
         this.runFrame = this.runFrame.bind(this);
-
-        vt_module.then(vt => {
-            console.log('wasm loaded');
-        })
     }
 
     load() {
@@ -37,16 +33,12 @@ class AsciinemaPlayerCore {
 
     start() {
         console.log('starting');
-
-        vt_module.then(vt => {
-            console.log('actually starting');
-            this.vt = vt.create(this.width, this.height);
-            this.nextFrameIndex = 0;
-            this.virtualElapsedTime = 0;
-            this.startedTime = (new Date()).getTime();
-            this.lastFrameTime = this.startedTime;
-            this.scheduleNextFrame();
-        })
+        this.vt = create(this.width, this.height);
+        this.nextFrameIndex = 0;
+        this.virtualElapsedTime = 0;
+        this.startedTime = (new Date()).getTime();
+        this.lastFrameTime = this.startedTime;
+        this.scheduleNextFrame();
     }
 
     scheduleNextFrame() {
