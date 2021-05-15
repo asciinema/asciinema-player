@@ -11,14 +11,14 @@ class AsciinemaPlayerCore {
   constructor(src, opts) {
     let feed = this.feed.bind(this);
 
-    if (src.driver == 'websocket') {
+    if (src.driver == 'asciicast') {
+      this.driver = asciicast(src.url, null, null, 1, feed);
+    } else if (src.driver == 'websocket') {
       this.driver = websocket(src.url, null, null, feed);
     } else if (src.driver == 'phx_chan') {
       this.driver = phoenixChannel(src.socketUrl, src.channelName, null, null, feed);
     } else if (src.driver == 'test') {
       this.driver = test(src.kind, null, null, 1, feed);
-    } else if (src.driver == 'asciicast') {
-      this.driver = asciicast(src.url, null, null, 1, feed);
     } else {
       throw `unsupported driver: ${JSON.stringify(src)}`;
     }
