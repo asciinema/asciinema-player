@@ -1,45 +1,54 @@
 import {Socket} from "phoenix";
 
 
-class PhoenixChannelDriver {
-  // public
+function phoenixChannel(socketUrl, channelName, width, height, feed) {
+  let socket = new Socket(socketUrl);
+  let channel;
+  let params = {c: 0};
 
-  constructor(feed, opts) {
-    this.feed = feed;
-    this.width = opts.width;
-    this.height = opts.height;
-  }
+  return {
+    start: () => {
+      let resolveLoaded;
+      let loader = new Promise(resolve => resolveLoaded = resolve);
 
-  load() {
-    this.socket = new Socket("ws://localhost:4000/socket");
-    this.socket.connect();
+      socket.connect();
+      channel = socket.channel(channelName, params);
 
-    return Promise.resolve({width: this.width, height: this.height});
-  }
+      channel.on("update", data => {
+        params.c = params.c + 1;
+        feed(data.t);
+      });
 
-  start() {
-    let params = {c: 0};
+      channel.join()
+      .receive("ok", data => {
+        resolveLoaded({
+          width: width || data.width,
+          height: height || data.height
+        });
 
-    this.channel = this.socket.channel('stream:test', params);
+        setTimeout(() => {
+          data.ts.forEach(t => {
+            params.c = params.c + 1;
+            feed(t)
+          });
+        }, 0);
+      })
+      .receive("error", resp => {
+        console.log('Unable to join', resp);
+      });
 
-    this.channel.on("update", data => {
-      params.c = params.c + 1;
-      this.feed(data.t);
-    });
+      return loader;
+    },
 
-    this.channel.join()
-    .receive("ok", resp => {
-      console.log('joined successfully');
-    })
-    .receive("error", resp => {
-      console.log('Unable to join', resp);
-    });
-  }
+    stop: () => {
+      if (channel) {
+        channel.off("update");
+        channel.leave();
+      }
 
-  stop() {
-    this.channel.off("update");
-    this.channel.leave();
+      socket.disconnect();
+    }
   }
 }
 
-export default PhoenixChannelDriver;
+export { phoenixChannel };

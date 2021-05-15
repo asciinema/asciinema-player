@@ -1,33 +1,36 @@
-class WebsocketDriver {
-  // public
+function websocket(url, width, height, feed) {
+  let socket;
 
-  constructor(feed, opts) {
-    this.feed = feed;
-    this.width = opts.width;
-    this.height = opts.height;
-  }
+  return {
+    start: () => {
+      let resolveLoaded;
+      let loader = new Promise(resolve => resolveLoaded = resolve);
+      let loaded = false;
 
-  load() {
-    this.socket = new WebSocket('ws://localhost:1234');
+      socket = new WebSocket(url);
 
-    return Promise.resolve({width: this.width, height: this.height});
-  }
+      socket.onmessage = (event) => {
+        let data = JSON.parse(event.data);
 
-  start() {
-    let thiz = this;
+        if (data.width) {
+          resolveLoaded({
+            width: width || data.width,
+            height: height || data.height
+          });
 
-    this.socket.onmessage = function(event) {
-      let data = JSON.parse(event.data);
-
-      if (data[1] == 'o') {
-        thiz.feed(data[2]);
+          loaded = true;
+        } else if (data[1] == 'o' && loaded) {
+          feed(data[2]);
+        }
       }
-    }
-  }
 
-  stop() {
-    this.socket.close();
+      return loader;
+    },
+
+    stop: () => {
+      socket.close();
+    }
   }
 }
 
-export default WebsocketDriver;
+export { websocket };

@@ -1,83 +1,88 @@
-// TODO rename to FileDriver
-// TODO support ttyrec (via opts.type == 'ttyrec')
+// TODO rename to file driver
+// TODO support ttyrec (via opts.format == 'ttyrec')
 
-class AsciicastDriver {
-  // public
 
-  constructor(url, feed, opts) {
-    this.url = url;
-    this.feed = feed;
-    this.loop = opts && !!opts.loop;
-    this.runFrame = this.runFrame.bind(this);
-  }
+function asciicast(url, w, h, speed, feed, _onFinish) {
+  let timeoutId;
+  let frames;
+  let nextFrameIndex = 0;
+  let virtualElapsedTime = 0;
+  let startedTime;
+  let lastFrameTime;
 
-  load() {
-    return fetch(this.url)
-    .then(res => res.json())
-    .then(asciicast => {
-      this.width = asciicast['width'];
-      this.height = asciicast['height'];
-      this.frames = asciicast['stdout'];
-
-      return {
-        width: this.width,
-        height: this.height
-      };
-    })
-  }
-
-  start() {
-    this.nextFrameIndex = 0;
-    this.virtualElapsedTime = 0;
-    this.startedTime = (new Date()).getTime();
-    this.lastFrameTime = this.startedTime;
-    this.scheduleNextFrame();
-  }
-
-  stop() {
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
-    }
-  }
-
-  // private
-
-  scheduleNextFrame() {
-    const nextFrame = this.frames[this.nextFrameIndex];
+  function scheduleNextFrame() {
+    const nextFrame = frames[nextFrameIndex];
 
     if (nextFrame) {
       const delay = nextFrame[0] * 1000;
-      const actualElapsedTime = (new Date()).getTime() - this.startedTime;
-      let timeout = (this.virtualElapsedTime + delay) - actualElapsedTime;
+      const actualElapsedTime = (new Date()).getTime() - startedTime;
+      let timeout = (virtualElapsedTime + delay) - actualElapsedTime;
 
       if (timeout < 0) {
         timeout = 0;
       }
 
-      this.timeoutId = setTimeout(this.runFrame, timeout);
+      timeoutId = setTimeout(runFrame, timeout);
     } else {
       console.log('finished');
-
-      if (this.loop) {
-        this.start();
-      }
+      // onFinish();
     }
   }
 
-  runFrame() {
-    let frame = this.frames[this.nextFrameIndex];
+  function runFrame() {
+    let frame = frames[nextFrameIndex];
     let actualElapsedTime;
 
     do {
-      this.feed(frame[1]);
-      this.virtualElapsedTime += (frame[0] * 1000);
-      this.nextFrameIndex++;
-      frame = this.frames[this.nextFrameIndex];
-      actualElapsedTime = (new Date()).getTime() - this.startedTime;
-    } while (frame && (actualElapsedTime > (this.virtualElapsedTime + frame[0] * 1000)));
+      feed(frame[1]);
+      virtualElapsedTime += (frame[0] * 1000);
+      nextFrameIndex++;
+      frame = frames[nextFrameIndex];
+      actualElapsedTime = (new Date()).getTime() - startedTime;
+    } while (frame && (actualElapsedTime > (virtualElapsedTime + frame[0] * 1000)));
 
-    this.scheduleNextFrame();
+    scheduleNextFrame();
+  }
+
+  return {
+    // preload: () => {
+    //   return new Promise(w,h);
+    // },
+
+    start: () => {
+      return fetch(url)
+      .then(res => res.json())
+      .then(asciicast => {
+        frames = asciicast['stdout'];
+
+        startedTime = (new Date()).getTime();
+        lastFrameTime = startedTime;
+        scheduleNextFrame();
+
+        return {
+          width: w || asciicast['width'],
+          height: h || asciicast['height'],
+          // duration: ...
+        };
+      })
+    },
+
+    stop: () => {
+      clearTimeout(timeoutId);
+    },
+
+    // togglePlayback: () => {
+    //   return stopTime; // when stopped, otherwise no return
+    // },
+
+    // seek: (pos) => {
+    //   return seekTime;
+    // },
+
+    getCurrentTime: () => {
+      return 10.0;
+    }
   }
 }
 
-export default AsciicastDriver;
+export { asciicast };
