@@ -62,7 +62,7 @@ function asciicast(url, w, h, speed, feed, _onFinish) {
         return {
           width: w || asciicast['width'],
           height: h || asciicast['height'],
-          // duration: ...
+          duration: asciicast['duration']
         };
       })
     },
@@ -71,8 +71,8 @@ function asciicast(url, w, h, speed, feed, _onFinish) {
       clearTimeout(timeoutId);
     },
 
-    // togglePlayback: () => {
-    //   return stopTime; // when stopped, otherwise no return
+    // pauseOrResume: () => {
+    //   return  pauseTime; // when paused, otherwise no return
     // },
 
     // seek: (pos) => {
@@ -80,7 +80,9 @@ function asciicast(url, w, h, speed, feed, _onFinish) {
     // },
 
     getCurrentTime: () => {
-      return 10.0;
+      if (startedTime) {
+        return ((new Date).getTime() - startedTime) / 1000;
+      }
     }
   }
 }

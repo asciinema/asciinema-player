@@ -25,6 +25,8 @@ class AsciinemaPlayerCore {
 
     this.lines = [];
     this.changedLines = new Set();
+    this.duration = null;
+    this.startTime = null;
   }
 
   static build(src, opts) {
@@ -51,14 +53,16 @@ class AsciinemaPlayerCore {
       });
     }
 
-    return start.then(size => {
-      this.vt = create(size.width, size.height);
+    return start.then(meta => {
+      this.vt = create(meta.width, meta.height);
+      this.duration = meta.duration ?? this.driver.duration;
+      this.startTime = (new Date()).getTime();
 
-      for (let i = 0; i < size.height; i++) {
+      for (let i = 0; i < meta.height; i++) {
         this.changedLines.add(i);
       }
 
-      return size;
+      return meta;
     });
   }
 
@@ -83,10 +87,29 @@ class AsciinemaPlayerCore {
   getCurrentTime() {
     if (this.driver.getCurrentTime) {
       return this.driver.getCurrentTime();
-    } else {
-      // TODO return time diff between start and now
-      return 83;
+    } else if (this.startTime) {
+      return ((new Date).getTime() - this.startTime) / 1000;
     }
+  }
+
+  getRemainingTime() {
+    if (typeof this.duration === 'number') {
+      return this.duration - Math.min(this.getCurrentTime(), this.duration);
+    }
+  }
+
+  getProgress() {
+    if (typeof this.duration === 'number') {
+      return Math.min(this.getCurrentTime(), this.duration) / this.duration;
+    }
+  }
+
+  isSeekable() {
+    return !!this.driver.seek
+  }
+
+  isPausable() {
+    return !!this.driver.pauseOrResume
   }
 
   // private
