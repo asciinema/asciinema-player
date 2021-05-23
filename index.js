@@ -70,6 +70,12 @@ class AsciinemaPlayerCore {
     this.driver.stop();
   }
 
+  pauseOrResume() {
+    if (this.driver.pauseOrResume) {
+      return this.driver.pauseOrResume();
+    }
+  }
+
   getChangedLines() {
     const lines = new Map();
 
@@ -82,6 +88,12 @@ class AsciinemaPlayerCore {
     }
 
     return lines;
+  }
+
+  getCursor() {
+    if (this.vt) {
+      return this.vt.get_cursor();
+    }
   }
 
   getCurrentTime() {
