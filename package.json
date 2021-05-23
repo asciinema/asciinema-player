@@ -1,7 +1,26 @@
 {
-  "name": "asciinema-player-core",
-  "version": "0.1.0",
-  "description": "",
+  "name": "asciinema-player",
+  "description": "Web player for terminal session recordings.",
+  "version": "3.0.0-alpha.1",
+  "author": "Marcin Kulik",
+  "homepage": "https://github.com/asciinema/asciinema-player",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asciinema/asciinema-player.git"
+  },
+  "bugs": {
+    "url": "https://github.com/asciinema/asciinema-player/issues"
+  },
+  "keywords": [
+    "player",
+    "asciicast",
+    "video",
+    "video-playback",
+    "terminal",
+    "unix",
+    "tty"
+  ],
+  "license": "Apache-2.0",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -9,7 +28,5 @@
   "devDependencies": {
     "eslint": "^7.26.0",
     "phoenix": "1.4.17"
-  },
-  "author": "",
-  "license": "ISC"
+  }
 }
