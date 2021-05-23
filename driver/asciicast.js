@@ -5,9 +5,10 @@ function now() {
   return performance.now();
 }
 
-function asciicast(url, w, h, speed, feed, _onFinish) {
-  let timeoutId;
+function asciicast(url, w, h, speed, feed, onFinish {
   let frames;
+  let timeoutId;
+  let isFinished;
   let nextFrameIndex = 0;
   let virtualElapsedTime = 0;
   let startedTime;
@@ -27,8 +28,9 @@ function asciicast(url, w, h, speed, feed, _onFinish) {
 
       timeoutId = setTimeout(runFrame, timeout);
     } else {
-      console.log('finished');
-      // onFinish();
+      timeoutId = null;
+      isFinished = true;
+      onFinish();
     }
   }
 
@@ -47,6 +49,15 @@ function asciicast(url, w, h, speed, feed, _onFinish) {
     scheduleNextFrame();
   }
 
+  function start() {
+    nextFrameIndex = 0;
+    virtualElapsedTime = 0;
+    startedTime = now();
+    lastFrameTime = startedTime;
+    isFinished = false;
+    scheduleNextFrame();
+  }
+
   return {
     // preload: () => {
     //   return new Promise(w,h);
@@ -57,10 +68,7 @@ function asciicast(url, w, h, speed, feed, _onFinish) {
       .then(res => res.json())
       .then(asciicast => {
         frames = asciicast['stdout'];
-
-        startedTime = (new Date()).getTime();
-        lastFrameTime = startedTime;
-        scheduleNextFrame();
+        start();
 
         return {
           width: w || asciicast['width'],
@@ -74,9 +82,22 @@ function asciicast(url, w, h, speed, feed, _onFinish) {
       clearTimeout(timeoutId);
     },
 
-    // pauseOrResume: () => {
-    //   return  pauseTime; // when paused, otherwise no return
-    // },
+    pauseOrResume: () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+        return false;
+      } else {
+        if (isFinished) {
+          // TODO reset terminal here or in core
+          start();
+        } else {
+          scheduleNextFrame();
+        }
+
+        return true;
+      }
+    },
 
     // seek: (pos) => {
     //   return seekTime;
