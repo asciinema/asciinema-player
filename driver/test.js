@@ -7,8 +7,8 @@ function test(kind, width, height, speed, feed, _onFinish) {
 }
 
 function random(width, height, speed, feed) {
+  const t = 33 / (speed || 1.0);
   let intervalId;
-  let t = 33 / (speed || 1.0);
 
   return {
     width: width || 80,
