@@ -36,6 +36,7 @@ function clock(width, height, _speed, feed, _onFinish) {
   return {
     width: width,
     height: height,
+    duration: 24 * 60,
 
     start: () => {
       setTimeout(() => {
