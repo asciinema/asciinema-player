@@ -1,6 +1,9 @@
 // TODO rename to file driver
 // TODO support ttyrec (via opts.format == 'ttyrec')
 
+function now() {
+  return performance.now();
+}
 
 function asciicast(url, w, h, speed, feed, _onFinish) {
   let timeoutId;
@@ -15,7 +18,7 @@ function asciicast(url, w, h, speed, feed, _onFinish) {
 
     if (nextFrame) {
       const delay = nextFrame[0] * 1000;
-      const actualElapsedTime = (new Date()).getTime() - startedTime;
+      const actualElapsedTime = now() - startedTime;
       let timeout = (virtualElapsedTime + delay) - actualElapsedTime;
 
       if (timeout < 0) {
@@ -38,7 +41,7 @@ function asciicast(url, w, h, speed, feed, _onFinish) {
       virtualElapsedTime += (frame[0] * 1000);
       nextFrameIndex++;
       frame = frames[nextFrameIndex];
-      actualElapsedTime = (new Date()).getTime() - startedTime;
+      actualElapsedTime = now() - startedTime;
     } while (frame && (actualElapsedTime > (virtualElapsedTime + frame[0] * 1000)));
 
     scheduleNextFrame();
@@ -81,7 +84,7 @@ function asciicast(url, w, h, speed, feed, _onFinish) {
 
     getCurrentTime: () => {
       if (startedTime) {
-        return ((new Date).getTime() - startedTime) / 1000;
+        return (now() - startedTime) / 1000;
       }
     }
   }
