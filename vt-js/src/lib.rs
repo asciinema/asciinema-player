@@ -33,4 +33,9 @@ impl VtWrapper {
         let line = self.vt.get_line(l);
         serde_wasm_bindgen::to_value(&line).unwrap()
     }
+
+    pub fn get_cursor(&self) -> JsValue {
+        let cursor = self.vt.get_cursor();
+        serde_wasm_bindgen::to_value(&cursor).unwrap()
+    }
 }
