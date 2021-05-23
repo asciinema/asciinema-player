@@ -8,11 +8,11 @@ import {websocket} from "./driver/websocket";
 class AsciinemaPlayerCore {
   // public
 
-  constructor(src, opts) {
+  constructor(src, opts, onFinish) {
     let feed = this.feed.bind(this);
 
     if (src.driver == 'asciicast') {
-      this.driver = asciicast(src.url, null, null, 1, feed);
+      this.driver = asciicast(src.url, null, null, 1, feed, onFinish);
     } else if (src.driver == 'websocket') {
       this.driver = websocket(src.url, null, null, feed);
     } else if (src.driver == 'phx_chan') {
@@ -29,7 +29,7 @@ class AsciinemaPlayerCore {
     this.startTime = null;
   }
 
-  static build(src, opts) {
+  static build(src, opts, onFinish) {
     if (typeof src === 'string') {
       if (src.substring(0, 5) == 'ws://' || src.substring(0, 6) == 'wss://') {
         src = { driver: 'websocket', url: src };
@@ -40,7 +40,7 @@ class AsciinemaPlayerCore {
       }
     }
 
-    return new AsciinemaPlayerCore(src, opts);
+    return new AsciinemaPlayerCore(src, opts, onFinish);
   }
 
   start() {
