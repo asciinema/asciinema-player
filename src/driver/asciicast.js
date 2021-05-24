@@ -5,7 +5,7 @@ function now() {
   return performance.now();
 }
 
-function asciicast(url, w, h, speed, feed, onFinish {
+function asciicast(url, w, h, speed, feed, onFinish) {
   let frames;
   let timeoutId;
   let isFinished;
