@@ -63,19 +63,17 @@ function asciicast(url, w, h, speed, feed, onFinish) {
     //   return new Promise(w,h);
     // },
 
-    start: () => {
-      return fetch(url)
-      .then(res => res.json())
-      .then(asciicast => {
-        frames = asciicast['stdout'];
-        start();
+    start: async () => {
+      const res = await fetch(url);
+      const asciicast = await res.json();
+      frames = asciicast['stdout'];
+      start();
 
-        return {
-          width: w || asciicast['width'],
-          height: h || asciicast['height'],
-          duration: asciicast['duration']
-        };
-      })
+      return {
+        width: w || asciicast['width'],
+        height: h || asciicast['height'],
+        duration: asciicast['duration']
+      };
     },
 
     stop: () => {
