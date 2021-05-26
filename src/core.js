@@ -1,16 +1,15 @@
-import vt from "./../vt-js/Cargo.toml";
+import loadVt from "./../vt-js/Cargo.toml";
 import {asciicast} from "./driver/asciicast";
 import {phoenixChannel} from "./driver/phoenix_channel";
 import {test} from "./driver/test";
 import {websocket} from "./driver/websocket";
+const vt = loadVt(); // trigger async loading of wasm
 
 
 class AsciinemaPlayerCore {
   // public
 
   constructor(src, opts, onFinish) {
-    vt(); // trigger async loading of wasm
-
     let feed = this.feed.bind(this);
 
     if (src.driver == 'asciicast') {
@@ -46,7 +45,7 @@ class AsciinemaPlayerCore {
   }
 
   async start() {
-    const { create } = await vt();
+    const { create } = await vt;
     let start = this.driver.start();
 
     if (!start) {
