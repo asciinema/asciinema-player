@@ -44,6 +44,7 @@
     "eslint-plugin-import": "^2.23.3",
     "eslint-plugin-jest": "^24.3.6",
     "eslint-plugin-prettier": "^3.4.0",
-    "rollup": "2.49.0"
+    "rollup": "2.49.0",
+    "rollup-plugin-terser": "^7.0.2"
   }
 }
