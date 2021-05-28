@@ -33,7 +33,7 @@ export default props => {
   };
 
   return (
-    <div class={'control-bar' + (props.isSeekable ? ' seekable' : '')}>
+    <div class="control-bar" classList={{ seekable: props.isSeekable }}>
       <Show when={props.isPausable}>
         <span class="playback-button" onClick={e(props.onPlayClick)}>
           <Switch>
