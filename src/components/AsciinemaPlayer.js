@@ -167,12 +167,10 @@ export default props => {
     }
   }
 
-  const e = (f) => { return e => { e.preventDefault(); f(e); } };
-
   // TODO visibility: hidden until loaded/resized
   return (
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" xref={'this.wrapperRef'} onKeyPress={onKeyPress}>
-      <div class="asciinema-player asciinema-theme-asciinema font-small" style={playerStyle()} xref={'this.playerRef'} onMouseEnter={e(() => showControls(true))} onMouseLeave={e(() => showControls(false))} onMouseMove={e(() => showControls(true))}>
+      <div class="asciinema-player asciinema-theme-asciinema font-small" style={playerStyle()} xref={'this.playerRef'} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)}>
         <Terminal width={state.width} height={state.height} scale={state.terminalScale} blink={state.blink} lines={state.lines} cursor={state.cursor} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={core.isPausable()} isSeekable={core.isSeekable()} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} />
         <Switch>
