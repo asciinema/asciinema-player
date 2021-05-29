@@ -192,7 +192,17 @@ export default props => {
   }
 
   const onKeyPress = (e) => {
-    // TODO
+    console.log(e);
+
+    if (!e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      if (e.key == ' ') {
+        e.preventDefault();
+        pauseOrResume();
+      } else if (e.key == 'f') {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    }
   }
 
   const startTimeUpdates = () => {
