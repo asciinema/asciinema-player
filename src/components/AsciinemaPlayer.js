@@ -167,7 +167,11 @@ export default props => {
   }
 
   const toggleFullscreen = () => {
-    // TODO
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      wrapperRef.requestFullscreen().then(resize);
+    }
   }
 
   const onFinish = () => {
