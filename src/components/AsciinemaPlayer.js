@@ -238,14 +238,13 @@ export default props => {
   }
 
   const showControls = (show) => {
+    clearTimeout(userActivityTimeoutId);
+
     if (show) {
-      clearTimeout(userActivityTimeoutId);
-      setState('showControls', true);
       userActivityTimeoutId = setTimeout(() => showControls(false), 2000);
-    } else {
-      clearTimeout(userActivityTimeoutId);
-      setState('showControls', false);
     }
+
+    setState('showControls', show);
   }
 
   const playerStyle = () => {
