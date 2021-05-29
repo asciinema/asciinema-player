@@ -1,5 +1,5 @@
 import AsciinemaPlayerCore from '../core';
-import { batch, createState, Match, onCleanup, onMount, reconcile, Switch } from 'solid-js';
+import { batch, createMemo, createState, Match, onCleanup, onMount, reconcile, Switch } from 'solid-js';
 import Terminal from './Terminal';
 import ControlBar from './ControlBar';
 import LoaderOverlay from './LoaderOverlay';
@@ -29,10 +29,8 @@ export default props => {
 
   let wrapperRef;
   let terminalRef;
-  let charW;
-  let charH;
-  let bordersW;
-  let bordersH;
+
+  let resizeObserver;
 
   const core = AsciinemaPlayerCore.build(props.src, {
     loop: props.loop || false,
@@ -43,12 +41,25 @@ export default props => {
   onMount(() => {
     console.log('mounted!');
 
-    charW = terminalRef.clientWidth / (state.width || 80);
-    charH = terminalRef.clientHeight / (state.height || 24);
-    bordersW = terminalRef.offsetWidth - terminalRef.clientWidth;
-    bordersH = terminalRef.offsetHeight - terminalRef.clientHeight;
+    setState({
+      charW: terminalRef.clientWidth / (state.width || 80),
+      charH: terminalRef.clientHeight / (state.height || 24),
+      bordersW: terminalRef.offsetWidth - terminalRef.clientWidth,
+      bordersH: terminalRef.offsetHeight - terminalRef.clientHeight,
+      containerW: wrapperRef.offsetWidth,
+      containerH: wrapperRef.offsetHeight
+    });
 
-    resize();
+    resizeObserver = new ResizeObserver(_entries => {
+      console.log('container resized!')
+
+      setState({
+        containerW: wrapperRef.offsetWidth,
+        containerH: wrapperRef.offsetHeight
+      });
+    });
+
+    resizeObserver.observe(wrapperRef);
   });
 
   onCleanup(() => {
@@ -56,6 +67,7 @@ export default props => {
     stopTimeUpdates();
     cancelAnimationFrame(frameRequestId);
     stopBlinking();
+    resizeObserver.disconnect();
   });
 
   const play = async () => {
@@ -73,7 +85,6 @@ export default props => {
       setState('duration', duration);
     } else {
       setState({ duration: duration, width: width, height: height });
-      resize(); // make this reactive - createEffect ?
     }
 
     frameRequestId = requestAnimationFrame(frame);
@@ -114,63 +125,61 @@ export default props => {
     });
   }
 
-  const resize = () => {
-    const container = wrapperRef;
+  const terminalSize = createMemo(() => {
+    console.log('terminalSize');
 
-    console.log(container);
-    console.log('resizing terminal');
-
-    const maxTerminalW = container.offsetWidth;
-    console.log(`maxTerminalW = ${maxTerminalW}`);
-
-    const newTerminalW = (charW * (state.width || 80)) + bordersW;
-    const newTerminalH = (charH * (state.height || 24)) + bordersH;
-    const isFullscreen = !!document.fullscreenElement;
-
-    if (props.size == 'fitboth' || isFullscreen) {
-      const containerRatio = container.offsetWidth / container.offsetHeight;
-      const terminalRatio = newTerminalW / newTerminalH;
-
-      if (containerRatio < terminalRatio) {
-        const scale = maxTerminalW / newTerminalW;
-
-        setState({
-          terminalScale: scale,
-          tw: maxTerminalW,
-          th: newTerminalH * scale
-        });
-      } else {
-        const scale = container.offsetHeight / newTerminalH;
-
-        setState({
-          terminalScale: scale,
-          tw: newTerminalW * scale,
-          th: container.offsetHeight
-        });
-      }
-    } else if (props.size == 'fit') {
-      const scale = maxTerminalW / newTerminalW;
-      console.log(scale);
-
-      setState({
-        terminalScale: scale,
-        tw: maxTerminalW,
-        th: newTerminalH * scale
-      });
-    } else {
-      setState({
-        terminalScale: 1,
-        tw: 200,
-        th: 100
-      });
+    if (!state.charW) {
+      return {};
     }
-  }
+
+    console.log(`containerW = ${state.containerW}`);
+
+    const terminalW = (state.charW * (state.width || 80)) + state.bordersW;
+    const terminalH = (state.charH * (state.height || 24)) + state.bordersH;
+
+    if (props.size) {
+      let priority = 'width';
+
+      if (props.size == 'fitboth' || !!document.fullscreenElement) {
+        const containerRatio = state.containerW / state.containerH;
+        const terminalRatio = terminalW / terminalH;
+
+        if (containerRatio > terminalRatio) {
+          priority = 'height';
+        }
+      }
+
+      if (priority == 'width') {
+        const scale = state.containerW / terminalW;
+
+        return {
+          scale: scale,
+          width: state.containerW,
+          height: terminalH * scale
+        };
+      } else {
+        const scale = state.containerH / terminalH;
+
+        return {
+          scale: scale,
+          width: terminalW * scale,
+          height: state.containerH
+        };
+      }
+    } else {
+      return {
+        scale: 1,
+        width: 200,
+        height: 100
+      };
+    }
+  });
 
   const toggleFullscreen = () => {
     if (document.fullscreenElement) {
       document.exitFullscreen();
     } else {
-      wrapperRef.requestFullscreen().then(resize);
+      wrapperRef.requestFullscreen();
     }
   }
 
@@ -225,10 +234,12 @@ export default props => {
   }
 
   const playerStyle = () => {
-    if (state.tw) {
+    const size = terminalSize();
+
+    if (size.width) {
       return {
-        width: `${state.tw}px`,
-        height: `${state.th}px`
+        width: `${size.width}px`,
+        height: `${size.height}px`
       }
     } else {
       return {
@@ -237,11 +248,13 @@ export default props => {
     }
   }
 
+  const terminalScale = () => terminalSize().scale;
+
   // TODO visibility: hidden until loaded/resized
   return (
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} ref={wrapperRef}>
       <div class="asciinema-player asciinema-theme-asciinema font-small" style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)}>
-        <Terminal width={state.width || 80} height={state.height || 24} scale={state.terminalScale} blink={state.blink} lines={state.lines} cursor={state.cursor} ref={terminalRef} />
+        <Terminal width={state.width || 80} height={state.height || 24} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={core.isPausable()} isSeekable={core.isSeekable()} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} />
         <Switch>
           <Match when={state.state == 'initial'}><StartOverlay onClick={play} /></Match>
