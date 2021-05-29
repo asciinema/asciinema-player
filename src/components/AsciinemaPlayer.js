@@ -89,7 +89,7 @@ export default props => {
     if (state.width) {
       setState('duration', duration);
     } else {
-      setState({ duration: duration, width: width, height: height });
+      setState({ width, height, duration });
     }
 
     frameRequestId = requestAnimationFrame(frame);
@@ -219,11 +219,11 @@ export default props => {
   }
 
   const updateTime = () => {
-    let t = core.getCurrentTime();
-    let r = core.getRemainingTime();
-    let p = core.getProgress();
+    let currentTime = core.getCurrentTime();
+    let remainingTime = core.getRemainingTime();
+    let progress = core.getProgress();
 
-    setState({ currentTime: t, remainingTime: r, progress: p});
+    setState({ currentTime, remainingTime, progress });
   }
 
   const startBlinking = () => {
