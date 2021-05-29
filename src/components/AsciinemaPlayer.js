@@ -27,6 +27,13 @@ export default props => {
   let timeUpdateIntervalId;
   let blinkIntervalId;
 
+  let wrapperRef;
+  let terminalRef;
+  let charW;
+  let charH;
+  let bordersW;
+  let bordersH;
+
   const core = AsciinemaPlayerCore.build(props.src, {
     loop: props.loop || false,
     cols: props.cols,
@@ -35,6 +42,13 @@ export default props => {
 
   onMount(() => {
     console.log('mounted!');
+
+    charW = terminalRef.clientWidth / (state.width || 80);
+    charH = terminalRef.clientHeight / (state.height || 24);
+    bordersW = terminalRef.offsetWidth - terminalRef.clientWidth;
+    bordersH = terminalRef.offsetHeight - terminalRef.clientHeight;
+
+    resize();
   });
 
   onCleanup(() => {
@@ -59,7 +73,7 @@ export default props => {
       setState('duration', duration);
     } else {
       setState({ duration: duration, width: width, height: height });
-      // TODO resize();
+      resize(); // make this reactive - createEffect ?
     }
 
     frameRequestId = requestAnimationFrame(frame);
@@ -98,6 +112,58 @@ export default props => {
         })
       }
     });
+  }
+
+  const resize = () => {
+    const container = wrapperRef;
+
+    console.log(container);
+    console.log('resizing terminal');
+
+    const maxTerminalW = container.offsetWidth;
+    console.log(`maxTerminalW = ${maxTerminalW}`);
+
+    const newTerminalW = (charW * (state.width || 80)) + bordersW;
+    const newTerminalH = (charH * (state.height || 24)) + bordersH;
+    const isFullscreen = !!document.fullscreenElement;
+
+    if (props.size == 'fitboth' || isFullscreen) {
+      const containerRatio = container.offsetWidth / container.offsetHeight;
+      const terminalRatio = newTerminalW / newTerminalH;
+
+      if (containerRatio < terminalRatio) {
+        const scale = maxTerminalW / newTerminalW;
+
+        setState({
+          terminalScale: scale,
+          tw: maxTerminalW,
+          th: newTerminalH * scale
+        });
+      } else {
+        const scale = container.offsetHeight / newTerminalH;
+
+        setState({
+          terminalScale: scale,
+          tw: newTerminalW * scale,
+          th: container.offsetHeight
+        });
+      }
+    } else if (props.size == 'fit') {
+      const scale = maxTerminalW / newTerminalW;
+      console.log(scale);
+
+      setState({
+        terminalScale: scale,
+        tw: maxTerminalW,
+        th: newTerminalH * scale
+      });
+    } else {
+      setState({
+        terminalScale: 1,
+        tw: 200,
+        th: 100
+      });
+    }
   }
 
   const toggleFullscreen = () => {
@@ -157,21 +223,21 @@ export default props => {
   const playerStyle = () => {
     if (state.tw) {
       return {
-        width: state.tw,
-        height: state.th
+        width: `${state.tw}px`,
+        height: `${state.th}px`
       }
     } else {
       return {
-        // height: 0
+        height: 0
       }
     }
   }
 
   // TODO visibility: hidden until loaded/resized
   return (
-    <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" xref={'this.wrapperRef'} onKeyPress={onKeyPress}>
-      <div class="asciinema-player asciinema-theme-asciinema font-small" style={playerStyle()} xref={'this.playerRef'} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)}>
-        <Terminal width={state.width} height={state.height} scale={state.terminalScale} blink={state.blink} lines={state.lines} cursor={state.cursor} />
+    <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} ref={wrapperRef}>
+      <div class="asciinema-player asciinema-theme-asciinema font-small" style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)}>
+        <Terminal width={state.width || 80} height={state.height || 24} scale={state.terminalScale} blink={state.blink} lines={state.lines} cursor={state.cursor} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={core.isPausable()} isSeekable={core.isSeekable()} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} />
         <Switch>
           <Match when={state.state == 'initial'}><StartOverlay onClick={play} /></Match>
