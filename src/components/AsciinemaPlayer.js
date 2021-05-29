@@ -219,9 +219,9 @@ export default props => {
   }
 
   const updateTime = () => {
-    let currentTime = core.getCurrentTime();
-    let remainingTime = core.getRemainingTime();
-    let progress = core.getProgress();
+    const currentTime = core.getCurrentTime();
+    const remainingTime = core.getRemainingTime();
+    const progress = core.getProgress();
 
     setState({ currentTime, remainingTime, progress });
   }
