@@ -11,7 +11,6 @@ export default props => {
     state: 'initial',
     cols: props.cols,
     rows: props.rows,
-    duration: null,
     lines: [],
     cursor: undefined,
     charW: null,
@@ -83,14 +82,12 @@ export default props => {
       setState('state', 'waiting');
     }, 1000);
 
-    const { cols, rows, duration } = await core.start();
+    const { cols, rows } = await core.start();
     clearTimeout(timeoutId);
     setState('state', 'playing');
 
-    if (state.cols) {
-      setState('duration', duration);
-    } else {
-      setState({ cols, rows, duration });
+    if (!state.cols) {
+      setState({ cols, rows });
     }
 
     frameRequestId = requestAnimationFrame(frame);
