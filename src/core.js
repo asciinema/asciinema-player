@@ -48,17 +48,19 @@ class AsciinemaPlayerCore {
   async start() {
     const { create } = await vt;
     let start = this.driver.start();
+    let meta;
 
-    if (!start) {
-      start = Promise.resolve({
-        cols: this.driver.cols,
-        rows: this.driver.rows
-      });
+    if (start) {
+      meta = await start;
+    } else {
+      meta = {};
     }
 
-    const meta = await start;
-    this.vt = create(meta.cols ?? this.driver.cols, meta.rows ?? this.driver.rows);
-    this.duration = meta.duration ?? this.driver.duration;
+    meta.cols = meta.cols ?? this.driver.cols ?? 80;
+    meta.rows = meta.rows ?? this.driver.rows ?? 24;
+    meta.duration = this.duration = meta.duration ?? this.driver.duration;
+
+    this.vt = create(meta.cols, meta.rows);
     this.startTime = (new Date()).getTime();
 
     for (let i = 0; i < meta.rows; i++) {
