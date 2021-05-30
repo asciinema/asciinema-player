@@ -38,9 +38,10 @@ export default props => {
   let resizeObserver;
 
   const core = AsciinemaPlayerCore.build(props.src, {
-    loop: props.loop || false,
     cols: props.cols,
-    rows: props.rows
+    rows: props.rows,
+    loop: props.loop ?? false,
+    speed: props.speed
   }, () => onFinish());
 
   onMount(() => {

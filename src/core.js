@@ -9,12 +9,18 @@ class AsciinemaPlayerCore {
   // public
 
   constructor(drv, opts, onFinish) {
-    const feed = this.feed.bind(this);
-
-    this.driver = drv({ feed, onFinish }, opts);
     this.changedLines = new Set();
     this.duration = null;
     this.startTime = null;
+    this.speed = opts.speed ?? 1.0;
+
+    const feed = this.feed.bind(this);
+    const now = this.now.bind(this);
+
+    const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
+    const setInterval = (f, t) => window.setInterval(f, t / this.speed);
+
+    this.driver = drv({ feed, onFinish, now, setTimeout, setInterval }, opts);
   }
 
   static build(src, opts, onFinish) {
@@ -61,7 +67,7 @@ class AsciinemaPlayerCore {
     meta.duration = this.duration = meta.duration ?? this.driver.duration;
 
     this.vt = create(meta.cols, meta.rows);
-    this.startTime = (new Date()).getTime();
+    this.startTime = this.now();
 
     for (let i = 0; i < meta.rows; i++) {
       this.changedLines.add(i);
@@ -104,7 +110,7 @@ class AsciinemaPlayerCore {
     if (this.driver.getCurrentTime) {
       return this.driver.getCurrentTime();
     } else if (this.startTime) {
-      return ((new Date).getTime() - this.startTime) / 1000;
+      return (this.now() - this.startTime) / 1000;
     }
   }
 
@@ -134,6 +140,8 @@ class AsciinemaPlayerCore {
     const affectedLines = this.vt.feed(data);
     affectedLines.forEach(i => this.changedLines.add(i));
   }
+
+  now() { return performance.now() * this.speed }
 }
 
 export default AsciinemaPlayerCore;

@@ -6,8 +6,7 @@ function test(kind, callbacks, opts) {
   }
 }
 
-function random({ feed }, { cols = 80, rows = 24, speed = 1.0 }) {
-  const t = 33 / speed;
+function random({ feed, setInterval }, { cols = 80, rows = 24 }) {
   let intervalId;
 
   return {
@@ -15,9 +14,7 @@ function random({ feed }, { cols = 80, rows = 24, speed = 1.0 }) {
     rows: rows,
 
     start: () => {
-      intervalId = setInterval(() => {
-        feed(Math.random().toString());
-      }, t);
+      intervalId = setInterval(() => { feed(Math.random().toString()) }, 33);
     },
 
     stop: () => {
