@@ -8,21 +8,10 @@ const vt = loadVt(); // trigger async loading of wasm
 class AsciinemaPlayerCore {
   // public
 
-  constructor(src, opts, onFinish) {
-    let feed = this.feed.bind(this);
+  constructor(drv, opts, onFinish) {
+    const feed = this.feed.bind(this);
 
-    if (typeof src == 'function') {
-      this.driver = src({ feed, onFinish });
-    } else if (src.driver == 'asciicast') {
-      this.driver = asciicast(src.url, null, null, 1, feed, onFinish);
-    } else if (src.driver == 'websocket') {
-      this.driver = websocket(src.url, null, null, feed);
-    } else if (src.driver == 'test') {
-      this.driver = test(src.kind, null, null, 1, feed);
-    } else {
-      throw `unsupported driver: ${JSON.stringify(src)}`;
-    }
-
+    this.driver = drv({ feed, onFinish }, opts);
     this.changedLines = new Set();
     this.duration = null;
     this.startTime = null;
@@ -39,7 +28,21 @@ class AsciinemaPlayerCore {
       }
     }
 
-    return new AsciinemaPlayerCore(src, opts, onFinish);
+    let drv;
+
+    if (typeof src === 'function') {
+      drv = src;
+    } else if (src.driver == 'asciicast') {
+      drv = (callbacks, opts) => asciicast(src.url, callbacks, opts);
+    } else if (src.driver == 'websocket') {
+      drv = (callbacks, opts) => websocket(src.url, callbacks, opts);
+    } else if (src.driver == 'test') {
+      drv = (callbacks, opts) => test(src.kind, callbacks, opts);
+    } else {
+      throw `unsupported driver: ${JSON.stringify(src)}`;
+    }
+
+    return new AsciinemaPlayerCore(drv, opts, onFinish);
   }
 
   async start() {

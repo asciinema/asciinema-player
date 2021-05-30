@@ -5,7 +5,7 @@ function now() {
   return performance.now();
 }
 
-function asciicast(url, w, h, speed, feed, onFinish) {
+function asciicast(url, { feed, onFinish }, { cols, rows }) {
   let frames;
   let timeoutId;
   let isFinished;
@@ -70,8 +70,8 @@ function asciicast(url, w, h, speed, feed, onFinish) {
       start();
 
       return {
-        width: w || asciicast['width'],
-        height: h || asciicast['height'],
+        width: cols || asciicast['width'],
+        height: rows || asciicast['height'],
         duration: asciicast['duration']
       };
     },

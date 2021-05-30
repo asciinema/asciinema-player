@@ -1,18 +1,18 @@
-function test(kind, width, height, speed, feed, _onFinish) {
+function test(kind, callbacks, opts) {
   if (kind == 'random') {
-    return random(width, height, speed, feed);
+    return random(callbacks, opts);
   } else if (kind == 'clock') {
-    return clock(width, height, speed, feed);
+    return clock(callbacks, opts);
   }
 }
 
-function random(width, height, speed, feed) {
-  const t = 33 / (speed || 1.0);
+function random({ feed }, { cols = 80, rows = 24, speed = 1.0 }) {
+  const t = 33 / speed;
   let intervalId;
 
   return {
-    width: width || 80,
-    height: height || 24,
+    width: cols,
+    height: rows,
 
     start: () => {
       intervalId = setInterval(() => {
@@ -26,16 +26,14 @@ function random(width, height, speed, feed) {
   };
 }
 
-function clock(width, height, _speed, feed, _onFinish) {
-  width = width || 5;
-  height = height || 1;
-  const middleRow = Math.floor(height / 2);
-  const leftPad = Math.floor(width / 2) - 2;
+function clock({ feed }, { cols = 5, rows = 1 }) {
+  const middleRow = Math.floor(rows / 2);
+  const leftPad = Math.floor(cols / 2) - 2;
   let intervalId;
 
   return {
-    width: width,
-    height: height,
+    width: cols,
+    height: rows,
     duration: 24 * 60,
 
     start: () => {
