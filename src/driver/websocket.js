@@ -14,8 +14,8 @@ function websocket(url, { feed }, { cols, rows }) {
 
         if (data.width) {
           resolveLoaded({
-            width: cols || data.width,
-            height: rows || data.height
+            cols: cols || data.cols || data.width,
+            rows: rows || data.rows || data.height
           });
 
           loaded = true;

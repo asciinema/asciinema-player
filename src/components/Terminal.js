@@ -3,8 +3,8 @@ import Line from './Line';
 export default props => {
   const terminalStyle = () => {
     return {
-      width: `${props.width}ch`,
-      height: `${1.3333333333 * props.height}em`,
+      width: `${props.cols}ch`,
+      height: `${1.3333333333 * props.rows}em`,
       "font-size": `${(props.scale || 1.0) * 100}%`
     }
   }

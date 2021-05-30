@@ -9,8 +9,8 @@ import StartOverlay from './StartOverlay';
 export default props => {
   const [state, setState] = createState({
     state: 'initial',
-    width: props.cols,
-    height: props.rows,
+    cols: props.cols,
+    rows: props.rows,
     duration: null,
     lines: [],
     cursor: undefined,
@@ -47,8 +47,8 @@ export default props => {
     console.log('mounted!');
 
     setState({
-      charW: terminalRef.clientWidth / (state.width || 80),
-      charH: terminalRef.clientHeight / (state.height || 24),
+      charW: terminalRef.clientWidth / (state.cols || 80),
+      charH: terminalRef.clientHeight / (state.rows || 24),
       bordersW: terminalRef.offsetWidth - terminalRef.clientWidth,
       bordersH: terminalRef.offsetHeight - terminalRef.clientHeight,
       containerW: wrapperRef.offsetWidth,
@@ -82,14 +82,14 @@ export default props => {
       setState('state', 'waiting');
     }, 1000);
 
-    const { width, height, duration } = await core.start();
+    const { cols, rows, duration } = await core.start();
     clearTimeout(timeoutId);
     setState('state', 'playing');
 
-    if (state.width) {
+    if (state.cols) {
       setState('duration', duration);
     } else {
-      setState({ width, height, duration });
+      setState({ cols, rows, duration });
     }
 
     frameRequestId = requestAnimationFrame(frame);
@@ -139,8 +139,8 @@ export default props => {
 
     console.log(`containerW = ${state.containerW}`);
 
-    const terminalW = (state.charW * (state.width || 80)) + state.bordersW;
-    const terminalH = (state.charH * (state.height || 24)) + state.bordersH;
+    const terminalW = (state.charW * (state.cols || 80)) + state.bordersW;
+    const terminalH = (state.charH * (state.rows || 24)) + state.bordersH;
 
     if (props.size) {
       let priority = 'width';
@@ -267,7 +267,7 @@ export default props => {
   return (
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} ref={wrapperRef}>
       <div class="asciinema-player asciinema-theme-asciinema font-small" style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)}>
-        <Terminal width={state.width || 80} height={state.height || 24} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} ref={terminalRef} />
+        <Terminal cols={state.cols || 80} rows={state.rows || 24} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={core.isPausable()} isSeekable={core.isSeekable()} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} />
         <Switch>
           <Match when={state.state == 'initial'}><StartOverlay onClick={play} /></Match>

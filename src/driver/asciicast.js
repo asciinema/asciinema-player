@@ -70,8 +70,8 @@ function asciicast(url, { feed, onFinish }, { cols, rows }) {
       start();
 
       return {
-        width: cols || asciicast['width'],
-        height: rows || asciicast['height'],
+        cols: cols || asciicast['width'],
+        rows: rows || asciicast['height'],
         duration: asciicast['duration']
       };
     },

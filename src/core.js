@@ -51,17 +51,17 @@ class AsciinemaPlayerCore {
 
     if (!start) {
       start = Promise.resolve({
-        width: this.driver.width,
-        height: this.driver.height
+        cols: this.driver.cols,
+        rows: this.driver.rows
       });
     }
 
     const meta = await start;
-    this.vt = create(meta.width, meta.height);
+    this.vt = create(meta.cols ?? this.driver.cols, meta.rows ?? this.driver.rows);
     this.duration = meta.duration ?? this.driver.duration;
     this.startTime = (new Date()).getTime();
 
-    for (let i = 0; i < meta.height; i++) {
+    for (let i = 0; i < meta.rows; i++) {
       this.changedLines.add(i);
     }
 

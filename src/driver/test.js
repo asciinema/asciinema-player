@@ -11,8 +11,8 @@ function random({ feed }, { cols = 80, rows = 24, speed = 1.0 }) {
   let intervalId;
 
   return {
-    width: cols,
-    height: rows,
+    cols: cols,
+    rows: rows,
 
     start: () => {
       intervalId = setInterval(() => {
@@ -32,8 +32,8 @@ function clock({ feed }, { cols = 5, rows = 1 }) {
   let intervalId;
 
   return {
-    width: cols,
-    height: rows,
+    cols: cols,
+    rows: rows,
     duration: 24 * 60,
 
     start: () => {
