@@ -83,7 +83,7 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
         return false;
       } else {
         if (isFinished) {
-          // TODO reset terminal here or in core
+          feed('\x1bc'); // reset terminal
           start();
         } else {
           scheduleNextFrame();
