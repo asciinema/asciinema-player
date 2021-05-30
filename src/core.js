@@ -11,7 +11,9 @@ class AsciinemaPlayerCore {
   constructor(src, opts, onFinish) {
     let feed = this.feed.bind(this);
 
-    if (src.driver == 'asciicast') {
+    if (typeof src == 'function') {
+      this.driver = src({ feed, onFinish });
+    } else if (src.driver == 'asciicast') {
       this.driver = asciicast(src.url, null, null, 1, feed, onFinish);
     } else if (src.driver == 'websocket') {
       this.driver = websocket(src.url, null, null, feed);
