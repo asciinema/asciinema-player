@@ -23,7 +23,6 @@ class AsciinemaPlayerCore {
       throw `unsupported driver: ${JSON.stringify(src)}`;
     }
 
-    this.lines = [];
     this.changedLines = new Set();
     this.duration = null;
     this.startTime = null;
