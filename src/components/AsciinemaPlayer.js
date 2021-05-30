@@ -43,8 +43,20 @@ export default props => {
     speed: props.speed
   }, () => onFinish());
 
-  onMount(() => {
+  onMount(async () => {
     console.log('mounted!');
+
+    if (props.preload) {
+      const preload = core.preload();
+
+      if (preload) {
+        const { cols, rows } = await preload;
+
+        if (!state.cols) {
+          setState({ cols, rows });
+        }
+      }
+    }
 
     setState({
       charW: terminalRef.clientWidth / (state.cols || 80),

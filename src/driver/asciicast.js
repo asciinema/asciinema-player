@@ -9,6 +9,15 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
   let virtualElapsedTime = 0;
   let startedTime;
   let lastFrameTime;
+  let recording;
+
+  function load() {
+    if (!recording) {
+      recording = fetch(url).then(res => res.json());
+    }
+
+    return recording;
+  }
 
   function scheduleNextFrame() {
     const nextFrame = frames[nextFrameIndex];
@@ -55,13 +64,18 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
   }
 
   return {
-    // preload: () => {
-    //   return new Promise(w,h);
-    // },
+    preload: async () => {
+      const asciicast = await load();
+
+      return {
+        cols: cols || asciicast['width'],
+        rows: rows || asciicast['height'],
+        duration: asciicast['duration']
+      };
+    },
 
     start: async () => {
-      const res = await fetch(url);
-      const asciicast = await res.json();
+      const asciicast = await load();
       frames = asciicast['stdout'];
       start();
 

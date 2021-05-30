@@ -62,6 +62,12 @@ class AsciinemaPlayerCore {
     return new AsciinemaPlayerCore(drv, opts, onFinish);
   }
 
+  preload() {
+    if (this.driver.preload) {
+      return this.driver.preload();
+    }
+  }
+
   async start() {
     const { create } = await vt;
     let start = this.driver.start();
