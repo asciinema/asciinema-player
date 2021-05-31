@@ -3,12 +3,13 @@
 
 function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
   let frames;
+  let duration;
   let timeoutId;
   let isFinished;
   let nextFrameIndex = 0;
-  let virtualElapsedTime = 0;
-  let startedTime;
-  let lastFrameTime;
+  let elapsedVirtualTime = 0;
+  let startTime;
+  let pauseElapsedTime;
   let recording;
 
   function load() {
@@ -24,8 +25,8 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
 
     if (nextFrame) {
       const delay = nextFrame[0] * 1000;
-      const actualElapsedTime = now() - startedTime;
-      let timeout = (virtualElapsedTime + delay) - actualElapsedTime;
+      const elapsedWallTime = now() - startTime;
+      let timeout = elapsedVirtualTime + delay - elapsedWallTime;
 
       if (timeout < 0) {
         timeout = 0;
@@ -41,25 +42,36 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
 
   function runFrame() {
     let frame = frames[nextFrameIndex];
-    let actualElapsedTime;
+    let elapsedWallTime;
 
     do {
       feed(frame[1]);
-      virtualElapsedTime += (frame[0] * 1000);
+      elapsedVirtualTime += (frame[0] * 1000);
       nextFrameIndex++;
       frame = frames[nextFrameIndex];
-      actualElapsedTime = now() - startedTime;
-    } while (frame && (actualElapsedTime > (virtualElapsedTime + frame[0] * 1000)));
+      elapsedWallTime = now() - startTime;
+    } while (frame && (elapsedWallTime > (elapsedVirtualTime + frame[0] * 1000)));
 
     scheduleNextFrame();
   }
 
   function start() {
     nextFrameIndex = 0;
-    virtualElapsedTime = 0;
-    startedTime = now();
-    lastFrameTime = startedTime;
+    elapsedVirtualTime = 0;
+    startTime = now();
     isFinished = false;
+    scheduleNextFrame();
+  }
+
+  function pause() {
+    clearTimeout(timeoutId);
+    timeoutId = null;
+    pauseElapsedTime = now() - startTime;
+  }
+
+  function resume() {
+    startTime = now() - pauseElapsedTime;
+    pauseElapsedTime = null;
     scheduleNextFrame();
   }
 
@@ -92,15 +104,14 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
 
     pauseOrResume: () => {
       if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
+        pause();
         return false;
       } else {
         if (isFinished) {
           feed('\x1bc'); // reset terminal
           start();
         } else {
-          scheduleNextFrame();
+          resume();
         }
 
         return true;
@@ -112,8 +123,12 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
     // },
 
     getCurrentTime: () => {
-      if (startedTime) {
-        return (now() - startedTime) / 1000;
+      if (isFinished) {
+        return duration;
+      } else if (timeoutId) {
+        return (now() - startTime) / 1000;
+      } else {
+        return (pauseElapsedTime ?? 0) / 1000;
       }
     }
   }

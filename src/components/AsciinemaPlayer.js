@@ -55,6 +55,8 @@ export default props => {
         if (!state.cols) {
           setState({ cols, rows });
         }
+
+        updateTime();
       }
     }
 
