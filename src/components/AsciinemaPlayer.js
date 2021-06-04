@@ -111,17 +111,21 @@ export default props => {
   }
 
   const pauseOrResume = () => {
-    const isPlaying = core.pauseOrResume();
-
-    if (isPlaying) {
-      setState('state', 'playing');
-      startTimeUpdates();
-      startBlinking();
+    if (state.state == 'initial') {
+      play();
     } else {
-      setState('state', 'paused');
-      updateTime();
-      stopTimeUpdates();
-      stopBlinking();
+      const isPlaying = core.pauseOrResume();
+
+      if (isPlaying) {
+        setState('state', 'playing');
+        startTimeUpdates();
+        startBlinking();
+      } else {
+        setState('state', 'paused');
+        updateTime();
+        stopTimeUpdates();
+        stopBlinking();
+      }
     }
   }
 
