@@ -32,6 +32,14 @@ export default props => {
     }
   };
 
+  const onSeek = e => {
+    const barWidth = e.currentTarget.offsetWidth;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+
+    return props.onSeekClick(mouseX / barWidth);
+  }
+
   return (
     <div class="control-bar" classList={{ seekable: props.isSeekable }}>
       <Show when={props.isPausable}>
@@ -70,7 +78,7 @@ export default props => {
 
       <Show when={typeof props.progress === 'number'}>
         <span class="progressbar">
-          <span class="bar">
+          <span class="bar" onMouseDown={onSeek}>
             <span class="gutter">
               <span style={gutterBarStyle()}>
               </span>

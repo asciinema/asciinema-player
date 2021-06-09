@@ -36,6 +36,7 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
     } else {
       timeoutId = null;
       isFinished = true;
+      pauseElapsedTime = duration * 1000;
       onFinish();
     }
   }
@@ -55,14 +56,6 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
     scheduleNextFrame();
   }
 
-  function start() {
-    nextFrameIndex = 0;
-    elapsedVirtualTime = 0;
-    startTime = now();
-    isFinished = false;
-    scheduleNextFrame();
-  }
-
   function pause() {
     clearTimeout(timeoutId);
     timeoutId = null;
@@ -73,6 +66,39 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
     startTime = now() - pauseElapsedTime;
     pauseElapsedTime = null;
     scheduleNextFrame();
+  }
+
+  function seek(where) {
+    // TODO make it async so it can fetch if needed (when seek called before start)
+    const isPlaying = !!timeoutId;
+
+    if (isPlaying) {
+      pause();
+    }
+
+    const targetTime = duration * where * 1000;
+
+    if (targetTime < elapsedVirtualTime) {
+      feed('\x1bc'); // reset terminal
+      nextFrameIndex = 0;
+      elapsedVirtualTime = 0;
+    }
+
+    let frame = frames[nextFrameIndex];
+
+    while (frame && (elapsedVirtualTime + (frame[0] * 1000) < targetTime)) {
+      feed(frame[1]);
+      elapsedVirtualTime += frame[0] * 1000;
+      nextFrameIndex++;
+      frame = frames[nextFrameIndex];
+    }
+
+    pauseElapsedTime = targetTime;
+    isFinished = false;
+
+    if (isPlaying) {
+      resume();
+    }
   }
 
   return {
@@ -89,7 +115,10 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
     start: async () => {
       const asciicast = await load();
       frames = asciicast['stdout'];
-      start();
+      duration = asciicast['duration'];
+
+      seek(0);
+      resume();
 
       return {
         cols: cols || asciicast['width'],
@@ -108,24 +137,21 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
         return false;
       } else {
         if (isFinished) {
-          feed('\x1bc'); // reset terminal
-          start();
-        } else {
-          resume();
+          seek(0);
         }
+
+        resume();
 
         return true;
       }
     },
 
-    // seek: (pos) => {
-    //   return seekTime;
-    // },
+    seek: (where) => {
+      return seek(where);
+    },
 
     getCurrentTime: () => {
-      if (isFinished) {
-        return duration;
-      } else if (timeoutId) {
+      if (timeoutId) {
         return (now() - startTime) / 1000;
       } else {
         return (pauseElapsedTime ?? 0) / 1000;

@@ -103,6 +103,12 @@ class AsciinemaPlayerCore {
     }
   }
 
+  seek(where) {
+    if (this.driver.seek) {
+      this.driver.seek(where);
+    }
+  }
+
   getChangedLines() {
     const lines = new Map();
 

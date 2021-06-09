@@ -131,7 +131,10 @@ export default props => {
 
   const frame = () => {
     frameRequestId = requestAnimationFrame(frame);
+    updateTerminal();
+  }
 
+  const updateTerminal = () => {
     const cursor = core.getCursor();
     const changedLines = core.getChangedLines();
 
@@ -222,8 +225,18 @@ export default props => {
       } else if (e.key == 'f') {
         e.preventDefault();
         toggleFullscreen();
+      } else if (e.key.charCodeAt(0) >= 48 && e.key.charCodeAt(0) <= 57) {
+        e.preventDefault();
+        const pos = (e.key.charCodeAt(0) - 48) / 10;
+        seek(pos);
       }
     }
+  }
+
+  const seek = pos => {
+    core.seek(pos);
+    updateTime();
+    updateTerminal();
   }
 
   const startTimeUpdates = () => {
@@ -284,7 +297,7 @@ export default props => {
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} ref={wrapperRef}>
       <div class="asciinema-player asciinema-theme-asciinema font-small" style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)}>
         <Terminal cols={state.cols || 80} rows={state.rows || 24} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} ref={terminalRef} />
-        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={core.isPausable()} isSeekable={core.isSeekable()} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} />
+        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={core.isPausable()} isSeekable={core.isSeekable()} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Switch>
           <Match when={state.state == 'initial'}><StartOverlay onClick={play} /></Match>
           <Match when={state.state == 'waiting'}><LoaderOverlay /></Match>
