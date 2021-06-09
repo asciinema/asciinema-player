@@ -240,7 +240,7 @@ export default props => {
   }
 
   const startTimeUpdates = () => {
-    timeUpdateIntervalId = setInterval(updateTime, 1000);
+    timeUpdateIntervalId = setInterval(updateTime, 100);
   }
 
   const stopTimeUpdates = () => {
