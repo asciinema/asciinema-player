@@ -1,7 +1,7 @@
 // TODO rename to file driver
 // TODO support ttyrec (via opts.format == 'ttyrec')
 
-function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
+function asciicast(url, { feed, now, setTimeout, onFinish }) {
   let frames;
   let duration;
   let timeoutId;
@@ -20,8 +20,8 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
       frames = asciicast['stdout'];
 
       meta = {
-        cols: cols || asciicast['width'],
-        rows: rows || asciicast['height'],
+        cols: asciicast['width'],
+        rows: asciicast['height'],
         duration: duration
       };
     }

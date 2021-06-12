@@ -1,18 +1,15 @@
 function test(kind, callbacks, opts) {
   if (kind == 'random') {
-    return random(callbacks, opts);
+    return random(callbacks);
   } else if (kind == 'clock') {
     return clock(callbacks, opts);
   }
 }
 
-function random({ feed, setInterval }, { cols = 80, rows = 24 }) {
+function random({ feed, setInterval }) {
   let intervalId;
 
   return {
-    cols: cols,
-    rows: rows,
-
     start: () => {
       intervalId = setInterval(() => { feed(Math.random().toString()) }, 33);
     },

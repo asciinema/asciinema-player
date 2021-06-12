@@ -1,4 +1,4 @@
-function websocket(url, { feed }, { cols, rows }) {
+function websocket(url, { feed }) {
   let socket;
 
   return {
@@ -14,8 +14,8 @@ function websocket(url, { feed }, { cols, rows }) {
 
         if (data.width) {
           resolveLoaded({
-            cols: cols || data.cols || data.width,
-            rows: rows || data.rows || data.height
+            cols: data.cols || data.width,
+            rows: data.rows || data.height
           });
 
           loaded = true;

@@ -11,6 +11,8 @@ class AsciinemaPlayerCore {
   constructor(drv, opts, viewOnFinish) {
     this.changedLines = new Set();
     this.duration = null;
+    this.cols = opts.cols;
+    this.rows = opts.rows;
     this.startTime = null;
     this.speed = opts.speed ?? 1.0;
     this.playCount = 0;
@@ -150,8 +152,8 @@ class AsciinemaPlayerCore {
   now() { return performance.now() * this.speed }
 
   async init({ cols, rows, duration }) {
-    cols = cols ?? this.driver.cols ?? 80;
-    rows = rows ?? this.driver.rows ?? 24;
+    cols = this.cols ?? cols ?? this.driver.cols ?? 80;
+    rows = this.rows ?? rows ?? this.driver.rows ?? 24;
     duration = this.duration = duration ?? this.driver.duration;
 
     if (!this.vt) {
