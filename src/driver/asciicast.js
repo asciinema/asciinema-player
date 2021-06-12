@@ -146,7 +146,7 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
       }
     },
 
-    seek: (where) => {
+    seek: where => {
       return seek(where);
     },
 
