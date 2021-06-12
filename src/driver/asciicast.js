@@ -10,14 +10,21 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
   let elapsedVirtualTime = 0;
   let startTime;
   let pauseElapsedTime;
-  let recording;
+  let meta;
 
-  function load() {
-    if (!recording) {
-      recording = fetch(url).then(res => res.json());
+  async function load() {
+    if (!frames) {
+      const res = await fetch(url);
+      const asciicast = await res.json();
+      duration = asciicast['duration'];
+      frames = asciicast['stdout'];
+
+      meta = {
+        cols: cols || asciicast['width'],
+        rows: rows || asciicast['height'],
+        duration: duration
+      };
     }
-
-    return recording;
   }
 
   function scheduleNextFrame() {
@@ -103,28 +110,18 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { cols, rows }) {
 
   return {
     preload: async () => {
-      const asciicast = await load();
+      await load();
 
-      return {
-        cols: cols || asciicast['width'],
-        rows: rows || asciicast['height'],
-        duration: asciicast['duration']
-      };
+      return meta;
     },
 
     start: async () => {
-      const asciicast = await load();
-      frames = asciicast['stdout'];
-      duration = asciicast['duration'];
+      await load();
 
       seek(0);
       resume();
 
-      return {
-        cols: cols || asciicast['width'],
-        rows: rows || asciicast['height'],
-        duration: asciicast['duration']
-      };
+      return meta;
     },
 
     stop: () => {
