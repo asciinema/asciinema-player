@@ -69,19 +69,9 @@ class AsciinemaPlayerCore {
   }
 
   async start() {
-    const { create } = await vt;
     let meta = (await this.driver.start()) ?? {};
-
-    meta.cols = meta.cols ?? this.driver.cols ?? 80;
-    meta.rows = meta.rows ?? this.driver.rows ?? 24;
-    meta.duration = this.duration = meta.duration ?? this.driver.duration;
-
-    this.vt = create(meta.cols, meta.rows);
+    meta = await this.init(meta);
     this.startTime = this.now();
-
-    for (let i = 0; i < meta.rows; i++) {
-      this.changedLines.add(i);
-    }
 
     return meta;
   }
@@ -158,6 +148,24 @@ class AsciinemaPlayerCore {
   }
 
   now() { return performance.now() * this.speed }
+
+  async init({ cols, rows, duration }) {
+    cols = cols ?? this.driver.cols ?? 80;
+    rows = rows ?? this.driver.rows ?? 24;
+    duration = this.duration = duration ?? this.driver.duration;
+
+    if (!this.vt) {
+      const { create } = await vt;
+
+      this.vt = create(cols, rows);
+
+      for (let i = 0; i < rows; i++) {
+        this.changedLines.add(i);
+      }
+    }
+
+    return { cols, rows, duration };
+  }
 }
 
 export default AsciinemaPlayerCore;
