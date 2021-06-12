@@ -47,11 +47,9 @@ export default props => {
     console.log('mounted!');
 
     if (props.preload) {
-      const preload = core.preload();
+      const { cols, rows } = await core.preload();
 
-      if (preload) {
-        const { cols, rows } = await preload;
-
+      if (cols) {
         if (!state.cols) {
           setState({ cols, rows });
         }

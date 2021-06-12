@@ -70,14 +70,7 @@ class AsciinemaPlayerCore {
 
   async start() {
     const { create } = await vt;
-    let start = this.driver.start();
-    let meta;
-
-    if (start) {
-      meta = await start;
-    } else {
-      meta = {};
-    }
+    let meta = (await this.driver.start()) ?? {};
 
     meta.cols = meta.cols ?? this.driver.cols ?? 80;
     meta.rows = meta.rows ?? this.driver.rows ?? 24;
