@@ -75,6 +75,10 @@ export default props => {
     });
 
     resizeObserver.observe(wrapperRef);
+
+    if (props.autoplay) {
+      play();
+    }
   });
 
   onCleanup(() => {
