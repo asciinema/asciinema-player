@@ -76,7 +76,6 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
   }
 
   function seek(where) {
-    // TODO make it async so it can fetch if needed (when seek called before start)
     const isPlaying = !!timeoutId;
 
     if (isPlaying) {
@@ -109,7 +108,7 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
   }
 
   return {
-    preload: async () => {
+    init: async () => {
       await load();
 
       return meta;
@@ -117,11 +116,8 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
 
     start: async () => {
       await load();
-
       seek(0);
       resume();
-
-      return meta;
     },
 
     stop: () => {

@@ -64,18 +64,18 @@ class AsciinemaPlayerCore {
     return new AsciinemaPlayerCore(drv, opts, onFinish);
   }
 
-  preload() {
-    if (this.driver.preload) {
-      return this.driver.preload();
-    }
+  async preload() {
+    await this.init();
+
+    return this.meta;
   }
 
   async start() {
-    let meta = (await this.driver.start()) ?? {};
-    meta = await this.init(meta);
+    await this.init();
+    this.driver.start();
     this.startTime = this.now();
 
-    return meta;
+    return this.meta;
   }
 
   stop() {
@@ -88,9 +88,14 @@ class AsciinemaPlayerCore {
     }
   }
 
-  seek(where) {
+  async seek(where) {
     if (this.driver.seek) {
+      await this.init();
       this.driver.seek(where);
+
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -151,22 +156,28 @@ class AsciinemaPlayerCore {
 
   now() { return performance.now() * this.speed }
 
-  async init({ cols, rows, duration }) {
-    cols = this.cols ?? cols ?? this.driver.cols ?? 80;
-    rows = this.rows ?? rows ?? this.driver.rows ?? 24;
-    duration = this.duration = duration ?? this.driver.duration;
+  async init() {
+    if (this.meta) { return }
 
-    if (!this.vt) {
-      const { create } = await vt;
+    let driverMeta = {};
 
-      this.vt = create(cols, rows);
-
-      for (let i = 0; i < rows; i++) {
-        this.changedLines.add(i);
-      }
+    if (this.driver.init) {
+      driverMeta = await this.driver.init();
     }
 
-    return { cols, rows, duration };
+    this.meta = {
+      cols: this.cols ?? driverMeta.cols ?? this.driver.cols ?? 80,
+      rows: this.rows ?? driverMeta.rows ?? this.driver.rows ?? 24,
+      duration: driverMeta.duration ?? this.driver.duration
+    }
+
+    this.duration = this.meta.duration;
+    const { create } = await vt;
+    this.vt = create(this.meta.cols, this.meta.rows);
+
+    for (let i = 0; i < this.meta.rows; i++) {
+      this.changedLines.add(i);
+    }
   }
 }
 

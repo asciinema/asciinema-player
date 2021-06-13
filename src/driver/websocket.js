@@ -3,28 +3,15 @@ function websocket(url, { feed }) {
 
   return {
     start: () => {
-      let resolveLoaded;
-      let loader = new Promise(resolve => resolveLoaded = resolve);
-      let loaded = false;
-
       socket = new WebSocket(url);
 
       socket.onmessage = (event) => {
         let data = JSON.parse(event.data);
 
-        if (data.width) {
-          resolveLoaded({
-            cols: data.cols || data.width,
-            rows: data.rows || data.height
-          });
-
-          loaded = true;
-        } else if (data[1] == 'o' && loaded) {
+        if (data[1] == 'o') {
           feed(data[2]);
         }
       }
-
-      return loader;
     },
 
     stop: () => {

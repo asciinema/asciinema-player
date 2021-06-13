@@ -229,10 +229,11 @@ export default props => {
     }
   }
 
-  const seek = pos => {
-    core.seek(pos);
-    updateTime();
-    updateTerminal();
+  const seek = async pos => {
+    if (await core.seek(pos)) {
+      updateTime();
+      updateTerminal();
+    }
   }
 
   const startTimeUpdates = () => {
