@@ -7,17 +7,13 @@ function test(kind, callbacks, opts) {
 }
 
 function random({ feed, setInterval }) {
-  let intervalId;
+  return () => {
+    const intervalId = setInterval(() => {
+      feed(Math.random().toString());
+    }, 33);
 
-  return {
-    start: () => {
-      intervalId = setInterval(() => { feed(Math.random().toString()) }, 33);
-    },
-
-    stop: () => {
-      clearInterval(intervalId);
-    }
-  };
+    return () => clearInterval(intervalId);
+  }
 }
 
 function clock({ feed }, { cols = 5, rows = 1 }) {

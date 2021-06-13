@@ -34,6 +34,10 @@ class AsciinemaPlayerCore {
     }
 
     this.driver = drv({ feed, now, setTimeout, setInterval, onFinish }, opts);
+
+    if (typeof this.driver === 'function') {
+      this.driver = { start: this.driver };
+    }
   }
 
   static build(src, opts, onFinish) {
@@ -72,7 +76,12 @@ class AsciinemaPlayerCore {
 
   async start() {
     await this.init();
-    this.driver.start();
+    const stop = await this.driver.start();
+
+    if (typeof stop === 'function') {
+      this.driver.stop = stop;
+    }
+
     this.startTime = this.now();
 
     return this.meta;
