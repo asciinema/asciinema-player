@@ -47,15 +47,13 @@ export default props => {
     console.log('mounted!');
 
     if (props.preload) {
-      const { cols, rows } = await core.preload();
+      const meta = await core.preload();
 
-      if (cols) {
-        if (!state.cols) {
-          setState({ cols, rows });
-        }
-
-        updateTime();
+      if (meta && !state.cols) {
+        setState({ cols: meta.cols, rows: meta.rows });
       }
+
+      updateTime();
     }
 
     setState({
