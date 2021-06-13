@@ -6,13 +6,26 @@ function test(kind, callbacks, opts) {
   }
 }
 
-function random({ feed, setInterval }) {
-  return () => {
-    const intervalId = setInterval(() => {
-      feed(Math.random().toString());
-    }, 33);
+function random({ feed, setTimeout }) {
+  const base = ' '.charCodeAt(0);
+  const range = '~'.charCodeAt(0) - base;
+  let timeoutId;
 
-    return () => clearInterval(intervalId);
+  const schedule = () => {
+    const t = Math.pow(5, Math.random() * 4);
+    timeoutId = setTimeout(print, t);
+  }
+
+  const print = () => {
+    schedule();
+    const char = String.fromCharCode(base + Math.floor(Math.random() * range));
+    feed(char);
+  };
+
+  return () => {
+    schedule();
+
+    return () => clearInterval(timeoutId);
   }
 }
 
