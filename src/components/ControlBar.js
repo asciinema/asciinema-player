@@ -76,7 +76,7 @@ export default props => {
         </svg>
       </span>
 
-      <Show when={typeof props.progress === 'number'}>
+      <Show when={typeof props.progress === 'number' || props.isSeekable}>
         <span class="progressbar">
           <span class="bar" onMouseDown={onSeek}>
             <span class="gutter">
