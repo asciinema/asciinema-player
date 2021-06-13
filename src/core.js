@@ -79,7 +79,9 @@ class AsciinemaPlayerCore {
   }
 
   stop() {
-    this.driver.stop();
+    if (this.driver.stop) {
+      this.driver.stop();
+    }
   }
 
   pauseOrResume() {
