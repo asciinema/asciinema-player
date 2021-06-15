@@ -1,5 +1,5 @@
 import AsciinemaPlayerCore from '../core';
-import { batch, createMemo, createState, Match, onCleanup, onMount, reconcile, Switch } from 'solid-js';
+import { batch, createEffect, createMemo, createState, Match, onCleanup, onMount, reconcile, Switch } from 'solid-js';
 import Terminal from './Terminal';
 import ControlBar from './ControlBar';
 import LoaderOverlay from './LoaderOverlay';
@@ -23,7 +23,8 @@ export default props => {
     currentTime: null,
     remainingTime: null,
     progress: null,
-    blink: true
+    blink: true,
+    forceBlink: false
   });
 
   let frameRequestId;
@@ -89,6 +90,11 @@ export default props => {
     resizeObserver.disconnect();
   });
 
+  createEffect(() => {
+    state.cursor;  // <- accessing this subscribes this effect for cursor change
+    setState('forceBlink', true);
+  });
+
   const play = async () => {
     setState('state', 'loading');
 
@@ -144,7 +150,9 @@ export default props => {
       if (changedLines.size > 0) {
         changedLines.forEach((line, i) => {
           setState('lines', i, reconcile(line));
-        })
+        });
+
+        setState('forceBlink', true);
       }
     });
   }
@@ -258,7 +266,15 @@ export default props => {
 
   const startBlinking = () => {
     blinkIntervalId = setInterval(() => {
-      setState('blink', blink => !blink);
+      setState(state => {
+        const changes = { blink: !state.blink };
+
+        if (changes.blink) {
+          changes.forceBlink = false;
+        }
+
+        return changes;
+      });
     }, 500);
   }
 
@@ -297,7 +313,7 @@ export default props => {
   return (
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} ref={wrapperRef}>
       <div class="asciinema-player asciinema-theme-asciinema font-small" style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)}>
-        <Terminal cols={state.cols || 80} rows={state.rows || 24} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} ref={terminalRef} />
+        <Terminal cols={state.cols || 80} rows={state.rows || 24} scale={terminalScale()} blink={state.forceBlink || state.blink} lines={state.lines} cursor={state.cursor} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={core.isPausable()} isSeekable={core.isSeekable()} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Switch>
           <Match when={state.state == 'initial'}><StartOverlay onClick={play} /></Match>
