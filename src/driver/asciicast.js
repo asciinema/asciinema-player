@@ -15,13 +15,13 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
   async function load() {
     if (!frames) {
       const res = await fetch(url);
-      const asciicast = await res.json();
-      duration = asciicast['duration'];
-      frames = asciicast['stdout'];
+      const asciicast = parseAsciicast(await res.text());
+      duration = asciicast.duration;
+      frames = asciicast.frames;
 
       meta = {
-        cols: asciicast['width'],
-        rows: asciicast['height'],
+        cols: asciicast.cols,
+        rows: asciicast.rows,
         duration: duration
       };
     }
@@ -31,9 +31,9 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
     const nextFrame = frames[nextFrameIndex];
 
     if (nextFrame) {
-      const delay = nextFrame[0] * 1000;
+      const t = nextFrame[0] * 1000;
       const elapsedWallTime = now() - startTime;
-      let timeout = elapsedVirtualTime + delay - elapsedWallTime;
+      let timeout = t - elapsedWallTime;
 
       if (timeout < 0) {
         timeout = 0;
@@ -54,11 +54,10 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
 
     do {
       feed(frame[1]);
-      elapsedVirtualTime += (frame[0] * 1000);
-      nextFrameIndex++;
-      frame = frames[nextFrameIndex];
+      elapsedVirtualTime = frame[0] * 1000;
+      frame = frames[++nextFrameIndex];
       elapsedWallTime = now() - startTime;
-    } while (frame && (elapsedWallTime > (elapsedVirtualTime + frame[0] * 1000)));
+    } while (frame && (elapsedWallTime > frame[0] * 1000));
 
     scheduleNextFrame();
   }
@@ -92,11 +91,10 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
 
     let frame = frames[nextFrameIndex];
 
-    while (frame && (elapsedVirtualTime + (frame[0] * 1000) < targetTime)) {
+    while (frame && (frame[0] * 1000 < targetTime)) {
       feed(frame[1]);
-      elapsedVirtualTime += frame[0] * 1000;
-      nextFrameIndex++;
-      frame = frames[nextFrameIndex];
+      elapsedVirtualTime = frame[0] * 1000;
+      frame = frames[++nextFrameIndex];
     }
 
     pauseElapsedTime = targetTime;
@@ -149,6 +147,52 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
       } else {
         return (pauseElapsedTime ?? 0) / 1000;
       }
+    }
+  }
+}
+
+function parseAsciicast(text) {
+  const lines = text.split('\n');
+  let header;
+
+  try {
+    header = JSON.parse(lines[0]);
+
+    if (header.version === 1) {
+      header = undefined;
+    }
+  } catch (_error) {
+    // not v2 format, we'll try parsing as v1 below
+  }
+
+  if (header) {
+    const frames = lines
+      .slice(1)
+      .filter(l => l[0] === '[')
+      .map(l => JSON.parse(l))
+      .filter(e => e[1] === 'o')
+      .map(e => [e[0], e[2]]);
+
+    return {
+      cols: header.width,
+      rows: header.height,
+      duration: frames[frames.length - 1][0],
+      frames: frames
+    }
+  } else {
+    const asciicast = JSON.parse(text);
+    let duration = 0;
+
+    const frames = asciicast.stdout.map(e => {
+      duration += e[0];
+      return [duration, e[1]];
+    });
+
+    return {
+      cols: asciicast.width,
+      rows: asciicast.height,
+      duration: duration,
+      frames: frames
     }
   }
 }
