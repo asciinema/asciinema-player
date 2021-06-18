@@ -226,19 +226,26 @@ export default props => {
   const onKeyPress = (e) => {
     console.log(e);
 
-    if (!e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-      if (e.key == ' ') {
-        e.preventDefault();
-        pauseOrResume();
-      } else if (e.key == 'f') {
-        e.preventDefault();
-        toggleFullscreen();
-      } else if (e.key.charCodeAt(0) >= 48 && e.key.charCodeAt(0) <= 57) {
-        e.preventDefault();
-        const pos = (e.key.charCodeAt(0) - 48) / 10;
-        seek(pos);
-      }
+    if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey) {
+      return;
     }
+
+    if (e.key == ' ') {
+      pauseOrResume();
+    } else if (e.key == 'f') {
+      toggleFullscreen();
+    } else if (e.key == 'ArrowLeft') {
+      seek('<<');
+    } else if (e.key == 'ArrowRight') {
+      seek('>>');
+    } else if (e.key.charCodeAt(0) >= 48 && e.key.charCodeAt(0) <= 57) {
+      const pos = (e.key.charCodeAt(0) - 48) / 10;
+      seek(pos);
+    } else {
+      return;
+    }
+
+    e.preventDefault();
   }
 
   const seek = async pos => {

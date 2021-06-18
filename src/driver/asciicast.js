@@ -81,6 +81,12 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
       pause();
     }
 
+    if (where === '<<') {
+      where = Math.max(0, ((pauseElapsedTime ?? 0) / (duration * 1000)) - 0.1);
+    } else if (where === '>>') {
+      where = Math.min(1, ((pauseElapsedTime ?? 0) / (duration * 1000)) + 0.1);
+    }
+
     const targetTime = duration * where * 1000;
 
     if (targetTime < elapsedVirtualTime) {
