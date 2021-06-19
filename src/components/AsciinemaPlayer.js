@@ -41,19 +41,20 @@ export default props => {
     cols: props.cols,
     rows: props.rows,
     loop: props.loop ?? false,
-    speed: props.speed
+    speed: props.speed,
+
+    onSize: (cols, rows) => {
+      if (!state.cols) {
+        setState({ cols, rows });
+      }
+    }
   }, () => onFinish());
 
   onMount(async () => {
     console.log('mounted!');
 
     if (props.preload) {
-      const meta = await core.preload();
-
-      if (meta && !state.cols) {
-        setState({ cols: meta.cols, rows: meta.rows });
-      }
-
+      await core.preload();
       updateTime();
     }
 
@@ -102,16 +103,10 @@ export default props => {
       setState('state', 'waiting');
     }, 1000);
 
-    const { cols, rows } = await core.start();
+    await core.start();
     clearTimeout(timeoutId);
     setState('state', 'playing');
-
-    if (!state.cols) {
-      setState({ cols, rows });
-    }
-
     frameRequestId = requestAnimationFrame(frame);
-
     startTimeUpdates();
     startBlinking();
   }

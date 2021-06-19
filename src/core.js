@@ -16,6 +16,7 @@ class AsciinemaPlayerCore {
     this.startTime = null;
     this.speed = opts.speed ?? 1.0;
     this.playCount = 0;
+    this.onSize = opts.onSize;
 
     const feed = this.feed.bind(this);
     const now = this.now.bind(this);
@@ -70,8 +71,6 @@ class AsciinemaPlayerCore {
 
   async preload() {
     await this.init();
-
-    return this.meta;
   }
 
   async start() {
@@ -188,6 +187,10 @@ class AsciinemaPlayerCore {
 
     for (let i = 0; i < this.meta.rows; i++) {
       this.changedLines.add(i);
+    }
+
+    if (this.onSize) {
+      this.onSize(this.meta.cols, this.meta.rows);
     }
   }
 }
