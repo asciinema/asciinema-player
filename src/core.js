@@ -18,22 +18,21 @@ class AsciinemaPlayerCore {
     this.startTime = null;
     this.speed = opts.speed ?? 1.0;
     this.loop = opts.loop;
-    this.playCount = 0;
     this.onSize = opts.onSize;
     this.onFinish = opts.onFinish;
   }
 
   init() {
+    let playCount = 0;
     const feed = this.feed.bind(this);
     const now = this.now.bind(this);
-
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
 
     const onFinish = () => {
-      this.playCount++;
+      playCount++;
 
-      if (this.loop === true || (typeof this.loop === 'number' && this.playCount < this.loop)) {
+      if (this.loop === true || (typeof this.loop === 'number' && playCount < this.loop)) {
         this.pauseOrResume();
       } else {
         if (this.onFinish) {
