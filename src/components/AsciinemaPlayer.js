@@ -92,9 +92,9 @@ export default props => {
 
   onCleanup(() => {
     core.stop()
-    stopTimeUpdates();
-    cancelAnimationFrame(frameRequestId);
+    stopTerminalUpdates();
     stopBlinking();
+    stopTimeUpdates();
     resizeObserver.disconnect();
   });
 
@@ -107,11 +107,13 @@ export default props => {
     const s = state.state;
 
     if (s === 'playing') {
-      startTimeUpdates();
+      startTerminalUpdates();
       startBlinking();
+      startTimeUpdates();
     } else if (s === 'paused') {
-      stopTimeUpdates();
+      stopTerminalUpdates();
       stopBlinking();
+      stopTimeUpdates();
       updateTime();
     }
   });
@@ -126,7 +128,6 @@ export default props => {
     await core.start();
     clearTimeout(timeoutId);
     setState('state', 'playing');
-    frameRequestId = requestAnimationFrame(frame);
   }
 
   const pauseOrResume = () => {
@@ -136,6 +137,14 @@ export default props => {
       const isPlaying = core.pauseOrResume();
       setState('state', isPlaying ? 'playing' : 'paused');
     }
+  }
+
+  const startTerminalUpdates = () => {
+    frameRequestId = requestAnimationFrame(frame);
+  }
+
+  const stopTerminalUpdates = () => {
+    cancelAnimationFrame(frameRequestId);
   }
 
   const frame = () => {
