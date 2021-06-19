@@ -103,6 +103,19 @@ export default props => {
     setState('forceBlink', true);
   });
 
+  createEffect(() => {
+    const s = state.state;
+
+    if (s === 'playing') {
+      startTimeUpdates();
+      startBlinking();
+    } else if (s === 'paused') {
+      stopTimeUpdates();
+      stopBlinking();
+      updateTime();
+    }
+  });
+
   const play = async () => {
     setState('state', 'loading');
 
@@ -114,8 +127,6 @@ export default props => {
     clearTimeout(timeoutId);
     setState('state', 'playing');
     frameRequestId = requestAnimationFrame(frame);
-    startTimeUpdates();
-    startBlinking();
   }
 
   const pauseOrResume = () => {
@@ -123,17 +134,7 @@ export default props => {
       play();
     } else {
       const isPlaying = core.pauseOrResume();
-
-      if (isPlaying) {
-        setState('state', 'playing');
-        startTimeUpdates();
-        startBlinking();
-      } else {
-        setState('state', 'paused');
-        updateTime();
-        stopTimeUpdates();
-        stopBlinking();
-      }
+      setState('state', isPlaying ? 'playing' : 'paused');
     }
   }
 
