@@ -37,6 +37,9 @@ export default props => {
 
   let resizeObserver;
 
+  const terminalCols = () => state.cols || 80;
+  const terminalRows = () => state.rows || 24;
+
   const core = AsciinemaPlayerCore.build(props.src, {
     cols: props.cols,
     rows: props.rows,
@@ -63,8 +66,8 @@ export default props => {
     }
 
     setState({
-      charW: terminalRef.clientWidth / (state.cols || 80),
-      charH: terminalRef.clientHeight / (state.rows || 24),
+      charW: terminalRef.clientWidth / terminalCols(),
+      charH: terminalRef.clientHeight / terminalRows(),
       bordersW: terminalRef.offsetWidth - terminalRef.clientWidth,
       bordersH: terminalRef.offsetHeight - terminalRef.clientHeight,
       containerW: wrapperRef.offsetWidth,
@@ -165,8 +168,8 @@ export default props => {
 
     console.log(`containerW = ${state.containerW}`);
 
-    const terminalW = (state.charW * (state.cols || 80)) + state.bordersW;
-    const terminalH = (state.charH * (state.rows || 24)) + state.bordersH;
+    const terminalW = (state.charW * terminalCols()) + state.bordersW;
+    const terminalH = (state.charH * terminalRows()) + state.bordersH;
 
     if (props.size) {
       let priority = 'width';
@@ -319,7 +322,7 @@ export default props => {
   return (
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} ref={wrapperRef}>
       <div class="asciinema-player asciinema-theme-asciinema font-small" style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)}>
-        <Terminal cols={state.cols || 80} rows={state.rows || 24} scale={terminalScale()} blink={state.forceBlink || state.blink} lines={state.lines} cursor={state.cursor} ref={terminalRef} />
+        <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.forceBlink || state.blink} lines={state.lines} cursor={state.cursor} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={core.isPausable()} isSeekable={core.isSeekable()} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Switch>
           <Match when={state.state == 'initial'}><StartOverlay onClick={play} /></Match>
