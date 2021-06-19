@@ -34,10 +34,8 @@ class AsciinemaPlayerCore {
 
       if (this.loop === true || (typeof this.loop === 'number' && playCount < this.loop)) {
         this.pauseOrResume();
-      } else {
-        if (this.onFinish) {
-          this.onFinish();
-        }
+      } else if (this.onFinish) {
+        this.onFinish();
       }
     }
 
