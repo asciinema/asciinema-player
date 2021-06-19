@@ -52,7 +52,9 @@ export default props => {
       }
     },
 
-    onFinish: () => onFinish()
+    onFinish: () => {
+      setState('state', 'paused');
+    }
   });
 
   core.init();
@@ -225,14 +227,6 @@ export default props => {
     } else {
       wrapperRef.requestFullscreen();
     }
-  }
-
-  const onFinish = () => {
-    console.log('finished');
-    setState('state', 'paused');
-    updateTime();
-    stopTimeUpdates();
-    stopBlinking();
   }
 
   const onKeyPress = (e) => {
