@@ -47,8 +47,10 @@ export default props => {
       if (!state.cols) {
         setState({ cols, rows });
       }
-    }
-  }, () => onFinish());
+    },
+
+    onFinish: () => onFinish()
+  });
 
   onMount(async () => {
     console.log('mounted!');

@@ -8,7 +8,7 @@ const vt = loadVt(); // trigger async loading of wasm
 class AsciinemaPlayerCore {
   // public
 
-  constructor(drv, opts, viewOnFinish) {
+  constructor(drv, opts) {
     this.changedLines = new Set();
     this.duration = null;
     this.cols = opts.cols;
@@ -17,6 +17,7 @@ class AsciinemaPlayerCore {
     this.speed = opts.speed ?? 1.0;
     this.playCount = 0;
     this.onSize = opts.onSize;
+    this.onFinish = opts.onFinish;
 
     const feed = this.feed.bind(this);
     const now = this.now.bind(this);
@@ -30,7 +31,9 @@ class AsciinemaPlayerCore {
       if (opts.loop === true || (typeof opts.loop === 'number' && this.playCount < opts.loop)) {
         this.pauseOrResume();
       } else {
-        viewOnFinish();
+        if (this.onFinish) {
+          this.onFinish();
+        }
       }
     }
 
