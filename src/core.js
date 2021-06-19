@@ -40,6 +40,7 @@ class AsciinemaPlayerCore {
     this.driver = null;
     this.driverFn = driverFn;
     this.changedLines = new Set();
+    this.cursor = undefined;
     this.duration = null;
     this.cols = opts.cols;
     this.rows = opts.rows;
@@ -134,9 +135,11 @@ class AsciinemaPlayerCore {
   }
 
   getCursor() {
-    if (this.vt) {
-      return this.vt.get_cursor();
+    if (this.cursor === undefined && this.vt) {
+      this.cursor = this.vt.get_cursor() ?? false;
     }
+
+    return this.cursor;
   }
 
   getCurrentTime() {
@@ -172,6 +175,7 @@ class AsciinemaPlayerCore {
   feed(data) {
     const affectedLines = this.vt.feed(data);
     affectedLines.forEach(i => this.changedLines.add(i));
+    this.cursor = undefined;
   }
 
   now() { return performance.now() * this.speed }
