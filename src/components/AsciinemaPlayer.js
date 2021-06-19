@@ -159,7 +159,7 @@ export default props => {
     batch(() => {
       setState('cursor', reconcile(cursor));
 
-      if (changedLines.size > 0) {
+      if (changedLines) {
         changedLines.forEach((line, i) => {
           setState('lines', i, reconcile(line));
         });

@@ -121,17 +121,17 @@ class AsciinemaPlayerCore {
   }
 
   getChangedLines() {
-    const lines = new Map();
+    if (this.changedLines.size > 0) {
+      const lines = new Map();
 
-    if (this.vt) {
       for (const i of this.changedLines) {
         lines.set(i, {id: i, segments: this.vt.get_line(i)});
       }
 
       this.changedLines.clear();
-    }
 
-    return lines;
+      return lines;
+    }
   }
 
   getCursor() {
