@@ -24,7 +24,7 @@ export default props => {
     remainingTime: null,
     progress: null,
     blink: true,
-    forceBlink: false
+    cursorHold: false
   });
 
   let frameRequestId;
@@ -100,7 +100,7 @@ export default props => {
 
   createEffect(() => {
     state.cursor;  // <- accessing this subscribes this effect for cursor change
-    setState('forceBlink', true);
+    setState('cursorHold', true);
   });
 
   createEffect(() => {
@@ -164,7 +164,7 @@ export default props => {
           setState('lines', i, reconcile(line));
         });
 
-        setState('forceBlink', true);
+        setState('cursorHold', true);
       }
     });
   }
@@ -289,7 +289,7 @@ export default props => {
         const changes = { blink: !state.blink };
 
         if (changes.blink) {
-          changes.forceBlink = false;
+          changes.cursorHold = false;
         }
 
         return changes;
@@ -332,7 +332,7 @@ export default props => {
   return (
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} ref={wrapperRef}>
       <div class="asciinema-player asciinema-theme-asciinema font-small" style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)}>
-        <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.forceBlink || state.blink} lines={state.lines} cursor={state.cursor} ref={terminalRef} />
+        <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={core.isPausable()} isSeekable={core.isSeekable()} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Switch>
           <Match when={state.state == 'initial'}><StartOverlay onClick={play} /></Match>
