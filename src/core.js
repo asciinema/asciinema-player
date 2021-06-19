@@ -52,7 +52,7 @@ class AsciinemaPlayerCore {
     }
   }
 
-  static build(src, opts, onFinish) {
+  static build(src, opts) {
     if (typeof src === 'string') {
       if (src.substring(0, 5) == 'ws://' || src.substring(0, 6) == 'wss://') {
         src = { driver: 'websocket', url: src };
@@ -77,7 +77,7 @@ class AsciinemaPlayerCore {
       throw `unsupported driver: ${JSON.stringify(src)}`;
     }
 
-    return new AsciinemaPlayerCore(drv, opts, onFinish);
+    return new AsciinemaPlayerCore(drv, opts);
   }
 
   async preload() {
