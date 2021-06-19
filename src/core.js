@@ -8,17 +8,22 @@ const vt = loadVt(); // trigger async loading of wasm
 class AsciinemaPlayerCore {
   // public
 
-  constructor(drv, opts) {
+  constructor(driverFn, opts) {
+    this.driver = null;
+    this.driverFn = driverFn;
     this.changedLines = new Set();
     this.duration = null;
     this.cols = opts.cols;
     this.rows = opts.rows;
     this.startTime = null;
     this.speed = opts.speed ?? 1.0;
+    this.loop = opts.loop;
     this.playCount = 0;
     this.onSize = opts.onSize;
     this.onFinish = opts.onFinish;
+  }
 
+  init() {
     const feed = this.feed.bind(this);
     const now = this.now.bind(this);
 
@@ -28,7 +33,7 @@ class AsciinemaPlayerCore {
     const onFinish = () => {
       this.playCount++;
 
-      if (opts.loop === true || (typeof opts.loop === 'number' && this.playCount < opts.loop)) {
+      if (this.loop === true || (typeof this.loop === 'number' && this.playCount < this.loop)) {
         this.pauseOrResume();
       } else {
         if (this.onFinish) {
@@ -37,7 +42,10 @@ class AsciinemaPlayerCore {
       }
     }
 
-    this.driver = drv({ feed, now, setTimeout, setInterval, onFinish }, opts);
+    this.driver = this.driverFn(
+      { feed, now, setTimeout, setInterval, onFinish },
+      { cols: this.cols, rows: this.rows }
+    );
 
     if (typeof this.driver === 'function') {
       this.driver = { start: this.driver };
@@ -73,11 +81,11 @@ class AsciinemaPlayerCore {
   }
 
   async preload() {
-    await this.init();
+    await this.ensureVt();
   }
 
   async start() {
-    await this.init();
+    await this.ensureVt();
     const stop = await this.driver.start();
 
     if (typeof stop === 'function') {
@@ -103,7 +111,7 @@ class AsciinemaPlayerCore {
 
   async seek(where) {
     if (this.driver.seek) {
-      await this.init();
+      await this.ensureVt();
       this.driver.seek(where);
 
       return true;
@@ -169,7 +177,7 @@ class AsciinemaPlayerCore {
 
   now() { return performance.now() * this.speed }
 
-  async init() {
+  async ensureVt() {
     if (this.meta) { return }
 
     let driverMeta = {};

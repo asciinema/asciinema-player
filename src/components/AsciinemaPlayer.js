@@ -52,6 +52,8 @@ export default props => {
     onFinish: () => onFinish()
   });
 
+  core.init();
+
   onMount(async () => {
     console.log('mounted!');
 
