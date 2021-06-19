@@ -94,8 +94,6 @@ class AsciinemaPlayerCore {
     }
 
     this.startTime = this.now();
-
-    return this.meta;
   }
 
   stop() {
@@ -179,7 +177,7 @@ class AsciinemaPlayerCore {
   now() { return performance.now() * this.speed }
 
   async ensureVt() {
-    if (this.meta) { return }
+    if (this.vt) { return }
 
     let driverMeta = {};
 
@@ -187,22 +185,18 @@ class AsciinemaPlayerCore {
       driverMeta = await this.driver.init();
     }
 
-    this.meta = {
-      cols: this.cols ?? driverMeta.cols ?? this.driver.cols ?? 80,
-      rows: this.rows ?? driverMeta.rows ?? this.driver.rows ?? 24,
-      duration: driverMeta.duration ?? this.driver.duration
-    }
-
-    this.duration = this.meta.duration;
+    this.duration = driverMeta.duration ?? this.driver.duration;
+    const cols = this.cols ?? driverMeta.cols ?? this.driver.cols ?? 80;
+    const rows = this.rows ?? driverMeta.rows ?? this.driver.rows ?? 24;
     const { create } = await vt;
-    this.vt = create(this.meta.cols, this.meta.rows);
+    this.vt = create(cols, rows);
 
-    for (let i = 0; i < this.meta.rows; i++) {
+    for (let i = 0; i < rows; i++) {
       this.changedLines.add(i);
     }
 
     if (this.onSize) {
-      this.onSize(this.meta.cols, this.meta.rows);
+      this.onSize(cols, rows);
     }
   }
 }
