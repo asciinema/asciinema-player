@@ -50,6 +50,10 @@ class AsciinemaPlayerCore {
     if (typeof this.driver === 'function') {
       this.driver = { start: this.driver };
     }
+
+    if (this.onSize && this.driver.cols) {
+      this.onSize(this.driver.cols, this.driver.rows);
+    }
   }
 
   static build(src, opts) {
