@@ -43,7 +43,7 @@ export default props => {
   const core = AsciinemaPlayerCore.build(props.src, {
     cols: props.cols,
     rows: props.rows,
-    loop: props.loop ?? false,
+    loop: props.loop,
     speed: props.speed,
 
     onSize: (cols, rows) => {
