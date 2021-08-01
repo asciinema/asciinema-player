@@ -1,5 +1,6 @@
 import AsciinemaPlayerCore from '../core';
-import { batch, createEffect, createMemo, createState, Match, onCleanup, onMount, reconcile, Switch } from 'solid-js';
+import { batch, createEffect, createMemo, Match, onCleanup, onMount, Switch } from 'solid-js';
+import { createStore, reconcile } from 'solid-js/store';
 import Terminal from './Terminal';
 import ControlBar from './ControlBar';
 import LoaderOverlay from './LoaderOverlay';
@@ -7,7 +8,7 @@ import StartOverlay from './StartOverlay';
 
 
 export default props => {
-  const [state, setState] = createState({
+  const [state, setState] = createStore({
     state: 'initial',
     cols: props.cols,
     rows: props.rows,
