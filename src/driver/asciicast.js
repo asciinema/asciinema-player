@@ -157,49 +157,52 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
   }
 }
 
-function parseAsciicast(text) {
-  const lines = text.split('\n');
-  let header;
-
+function parseAsciicast(json) {
   try {
-    header = JSON.parse(lines[0]);
-
-    if (header.version === 1) {
-      header = undefined;
-    }
+    return parseAsciicastV2(json);
   } catch (_error) {
-    // not v2 format, we'll try parsing as v1 below
+    // not a v2 format - let's try parsing as v1
+    return parseAsciicastV1(json);
+  }
+}
+
+function parseAsciicastV1(json) {
+  const asciicast = JSON.parse(json);
+  let duration = 0;
+
+  frames = asciicast.stdout.map(e => {
+    duration += e[0];
+    return [duration, e[1]];
+  });
+
+  return {
+    cols: asciicast.width,
+    rows: asciicast.height,
+    duration: duration,
+    frames: frames
+  }
+}
+
+function parseAsciicastV2(jsonl) {
+  const lines = jsonl.split('\n');
+  const header = JSON.parse(lines[0]);
+
+  if (header.version !== 2) {
+    throw 'not an asciicast v2 format';
   }
 
-  if (header) {
-    const frames = lines
-      .slice(1)
-      .filter(l => l[0] === '[')
-      .map(l => JSON.parse(l))
-      .filter(e => e[1] === 'o')
-      .map(e => [e[0], e[2]]);
+  const frames = lines
+    .slice(1)
+    .filter(l => l[0] === '[')
+    .map(l => JSON.parse(l))
+    .filter(e => e[1] === 'o')
+    .map(e => [e[0], e[2]]);
 
-    return {
-      cols: header.width,
-      rows: header.height,
-      duration: frames[frames.length - 1][0],
-      frames: frames
-    }
-  } else {
-    const asciicast = JSON.parse(text);
-    let duration = 0;
-
-    const frames = asciicast.stdout.map(e => {
-      duration += e[0];
-      return [duration, e[1]];
-    });
-
-    return {
-      cols: asciicast.width,
-      rows: asciicast.height,
-      duration: duration,
-      frames: frames
-    }
+  return {
+    cols: header.width,
+    rows: header.height,
+    duration: frames[frames.length - 1][0],
+    frames: frames
   }
 }
 
