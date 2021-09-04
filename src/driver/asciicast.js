@@ -19,7 +19,7 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
       const asciicast = parseAsciicast(await res.text());
       cols = asciicast.cols;
       rows = asciicast.rows;
-      frames = asciicast.frames;
+      frames = batchFrames(asciicast.frames);
       duration = asciicast.duration;
     }
   }
@@ -201,6 +201,28 @@ function parseAsciicastV2(jsonl) {
     duration: frames[frames.length - 1][0],
     frames: frames
   }
+}
+
+function batchFrames(frames) {
+  if (frames.length === 0) return frames;
+
+  let maxFrameTime = 1.0 / 60;
+  let prevFrame = frames[0];
+  let result = [];
+
+  frames.slice(1).forEach(frame => {
+    if (frame[0] - prevFrame[0] < maxFrameTime) {
+      prevFrame[1] += frame[1];
+    } else {
+      result.push(prevFrame);
+      prevFrame = frame;
+    }
+  });
+
+  result.push(prevFrame);
+  console.debug(`batched ${frames.length} frames to ${result.length} frames`);
+
+  return result;
 }
 
 export { asciicast };
