@@ -2,6 +2,8 @@
 // TODO support ttyrec (via opts.format == 'ttyrec')
 
 function asciicast(url, { feed, now, setTimeout, onFinish }) {
+  let cols;
+  let rows;
   let frames;
   let duration;
   let timeoutId;
@@ -10,20 +12,15 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
   let elapsedVirtualTime = 0;
   let startTime;
   let pauseElapsedTime;
-  let meta;
 
   async function load() {
     if (!frames) {
       const res = await fetch(url);
       const asciicast = parseAsciicast(await res.text());
-      duration = asciicast.duration;
+      cols = asciicast.cols;
+      rows = asciicast.rows;
       frames = asciicast.frames;
-
-      meta = {
-        cols: asciicast.cols,
-        rows: asciicast.rows,
-        duration: duration
-      };
+      duration = asciicast.duration;
     }
   }
 
@@ -115,7 +112,7 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
     init: async () => {
       await load();
 
-      return meta;
+      return { cols, rows, duration };
     },
 
     start: async () => {
