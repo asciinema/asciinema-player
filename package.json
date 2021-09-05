@@ -12,13 +12,14 @@
     "url": "https://github.com/asciinema/asciinema-player/issues"
   },
   "keywords": [
-    "player",
     "asciicast",
-    "video",
-    "video-playback",
+    "asciinema",
+    "player",
     "terminal",
+    "tty",
     "unix",
-    "tty"
+    "video",
+    "video-playback"
   ],
   "license": "Apache-2.0",
   "main": "index.js",
