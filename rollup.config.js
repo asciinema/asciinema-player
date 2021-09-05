@@ -18,14 +18,15 @@ export default {
   output: [
     {
       file: "public/bundle.js",
-      format: "iife"
+      format: "iife",
+      name: "AsciinemaPlayer"
     },
     {
       file: "public/bundle.min.js",
       format: "iife",
+      name: "AsciinemaPlayer",
       plugins: [terser()]
     }
   ],
-  preserveEntrySignatures: false,
   plugins
 };
