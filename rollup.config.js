@@ -17,6 +17,10 @@ export default {
   input: "src/index.js",
   output: [
     {
+      file: "dist/index.js",
+      format: "es"
+    },
+    {
       file: "public/bundle.js",
       format: "iife",
       name: "AsciinemaPlayer"
