@@ -1,0 +1,169 @@
+@active-controls: #bbb;
+// @inactive-controls: #999;
+
+.asciinema-player {
+  .control-bar {
+    width: 100%;
+    height: 32px;
+    background: rgba(0,0,0,0.8); /* no gradient fallback */
+    background: -moz-linear-gradient(top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 100%); /* FF3.6-15 */
+    background: -webkit-linear-gradient(top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 100%); /* Chrome10-25,Safari5.1-6 */
+    background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+    color: @active-controls;
+    box-sizing: content-box;
+    line-height: 1;
+    position: absolute;
+    bottom: -35px;
+    left: 0;
+    transition: bottom 0.15s linear;
+
+    * {
+      box-sizing: inherit;
+      font-size: 0;
+    }
+
+    svg.icon {
+      path {
+        fill: @active-controls;
+      }
+    }
+
+    .playback-button {
+      display: block;
+      float: left;
+      cursor: pointer;
+      height: 12px;
+      width: 12px;
+      padding: 10px;
+
+      svg {
+        height: 12px;
+        width: 12px;
+      }
+    }
+
+    .timer {
+      display: block;
+      float: left;
+      width: 50px;
+      height: 100%;
+      text-align: center;
+      font-family: Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      font-weight: bold;
+      line-height: 32px;
+      cursor: default;
+
+      span {
+        display: inline-block;
+        font-size: inherit;
+      }
+
+      .time-remaining {
+        display: none;
+      }
+
+      &:hover {
+        .time-elapsed {
+          display: none;
+        }
+
+        .time-remaining {
+          display: inline;
+        }
+      }
+    }
+
+    .progressbar {
+      display: block;
+      overflow: hidden;
+      height: 100%;
+      padding: 0 10px;
+
+      .bar {
+        display: block;
+        cursor: pointer;
+        height: 100%;
+        padding-top: 15px;
+        font-size: 0;
+
+        .gutter {
+          display: block;
+          height: 3px;
+          background-color: #333;
+
+          span {
+            display: inline-block;
+            height: 100%;
+            background-color: @active-controls;
+            border-radius: 3px;
+          }
+        }
+      }
+    }
+
+    &.live {
+      .progressbar {
+        .bar {
+          cursor: default;
+        }
+      }
+    }
+
+    .fullscreen-button {
+      display: block;
+      float: right;
+      width: 14px;
+      height: 14px;
+      padding: 9px;
+      cursor: pointer;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      svg:first-child {
+        display: inline;
+      }
+
+      svg:last-child {
+        display: none;
+      }
+    }
+  }
+}
+
+.asciinema-player-wrapper {
+  &.hud .control-bar {
+    bottom: 0px;
+  }
+
+  .in-fullscreen() {
+    .fullscreen-button {
+      svg:first-child {
+        display: none;
+      }
+
+      svg:last-child {
+        display: inline;
+      }
+    }
+  }
+
+  &:fullscreen {
+    .in-fullscreen;
+  }
+
+  &:-webkit-full-screen {
+    .in-fullscreen;
+  }
+
+  &:-moz-full-screen {
+    .in-fullscreen;
+  }
+
+  &:-ms-fullscreen {
+    .in-fullscreen;
+  }
+}

@@ -24,7 +24,7 @@
   "license": "Apache-2.0",
   "main": "index.js",
   "scripts": {
-    "build": "rollup -c --environment production",
+    "build": "rollup -c --environment production && lessc src/less/asciinema-player.less >dist/asciinema-player.css",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
@@ -45,6 +45,7 @@
     "eslint-plugin-import": "^2.23.3",
     "eslint-plugin-jest": "^24.3.6",
     "eslint-plugin-prettier": "^3.4.0",
+    "less": "^4.1.1",
     "rollup": "^2.56.3",
     "rollup-plugin-terser": "^7.0.2"
   }

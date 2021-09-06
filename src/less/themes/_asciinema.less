@@ -1,0 +1,37 @@
+.asciinema-theme-asciinema {
+  @basehue: -17;
+  @saturation: 70%;
+  @lightness: 55%;
+  @high: 1.0;
+
+  @color1tone: 1;
+  @color2tone: 0.8;
+  @color3tone: 1;
+  @color4tone: 0.9;
+  @color5tone: 1.1;
+  @color6tone: 1.1;
+
+  // @foreground: #f8f8f2;
+  @foreground: #CCCCCC;
+  @background: #121314;
+
+  @color0: hsl(0, 0%, 0%);
+  @color1: hsl(@basehue + 0, @saturation, @lightness * @color1tone);
+  @color2: hsl(@basehue + 120, @saturation, @lightness * @color2tone);
+  @color3: hsl(@basehue + 60, @saturation, @lightness * @color3tone);
+  @color4: hsl(@basehue + 210, @saturation, @lightness * @color4tone);
+  @color5: hsl(@basehue + 300, @saturation, @lightness * @color5tone);
+  @color6: hsl(@basehue + 180, @saturation, @lightness * @color6tone);
+  @color7: hsl(0, 0%, 85%);
+  @color8: hsl(hue(@color0), 0%, 30%);
+  @color9: hsl(hue(@color1), @saturation, @lightness * @color1tone * @high);
+  @color10: hsl(hue(@color2), @saturation, @lightness * @color2tone * @high);
+  @color11: hsl(hue(@color3), @saturation, @lightness * @color3tone * @high);
+  @color12: hsl(hue(@color4), @saturation, @lightness * @color4tone * @high);
+  @color13: hsl(hue(@color5), @saturation, @lightness * @color5tone * @high);
+  @color14: hsl(hue(@color6), @saturation, @lightness * @color6tone * @high);
+  @color15: hsl(0, 0%, 100%);
+
+  .theme-base;
+  .theme-bright-is-bold;
+}
