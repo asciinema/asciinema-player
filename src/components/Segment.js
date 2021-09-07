@@ -7,11 +7,11 @@ export default props => {
 function className(attrs, extraClass) {
   let cls = '';
 
-  const fg = attrs.inverse
+  const fg = attrs.get('inverse')
     ? (attrs.has('bg') ? attrs.get('bg') : 'bg')
     : attrs.get('fg');
 
-  const bg = attrs.inverse
+  const bg = attrs.get('inverse')
     ? (attrs.has('fg') ? attrs.get('fg') : 'fg')
     : attrs.get('bg');
 
@@ -62,8 +62,8 @@ function colorClass(color, intense, prefix) {
 }
 
 function style(attrs) {
-  const fg = attrs.inverse ? attrs.get('bg') : attrs.get('fg');
-  const bg = attrs.inverse ? attrs.get('fg') : attrs.get('bg');
+  const fg = attrs.get('inverse') ? attrs.get('bg') : attrs.get('fg');
+  const bg = attrs.get('inverse') ? attrs.get('fg') : attrs.get('bg');
 
   let style = null;
 

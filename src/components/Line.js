@@ -18,7 +18,7 @@ export default props => {
         const seg = props.segments[i];
         const cursorAttrsA = seg[1];
         const cursorAttrsB = new Map(cursorAttrsA);
-        cursorAttrsB.inverse = !cursorAttrsB.inverse;
+        cursorAttrsB.set('inverse', !cursorAttrsB.get('inverse'));
 
         const pos = props.cursor - len;
 
