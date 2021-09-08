@@ -1,12 +1,10 @@
 export default props => {
   return (
-    <span class={className(props.attrs, props.extraClass)} style={style(props.attrs)}>{props.text}</span>
+    <span class={className(props.attrs, props.extraClass)} classList={classList(props.attrs)} style={style(props.attrs)}>{props.text}</span>
   );
 }
 
 function className(attrs, extraClass) {
-  let cls = '';
-
   const fg = attrs.get('inverse')
     ? (attrs.has('bg') ? attrs.get('bg') : 'bg')
     : attrs.get('fg');
@@ -18,35 +16,26 @@ function className(attrs, extraClass) {
   const fgClass = colorClass(fg, attrs.get('bold'), 'fg-');
   const bgClass = colorClass(bg, attrs.get('blink'), 'bg-');
 
+  let cls = extraClass ?? '';
+
   if (fgClass) {
-    cls = fgClass;
+    cls += ' ' + fgClass;
   }
 
   if (bgClass) {
-    cls = `${cls} ${bgClass}`;
+    cls += ' ' + bgClass;
   }
 
-  if (attrs.has('bold')) {
-    cls = `${cls} bright`;
-  }
+  return cls;
+}
 
-  if (attrs.has('italic')) {
-    cls = `${cls} italic`;
-  }
-
-  if (attrs.has('underline')) {
-    cls = `${cls} underline`;
-  }
-
-  if (attrs.has('blink')) {
-    cls = `${cls} blink`;
-  }
-
-  if (extraClass) {
-    cls += extraClass;
-  }
-
-  return cls === '' ? undefined : cls;
+function classList(attrs) {
+  return {
+    bright: attrs.has('bold'),
+    italic: attrs.has('italic'),
+    underline: attrs.has('underline'),
+    blink: attrs.has('blink')
+  };
 }
 
 function colorClass(color, intense, prefix) {
@@ -65,14 +54,13 @@ function style(attrs) {
   const fg = attrs.get('inverse') ? attrs.get('bg') : attrs.get('fg');
   const bg = attrs.get('inverse') ? attrs.get('fg') : attrs.get('bg');
 
-  let style = null;
+  let style = {};
 
-  if (typeof fg == 'string') {
-    style = {color: fg};
+  if (typeof fg === 'string') {
+    style['color'] = fg;
   }
 
-  if (typeof bg == 'string') {
-    style = style || {};
+  if (typeof bg === 'string') {
     style['background-color'] = bg;
   }
 
