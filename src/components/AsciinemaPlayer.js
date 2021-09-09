@@ -61,7 +61,7 @@ export default props => {
   core.init();
 
   onMount(async () => {
-    console.log('mounted!');
+    console.debug('player mounted');
 
     if (props.preload) {
       await core.preload();
@@ -78,8 +78,6 @@ export default props => {
     });
 
     resizeObserver = new ResizeObserver(_entries => {
-      console.log('container resized!')
-
       setState({
         containerW: wrapperRef.offsetWidth,
         containerH: wrapperRef.offsetHeight
@@ -174,13 +172,11 @@ export default props => {
   }
 
   const terminalSize = createMemo(() => {
-    console.log('terminalSize');
-
     if (!state.charW) {
       return {};
     }
 
-    console.log(`containerW = ${state.containerW}`);
+    console.debug(`containerW = ${state.containerW}`);
 
     const terminalW = (state.charW * terminalCols()) + state.bordersW;
     const terminalH = (state.charH * terminalRows()) + state.bordersH;
@@ -232,7 +228,7 @@ export default props => {
   }
 
   const onKeyPress = (e) => {
-    console.log(e);
+    console.debug(e);
 
     if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey) {
       return;
