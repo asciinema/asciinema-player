@@ -114,10 +114,10 @@ export default props => {
       startBlinking();
       startTimeUpdates();
     } else if (s === 'paused') {
-      updateTerminal();
       stopTerminalUpdates();
       stopBlinking();
       stopTimeUpdates();
+      updateTerminal();
       updateTime();
     }
   });
