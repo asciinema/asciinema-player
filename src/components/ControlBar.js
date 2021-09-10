@@ -33,6 +33,10 @@ export default props => {
   };
 
   const onSeek = e => {
+    if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey) {
+      return;
+    }
+
     const barWidth = e.currentTarget.offsetWidth;
     const rect = e.currentTarget.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
