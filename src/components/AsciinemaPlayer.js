@@ -127,17 +127,20 @@ export default props => {
       setState('state', 'waiting');
     }, 1000);
 
-    await core.start();
+    await core.play();
     clearTimeout(timeoutId);
     setState('state', 'playing');
   }
 
-  const pauseOrResume = () => {
-    if (state.state == 'initial') {
-      play();
-    } else {
-      const isPlaying = core.pauseOrResume();
-      setState('state', isPlaying ? 'playing' : 'paused');
+  const pauseOrResume = async () => {
+    const isPlaying = await core.pauseOrResume();
+    setState('state', isPlaying ? 'playing' : 'paused');
+  }
+
+  const seek = async pos => {
+    if (await core.seek(pos)) {
+      updateTime();
+      updateTerminal();
     }
   }
 
@@ -250,13 +253,6 @@ export default props => {
     }
 
     e.preventDefault();
-  }
-
-  const seek = async pos => {
-    if (await core.seek(pos)) {
-      updateTime();
-      updateTerminal();
-    }
   }
 
   const startTimeUpdates = () => {

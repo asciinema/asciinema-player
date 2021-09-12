@@ -7,7 +7,6 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
   let frames;
   let duration;
   let timeoutId;
-  let isFinished;
   let nextFrameIndex = 0;
   let elapsedVirtualTime = 0;
   let startTime;
@@ -39,7 +38,6 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
       timeoutId = setTimeout(runFrame, timeout);
     } else {
       timeoutId = null;
-      isFinished = true;
       pauseElapsedTime = duration * 1000;
       onFinish();
     }
@@ -101,7 +99,6 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
     }
 
     pauseElapsedTime = targetTime;
-    isFinished = false;
 
     if (isPlaying) {
       resume();
@@ -130,12 +127,7 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
         pause();
         return false;
       } else {
-        if (isFinished) {
-          seek(0);
-        }
-
         resume();
-
         return true;
       }
     },

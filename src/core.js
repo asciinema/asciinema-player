@@ -37,6 +37,7 @@ class AsciinemaPlayerCore {
   }
 
   constructor(driverFn, opts) {
+    this.state = 'initial';
     this.driver = null;
     this.driverFn = driverFn;
     this.changedLines = new Set();
@@ -62,9 +63,13 @@ class AsciinemaPlayerCore {
       playCount++;
 
       if (this.loop === true || (typeof this.loop === 'number' && playCount < this.loop)) {
-        this.pauseOrResume();
-      } else if (this.onFinish) {
-        this.onFinish();
+        this.restart();
+      } else {
+        this.state = 'finished';
+
+        if (this.onFinish) {
+          this.onFinish();
+        }
       }
     }
 
@@ -86,15 +91,28 @@ class AsciinemaPlayerCore {
     await this.ensureVt();
   }
 
-  async start() {
-    await this.ensureVt();
-    const stop = await this.driver.start();
+  async play() {
+    if (this.state == 'initial') {
+      await this.start();
+    } else if (this.state == 'paused') {
+      this.resume();
+    } else if (this.state == 'finished') {
+      this.restart();
+    }
+  }
 
-    if (typeof stop === 'function') {
-      this.driver.stop = stop;
+  async pauseOrResume() {
+    if (this.state == 'initial') {
+      await this.start();
+    } else if (this.state == 'playing') {
+      this.pause();
+    } else if (this.state == 'paused') {
+      this.resume();
+    } else if (this.state == 'finished') {
+      await this.restart();
     }
 
-    this.startTime = this.now();
+    return this.state == 'playing';
   }
 
   stop() {
@@ -103,15 +121,14 @@ class AsciinemaPlayerCore {
     }
   }
 
-  pauseOrResume() {
-    if (this.driver.pauseOrResume) {
-      return this.driver.pauseOrResume();
-    }
-  }
-
   async seek(where) {
     if (this.driver.seek) {
       await this.ensureVt();
+
+      if (this.state != 'playing') {
+        this.state = 'paused';
+      }
+
       this.driver.seek(where);
 
       return true;
@@ -171,6 +188,38 @@ class AsciinemaPlayerCore {
   }
 
   // private
+
+  async start() {
+    await this.ensureVt();
+    const stop = await this.driver.start();
+
+    if (typeof stop === 'function') {
+      this.driver.stop = stop;
+    }
+
+    this.startTime = this.now();
+    this.state = 'playing';
+  }
+
+  pause() {
+    if (this.driver.pauseOrResume) {
+      this.driver.pauseOrResume();
+      this.state = 'paused';
+    }
+  }
+
+  resume() {
+    if (this.driver.pauseOrResume) {
+      this.state = 'playing';
+      this.driver.pauseOrResume();
+    }
+  }
+
+  async restart() {
+    if (await this.seek(0)) {
+      this.resume();
+    }
+  }
 
   feed(data) {
     const affectedLines = this.vt.feed(data);
