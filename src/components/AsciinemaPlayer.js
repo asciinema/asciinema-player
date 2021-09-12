@@ -66,9 +66,7 @@ export default props => {
 
   core.init();
 
-  onMount(async () => {
-    console.debug('player mounted');
-
+  const measureDomElements = () => {
     setState({
       charW: terminalRef.clientWidth / terminalCols(),
       charH: terminalRef.clientHeight / terminalRows(),
@@ -77,7 +75,9 @@ export default props => {
       containerW: wrapperRef.offsetWidth,
       containerH: wrapperRef.offsetHeight
     });
+  }
 
+  const setupResizeObserver = () => {
     resizeObserver = new ResizeObserver(_entries => {
       setState({
         containerW: wrapperRef.offsetWidth,
@@ -86,6 +86,13 @@ export default props => {
     });
 
     resizeObserver.observe(wrapperRef);
+  }
+
+  onMount(async () => {
+    console.debug('player mounted');
+
+    measureDomElements();
+    setupResizeObserver();
 
     if (props.preload) {
       await core.preload();
