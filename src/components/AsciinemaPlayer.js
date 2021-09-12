@@ -1,5 +1,5 @@
 import AsciinemaPlayerCore from '../core';
-import { batch, createEffect, createMemo, Match, onCleanup, onMount, Switch } from 'solid-js';
+import { createEffect, createMemo, Match, onCleanup, onMount, Switch } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import Terminal from './Terminal';
 import ControlBar from './ControlBar';
@@ -105,11 +105,6 @@ export default props => {
   });
 
   createEffect(() => {
-    state.cursor;  // <- accessing this subscribes this effect for cursor change
-    setState('cursorHold', true);
-  });
-
-  createEffect(() => {
     const s = state.state;
 
     if (s === 'playing') {
@@ -146,20 +141,16 @@ export default props => {
   }
 
   const updateTerminal = () => {
-    const cursor = core.getCursor();
     const changedLines = core.getChangedLines();
 
-    batch(() => {
-      setState('cursor', reconcile(cursor));
+    if (changedLines) {
+      changedLines.forEach((line, i) => {
+        setState('lines', i, reconcile(line));
+      });
+    }
 
-      if (changedLines) {
-        changedLines.forEach((line, i) => {
-          setState('lines', i, reconcile(line));
-        });
-
-        setState('cursorHold', true);
-      }
-    });
+    setState('cursor', reconcile(core.getCursor()));
+    setState('cursorHold', true);
 
     frameRequestId = undefined;
   }
