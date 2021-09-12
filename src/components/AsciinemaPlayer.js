@@ -53,6 +53,12 @@ export default props => {
       }
     },
 
+    onTerminalUpdate: () => {
+      if (frameRequestId === undefined) {
+        frameRequestId = requestAnimationFrame(updateTerminal);
+      }
+    },
+
     onFinish: () => {
       setState('state', 'paused');
     }
@@ -93,7 +99,6 @@ export default props => {
 
   onCleanup(() => {
     core.stop()
-    stopTerminalUpdates();
     stopBlinking();
     stopTimeUpdates();
     resizeObserver.disconnect();
@@ -108,14 +113,11 @@ export default props => {
     const s = state.state;
 
     if (s === 'playing') {
-      startTerminalUpdates();
       startBlinking();
       startTimeUpdates();
     } else if (s === 'paused') {
-      stopTerminalUpdates();
       stopBlinking();
       stopTimeUpdates();
-      updateTerminal();
       updateTime();
     }
   });
@@ -140,21 +142,7 @@ export default props => {
   const seek = async pos => {
     if (await core.seek(pos)) {
       updateTime();
-      updateTerminal();
     }
-  }
-
-  const startTerminalUpdates = () => {
-    frameRequestId = requestAnimationFrame(frame);
-  }
-
-  const stopTerminalUpdates = () => {
-    cancelAnimationFrame(frameRequestId);
-  }
-
-  const frame = () => {
-    frameRequestId = requestAnimationFrame(frame);
-    updateTerminal();
   }
 
   const updateTerminal = () => {
@@ -172,6 +160,8 @@ export default props => {
         setState('cursorHold', true);
       }
     });
+
+    frameRequestId = undefined;
   }
 
   const terminalSize = createMemo(() => {

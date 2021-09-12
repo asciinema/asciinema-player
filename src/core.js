@@ -50,6 +50,7 @@ class AsciinemaPlayerCore {
     this.loop = opts.loop;
     this.onSize = opts.onSize;
     this.onFinish = opts.onFinish;
+    this.onTerminalUpdate = opts.onTerminalUpdate;
   }
 
   init() {
@@ -225,6 +226,7 @@ class AsciinemaPlayerCore {
     const affectedLines = this.vt.feed(data);
     affectedLines.forEach(i => this.changedLines.add(i));
     this.cursor = undefined;
+    this.onTerminalUpdate();
   }
 
   now() { return performance.now() * this.speed }
