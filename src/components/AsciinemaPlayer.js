@@ -69,11 +69,6 @@ export default props => {
   onMount(async () => {
     console.debug('player mounted');
 
-    if (props.preload) {
-      await core.preload();
-      updateTime();
-    }
-
     setState({
       charW: terminalRef.clientWidth / terminalCols(),
       charH: terminalRef.clientHeight / terminalRows(),
@@ -91,6 +86,11 @@ export default props => {
     });
 
     resizeObserver.observe(wrapperRef);
+
+    if (props.preload) {
+      await core.preload();
+      updateTime();
+    }
 
     if (props.autoplay) {
       play();
