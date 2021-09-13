@@ -1,6 +1,6 @@
-import AsciinemaPlayerCore from '../core';
 import { createEffect, createMemo, Match, onCleanup, onMount, Switch } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
+import Core from '../core';
 import Terminal from './Terminal';
 import ControlBar from './ControlBar';
 import LoaderOverlay from './LoaderOverlay';
@@ -41,7 +41,7 @@ export default props => {
   const terminalCols = () => state.cols || 80;
   const terminalRows = () => state.rows || 24;
 
-  const core = AsciinemaPlayerCore.build(props.src, {
+  const core = Core.build(props.src, {
     cols: props.cols,
     rows: props.rows,
     loop: props.loop,

@@ -5,7 +5,7 @@ import {websocket} from "./driver/websocket";
 const vt = loadVt(); // trigger async loading of wasm
 
 
-class AsciinemaPlayerCore {
+class Core {
   // public
 
   static build(src, opts) {
@@ -33,7 +33,7 @@ class AsciinemaPlayerCore {
       throw `unsupported driver: ${JSON.stringify(src)}`;
     }
 
-    return new AsciinemaPlayerCore(drv, opts);
+    return new Core(drv, opts);
   }
 
   constructor(driverFn, opts) {
@@ -266,4 +266,4 @@ class AsciinemaPlayerCore {
   }
 }
 
-export default AsciinemaPlayerCore;
+export default Core;
