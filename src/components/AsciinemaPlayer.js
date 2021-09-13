@@ -46,6 +46,7 @@ export default props => {
     rows: props.rows,
     loop: props.loop,
     speed: props.speed,
+    preload: props.preload,
 
     onSize: (cols, rows) => {
       if (!state.cols) {
@@ -93,11 +94,6 @@ export default props => {
 
     measureDomElements();
     setupResizeObserver();
-
-    if (props.preload) {
-      await core.preload();
-      updateTime();
-    }
 
     if (props.autoplay) {
       play();

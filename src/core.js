@@ -48,6 +48,7 @@ class AsciinemaPlayerCore {
     this.startTime = null;
     this.speed = opts.speed ?? 1.0;
     this.loop = opts.loop;
+    this.preload = opts.preload;
     this.onSize = opts.onSize;
     this.onFinish = opts.onFinish;
     this.onTerminalUpdate = opts.onTerminalUpdate;
@@ -86,10 +87,10 @@ class AsciinemaPlayerCore {
     if (this.onSize && this.driver.cols) {
       this.onSize(this.driver.cols, this.driver.rows);
     }
-  }
 
-  async preload() {
-    await this.ensureVt();
+    if (this.preload) {
+      this.initializeDriver();
+    }
   }
 
   async play() {
@@ -124,7 +125,7 @@ class AsciinemaPlayerCore {
 
   async seek(where) {
     if (this.driver.seek) {
-      await this.ensureVt();
+      await this.initializeDriver();
 
       if (this.state != 'playing') {
         this.state = 'paused';
@@ -190,8 +191,17 @@ class AsciinemaPlayerCore {
 
   // private
 
+  initializeDriver() {
+    if (this.initializeDriverPromise === undefined) {
+      this.initializeDriverPromise = this.ensureVt();
+    }
+
+    return this.initializeDriverPromise;
+  }
+
   async start() {
-    await this.ensureVt();
+    await this.initializeDriver();
+
     const stop = await this.driver.start();
 
     if (typeof stop === 'function') {
