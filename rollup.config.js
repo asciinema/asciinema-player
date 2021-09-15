@@ -37,12 +37,12 @@ export default {
       format: "es"
     },
     {
-      file: "public/bundle.js",
+      file: "public/asciinema-player.js",
       format: "iife",
       name: "AsciinemaPlayer"
     },
     {
-      file: "public/bundle.min.js",
+      file: "public/asciinema-player.min.js",
       format: "iife",
       name: "AsciinemaPlayer",
       plugins: [terser()]
