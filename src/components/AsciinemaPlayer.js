@@ -34,6 +34,7 @@ export default props => {
   let blinkIntervalId;
 
   let wrapperRef;
+  let playerRef;
   let terminalRef;
 
   let resizeObserver;
@@ -84,6 +85,8 @@ export default props => {
         containerW: wrapperRef.offsetWidth,
         containerH: wrapperRef.offsetHeight
       });
+
+      wrapperRef.dispatchEvent(new CustomEvent('resize', {detail: {el: playerRef}}));
     });
 
     resizeObserver.observe(wrapperRef);
@@ -306,7 +309,7 @@ export default props => {
 
   return (
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} ref={wrapperRef}>
-      <div class={playerClass()} style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)}>
+      <div class={playerClass()} style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={core.isPausable()} isSeekable={core.isSeekable()} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Switch>
