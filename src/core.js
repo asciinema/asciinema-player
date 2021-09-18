@@ -70,7 +70,7 @@ class Core {
       } else {
         this.state = 'finished';
 
-        if (this.onFinish) {
+        if (typeof this.onFinish === 'function') {
           this.onFinish();
         }
       }
@@ -126,13 +126,13 @@ class Core {
   }
 
   stop() {
-    if (this.driver.stop) {
+    if (typeof this.driver.stop === 'function') {
       this.driver.stop();
     }
   }
 
   async seek(where) {
-    if (this.driver.seek) {
+    if (typeof this.driver.seek === 'function') {
       await this.initializeDriver();
 
       if (this.state != 'playing') {
@@ -170,7 +170,7 @@ class Core {
   }
 
   getCurrentTime() {
-    if (this.driver.getCurrentTime) {
+    if (typeof this.driver.getCurrentTime === 'function') {
       return this.driver.getCurrentTime();
     } else if (this.startTime) {
       return (this.now() - this.startTime) / 1000;
@@ -205,14 +205,14 @@ class Core {
   }
 
   pause() {
-    if (this.driver.pauseOrResume) {
+    if (typeof this.driver.pauseOrResume === 'function') {
       this.driver.pauseOrResume();
       this.state = 'paused';
     }
   }
 
   resume() {
-    if (this.driver.pauseOrResume) {
+    if (typeof this.driver.pauseOrResume === 'function') {
       this.state = 'playing';
       this.driver.pauseOrResume();
     }
@@ -242,7 +242,7 @@ class Core {
   }
 
   async doInitializeDriver() {
-    if (this.driver.init) {
+    if (typeof this.driver.init === 'function') {
       const meta = await this.driver.init();
 
       this.duration = this.duration ?? meta.duration;
@@ -277,7 +277,7 @@ class Core {
       }
     }
 
-    if (this.onSize) {
+    if (typeof this.onSize === 'function') {
       this.onSize(cols, rows);
     }
   }
