@@ -254,11 +254,18 @@ class Core {
   }
 
   async initializeVt() {
-    const { create } = await vt;
     const cols = this.cols ?? 80;
     const rows = this.rows ?? 24;
 
+    if (this.vt !== undefined && this.vt.cols === cols && this.vt.rows === rows) {
+      return;
+    }
+
+    const { create } = await vt;
+
     this.vt = create(cols, rows);
+    this.vt.cols = cols;
+    this.vt.rows = rows;
 
     for (let i = 0; i < rows; i++) {
       this.changedLines.add(i);
