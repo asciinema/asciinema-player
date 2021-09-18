@@ -21,6 +21,8 @@ export default props => {
     containerW: null,
     containerH: null,
     showControls: false,
+    isPausable: true,
+    isSeekable: true,
     currentTime: null,
     remainingTime: null,
     progress: null,
@@ -48,11 +50,10 @@ export default props => {
     loop: props.loop,
     speed: props.speed,
     preload: props.preload,
+    poster: props.poster,
 
     onSize: (cols, rows) => {
-      if (!state.cols) {
-        setState({ cols, rows });
-      }
+      setState({ cols, rows });
     },
 
     onTerminalUpdate: () => {
@@ -65,8 +66,6 @@ export default props => {
       setState('state', 'paused');
     }
   });
-
-  core.init();
 
   const measureDomElements = () => {
     setState({
@@ -97,6 +96,9 @@ export default props => {
 
     measureDomElements();
     setupResizeObserver();
+
+    const { isPausable, isSeekable } = await core.init();
+    setState({ isPausable, isSeekable });
 
     if (props.autoplay) {
       play();
@@ -311,7 +313,7 @@ export default props => {
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} ref={wrapperRef}>
       <div class={playerClass()} style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} ref={terminalRef} />
-        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={core.isPausable()} isSeekable={core.isSeekable()} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
+        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Switch>
           <Match when={state.state == 'initial'}><StartOverlay onClick={play} /></Match>
           <Match when={state.state == 'waiting'}><LoaderOverlay /></Match>

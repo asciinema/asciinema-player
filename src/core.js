@@ -49,12 +49,13 @@ class Core {
     this.speed = opts.speed ?? 1.0;
     this.loop = opts.loop;
     this.preload = opts.preload;
+    this.poster = opts.poster;
     this.onSize = opts.onSize;
     this.onFinish = opts.onFinish;
     this.onTerminalUpdate = opts.onTerminalUpdate;
   }
 
-  init() {
+  async init() {
     let playCount = 0;
     const feed = this.feed.bind(this);
     const now = this.now.bind(this);
@@ -84,12 +85,19 @@ class Core {
       this.driver = { start: this.driver };
     }
 
-    if (this.onSize && this.driver.cols) {
-      this.onSize(this.driver.cols, this.driver.rows);
-    }
+    this.duration = this.driver.duration;
+    this.cols = this.cols ?? this.driver.cols;
+    this.rows = this.rows ?? this.driver.rows;
+
+    await this.initializeVt();
 
     if (this.preload) {
       this.initializeDriver();
+    }
+
+    return {
+      isPausable: !!this.driver.pauseOrResume,
+      isSeekable: !!this.driver.seek
     }
   }
 
@@ -181,27 +189,11 @@ class Core {
     }
   }
 
-  isSeekable() {
-    return !!this.driver.seek
-  }
-
-  isPausable() {
-    return !!this.driver.pauseOrResume
-  }
-
   // private
-
-  initializeDriver() {
-    if (this.initializeDriverPromise === undefined) {
-      this.initializeDriverPromise = this.ensureVt();
-    }
-
-    return this.initializeDriverPromise;
-  }
 
   async start() {
     await this.initializeDriver();
-
+    this.feed('\x1bc'); // reset the terminal to clear the poster
     const stop = await this.driver.start();
 
     if (typeof stop === 'function') {
@@ -241,23 +233,41 @@ class Core {
 
   now() { return performance.now() * this.speed }
 
-  async ensureVt() {
-    if (this.vt) { return }
-
-    let driverMeta = {};
-
-    if (this.driver.init) {
-      driverMeta = await this.driver.init();
+  initializeDriver() {
+    if (this.initializeDriverPromise === undefined) {
+      this.initializeDriverPromise = this.doInitializeDriver();
     }
 
-    this.duration = driverMeta.duration ?? this.driver.duration;
-    const cols = this.cols ?? driverMeta.cols ?? this.driver.cols ?? 80;
-    const rows = this.rows ?? driverMeta.rows ?? this.driver.rows ?? 24;
+    return this.initializeDriverPromise;
+  }
+
+  async doInitializeDriver() {
+    if (this.driver.init) {
+      const meta = await this.driver.init();
+
+      this.duration = this.duration ?? meta.duration;
+      this.cols = this.cols ?? meta.cols;
+      this.rows = this.rows ?? meta.rows;
+
+      await this.initializeVt();
+    }
+  }
+
+  async initializeVt() {
     const { create } = await vt;
+    const cols = this.cols ?? 80;
+    const rows = this.rows ?? 24;
+
     this.vt = create(cols, rows);
 
     for (let i = 0; i < rows; i++) {
       this.changedLines.add(i);
+    }
+
+    if (this.poster) {
+      if (this.poster.substring(0, 16) == "data:text/plain,") {
+        this.feed(this.poster.substring(16));
+      }
     }
 
     if (this.onSize) {
