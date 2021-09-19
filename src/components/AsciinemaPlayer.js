@@ -292,19 +292,37 @@ export default props => {
   }
 
   const playerStyle = () => {
+    const style = {};
+
+    if ((props.fit === false || props.fit === 'none') && props.fontSize !== undefined) {
+      if (props.fontSize === 'small') {
+        style['font-size'] = '12px';
+      } else if (props.fontSize === 'medium') {
+        style['font-size'] = '18px';
+      } else if (props.fontSize === 'big') {
+        style['font-size'] = '24px';
+      } else {
+        style['font-size'] = props.fontSize;
+      }
+    }
+
     const size = terminalSize();
 
-    if (size === undefined) { return { height: 0 } }
-    if (size.width === undefined) { return {} }
-
-    return {
-      width: `${size.width}px`,
-      height: `${size.height}px`
+    if (size === undefined) {
+      style['height'] = 0;
+      return style;
     }
+
+    if (size.width !== undefined) {
+      style['width'] = `${size.width}px`;
+      style['height'] = `${size.height}px`;
+    }
+
+    return style;
   }
 
   const playerClass = () =>
-    `asciinema-player asciinema-theme-${props.theme ?? 'asciinema'} font-small`;
+    `asciinema-player asciinema-theme-${props.theme ?? 'asciinema'}`;
 
   const terminalScale = () => terminalSize()?.scale;
 
