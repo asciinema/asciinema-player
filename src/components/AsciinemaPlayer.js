@@ -165,7 +165,7 @@ export default props => {
 
   const terminalSize = createMemo(() => {
     if (!state.charW) {
-      return {};
+      return;
     }
 
     console.debug(`containerW = ${state.containerW}`);
@@ -173,41 +173,39 @@ export default props => {
     const terminalW = (state.charW * terminalCols()) + state.bordersW;
     const terminalH = (state.charH * terminalRows()) + state.bordersH;
 
-    if (props.size) {
-      let priority = 'width';
+    let fit = props.fit ?? 'width';
 
-      if (props.size == 'fitboth' || !!document.fullscreenElement) {
-        const containerRatio = state.containerW / state.containerH;
-        const terminalRatio = terminalW / terminalH;
+    if (fit === 'both' || !!document.fullscreenElement) {
+      const containerRatio = state.containerW / state.containerH;
+      const terminalRatio = terminalW / terminalH;
 
-        if (containerRatio > terminalRatio) {
-          priority = 'height';
-        }
-      }
-
-      if (priority == 'width') {
-        const scale = state.containerW / terminalW;
-
-        return {
-          scale: scale,
-          width: state.containerW,
-          height: terminalH * scale
-        };
+      if (containerRatio > terminalRatio) {
+        fit = 'height';
       } else {
-        const scale = state.containerH / terminalH;
-
-        return {
-          scale: scale,
-          width: terminalW * scale,
-          height: state.containerH
-        };
+        fit = 'width';
       }
-    } else {
+    }
+
+    if (fit === false || fit === 'none') {
+      return {};
+    } else if (fit === 'width') {
+      const scale = state.containerW / terminalW;
+
       return {
-        scale: 1,
-        width: 200,
-        height: 100
+        scale: scale,
+        width: state.containerW,
+        height: terminalH * scale
       };
+    } else if (fit === 'height') {
+      const scale = state.containerH / terminalH;
+
+      return {
+        scale: scale,
+        width: terminalW * scale,
+        height: state.containerH
+      };
+    } else {
+      throw `unsupported fit mode: ${fit}`;
     }
   });
 
@@ -292,22 +290,19 @@ export default props => {
   const playerStyle = () => {
     const size = terminalSize();
 
-    if (size.width) {
-      return {
-        width: `${size.width}px`,
-        height: `${size.height}px`
-      }
-    } else {
-      return {
-        height: 0
-      }
+    if (size === undefined) { return { height: 0 } }
+    if (size.width === undefined) { return {} }
+
+    return {
+      width: `${size.width}px`,
+      height: `${size.height}px`
     }
   }
 
   const playerClass = () =>
     `asciinema-player asciinema-theme-${props.theme ?? 'asciinema'} font-small`;
 
-  const terminalScale = () => terminalSize().scale;
+  const terminalScale = () => terminalSize()?.scale;
 
   return (
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} ref={wrapperRef}>
