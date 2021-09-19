@@ -53,6 +53,10 @@ export default props => {
     poster: props.poster,
 
     onSize: (cols, rows) => {
+      if (rows < state.rows) {
+        setState('lines', state.lines.slice(0, rows));
+      }
+
       setState({ cols, rows });
     },
 

@@ -267,6 +267,8 @@ class Core {
     this.vt.cols = cols;
     this.vt.rows = rows;
 
+    this.changedLines.clear();
+
     for (let i = 0; i < rows; i++) {
       this.changedLines.add(i);
     }
