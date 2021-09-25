@@ -177,7 +177,7 @@ function parseAsciicastV2(jsonl) {
   const header = JSON.parse(lines[0]);
 
   if (header.version !== 2) {
-    throw 'not an asciicast v2 format';
+    throw 'not asciicast v2 format';
   }
 
   const frames = lines
