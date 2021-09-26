@@ -1,6 +1,9 @@
 // TODO rename to file driver
 // TODO support ttyrec (via opts.format == 'ttyrec')
 
+import Stream from '../stream';
+
+
 function asciicast(url, { feed, now, setTimeout, onFinish }) {
   let cols;
   let rows;
@@ -18,8 +21,8 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
       const asciicast = parseAsciicast(await res.text());
       cols = asciicast.cols;
       rows = asciicast.rows;
-      frames = batchFrames(asciicast.frames);
-      duration = asciicast.duration;
+      frames = prepareFrames(asciicast.frames);
+      duration = frames[frames.length - 1][0];
     }
   }
 
@@ -157,17 +160,16 @@ function parseAsciicast(json) {
 
 function parseAsciicastV1(json) {
   const asciicast = JSON.parse(json);
-  let duration = 0;
+  let time = 0;
 
-  frames = asciicast.stdout.map(e => {
-    duration += e[0];
-    return [duration, e[1]];
+  frames = new Stream(asciicast.stdout).map(e => {
+    time += e[0];
+    return [time, e[1]];
   });
 
   return {
     cols: asciicast.width,
     rows: asciicast.height,
-    duration: duration,
     frames: frames
   }
 }
@@ -180,8 +182,8 @@ function parseAsciicastV2(jsonl) {
     throw 'not asciicast v2 format';
   }
 
-  const frames = lines
-    .slice(1)
+  const frames = new Stream(lines)
+    .drop(1)
     .filter(l => l[0] === '[')
     .map(l => JSON.parse(l))
     .filter(e => e[1] === 'o')
@@ -190,31 +192,50 @@ function parseAsciicastV2(jsonl) {
   return {
     cols: header.width,
     rows: header.height,
-    duration: frames[frames.length - 1][0],
     frames: frames
   }
 }
 
+function prepareFrames(frames) {
+  return Array.from(batchFrames(frames));
+}
+
 function batchFrames(frames) {
-  if (frames.length === 0) return frames;
+  const maxFrameTime = 1.0 / 60;
+  let prevFrame;
 
-  let maxFrameTime = 1.0 / 60;
-  let prevFrame = frames[0];
-  let result = [];
+  return frames.transform(emit => {
+    let ic = 0;
+    let oc = 0;
 
-  frames.slice(1).forEach(frame => {
-    if (frame[0] - prevFrame[0] < maxFrameTime) {
-      prevFrame[1] += frame[1];
-    } else {
-      result.push(prevFrame);
-      prevFrame = frame;
+    return {
+      step: frame => {
+        ic++;
+
+        if (prevFrame === undefined) {
+          prevFrame = frame;
+          return;
+        }
+
+        if (frame[0] - prevFrame[0] < maxFrameTime) {
+          prevFrame[1] += frame[1];
+        } else {
+          emit(prevFrame);
+          prevFrame = frame;
+          oc++;
+        }
+      },
+
+      flush: () => {
+        if (prevFrame !== undefined) {
+          emit(prevFrame);
+          oc++;
+        }
+
+        console.debug(`batched ${ic} frames to ${oc} frames`);
+      }
     }
   });
-
-  result.push(prevFrame);
-  console.debug(`batched ${frames.length} frames to ${result.length} frames`);
-
-  return result;
 }
 
 export { asciicast };
