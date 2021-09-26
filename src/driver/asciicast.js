@@ -162,7 +162,7 @@ function parseAsciicastV1(json) {
   const asciicast = JSON.parse(json);
   let time = 0;
 
-  frames = new Stream(asciicast.stdout).map(e => {
+  const frames = new Stream(asciicast.stdout).map(e => {
     time += e[0];
     return [time, e[1]];
   });
