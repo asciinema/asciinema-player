@@ -4,7 +4,7 @@
 import Stream from '../stream';
 
 
-function asciicast(url, { feed, now, setTimeout, onFinish }) {
+function asciicast(url, { feed, now, setTimeout, onFinish }, { idleTimeLimit }) {
   let cols;
   let rows;
   let frames;
@@ -21,7 +21,7 @@ function asciicast(url, { feed, now, setTimeout, onFinish }) {
       const asciicast = parseAsciicast(await res.text());
       cols = asciicast.cols;
       rows = asciicast.rows;
-      frames = prepareFrames(asciicast.frames);
+      frames = prepareFrames(asciicast.frames, idleTimeLimit ?? asciicast.idleTimeLimit);
       duration = frames[frames.length - 1][0];
     }
   }
@@ -192,12 +192,13 @@ function parseAsciicastV2(jsonl) {
   return {
     cols: header.width,
     rows: header.height,
+    idleTimeLimit: header.idle_time_limit,
     frames: frames
   }
 }
 
-function prepareFrames(frames) {
-  return Array.from(batchFrames(frames));
+function prepareFrames(frames, idleTimeLimit) {
+  return Array.from(limitFrames(batchFrames(frames), idleTimeLimit));
 }
 
 function batchFrames(frames) {
@@ -235,6 +236,20 @@ function batchFrames(frames) {
         console.debug(`batched ${ic} frames to ${oc} frames`);
       }
     }
+  });
+}
+
+function limitFrames(frames, idleTimeLimit = Infinity) {
+  let prevT = 0;
+  let shift = 0;
+
+  return frames.map(e => {
+    const delay = e[0] - prevT;
+    const cappedDelay = Math.min(delay, idleTimeLimit);
+    shift += (delay - cappedDelay);
+    prevT = e[0];
+
+    return [e[0] - shift, e[1]];
   });
 }
 

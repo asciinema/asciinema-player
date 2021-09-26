@@ -48,6 +48,7 @@ class Core {
     this.startTime = null;
     this.speed = opts.speed ?? 1.0;
     this.loop = opts.loop;
+    this.idleTimeLimit = opts.idleTimeLimit;
     this.preload = opts.preload;
     this.poster = opts.poster;
     this.onSize = opts.onSize;
@@ -78,7 +79,7 @@ class Core {
 
     this.driver = this.driverFn(
       { feed, now, setTimeout, setInterval, onFinish },
-      { cols: this.cols, rows: this.rows }
+      { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit }
     );
 
     if (typeof this.driver === 'function') {

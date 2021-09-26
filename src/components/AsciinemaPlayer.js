@@ -51,6 +51,7 @@ export default props => {
     speed: props.speed,
     preload: props.preload,
     poster: props.poster,
+    idleTimeLimit: props.idleTimeLimit,
 
     onSize: (cols, rows) => {
       if (rows < state.rows) {
