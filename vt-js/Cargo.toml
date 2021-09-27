@@ -14,7 +14,7 @@ default = ["console_error_panic_hook"]
 # wasm-bindgen = "0.2"
 rand = "^0.7"
 vt = { path = "../../vt-rs" }
-serde-wasm-bindgen = "^0.1"
+serde-wasm-bindgen = "^0.3"
 # serde = "1.0.104"
 # serde_derive = "1.0.104"
 
