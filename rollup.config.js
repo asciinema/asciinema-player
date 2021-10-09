@@ -7,7 +7,7 @@ function removeImportMetaUrl() {
   // This plugin replaces import.meta.url with an empty string. Why?
   // wasm-bindgen produces a wasm loading code having reference to
   // import.meta.url, which becomes a dead code given rust plugin inlines the
-  // wasm blob, while import.meta.url triggers bundling issues with popular
+  // wasm blob, while import.meta.url causes bundling issues with popular
   // bundlers (or requires plugins).
 
   return {
