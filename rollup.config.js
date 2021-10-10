@@ -1,7 +1,6 @@
-import resolve from "@rollup/plugin-node-resolve";
 import babel from "@rollup/plugin-babel";
+import resolve from "@rollup/plugin-node-resolve";
 import rust from "@wasm-tool/rollup-plugin-rust";
-import { terser } from "rollup-plugin-terser";
 
 function removeImportMetaUrl() {
   // This plugin replaces import.meta.url with an empty string. Why?
@@ -21,8 +20,9 @@ function removeImportMetaUrl() {
 const plugins = [
   babel({
     exclude: "node_modules/**",
-    babelHelpers: "bundled",
-    presets: ["solid"]
+    babelHelpers: "runtime",
+    presets: ["solid", "@babel/preset-env"],
+    plugins: [['@babel/transform-runtime']]
   }),
   resolve({ extensions: [".js", ".jsx"] }),
   rust({ inlineWasm: true }),
@@ -35,18 +35,8 @@ export default {
     {
       file: "dist/index.js",
       format: "es"
-    },
-    {
-      file: "public/asciinema-player.js",
-      format: "iife",
-      name: "AsciinemaPlayer"
-    },
-    {
-      file: "public/asciinema-player.min.js",
-      format: "iife",
-      name: "AsciinemaPlayer",
-      plugins: [terser()]
     }
   ],
+  external: [/@babel\/runtime/],
   plugins
 };

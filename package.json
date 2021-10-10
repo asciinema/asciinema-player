@@ -8,31 +8,29 @@
     "type": "git",
     "url": "https://github.com/asciinema/asciinema-player.git"
   },
-  "bugs": {
-    "url": "https://github.com/asciinema/asciinema-player/issues"
-  },
-  "keywords": [
-    "asciicast",
-    "asciinema",
-    "player",
-    "terminal",
-    "tty",
-    "unix",
-    "video",
-    "video-playback"
-  ],
   "license": "Apache-2.0",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "rollup -c --environment production && lessc src/less/asciinema-player.less >dist/asciinema-player.css",
+    "build": "rollup -c --environment production",
+    "bundle": "rollup -c rollup.config.bundle.js --environment production && lessc src/less/asciinema-player.less >dist/bundle/asciinema-player.css",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "browserslist": [
+    "defaults"
+  ],
   "dependencies": {
-    "solid-js": "^1.1.2"
+    "solid-js": "^1.1.2",
+    "@babel/runtime": "^7.15.4"
   },
   "devDependencies": {
     "@babel/core": "^7.15.5",
+    "@babel/plugin-transform-runtime": "^7.15.8",
+    "@babel/preset-env": "^7.15.8",
     "@rollup/plugin-babel": "^5.3.0",
+    "@rollup/plugin-commonjs": "^21.0.0",
     "@rollup/plugin-node-resolve": "^13.0.4",
     "@solid/eslint-config-base": "^0.2.2",
     "@typescript-eslint/eslint-plugin": "^4.24.0",
