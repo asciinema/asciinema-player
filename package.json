@@ -22,7 +22,7 @@
     "defaults"
   ],
   "dependencies": {
-    "solid-js": "^1.1.2",
+    "solid-js": "^1.1.6",
     "@babel/runtime": "^7.15.4"
   },
   "devDependencies": {
