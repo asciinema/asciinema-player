@@ -16,6 +16,7 @@ pub struct VtWrapper {
 
 #[wasm_bindgen]
 pub fn create(w: usize, h: usize) -> VtWrapper {
+    utils::set_panic_hook();
     VtWrapper { vt: VT::new(w, h) }
 }
 
