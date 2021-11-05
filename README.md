@@ -29,14 +29,14 @@ and the recordings yourself then read on, it's very simple.
 
 ## Features
 
-* HTML5 [`<asciinema-player>` element](#use-the-player-in-your-html-page) you can use in your website's markup,
+* ~~HTML5 [`<asciinema-player>` element](#use-the-player-in-your-html-page) you can use in your website's markup,~~
 * copy-paste of terminal content (it's just a text after all!),
 * [idle time optimization](#idletimelimit),
 * [predefined and custom font sizes](#fontsize),
 * [custom poster](#poster),
 * [custom playback speeds](#speed),
 * [looped playback](#loop),
-* [starting playback at specific time](#startat),
+* 🚧 [starting playback at specific time](#startat),
 * [keyboard shortcuts](#keyboard-shortcuts),
 * [multiple color schemes for standard 16 colors](#theme),
 * 256 color palette / 24-bit true color (ISO-8613-3),
