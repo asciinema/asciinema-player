@@ -215,10 +215,14 @@ export default props => {
   });
 
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
+    if (document.fullscreenElement ?? document.webkitFullscreenElement) {
+      (document.exitFullscreen ??
+       document.webkitExitFullscreen ??
+       (() => {})).apply(document);
     } else {
-      wrapperRef.requestFullscreen();
+      (wrapperRef.requestFullscreen ??
+       wrapperRef.webkitRequestFullscreen ??
+       (() => {})).apply(wrapperRef);
     }
   }
 
