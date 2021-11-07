@@ -1,43 +1,50 @@
 {
   "name": "asciinema-player",
-  "title": "asciinema player",
   "description": "Web player for terminal session recordings.",
-  "version": "2.6.1",
-  "main": "resources/public/js/asciinema-player.js",
+  "version": "3.0.0-beta.1",
+  "author": "Marcin Kulik",
   "homepage": "https://github.com/asciinema/asciinema-player",
-  "author": {
-    "name": "Marcin Kulik",
-    "email": "m@ku1ik.com",
-    "url": "http://ku1ik.com/"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/asciinema/asciinema-player.git"
   },
-  "keywords": [
-    "player",
-    "asciicast",
-    "video",
-    "video-playback",
-    "terminal",
-    "unix",
-    "tty"
-  ],
-  "bugs": {
-    "url": "https://github.com/asciinema/asciinema-player/issues"
-  },
   "license": "Apache-2.0",
-  "dependencies": {},
+  "main": "dist/index.js",
   "files": [
-    "resources/public/js/asciinema-player.js",
-    "resources/public/css/asciinema-player.css"
+    "dist"
   ],
   "scripts": {
-    "build": "lein cljsbuild once release && lein less once",
-    "prepare": "npm run build",
-    "test": "lein doo phantom test once"
+    "build": "rollup -c --environment production",
+    "bundle": "rollup -c rollup.config.bundle.js --environment production && lessc src/less/asciinema-player.less >dist/bundle/asciinema-player.css",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "browserslist": [
+    "defaults"
+  ],
+  "dependencies": {
+    "solid-js": "^1.1.6",
+    "@babel/runtime": "^7.15.4"
   },
   "devDependencies": {
-    "phantomjs": "^2.1.7"
+    "@babel/core": "^7.15.5",
+    "@babel/plugin-transform-runtime": "^7.15.8",
+    "@babel/preset-env": "^7.15.8",
+    "@rollup/plugin-babel": "^5.3.0",
+    "@rollup/plugin-commonjs": "^21.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.4",
+    "@solid/eslint-config-base": "^0.2.2",
+    "@typescript-eslint/eslint-plugin": "^4.24.0",
+    "@typescript-eslint/parser": "^4.24.0",
+    "@wasm-tool/rollup-plugin-rust": "^1.0.7",
+    "babel-preset-solid": "^1.1.2",
+    "eslint": "^7.27.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.23.3",
+    "eslint-plugin-jest": "^24.3.6",
+    "eslint-plugin-prettier": "^3.4.0",
+    "less": "^4.1.1",
+    "rollup": "^2.56.3",
+    "rollup-plugin-terser": "^7.0.2"
   }
 }

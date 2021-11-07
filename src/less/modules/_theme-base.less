@@ -47,3 +47,19 @@
     font-weight: bold;
   }
 }
+
+.theme-play-icon-color(@color) {
+  .start-prompt {
+    .play-button {
+      svg {
+        .play-btn-fill {
+          fill: @color;
+        }
+
+        .play-btn-stroke {
+          stroke: @color;
+        }
+      }
+    }
+  }
+}

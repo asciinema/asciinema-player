@@ -7,9 +7,6 @@
 
     .play-button {
       font-size: 0px;
-    }
-
-    .play-button {
       position: absolute;
       left: 0;
       top: 0;
@@ -18,18 +15,20 @@
       text-align: center;
       color: white;
 
-      display: table;
-      width: 100%;
-      height: 100%;
+      height: 80px;
+      max-height: 66%;
+      margin: auto;
 
       div {
-        vertical-align: middle;
-        display: table-cell;
+        height: 100%;
 
         span {
-          width: 96px;
-          height: 96px;
-          display: inline-block;
+          height: 100%;
+          display: block;
+
+          svg {
+            height: 100%;
+          }
         }
       }
     }

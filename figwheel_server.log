@@ -1,7 +1,0 @@
-Notifying browser that CSS file changed: resources/public/css/asciinema-player.css
-Compiling build :dev to "resources/public/js/dev.js" from ["src" "dev/cljs"]...
-[32mSuccessfully compiled build :dev to "resources/public/js/dev.js" in 1.103 seconds.[0m
-Notifying browser that CSS file changed: resources/public/css/asciinema-player.css
-Compiling build :dev to "resources/public/js/dev.js" from ["src" "dev/cljs"]...
-[32mSuccessfully compiled build :dev to "resources/public/js/dev.js" in 0.505 seconds.[0m
-Notifying browser that CSS file changed: resources/public/css/asciinema-player.css
