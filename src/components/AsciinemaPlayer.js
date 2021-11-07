@@ -102,8 +102,16 @@ export default props => {
     measureDomElements();
     setupResizeObserver();
 
-    const { isPausable, isSeekable } = await core.init();
+    const { isPausable, isSeekable, poster } = await core.init();
+
     setState({ isPausable, isSeekable });
+
+    if (poster !== undefined) {
+      setState({
+        lines: poster.lines,
+        cursor: poster.cursor
+      });
+    }
 
     if (props.autoplay) {
       play();

@@ -90,15 +90,14 @@ class Core {
     this.cols = this.cols ?? this.driver.cols;
     this.rows = this.rows ?? this.driver.rows;
 
-    await this.initializeVt();
-
     if (this.preload) {
       this.initializeDriver();
     }
 
     return {
       isPausable: !!this.driver.pauseOrResume,
-      isSeekable: !!this.driver.seek
+      isSeekable: !!this.driver.seek,
+      poster: await this.renderPoster()
     }
   }
 
@@ -194,7 +193,7 @@ class Core {
 
   async start() {
     await this.initializeDriver();
-    this.feed('\x1bc'); // reset the terminal to clear the poster
+    this.onTerminalUpdate(); // clears the poster
     const stop = await this.driver.start();
 
     if (typeof stop === 'function') {
@@ -249,9 +248,9 @@ class Core {
       this.duration = this.duration ?? meta.duration;
       this.cols = this.cols ?? meta.cols;
       this.rows = this.rows ?? meta.rows;
-
-      await this.initializeVt();
     }
+
+    await this.initializeVt();
   }
 
   async initializeVt() {
@@ -274,15 +273,51 @@ class Core {
       this.changedLines.add(i);
     }
 
-    if (this.poster) {
-      if (this.poster.substring(0, 16) == "data:text/plain,") {
-        this.feed(this.poster.substring(16));
-      }
-    }
-
     if (typeof this.onSize === 'function') {
       this.onSize(cols, rows);
     }
+  }
+
+  async renderPoster() {
+    if (!this.poster) return;
+
+    await this.initializeVt();
+
+    let poster = [];
+
+    if (this.poster.substring(0, 16) == "data:text/plain,") {
+      poster = [this.poster.substring(16)];
+    } else if (this.poster.substring(0, 4) == 'npt:' && typeof this.driver.getPoster === 'function') {
+      await this.initializeDriver();
+      poster = this.driver.getPoster(this.parseNptPoster(this.poster));
+    }
+
+    poster.forEach(text => this.vt.feed(text));
+
+    const cursor = this.getCursor();
+    const lines = [];
+
+    for (let i = 0; i < this.vt.rows; i++) {
+      lines.push({ id: i, segments: this.vt.get_line(i) });
+      this.changedLines.add(i);
+    }
+
+    this.vt.feed('\x1bc'); // reset vt
+    this.cursor = undefined;
+
+    return {
+      cursor: cursor,
+      lines: lines
+    }
+  }
+
+  parseNptPoster(poster) {
+    return poster
+      .substring(4)
+      .split(':')
+      .reverse()
+      .map(parseFloat)
+      .reduce((sum, n, i) => sum + n * Math.pow(60, i));
   }
 }
 

@@ -108,6 +108,20 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { idleTimeLimit }) 
     }
   }
 
+  function getPoster(time) {
+    const posterTime = time * 1000;
+    const poster = [];
+    let nextFrameIndex = 0;
+    let frame = frames[0];
+
+    while (frame && (frame[0] * 1000 < posterTime)) {
+      poster.push(frame[1]);
+      frame = frames[++nextFrameIndex];
+    }
+
+    return poster;
+  }
+
   return {
     init: async () => {
       await load();
@@ -137,6 +151,10 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { idleTimeLimit }) 
 
     seek: where => {
       return seek(where);
+    },
+
+    getPoster: t => {
+      return getPoster(t);
     },
 
     getCurrentTime: () => {

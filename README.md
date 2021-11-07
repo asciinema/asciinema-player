@@ -201,12 +201,12 @@ Poster (a preview frame) to display until the playback is started.
 
 The following poster specifications are supported:
 
-* `npt:2:34` - show recording "frame" at given time
-* `data:text/plain,Poster text` - show given text
+* `npt:1:23` - display recording "frame" at given time using [NPT ("Normal Play Time") notation](https://www.ietf.org/rfc/rfc2326.txt)
+* `data:text/plain,Poster text` - print given text
 
-The easiest way of specifying a poster is to use `npt:2:34` format. This will
-preload the recording and display terminal contents from the recording at 2 min
-34 s.
+The easiest way of specifying a poster is to use NPT format. For example,
+`npt:1:23` will preload the recording and display terminal contents at 1 min 23
+sec.
 
 Example:
 
@@ -231,8 +231,8 @@ AsciinemaPlayer.create({
 }, document.getElementById('demo'));
 ```
 
-Defaults to screen contents at `startAt` (or blank terminal when `startAt` is
-0).
+Defaults to blank terminal or, when `startAt` is specified, to screen contents
+at time `startAt`.
 
 ### `fit` - string
 
