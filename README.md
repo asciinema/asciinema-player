@@ -11,7 +11,7 @@ use on your own website.
 ## About
 
 asciinema player is an open-source terminal session player written in
-Javascript and Rust/WASM. Contrary to other _video_ players asciinema player doesn't play
+Javascript and Rust/WASM. Unlike other _video_ players asciinema player doesn't play
 heavy-weight video files (`.mp4`, `.webm` etc) but instead plays light-weight
 terminal session files called
 [asciicasts](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md).
@@ -29,13 +29,14 @@ and the recordings yourself then read on, it's very simple.
 
 ## Features
 
-* ~~HTML5 [`<asciinema-player>` element](#use-the-player-in-your-html-page) you can use in your website's markup,~~
-* copy-paste of terminal content (it's just a text after all!),
-* [idle time optimization](#idletimelimit),
+* ability to copy-paste terminal content - it's just a text after all!,
+* ultra smooth, timing-accurate playback,
+* [automatic font scaling](#fit) to fit into container element in most efficient way,
+* [idle time optimization](#idletimelimit) to skip longer periods of inactivity,
 * [predefined and custom font sizes](#fontsize),
-* [custom poster](#poster),
-* [custom playback speeds](#speed),
-* [looped playback](#loop),
+* [NPT-based or custom text poster](#poster),
+* [adjustable playback speed](#speed),
+* [looped playback](#loop), infinite or finite,
 * 🚧 [starting playback at specific time](#startat),
 * [keyboard shortcuts](#keyboard-shortcuts),
 * [multiple color schemes for standard 16 colors](#theme),
@@ -236,15 +237,14 @@ at time `startAt`.
 
 ### `fit` - string
 
-Controls how the player should fit inside its containing element (2nd arg to
-`create`).
+Controls the player's fitting (sizing) behaviour inside its container element.
 
 Possible values:
 
 * `"width"` - scale to full width of the container
 * `"height"` - scale to full height of the container (requires the container element to have fixed height)
 * `"both"` - scale to either full width or height, maximizing usage of available space (requires the container element to have fixed height)
-* `false` / `"none"` - don't scale the player - use fixed size font (see also `fontSize` option below)
+* `false` / `"none"` - don't scale, use fixed size font (also see `fontSize` option below)
 
 Defaults to `"width"`.
 
@@ -265,8 +265,8 @@ Possible values:
 
 Defaults to `"small"`.
 
-> This option is effective only when `fit: false` option (see above) is
-> specified as well.
+> This option is effective only when `fit: false` option is specified as well
+> (see above).
 
 ### `theme` - string
 
@@ -310,10 +310,10 @@ To build the project:
 
 This produces:
 
-- `public/asciinema-player.js` - standalone player script, to be linked directly from a website
-- `public/asciinema-player.min.js` - minimized version of the above
-- `public/asciinema-player.css` - stylesheet, to be linked directly from a website or included a CSS bundle
 - `dist/index.js` - ES module, to be `import`-ed in your JS bundle
+- `dist/bundle/asciinema-player.js` - standalone player script, to be linked directly from a website
+- `dist/bundle/asciinema-player.min.js` - minimized version of the above
+- `dist/bundle/asciinema-player.css` - stylesheet, to be linked directly from a website or included in a CSS bundle
 
 ## Contributing
 
