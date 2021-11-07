@@ -1,4 +1,4 @@
-_Note: This is README for `development` branch. [See the version for latest stable release](https://github.com/asciinema/asciinema-player/blob/master/README.md)._
+_Note: This README applies to development branch. See the version for the latest stable release [here](https://github.com/asciinema/asciinema-player/blob/master/README.md)._
 
 # asciinema player
 
@@ -12,7 +12,7 @@ use on your own website.
 
 asciinema player is an open-source terminal session player written in
 Javascript and Rust/WASM. Unlike other _video_ players asciinema player doesn't play
-heavy-weight video files (`.mp4`, `.webm` etc) but instead plays light-weight
+heavy-weight video files (`.mp4`, `.webm` etc) and instead plays light-weight
 terminal session files called
 [asciicasts](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md).
 
@@ -40,12 +40,12 @@ and the recordings yourself then read on, it's very simple.
 * 🚧 [starting playback at specific time](#startat),
 * [keyboard shortcuts](#keyboard-shortcuts),
 * [multiple color schemes for standard 16 colors](#theme),
-* 256 color palette / 24-bit true color (ISO-8613-3),
+* full support for 256 color palette and 24-bit true color (ISO-8613-3),
 * full-screen mode.
 
 ## Quick start
 
-The following example shows how to use asciinema player on your own website,
+The following examples show how to use asciinema player on your own website,
 without depending on asciinema.org.
 
 It assumes you have obtained terminal session recording file by either:
@@ -55,13 +55,11 @@ It assumes you have obtained terminal session recording file by either:
 * downloading an existing recording from asciinema.org by appending `.cast` to the
   asciicast page URL (for example: https://asciinema.org/a/28307.cast).
 
-### Download the standalone player bundle
+### Use the standalone player bundle in your HTML page
 
-Download latest version of the player from
+Download latest version of the player bundle from
 [releases page](https://github.com/asciinema/asciinema-player/releases). You
 only need `asciinema-player.min.js` and `asciinema-player.css` files.
-
-### Use the player in your HTML page
 
 First, add `asciinema-player.min.js`, `asciinema-player.css`and the `.cast` file of
 your recording to your site's assets. The HTML snippet below assumes they're in
@@ -89,30 +87,34 @@ inside an empty `<div>` element:
 </html>
 ```
 
-> This example demonstrates the use of the standalone JS/CSS bundles but you
-> can use the npm package in your own JS bundle as well - see the API section
-> below.
+### Use the player in your own application bundle
 
-## API
+Add `asciinema-player` to your `devDependencies`:
 
-If you're using the standalone JS bundle then call `create` through the
-`window.AsciinemaPlayer` proxy:
+```bash
+npm install --save-dev asciinema-player@3.0.0-alpha.2
+```
+
+Add empty `<div id="demo"></div>` element to your page to contain the player.
+
+Import and use `create` function from `asciinema-player` module:
 
 ```javascript
+import * as AsciinemaPlayer from 'asciinema-player';
 AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'));
 ```
 
-If you're using npm package then import and use the `create` function from
-`asciinema-player` module:
+Finally, include player's CSS file - found in the npm package at
+`dist/bundle/asciinema-player.css` - in your CSS bundle.
 
-```javascript
-import { create } from 'asciinema-player';
-create('/demo.cast', document.getElementById('demo'));
-```
+## API
 
-If you need to pass additional options to the player then turn the first
-argument into an object containing `src` (path/URL to the recording) and any
-number of options:
+To mount the player in your page call the `create` function exported by the
+`asciinema-player` ES module with 2 arguments: the URL (or path) to the
+asciicast file and the container DOM element to mount the player in.
+
+To pass additional options to the player turn the first argument into an object
+with `src` attribute and any number of options:
 
 ```javascript
 AsciinemaPlayer.create({
@@ -124,7 +126,9 @@ AsciinemaPlayer.create({
 
 See below for a full list of available options.
 
-### `cols` - number
+### `cols`
+
+Type: number
 
 Number of columns of player's terminal.
 
@@ -135,7 +139,9 @@ It's recommended to set it to the same value as in asciicast file to prevent
 player to resize itself from 80x24 to the actual dimensions of the asciicast
 when it gets loaded.
 
-### `rows` - number
+### `rows`
+
+Type: number
 
 Number of lines of player's terminal.
 
@@ -144,20 +150,26 @@ height saved in the asciicast file (after it gets loaded).
 
 Same recommendation as for `cols` applies here.
 
-### `autoplay` - boolean
+### `autoplay`
+
+Type: boolean
 
 Set this option to `true` if playback should start automatically.
 
 Defaults to `false` - no auto play.
 
-### `preload` - boolean
+### `preload`
+
+Type: boolean
 
 Set this option to `true` if the recording should be preloaded on player's
 initialization.
 
 Defaults to `false` - no preload.
 
-### `loop` - boolean or number
+### `loop`
+
+Type: boolean or number
 
 Set this option to either `true` or a number if playback should be looped. When
 set to a number (e.g. `3`) then the recording will be re-played given number of
@@ -165,7 +177,9 @@ times and stopped after that.
 
 Defaults to `false` - no looping.
 
-### `startAt` - number or string
+### `startAt`
+
+Type: number or string
 
 Start playback at a given time.
 
@@ -177,13 +191,17 @@ Supported formats:
 
 Defaults to `0`.
 
-### `speed` - number
+### `speed`
+
+Type: number
 
 Playback speed. The value of `2` means 2x faster.
 
 Defaults to `1` - normal speed.
 
-### `idleTimeLimit` - number
+### `idleTimeLimit`
+
+Type: number
 
 Limit terminal inactivity to a given number of seconds.
 
@@ -196,7 +214,27 @@ Defaults to:
   `asciinema rec`),
 - no limit, when it was not specified at the time of recording.
 
-### `poster` - string
+### `theme`
+
+Type: string
+
+Terminal color theme.
+
+One of:
+
+* `"asciinema"`
+* `"monokai"`
+* `"tango"`
+* `"solarized-dark"`
+* `"solarized-light"`
+
+Defaults to `"asciinema"`.
+
+You can also [use a custom theme](https://github.com/asciinema/asciinema-player/wiki/Custom-terminal-themes).
+
+### `poster`
+
+Type: string
 
 Poster (a preview frame) to display until the playback is started.
 
@@ -214,7 +252,7 @@ Example:
 ```javascript
 AsciinemaPlayer.create({
   src: '/demo.cast',
-  poster: 'npt:2:34'
+  poster: 'npt:1:23'
 }, document.getElementById('demo'));
 ```
 
@@ -223,7 +261,7 @@ poster\n\rThis in second line` will display arbitrary text. All [ANSI escape
 codes](https://en.wikipedia.org/wiki/ANSI_escape_code) can be used to add color
 and move the cursor around to produce good looking poster.
 
-Example of using text poster with cursor positioning:
+Example of using custom text poster with control sequences (aka escape codes):
 
 ```javascript
 AsciinemaPlayer.create({
@@ -233,9 +271,11 @@ AsciinemaPlayer.create({
 ```
 
 Defaults to blank terminal or, when `startAt` is specified, to screen contents
-at time `startAt`.
+at time specified by `startAt`.
 
-### `fit` - string
+### `fit`
+
+Type: string
 
 Controls the player's fitting (sizing) behaviour inside its container element.
 
@@ -252,7 +292,9 @@ Defaults to `"width"`.
 > `false` value. If you're upgrading from v2 to v3 and want to preserve the sizing
 > behaviour then include `fit: false` option.
 
-### `fontSize` - string
+### `fontSize`
+
+Type: string
 
 Size of the terminal font.
 
@@ -267,22 +309,6 @@ Defaults to `"small"`.
 
 > This option is effective only when `fit: false` option is specified as well
 > (see above).
-
-### `theme` - string
-
-Terminal color theme.
-
-One of:
-
-* `"asciinema"`
-* `"monokai"`
-* `"tango"`
-* `"solarized-dark"`
-* `"solarized-light"`
-
-Defaults to `"asciinema"`.
-
-You can also [use a custom theme](https://github.com/asciinema/asciinema-player/wiki/Custom-terminal-themes).
 
 ## Keyboard shortcuts
 
