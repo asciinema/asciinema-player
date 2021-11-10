@@ -1,7 +1,7 @@
 import loadVt from "./../vt-js/Cargo.toml";
-import {asciicast} from "./driver/asciicast";
-import {test} from "./driver/test";
-import {websocket} from "./driver/websocket";
+import { asciicast } from "./driver/asciicast";
+import { test } from "./driver/test";
+import { websocket } from "./driver/websocket";
 import { parseNpt } from "./util";
 const vt = loadVt(); // trigger async loading of wasm
 
