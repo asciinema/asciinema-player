@@ -159,7 +159,7 @@ height saved in the asciicast file (after it gets loaded).
 
 Same recommendation as for `cols` applies here.
 
-### `autoplay`
+### `autoPlay`
 
 Type: boolean
 

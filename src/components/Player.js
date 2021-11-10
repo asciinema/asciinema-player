@@ -30,6 +30,8 @@ export default props => {
     cursorHold: false
   });
 
+  const autoPlay = props.autoPlay ?? props.autoplay;
+
   let frameRequestId;
   let userActivityTimeoutId;
   let timeUpdateIntervalId;
@@ -113,7 +115,7 @@ export default props => {
       });
     }
 
-    if (props.autoplay) {
+    if (autoPlay) {
       play();
     }
   });
