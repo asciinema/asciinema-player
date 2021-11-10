@@ -1,11 +1,11 @@
 import { render } from 'solid-js/web';
-import AsciinemaPlayer from './components/AsciinemaPlayer';
+import Player from './components/Player';
 
 function create(props, elem) {
   let el;
 
   const dispose = render(() => {
-    el = <AsciinemaPlayer {...props} />;
+    el = <Player {...props} />;
     return el;
   }, elem);
 
