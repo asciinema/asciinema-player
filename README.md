@@ -324,10 +324,10 @@ Defaults to `"small"`.
 The following keyboard shortcuts are currently available (when the player
 element is focused):
 
-* `space` - play / pause
-* `f` - toggle fullscreen mode
-* `←` / `→` - rewind 5 seconds / fast-forward 5 seconds
-* `0, 1, 2 ... 9` - jump to 0%, 10%, 20% ... 90%
+* <kbd>space</kbd> - play / pause
+* <kbd>f</kbd> - toggle fullscreen mode
+* <kbd>←</kbd> / <kbd>→</kbd> - rewind 5 seconds / fast-forward 5 seconds
+* <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd> ... <kbd>9</kbd> - jump to 0%, 10%, 20% ... 90%
 
 ## Development
 
