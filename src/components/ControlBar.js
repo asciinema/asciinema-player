@@ -40,8 +40,9 @@ export default props => {
     const barWidth = e.currentTarget.offsetWidth;
     const rect = e.currentTarget.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
+    const pos = mouseX / barWidth;
 
-    return props.onSeekClick(mouseX / barWidth);
+    return props.onSeekClick(`${pos * 100}%`);
   }
 
   return (

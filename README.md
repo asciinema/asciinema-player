@@ -37,7 +37,7 @@ and the recordings yourself then read on, it's very simple.
 * [NPT-based or custom text poster](#poster),
 * [adjustable playback speed](#speed),
 * [looped playback](#loop), infinite or finite,
-* 🚧 [starting playback at specific time](#startat),
+* [starting playback at specific time](#startat),
 * [keyboard shortcuts](#keyboard-shortcuts),
 * [multiple color schemes for standard 16 colors](#theme),
 * full support for 256 color palette and 24-bit true color (ISO-8613-3),
@@ -194,9 +194,9 @@ Start playback at a given time.
 
 Supported formats:
 
-* 123 (number of seconds)
-* 2:03 ("mm:ss")
-* 1:02:03 ("hh:mm:ss")
+* `123` (number of seconds)
+* `"2:03"` ("mm:ss")
+* `"1:02:03"` ("hh:mm:ss")
 
 Defaults to `0`.
 

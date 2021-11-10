@@ -2,6 +2,7 @@
 // TODO support ttyrec (via opts.format == 'ttyrec')
 
 import Stream from '../stream';
+import { parseNpt } from '../util';
 
 
 function asciicast(url, { feed, now, setTimeout, onFinish }, { idleTimeLimit }) {
@@ -79,10 +80,20 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { idleTimeLimit }) 
       pause();
     }
 
-    if (where === '<<') {
+    if (typeof where === 'number') {
+      where = Math.min(1, where / duration);
+    } else if (where === '<<') {
       where = Math.max(0, ((pauseElapsedTime ?? 0) / (duration * 1000)) - 0.1);
     } else if (where === '>>') {
       where = Math.min(1, ((pauseElapsedTime ?? 0) / (duration * 1000)) + 0.1);
+    } else if (typeof where === 'string') {
+      if (where[where.length - 1] === '%') {
+        where = parseFloat(where.substring(0, where.length - 1)) / 100;
+      } else {
+        where = Math.min(1, parseNpt(where) / duration);
+      }
+    } else if (typeof where === 'number') {
+      where = Math.min(1, where / duration);
     }
 
     const targetTime = duration * where * 1000;
@@ -129,9 +140,9 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { idleTimeLimit }) 
       return { cols, rows, duration };
     },
 
-    start: async () => {
+    start: async startAt => {
       await load();
-      seek(0);
+      seek(startAt ?? 0);
       resume();
     },
 

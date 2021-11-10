@@ -2,6 +2,7 @@ import loadVt from "./../vt-js/Cargo.toml";
 import {asciicast} from "./driver/asciicast";
 import {test} from "./driver/test";
 import {websocket} from "./driver/websocket";
+import { parseNpt } from "./util";
 const vt = loadVt(); // trigger async loading of wasm
 
 
@@ -50,6 +51,7 @@ class Core {
     this.loop = opts.loop;
     this.idleTimeLimit = opts.idleTimeLimit;
     this.preload = opts.preload;
+    this.startAt = opts.startAt;
     this.poster = opts.poster;
     this.onSize = opts.onSize;
     this.onFinish = opts.onFinish;
@@ -194,7 +196,7 @@ class Core {
   async start() {
     await this.initializeDriver();
     this.onTerminalUpdate(); // clears the poster
-    const stop = await this.driver.start();
+    const stop = await this.driver.start(this.startAt);
 
     if (typeof stop === 'function') {
       this.driver.stop = stop;
@@ -312,12 +314,7 @@ class Core {
   }
 
   parseNptPoster(poster) {
-    return poster
-      .substring(4)
-      .split(':')
-      .reverse()
-      .map(parseFloat)
-      .reduce((sum, n, i) => sum + n * Math.pow(60, i));
+    return parseNpt(poster.substring(4));
   }
 }
 

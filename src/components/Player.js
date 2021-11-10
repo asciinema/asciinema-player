@@ -52,6 +52,7 @@ export default props => {
     loop: props.loop,
     speed: props.speed,
     preload: props.preload,
+    startAt: props.startAt,
     poster: props.poster,
     idleTimeLimit: props.idleTimeLimit,
 
@@ -253,7 +254,7 @@ export default props => {
       seek('>>');
     } else if (e.key.charCodeAt(0) >= 48 && e.key.charCodeAt(0) <= 57) {
       const pos = (e.key.charCodeAt(0) - 48) / 10;
-      seek(pos);
+      seek(`${pos * 100}%`);
     } else {
       return;
     }
