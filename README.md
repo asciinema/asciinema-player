@@ -113,8 +113,17 @@ To mount the player in your page call the `create` function exported by the
 `asciinema-player` ES module with 2 arguments: the URL (or path) to the
 asciicast file and the container DOM element to mount the player in.
 
-To pass additional options to the player turn the first argument into an object
-with `src` attribute and any number of options:
+```javascript
+const player = AsciinemaPlayer.create(url, containerElement);
+```
+
+The returned object contains the following attributes:
+
+- `el` - DOM element of the player
+- `dispose` - a function to dispose the player, i.e. to remove it from the page
+
+To pass additional options when mounting the player turn the first argument into
+an object with `src` attribute and any number of options:
 
 ```javascript
 AsciinemaPlayer.create({
