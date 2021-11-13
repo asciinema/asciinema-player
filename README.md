@@ -340,6 +340,7 @@ To build the project:
 
     git clone https://github.com/asciinema/asciinema-player
     cd asciinema-player
+    git submodule update --init
     npm install
     npm run build
 

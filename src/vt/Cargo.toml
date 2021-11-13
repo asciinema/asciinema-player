@@ -13,7 +13,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 # wasm-bindgen = "0.2"
 rand = "^0.7"
-vt = { path = "../../../vt-rs" }
+vt = { path = "./vt-rs" }
 serde-wasm-bindgen = "^0.3"
 # serde = "1.0.104"
 # serde_derive = "1.0.104"
