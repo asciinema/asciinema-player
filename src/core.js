@@ -1,4 +1,4 @@
-import loadVt from "./../vt-js/Cargo.toml";
+import loadVt from "./vt/Cargo.toml";
 import { asciicast } from "./driver/asciicast";
 import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
