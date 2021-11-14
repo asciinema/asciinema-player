@@ -92,8 +92,6 @@ function asciicast(url, { feed, now, setTimeout, onFinish }, { idleTimeLimit }) 
       } else {
         where = Math.min(1, parseNpt(where) / duration);
       }
-    } else if (typeof where === 'number') {
-      where = Math.min(1, where / duration);
     }
 
     const targetTime = duration * where * 1000;
