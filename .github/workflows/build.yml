@@ -2,9 +2,13 @@ name: Build
 
 on:
   push:
-    branches: [ $default-branch ]
+    branches:
+      - master
+      - develop
   pull_request:
-    branches: [ $default-branch ]
+    branches:
+      - master
+      - develop
 
 jobs:
   build:
