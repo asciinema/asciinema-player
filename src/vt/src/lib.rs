@@ -11,7 +11,7 @@ use vt::VT;
 
 #[wasm_bindgen]
 pub struct VtWrapper {
-    vt: VT
+    vt: VT,
 }
 
 #[wasm_bindgen]
