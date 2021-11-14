@@ -1,0 +1,25 @@
+name: Prerelease
+
+on:
+  release:
+    types: [prereleased]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - uses: actions/setup-node@v2
+      with:
+        node-version: 14
+        registry-url: https://registry.npmjs.org/
+        cache: 'npm'
+    - run: npm ci
+    - run: npm run build
+    - run: npm run bundle
+    - run: ls -lhR dist
+    - run: npm publish --tag next
+      env:
+        NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
