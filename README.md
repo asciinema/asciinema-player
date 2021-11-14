@@ -343,6 +343,7 @@ To build the project:
     git submodule update --init
     npm install
     npm run build
+    npm run bundle
 
 This produces:
 
