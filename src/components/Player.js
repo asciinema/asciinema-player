@@ -109,7 +109,7 @@ export default props => {
 
     setState({ isPausable, isSeekable });
 
-    if (poster !== undefined) {
+    if (poster !== undefined && !autoPlay) {
       setState({
         lines: poster.lines,
         cursor: poster.cursor
@@ -348,7 +348,7 @@ export default props => {
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Switch>
-          <Match when={state.state == 'initial'}><StartOverlay onClick={play} /></Match>
+          <Match when={state.state == 'initial' && !autoPlay}><StartOverlay onClick={play} /></Match>
           <Match when={state.state == 'waiting'}><LoaderOverlay /></Match>
         </Switch>
       </div>
