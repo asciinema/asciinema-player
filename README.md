@@ -122,15 +122,19 @@ The returned object contains the following attributes:
 - `el` - DOM element of the player
 - `dispose` - a function to dispose the player, i.e. to remove it from the page
 
-To pass additional options when mounting the player turn the first argument into
-an object with `src` attribute and any number of options:
+To pass additional options when mounting the player use 3 argument variant:
 
 ```javascript
-AsciinemaPlayer.create({
-  src: '/demo.cast',
+const player = AsciinemaPlayer.create(url, containerElement, opts);
+```
+
+For example, to enable looping and select Solarized Dark theme:
+
+```javascript
+AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
   loop: true,
   theme: 'solarized-dark'
-}, document.getElementById('demo'));
+});
 ```
 
 See below for a full list of available options.

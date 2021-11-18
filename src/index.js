@@ -1,12 +1,9 @@
 import { render } from 'solid-js/web';
 import Player from './components/Player';
 
-function create(props, elem) {
+function create(src, elem, opts = {}) {
+  const props = { src, ...opts };
   let el;
-
-  if (typeof props === 'string') {
-    props = { src: props };
-  }
 
   const dispose = render(() => {
     el = <Player {...props} />;
