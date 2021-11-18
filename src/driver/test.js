@@ -1,4 +1,4 @@
-function test(kind, callbacks, opts) {
+function test({ kind }, callbacks, opts) {
   if (kind == 'random') {
     return random(callbacks);
   } else if (kind == 'clock') {

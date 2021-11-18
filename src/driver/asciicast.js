@@ -5,7 +5,7 @@ import Stream from '../stream';
 import { parseNpt } from '../util';
 
 
-function asciicast(url, { feed, now, setTimeout, onFinish }, { idleTimeLimit }) {
+function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit }) {
   let cols;
   let rows;
   let frames;

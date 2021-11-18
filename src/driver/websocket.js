@@ -1,6 +1,6 @@
 import { Queue } from "../queue";
 
-function websocket(url, { feed }) {
+function websocket({ url }, { feed }) {
   const queue = new Queue();
   let socket;
   let startTime;

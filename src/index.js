@@ -30,21 +30,20 @@ function getDriver(src) {
     }
   }
 
-  let drv;
+  const drivers = new Map([
+    ['asciicast', asciicast],
+    ['websocket', websocket],
+    ['test', test]
+  ]);
 
   if (typeof src === 'function') {
-    drv = src;
-  } else if (src.driver == 'asciicast') {
-    drv = (callbacks, opts) => asciicast(src.url, callbacks, opts);
-  } else if (src.driver == 'websocket') {
-    drv = (callbacks, opts) => websocket(src.url, callbacks, opts);
-  } else if (src.driver == 'test') {
-    drv = (callbacks, opts) => test(src.kind, callbacks, opts);
+    return src;
+  } else if (drivers.has(src.driver)) {
+    const driver = drivers.get(src.driver);
+    return (callbacks, opts) => driver(src, callbacks, opts);
   } else {
     throw `unsupported driver: ${JSON.stringify(src)}`;
   }
-
-  return drv;
 }
 
 export { create };
