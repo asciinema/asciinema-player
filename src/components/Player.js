@@ -46,7 +46,7 @@ export default props => {
   const terminalCols = () => state.cols || 80;
   const terminalRows = () => state.rows || 24;
 
-  const core = Core.build(props.src, {
+  const core = new Core(props.driverFn, {
     cols: props.cols,
     rows: props.rows,
     loop: props.loop,
