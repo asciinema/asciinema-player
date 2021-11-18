@@ -13,9 +13,7 @@ function websocket({ url }, { feed }) {
     const elapsedStreamTime = (event[0] * 1000) + bufferTime;
 
     if (elapsedStreamTime > elapsedWallTime) {
-      await new Promise(resolve => {
-        setTimeout(resolve, elapsedStreamTime - elapsedWallTime);
-      });
+      await sleep(elapsedStreamTime - elapsedWallTime);
     }
 
     feed(event[2]);
@@ -55,6 +53,12 @@ function withEachItem(queue, f) {
   }
 
   setTimeout(go, 0);
+}
+
+function sleep(t) {
+  return new Promise(resolve => {
+    setTimeout(resolve, t);
+  });
 }
 
 export { websocket };
