@@ -81,7 +81,7 @@ inside an empty `<div>` element:
   ...
   <script src="/asciinema-player.min.js"></script>
   <script>
-    AsciinemaPlayer.create('/demo.cast', document.getElementById('demo));
+    AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'));
   </script>
 </body>
 </html>
