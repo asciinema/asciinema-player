@@ -22,13 +22,20 @@ function websocket({ url }, { feed }) {
   return {
     start: () => {
       socket = new WebSocket(url);
+      socket.binaryType = 'arraybuffer';
 
-      socket.onmessage = (event) => {
+      socket.onmessage = event => {
         if (startTime === undefined) {
           startTime = (new Date()).getTime();
         }
 
-        queue.push(JSON.parse(event.data));
+        if (typeof event.data === 'string') {
+          queue.push(JSON.parse(event.data));
+        } else {
+          const time = ((new Date()).getTime() - startTime) / 1000;
+          const data = String.fromCharCode.apply(null, new Uint8Array(event.data));
+          queue.push([time, 'o', data]);
+        }
       }
     },
 
