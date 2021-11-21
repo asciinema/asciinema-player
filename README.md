@@ -263,10 +263,9 @@ sec.
 Example:
 
 ```javascript
-AsciinemaPlayer.create({
-  src: '/demo.cast',
+AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
   poster: 'npt:1:23'
-}, document.getElementById('demo'));
+});
 ```
 
 Alternatively, a `poster` value of `data:text/plain,This will be printed as
@@ -277,10 +276,9 @@ and move the cursor around to produce good looking poster.
 Example of using custom text poster with control sequences (aka escape codes):
 
 ```javascript
-AsciinemaPlayer.create({
-  src: '/demo.cast',
+AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
   poster: "data:text/plain,I'm regular \x1b[1;32mI'm bold green\x1b[3BI'm 3 lines down"
-}, document.getElementById('demo'));
+});
 ```
 
 Defaults to blank terminal or, when `startAt` is specified, to screen contents
