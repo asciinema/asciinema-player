@@ -1,8 +1,9 @@
 import { render } from 'solid-js/web';
 import Player from './components/Player';
-import { asciicast } from "./driver/asciicast";
+import { asciicast, parseAsciicast } from "./driver/asciicast";
 import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
+import loadVt from "./vt/Cargo.toml";
 
 function create(src, elem, opts = {}) {
   const props = { driverFn: getDriver(src), ...opts };
@@ -46,4 +47,27 @@ function getDriver(src) {
   }
 }
 
-export { create };
+async function benchmark(url, rounds = 10) {
+  const res = await fetch(url);
+  console.info('fetched recording');
+  const asciicast = parseAsciicast(await res.text());
+  console.info('parsed recording');
+  const vtModule = await loadVt(); // trigger async loading of wasm
+  const vt = vtModule.create(asciicast.cols, asciicast.rows);
+  console.info('initialized vt');
+  const frames = Array.from(asciicast.frames);
+  const bytes = frames.reduce((sum, frame) => sum + new Blob([frame[1]]).size, 0) * rounds;
+  console.info('prepared frames');
+  const startTime = (new Date()).getTime();
+
+  for (let i = 0; i < rounds; i++) {
+    frames.forEach(frame => { vt.feed(frame[1]); });
+  }
+
+  const endTime = (new Date()).getTime();
+  const duration = (endTime - startTime) / 1000;
+  console.info('finished feeding');
+  console.info(`time: ${duration}, bytes: ${bytes}, bytes/sec: ${bytes / duration}`);
+}
+
+export { create, benchmark };

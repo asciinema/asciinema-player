@@ -280,4 +280,4 @@ function limitFrames(frames, idleTimeLimit = Infinity) {
   });
 }
 
-export { asciicast };
+export { asciicast, parseAsciicast };
