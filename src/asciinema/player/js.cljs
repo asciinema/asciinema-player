@@ -1,7 +1,12 @@
 (ns asciinema.player.js
   (:require [clojure.set :refer [rename-keys]]
+            [goog.net.XhrIo :as xhr]
+            [cljs.core.async :refer [chan >! <! put!]]
+            [asciinema.vt :as vt]
+            [asciinema.player.asciicast :as asciicast]
             [asciinema.player.core :as p]
-            [asciinema.player.element])) ; DON'T REMOVE
+            [asciinema.player.element])
+  (:require-macros [cljs.core.async.macros :refer [go]])) ; DON'T REMOVE
 
 (defn ^:export CreatePlayer
   "JavaScript API for creating the player."
@@ -31,6 +36,34 @@
   "JavaScript API for unmounting the player from given DOM node."
   [dom-node]
   (p/unmount-player dom-node))
+
+(defn fetch [url]
+  (let [ch (chan)]
+    (xhr/send url (fn [event]
+                    (put! ch (-> event
+                                 .-target
+                                 .getResponseText))))
+    ch))
+
+(defn byte-size [s]
+  (.-size (new js/Blob [s])))
+
+(defn ^:export benchmark [url rounds]
+  (go
+    (let [body (<! (fetch url))
+          asciicast (asciicast/load body)
+          vt (vt/make-vt (:width asciicast) (:height asciicast))
+          strings (map #(or (get % 2) (get % 1)) (:data asciicast))
+          bytes (* (reduce #(+ %1 (byte-size %2)) 0 strings) rounds)
+          frames (map (fn [string] (mapv #(.codePointAt string %) (range (count string)))) strings)]
+      (prn "bytes: " bytes)
+      (time
+        (dotimes [_ rounds]
+         (loop [vt vt
+                frames frames]
+           (if-let [inputs (first frames)]
+             (recur (vt/feed vt inputs) (rest frames))
+             vt)))))))
 
 ;; This has to be executed *after* asciinema.player.js.CreatePlayer is defined,
 ;; as browsers implementing CustomElement natively (like Chrome) call element's
