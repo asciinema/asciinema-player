@@ -3,6 +3,7 @@ import Player from './components/Player';
 import { asciicast } from "./driver/asciicast";
 import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
+import { eventsource } from "./driver/eventsource";
 
 function create(src, elem, opts = {}) {
   const props = { driverFn: getDriver(src), ...opts };
@@ -33,6 +34,7 @@ function getDriver(src) {
   const drivers = new Map([
     ['asciicast', asciicast],
     ['websocket', websocket],
+    ['eventsource', eventsource],
     ['test', test]
   ]);
 

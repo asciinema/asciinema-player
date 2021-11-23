@@ -39,6 +39,23 @@ class Queue {
       });
     }
   }
+
+  forEach(f) {
+    const go = async () => {
+      let item = this.pop();
+
+      while (typeof item !== 'object' || typeof item.then !== 'function') {
+        await f(item);
+        item = this.pop();
+      }
+
+      item = await item;
+      await f(item);
+      go();
+    }
+
+    setTimeout(go, 0);
+  }
 }
 
-export { Queue };
+export default Queue;
