@@ -10,6 +10,7 @@ function websocket({ url, bufferTime = 0 }, { feed }) {
     socket.binaryType = 'arraybuffer';
 
     socket.onopen = () => {
+      console.debug(`websocket: connected`);
       reconnectDelay = 250;
     }
 
@@ -23,7 +24,7 @@ function websocket({ url, bufferTime = 0 }, { feed }) {
 
     socket.onclose = event => {
       if (!event.wasClean) {
-        console.debug(`reconnecting in ${reconnectDelay}...`);
+        console.debug(`websocket: unclean close, reconnecting in ${reconnectDelay}...`);
         setTimeout(connect, reconnectDelay);
         reconnectDelay = Math.min(reconnectDelay * 2, 5000);
       }
