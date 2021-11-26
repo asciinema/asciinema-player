@@ -2,6 +2,7 @@ import buffer from '../buffer';
 
 function websocket({ url, bufferTime = 0 }, { feed }) {
   const buf = buffer(feed, bufferTime);
+  const utfDecoder = new TextDecoder();
   let socket;
   let reconnectDelay = 250;
 
@@ -18,7 +19,7 @@ function websocket({ url, bufferTime = 0 }, { feed }) {
       if (typeof event.data === 'string') {
         buf.pushEvent(JSON.parse(event.data));
       } else {
-        buf.pushText(String.fromCharCode.apply(null, new Uint8Array(event.data)));
+        buf.pushText(utfDecoder.decode(event.data));
       }
     }
 
