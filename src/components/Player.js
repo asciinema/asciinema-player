@@ -238,8 +238,6 @@ export default props => {
   }
 
   const onKeyPress = (e) => {
-    console.debug(e);
-
     if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey) {
       return;
     }
