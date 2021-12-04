@@ -48,6 +48,8 @@ class Core {
       }
     }
 
+    this.wasm = await vt;
+
     this.driver = this.driverFn(
       { feed, now, setTimeout, setInterval, onFinish },
       { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit }
@@ -221,10 +223,10 @@ class Core {
       this.rows = this.rows ?? meta.rows;
     }
 
-    await this.initializeVt();
+    this.initializeVt();
   }
 
-  async initializeVt() {
+  initializeVt() {
     const cols = this.cols ?? 80;
     const rows = this.rows ?? 24;
 
@@ -232,9 +234,7 @@ class Core {
       return;
     }
 
-    const { create } = await vt;
-
-    this.vt = create(cols, rows);
+    this.vt = this.wasm.create(cols, rows);
     this.vt.cols = cols;
     this.vt.rows = rows;
 
@@ -252,7 +252,7 @@ class Core {
   async renderPoster() {
     if (!this.poster) return;
 
-    await this.initializeVt();
+    this.initializeVt();
 
     let poster = [];
 
