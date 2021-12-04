@@ -5,6 +5,7 @@ function websocket({ url, bufferTime = 0 }, { feed }) {
   const utfDecoder = new TextDecoder();
   let socket;
   let reconnectDelay = 250;
+  let stop = false;
 
   function connect() {
     socket = new WebSocket(url);
@@ -24,11 +25,11 @@ function websocket({ url, bufferTime = 0 }, { feed }) {
     }
 
     socket.onclose = event => {
-      if (!event.wasClean) {
-        console.debug(`websocket: unclean close, reconnecting in ${reconnectDelay}...`);
-        setTimeout(connect, reconnectDelay);
-        reconnectDelay = Math.min(reconnectDelay * 2, 5000);
-      }
+      if (stop || event.wasClean) return;
+
+      console.debug(`websocket: unclean close, reconnecting in ${reconnectDelay}...`);
+      setTimeout(connect, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 2, 5000);
     }
   }
 
@@ -38,6 +39,7 @@ function websocket({ url, bufferTime = 0 }, { feed }) {
     },
 
     stop: () => {
+      stop = true;
       buf.stop();
 
       if (socket !== undefined) {
