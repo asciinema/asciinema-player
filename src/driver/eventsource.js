@@ -18,7 +18,11 @@ function eventsource({ url, bufferTime = 0 }, { feed }) {
     },
 
     stop: () => {
-      es.close();
+      buf.stop();
+
+      if (es !== undefined) {
+        es.close();
+      }
     }
   }
 }

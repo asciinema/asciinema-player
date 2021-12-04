@@ -38,6 +38,8 @@ function websocket({ url, bufferTime = 0 }, { feed }) {
     },
 
     stop: () => {
+      buf.stop();
+
       if (socket !== undefined) {
         socket.close();
       }

@@ -41,20 +41,28 @@ class Queue {
   }
 
   forEach(f) {
+    let stop = false;
+
     const go = async () => {
       let item = this.pop();
 
       while (typeof item !== 'object' || typeof item.then !== 'function') {
+        if (stop) return;
         await f(item);
         item = this.pop();
       }
 
       item = await item;
+      if (stop) return;
       await f(item);
       go();
     }
 
     setTimeout(go, 0);
+
+    return () => {
+      stop = true;
+    }
   }
 }
 

@@ -4,7 +4,7 @@ function buffer(feed, bufferTime) {
   const events = new Queue();
   let startTime;
 
-  events.forEach(async event => {
+  const stopFeeding = events.forEach(async event => {
     const elapsedWallTime = now() - startTime;
     const elapsedStreamTime = (event[0] + bufferTime) * 1000;
 
@@ -33,6 +33,10 @@ function buffer(feed, bufferTime) {
 
       const time = (now() - startTime) / 1000;
       events.push([time, 'o', text]);
+    },
+
+    stop() {
+      stopFeeding();
     }
   }
 }
