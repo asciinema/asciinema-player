@@ -33,6 +33,7 @@ class Core {
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
+    const reset = (cols, rows) => { this.resetVt(cols, rows) };
 
     const onFinish = () => {
       playCount++;
@@ -51,7 +52,7 @@ class Core {
     this.wasm = await vt;
 
     this.driver = this.driverFn(
-      { feed, now, setTimeout, setInterval, onFinish },
+      { feed, now, setTimeout, setInterval, onFinish, reset },
       { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit }
     );
 
@@ -223,10 +224,10 @@ class Core {
       this.rows = this.rows ?? meta.rows;
     }
 
-    this.initializeVt();
+    this.ensureVt();
   }
 
-  initializeVt() {
+  ensureVt() {
     const cols = this.cols ?? 80;
     const rows = this.rows ?? 24;
 
@@ -234,6 +235,17 @@ class Core {
       return;
     }
 
+    this.initializeVt(cols, rows);
+  }
+
+  resetVt(cols, rows) {
+    this.cols = cols;
+    this.rows = rows;
+
+    this.initializeVt(cols, rows);
+  }
+
+  initializeVt(cols, rows) {
     this.vt = this.wasm.create(cols, rows);
     this.vt.cols = cols;
     this.vt.rows = rows;
@@ -252,7 +264,7 @@ class Core {
   async renderPoster() {
     if (!this.poster) return;
 
-    this.initializeVt();
+    this.ensureVt();
 
     let poster = [];
 
