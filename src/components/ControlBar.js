@@ -1,4 +1,4 @@
-import { Match, Switch } from "solid-js";
+import { Match, Switch, createSignal, onCleanup } from "solid-js";
 
 function formatTime(seconds) {
   seconds = Math.floor(seconds);
@@ -32,7 +32,9 @@ export default props => {
     }
   };
 
-  const onSeek = e => {
+  const [mouseDown, setMouseDown] = createSignal(false);
+
+  const onSeek = (e) => {
     if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey) {
       return;
     }
@@ -40,10 +42,29 @@ export default props => {
     const barWidth = e.currentTarget.offsetWidth;
     const rect = e.currentTarget.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
-    const pos = mouseX / barWidth;
+    const pos = Math.max(0, mouseX / barWidth);
 
     return props.onSeekClick(`${pos * 100}%`);
-  }
+  };
+
+  const onClick = (e) => {
+    setMouseDown(true);
+    onSeek(e);
+  };
+
+  const onMove = (e) => {
+    if (mouseDown()) {
+      onSeek(e);
+    }
+  };
+
+  const onDocumentMouseUp = () => {
+    setMouseDown(false);
+  };
+  document.addEventListener('mouseup', onDocumentMouseUp);
+  onCleanup(() => {
+    document.removeEventListener('mouseup', onDocumentMouseUp);
+  });
 
   return (
     <div class="control-bar" classList={{ seekable: props.isSeekable }}>
@@ -83,7 +104,7 @@ export default props => {
 
       <Show when={typeof props.progress === 'number' || props.isSeekable}>
         <span class="progressbar">
-          <span class="bar" onMouseDown={onSeek}>
+          <span class="bar" onMouseDown={onClick} onMouseMove={onMove}>
             <span class="gutter">
               <span style={gutterBarStyle()}>
               </span>
