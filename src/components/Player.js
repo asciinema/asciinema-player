@@ -5,6 +5,7 @@ import Terminal from './Terminal';
 import ControlBar from './ControlBar';
 import LoaderOverlay from './LoaderOverlay';
 import StartOverlay from './StartOverlay';
+import Subtitles from './Subtitles';
 
 
 export default props => {
@@ -27,10 +28,12 @@ export default props => {
     remainingTime: null,
     progress: null,
     blink: true,
-    cursorHold: false
+    cursorHold: false,
+    subtitle: []
   });
 
   const autoPlay = props.autoPlay ?? props.autoplay;
+  const subtitleTTL = props.subtitleTTL || 3000;
 
   let frameRequestId;
   let userActivityTimeoutId;
@@ -70,6 +73,11 @@ export default props => {
       }
     },
 
+    onKeysUpdate: data => {
+        subtitle.push(data)
+        setState('subtitle', subtitle)
+        setTimeout(() => setState('subtitle', subtitle.shift()), subtitleTTL )
+    },
     onFinish: () => {
       setState('state', 'paused');
     }
@@ -345,6 +353,7 @@ export default props => {
       <div class={playerClass()} style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
+        <Subtitles />
         <Switch>
           <Match when={state.state == 'initial' && !autoPlay}><StartOverlay onClick={play} /></Match>
           <Match when={state.state == 'waiting'}><LoaderOverlay /></Match>

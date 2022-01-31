@@ -25,6 +25,7 @@ class Core {
     this.onSize = opts.onSize;
     this.onFinish = opts.onFinish;
     this.onTerminalUpdate = opts.onTerminalUpdate;
+    this.onKeysUpdate = opts.onKeysUpdate;
   }
 
   async init() {
@@ -198,11 +199,15 @@ class Core {
     }
   }
 
-  feed(data) {
-    const affectedLines = this.vt.feed(data);
-    affectedLines.forEach(i => this.changedLines.add(i));
-    this.cursor = undefined;
-    this.onTerminalUpdate();
+  feed(data, type ) {
+    if ((type === undefined) || (type == "o")) {
+        const affectedLines = this.vt.feed(data);
+        affectedLines.forEach(i => this.changedLines.add(i));
+        this.cursor = undefined;
+        this.onTerminalUpdate();
+    } else if (type == "i") {
+        this.onKeysUpdate(data);
+    }
   }
 
   now() { return performance.now() * this.speed }

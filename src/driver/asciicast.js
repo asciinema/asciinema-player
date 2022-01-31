@@ -52,7 +52,7 @@ function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit
     let elapsedWallTime;
 
     do {
-      feed(frame[1]);
+      feed(frame[2], frame[1]);
       elapsedVirtualTime = frame[0] * 1000;
       frame = frames[++nextFrameIndex];
       elapsedWallTime = now() - startTime;
@@ -213,8 +213,8 @@ function parseAsciicastV2(jsonl) {
     .drop(1)
     .filter(l => l[0] === '[')
     .map(l => JSON.parse(l))
-    .filter(e => e[1] === 'o')
-    .map(e => [e[0], e[2]]);
+    // .filter(e => e[1] === 'o')
+    // .map(e => [e[0], e[2]]);
 
   return {
     cols: header.width,
@@ -241,16 +241,25 @@ function batchFrames(frames) {
         ic++;
 
         if (prevFrame === undefined) {
-          prevFrame = frame;
+          if (frame[1] == 'o') {
+            prevFrame = frame;
+          } else {
+            emit(frame);
+          }
           return;
         }
 
-        if (frame[0] - prevFrame[0] < maxFrameTime) {
-          prevFrame[1] += frame[1];
+        if ((frame[1] == "o") && (frame[0] - prevFrame[0] < maxFrameTime)) {
+          prevFrame[2] += frame[2];
         } else {
           emit(prevFrame);
-          prevFrame = frame;
           oc++;
+          if (frame[1] == "o") {
+            prevFrame = frame;
+          } else {
+            prevFrame = undefined;
+            emit(frame)
+          }
         }
       },
 
