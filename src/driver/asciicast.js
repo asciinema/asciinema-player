@@ -98,7 +98,7 @@ function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit
 
     if (targetTime < elapsedVirtualTime) {
       feed('\x1bc'); // reset terminal
-      feed('\x1bc', 'i'); // and subtitles
+      feed('\x1bc', 'i'); // reset subtitles
       nextFrameIndex = 0;
       elapsedVirtualTime = 0;
     }
@@ -214,8 +214,6 @@ function parseAsciicastV2(jsonl) {
     .drop(1)
     .filter(l => l[0] === '[')
     .map(l => JSON.parse(l))
-    // .filter(e => e[1] === 'o')
-    // .map(e => [e[0], e[2]]);
 
   return {
     cols: header.width,
