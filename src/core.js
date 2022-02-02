@@ -200,15 +200,20 @@ class Core {
     }
   }
 
-  feed(data, type ) {
-    this.onFeed()
+  /*
+   * feed is used by the driver to pass data to the player. 
+   * `type` can be either 'o' or 'i' or undefined which deafults to `o`
+   * `now` is an optional parameters used by seek to pass virtual time
+   */
+  feed(data, type, now) {
+    this.onFeed(now)
     if ((type === undefined) || (type == "o")) {
         const affectedLines = this.vt.feed(data);
         affectedLines.forEach(i => this.changedLines.add(i));
         this.cursor = undefined;
         this.onTerminalUpdate();
     } else if (type == "i") {
-        this.onKeysUpdate(data);
+        this.onKeysUpdate(data, now);
     }
   }
 

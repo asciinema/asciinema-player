@@ -106,8 +106,8 @@ function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit
     let frame = frames[nextFrameIndex];
 
     while (frame && (frame[0] * 1000 < targetTime)) {
-      feed(frame[2], frame[1]);
       elapsedVirtualTime = frame[0] * 1000;
+      feed(frame[2], frame[1], elapsedVirtualTime);
       frame = frames[++nextFrameIndex];
     }
 
