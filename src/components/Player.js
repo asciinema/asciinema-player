@@ -371,7 +371,7 @@ export default props => {
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
         <Show when={state.keystrokes.length > 0}>
-          <Keystrokes keystrokes={state.keystrokes} currentTime={state.currentTime}/>
+          <Keystrokes keystrokes={state.keystrokes} />
         </Show>
         <Switch>
           <Match when={state.showStartOverlay}><StartOverlay onClick={() => core.play()} /></Match>

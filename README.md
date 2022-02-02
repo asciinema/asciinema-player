@@ -737,6 +737,16 @@ document.fonts.load("1em FiraCode Nerd Font").then(() => {
 }
 ```
 
+### `keystrokesTTL`
+
+Type: number
+
+How long should a keystroke be displayed?
+
+For example, when set to `2` and a keystroke will disapper two seconds after it's been displayed.
+
+Defaults to `3.0`
+
 ## Keyboard shortcuts
 
 The following keyboard shortcuts are currently available (when the player
