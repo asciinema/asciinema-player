@@ -7,7 +7,7 @@ import ErrorOverlay from './ErrorOverlay';
 import LoaderOverlay from './LoaderOverlay';
 import OfflineOverlay from './OfflineOverlay';
 import StartOverlay from './StartOverlay';
-import Subtitles from './Subtitles';
+import Keystrokes from './Keystrokes';
 
 
 export default props => {
@@ -38,10 +38,10 @@ export default props => {
     progress: null,
     blink: true,
     cursorHold: false,
-    subtitle: []
+    keystrokes: []
   });
 
-  const subtitleTTL = props.subtitleTTL || 3000;
+  const keystrokesTTL = props.keystrokesTTL/1000 || 3.0;
   const terminalCols = () => state.cols || 80;
   const terminalRows = () => state.rows || 24;
 
@@ -370,7 +370,9 @@ export default props => {
       <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
-        <Subtitles />
+        <Show when={state.keystrokes.length > 0}>
+          <Keystrokes keystrokes={state.keystrokes} currentTime={state.currentTime}/>
+        </Show>
         <Switch>
           <Match when={state.showStartOverlay}><StartOverlay onClick={() => core.play()} /></Match>
           <Match when={state.coreState == 'loading'}><LoaderOverlay /></Match>
