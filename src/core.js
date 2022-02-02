@@ -26,6 +26,7 @@ class Core {
     this.onFinish = opts.onFinish;
     this.onTerminalUpdate = opts.onTerminalUpdate;
     this.onKeysUpdate = opts.onKeysUpdate;
+    this.onFeed = opts.onFeed;
   }
 
   async init() {
@@ -200,6 +201,7 @@ class Core {
   }
 
   feed(data, type ) {
+    this.onFeed()
     if ((type === undefined) || (type == "o")) {
         const affectedLines = this.vt.feed(data);
         affectedLines.forEach(i => this.changedLines.add(i));

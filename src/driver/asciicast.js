@@ -98,6 +98,7 @@ function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit
 
     if (targetTime < elapsedVirtualTime) {
       feed('\x1bc'); // reset terminal
+      feed('\x1bc', 'i'); // and subtitles
       nextFrameIndex = 0;
       elapsedVirtualTime = 0;
     }
@@ -105,7 +106,7 @@ function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit
     let frame = frames[nextFrameIndex];
 
     while (frame && (frame[0] * 1000 < targetTime)) {
-      feed(frame[1]);
+      feed(frame[2], frame[1]);
       elapsedVirtualTime = frame[0] * 1000;
       frame = frames[++nextFrameIndex];
     }
@@ -285,7 +286,7 @@ function limitFrames(frames, idleTimeLimit = Infinity) {
     shift += (delay - cappedDelay);
     prevT = e[0];
 
-    return [e[0] - shift, e[1]];
+    return [e[0] - shift, e[1], e[2]];
   });
 }
 

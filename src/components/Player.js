@@ -5,7 +5,7 @@ import Terminal from './Terminal';
 import ControlBar from './ControlBar';
 import LoaderOverlay from './LoaderOverlay';
 import StartOverlay from './StartOverlay';
-import Subtitles from './Subtitles';
+import Keystrokes from './Keystrokes';
 
 
 export default props => {
@@ -29,11 +29,11 @@ export default props => {
     progress: null,
     blink: true,
     cursorHold: false,
-    subtitle: []
+    keystrokes: []
   });
 
   const autoPlay = props.autoPlay ?? props.autoplay;
-  const subtitleTTL = props.subtitleTTL || 3000;
+  const keystrokesTTL = props.keystrokesTTL/1000 || 3.0;
 
   let frameRequestId;
   let userActivityTimeoutId;
@@ -67,6 +67,15 @@ export default props => {
       setState({ cols, rows });
     },
 
+    onFeed: () => {
+      // remove stale keystrokes
+      setState('keystrokes', keys => {
+        while ((keys.length > 0) && (keys[0][0] + keystrokesTTL < state.currentTime)) {
+          keys.shift();
+        }
+        return keys;
+      });
+    },
     onTerminalUpdate: () => {
       if (frameRequestId === undefined) {
         frameRequestId = requestAnimationFrame(updateTerminal);
@@ -74,9 +83,15 @@ export default props => {
     },
 
     onKeysUpdate: data => {
-        subtitle.push(data)
-        setState('subtitle', subtitle)
-        setTimeout(() => setState('subtitle', subtitle.shift()), subtitleTTL )
+        if (data == '\x1bc') {
+            setState('keystrokes', []);
+            return;
+        }
+        let d = data.replaceAll('\r', '&crarr;').replaceAll('\t', '&#x2409;')
+            .replaceAll('\x1b[A', '&uarr;') .replaceAll('\x1b[B', '&darr;')
+            .replaceAll('\x1b[C', '&rarr;').replaceAll('\x1b[D', '&larr;')
+            .replaceAll('\x1b', '^[');
+        setState('keystrokes', state.keystrokes.concat([[state.currentTime, d]]))
     },
     onFinish: () => {
       setState('state', 'paused');
@@ -353,7 +368,9 @@ export default props => {
       <div class={playerClass()} style={playerStyle()} onMouseEnter={() => showControls(true)} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
-        <Subtitles />
+        <Show when={state.keystrokes.length > 0}>
+          <Keystrokes keystrokes={state.keystrokes} currentTime={state.currentTime}/>
+        </Show>
         <Switch>
           <Match when={state.state == 'initial' && !autoPlay}><StartOverlay onClick={play} /></Match>
           <Match when={state.state == 'waiting'}><LoaderOverlay /></Match>
