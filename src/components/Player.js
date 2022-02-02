@@ -67,10 +67,13 @@ export default props => {
       setState({ cols, rows });
     },
 
-    onFeed: () => {
+    onFeed: now => {
       // remove stale keystrokes
+      if (now === undefined) {
+        now = state.currentTime;
+      }
       setState('keystrokes', keys => {
-        while ((keys.length > 0) && (keys[0][0] + keystrokesTTL < state.currentTime)) {
+        while ((keys.length > 0) && (keys[0][0] + keystrokesTTL < now)) {
           keys.shift();
         }
         return keys;
@@ -82,16 +85,19 @@ export default props => {
       }
     },
 
-    onKeysUpdate: data => {
-        if (data == '\x1bc') {
-            setState('keystrokes', []);
-            return;
-        }
-        let d = data.replaceAll('\r', '&crarr;').replaceAll('\t', '&#x2409;')
-            .replaceAll('\x1b[A', '&uarr;') .replaceAll('\x1b[B', '&darr;')
-            .replaceAll('\x1b[C', '&rarr;').replaceAll('\x1b[D', '&larr;')
-            .replaceAll('\x1b', '^[');
-        setState('keystrokes', state.keystrokes.concat([[state.currentTime, d]]))
+    onKeysUpdate: (data, now) => {
+      if (now === undefined) {
+        now = state.currentTime;
+      }
+      if (data == '\x1bc') {
+          setState('keystrokes', []);
+          return;
+      }
+      let d = data.replaceAll('\r', '&crarr;').replaceAll('\t', '&#x2409;')
+          .replaceAll('\x1b[A', '&uarr;') .replaceAll('\x1b[B', '&darr;')
+          .replaceAll('\x1b[C', '&rarr;').replaceAll('\x1b[D', '&larr;')
+          .replaceAll('\x1b', '^[');
+      setState('keystrokes', state.keystrokes.concat([[now, d]]));
     },
     onFinish: () => {
       setState('state', 'paused');
@@ -369,7 +375,7 @@ export default props => {
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Show when={state.keystrokes.length > 0}>
-          <Keystrokes keystrokes={state.keystrokes} currentTime={state.currentTime}/>
+          <Keystrokes keystrokes={state.keystrokes} />
         </Show>
         <Switch>
           <Match when={state.state == 'initial' && !autoPlay}><StartOverlay onClick={play} /></Match>
