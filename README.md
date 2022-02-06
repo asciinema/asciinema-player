@@ -201,6 +201,7 @@ Supported formats:
 * `123` (number of seconds)
 * `"2:03"` ("mm:ss")
 * `"1:02:03"` ("hh:mm:ss")
+* `"50%"` (percentage of recording's duration)
 
 Defaults to `0`.
 
