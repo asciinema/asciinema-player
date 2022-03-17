@@ -136,6 +136,7 @@ const player = AsciinemaPlayer.create(
   'data:text/plain;base64,eyJ2ZXJzaW9uIjogMiwgIndpZHRoIjogODAsICJoZWlnaHQiOiAyNH0KWzAuMSwgIm8iLCAiaGVsbCJdClswLjUsICJvIiwgIm8gIl0KWzIuNSwgIm8iLCAid29ybGQhXG5cciJdCg==',
   containerElement
 );
+```
 
 To pass additional options when mounting the player use 3 argument variant:
 
