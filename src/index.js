@@ -31,6 +31,10 @@ function getDriver(src) {
     }
   }
 
+  if (src.driver === undefined) {
+    src.driver = 'asciicast';
+  }
+
   const drivers = new Map([
     ['asciicast', asciicast],
     ['websocket', websocket],
