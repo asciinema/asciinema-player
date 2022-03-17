@@ -20,7 +20,7 @@ class Core {
     this.loop = opts.loop;
     this.idleTimeLimit = opts.idleTimeLimit;
     this.preload = opts.preload;
-    this.startAt = opts.startAt;
+    this.startAt = parseNpt(opts.startAt);
     this.poster = opts.poster;
     this.onSize = opts.onSize;
     this.onFinish = opts.onFinish;
@@ -53,7 +53,7 @@ class Core {
 
     this.driver = this.driverFn(
       { feed, now, setTimeout, setInterval, onFinish, reset },
-      { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit }
+      { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt }
     );
 
     if (typeof this.driver === 'function') {
@@ -168,7 +168,7 @@ class Core {
   async start() {
     await this.initializeDriver();
     this.onTerminalUpdate(); // clears the poster
-    const stop = await this.driver.start(this.startAt);
+    const stop = await this.driver.start();
 
     if (typeof stop === 'function') {
       this.driver.stop = stop;
