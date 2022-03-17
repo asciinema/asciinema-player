@@ -127,6 +127,16 @@ the 1st argument to `create`. `fetchOpts` object is then passed to
 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) (as its 2nd
 argument). This can be used to change HTTP method, configure credentials, etc.
 
+If you'd like to inline the recording contents you can do so with [Data
+URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs).
+For example:
+
+```javascript
+const player = AsciinemaPlayer.create(
+  'data:text/plain;base64,eyJ2ZXJzaW9uIjogMiwgIndpZHRoIjogODAsICJoZWlnaHQiOiAyNH0KWzAuMSwgIm8iLCAiaGVsbCJdClswLjUsICJvIiwgIm8gIl0KWzIuNSwgIm8iLCAid29ybGQhXG5cciJdCg==',
+  containerElement
+);
+
 To pass additional options when mounting the player use 3 argument variant:
 
 ```javascript
