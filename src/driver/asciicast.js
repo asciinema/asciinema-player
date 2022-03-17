@@ -18,8 +18,13 @@ function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit
 
   async function load() {
     if (!frames) {
-      const res = await fetch(url);
-      const asciicast = parseAsciicast(await res.text());
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw `failed fetching asciicast file: ${response.statusText} (${response.status})`
+      }
+
+      const asciicast = parseAsciicast(await response.text());
       cols = asciicast.cols;
       rows = asciicast.rows;
       idleTimeLimit = idleTimeLimit ?? asciicast.idleTimeLimit
