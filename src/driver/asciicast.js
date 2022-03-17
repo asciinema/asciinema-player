@@ -4,7 +4,7 @@
 import Stream from '../stream';
 
 
-function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit, startAt }) {
+function asciicast({ url, fetchOpts = {} }, { feed, now, setTimeout, onFinish }, { idleTimeLimit, startAt }) {
   let cols;
   let rows;
   let frames;
@@ -18,7 +18,7 @@ function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit
 
   async function load() {
     if (!frames) {
-      const response = await fetch(url);
+      const response = await fetch(url, fetchOpts);
 
       if (!response.ok) {
         throw `failed fetching asciicast file: ${response.statusText} (${response.status})`

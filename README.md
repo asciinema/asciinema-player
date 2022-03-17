@@ -122,6 +122,11 @@ The returned object contains the following attributes:
 - `el` - DOM element of the player
 - `dispose` - a function to dispose the player, i.e. to remove it from the page
 
+You can tweak file fetching by passing `{ url: "...", fetchOpts: { ... } }` as
+the 1st argument to `create`. `fetchOpts` object is then passed to
+[fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) (as its 2nd
+argument). This can be used to change HTTP method, configure credentials, etc.
+
 To pass additional options when mounting the player use 3 argument variant:
 
 ```javascript
