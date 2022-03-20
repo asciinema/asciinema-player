@@ -238,7 +238,21 @@ export default props => {
   }
 
   const onKeyPress = (e) => {
-    if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey) {
+    if (e.altKey || e.metaKey || e.ctrlKey) {
+      return;
+    }
+
+    if (e.shiftKey) {
+      if (e.key == 'ArrowLeft') {
+        seek('<<<');
+      } else if (e.key == 'ArrowRight') {
+        seek('>>>');
+      } else {
+        return;
+      }
+
+      e.preventDefault();
+
       return;
     }
 

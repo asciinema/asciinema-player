@@ -89,10 +89,16 @@ function asciicast({ url, fetchOpts = {} }, { feed, now, setTimeout, onFinish },
     }
 
     if (typeof where === 'string') {
+      const currentTime = (pauseElapsedTime ?? 0) / 1000;
+
       if (where === '<<') {
-        where = (((pauseElapsedTime ?? 0) / (duration * 1000)) - 0.1) * duration;
+        where = currentTime - 5;
       } else if (where === '>>') {
-        where = (((pauseElapsedTime ?? 0) / (duration * 1000)) + 0.1) * duration;
+        where = currentTime + 5;
+      } else if (where === '<<<') {
+        where = currentTime - (0.1 * duration);
+      } else if (where === '>>>') {
+        where = currentTime + (0.1 * duration);
       } else if (where[where.length - 1] === '%') {
         where = (parseFloat(where.substring(0, where.length - 1)) / 100) * duration;
       }
