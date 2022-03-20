@@ -23,6 +23,7 @@ export default props => {
     showControls: false,
     isPausable: true,
     isSeekable: true,
+    isFullscreen: false,
     currentTime: null,
     remainingTime: null,
     progress: null,
@@ -191,7 +192,7 @@ export default props => {
 
     let fit = props.fit ?? 'width';
 
-    if (fit === 'both' || !!document.fullscreenElement) {
+    if (fit === 'both' || state.isFullscreen) {
       const containerRatio = state.containerW / state.containerH;
       const terminalRatio = terminalW / terminalH;
 
@@ -225,8 +226,12 @@ export default props => {
     }
   });
 
+  const onFullscreenChange = () => {
+    setState('isFullscreen', document.fullscreenElement ?? document.webkitFullscreenElement);
+  }
+
   const toggleFullscreen = () => {
-    if (document.fullscreenElement ?? document.webkitFullscreenElement) {
+    if (state.isFullscreen) {
       (document.exitFullscreen ??
        document.webkitExitFullscreen ??
        (() => {})).apply(document);
@@ -272,6 +277,18 @@ export default props => {
     }
 
     e.preventDefault();
+  }
+
+  const wrapperOnMouseMove = () => {
+    if (state.isFullscreen) {
+      showControls(true);
+    }
+  }
+
+  const playerOnMouseLeave = () => {
+    if (!state.isFullscreen) {
+      showControls(false);
+    }
   }
 
   const startTimeUpdates = () => {
@@ -355,8 +372,8 @@ export default props => {
   const terminalScale = () => terminalSize()?.scale;
 
   return (
-    <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} ref={wrapperRef}>
-      <div class={playerClass()} style={playerStyle()} onMouseLeave={() => showControls(false)} onMouseMove={() => showControls(true)} ref={playerRef}>
+    <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
+      <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Switch>
