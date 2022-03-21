@@ -75,9 +75,9 @@ class Core {
     }
   }
 
-  async play() {
+  play() {
     if (this.state == 'initial') {
-      await this.start();
+      return this.start();
     } else if (this.state == 'paused') {
       this.resume();
     } else if (this.state == 'finished') {
@@ -161,6 +161,10 @@ class Core {
     if (typeof this.duration === 'number') {
       return Math.min(this.getCurrentTime(), this.duration) / this.duration;
     }
+  }
+
+  getDuration() {
+    return this.duration;
   }
 
   // private
