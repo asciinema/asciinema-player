@@ -14,9 +14,16 @@ function create(src, elem, opts = {}) {
     return el;
   }, elem);
 
+  const c = el.__controller;
+
   return {
     el: el,
-    dispose: dispose
+    dispose: dispose,
+    getCurrentTime: c.getCurrentTime,
+    getDuration: c.getDuration,
+    play: c.play,
+    pause: c.pause,
+    seek: c.seek
   }
 }
 
