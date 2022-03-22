@@ -135,10 +135,12 @@ export default props => {
     if (s === 'playing') {
       startBlinking();
       startTimeUpdates();
+      wrapperRef.dispatchEvent(new CustomEvent('play'));
     } else if (s === 'paused') {
       stopBlinking();
       stopTimeUpdates();
       updateTime();
+      wrapperRef.dispatchEvent(new CustomEvent('pause'));
     }
   });
 

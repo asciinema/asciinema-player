@@ -16,7 +16,7 @@ function create(src, elem, opts = {}) {
 
   const c = el.__controller;
 
-  return {
+  const player = {
     el: el,
     dispose: dispose,
     getCurrentTime: c.getCurrentTime,
@@ -25,6 +25,12 @@ function create(src, elem, opts = {}) {
     pause: c.pause,
     seek: c.seek
   }
+
+  player.addEventListener = (name, callback, third = undefined) => {
+    return el.addEventListener(name, callback.bind(player), third);
+  }
+
+  return player;
 }
 
 function getDriver(src) {
