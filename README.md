@@ -92,7 +92,7 @@ inside an empty `<div>` element:
 Add `asciinema-player` to your `devDependencies`:
 
 ```bash
-npm install --save-dev asciinema-player@3.0.0-rc.1
+npm install --save-dev asciinema-player@3.0.0-rc.2
 ```
 
 Add empty `<div id="demo"></div>` element to your page to contain the player.
@@ -121,6 +121,22 @@ The returned object contains the following attributes:
 
 - `el` - DOM element of the player
 - `dispose` - a function to dispose the player, i.e. to remove it from the page
+
+You can tweak file fetching by passing `{ url: "...", fetchOpts: { ... } }` as
+the 1st argument to `create`. `fetchOpts` object is then passed to
+[fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) (as its 2nd
+argument). This can be used to change HTTP method, configure credentials, etc.
+
+If you'd like to inline the recording contents you can do so with [Data
+URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs).
+For example:
+
+```javascript
+const player = AsciinemaPlayer.create(
+  'data:text/plain;base64,eyJ2ZXJzaW9uIjogMiwgIndpZHRoIjogODAsICJoZWlnaHQiOiAyNH0KWzAuMSwgIm8iLCAiaGVsbCJdClswLjUsICJvIiwgIm8gIl0KWzIuNSwgIm8iLCAid29ybGQhXG5cciJdCg==',
+  containerElement
+);
+```
 
 To pass additional options when mounting the player use 3 argument variant:
 
@@ -338,7 +354,8 @@ element is focused):
 
 * <kbd>space</kbd> - play / pause
 * <kbd>f</kbd> - toggle fullscreen mode
-* <kbd>←</kbd> / <kbd>→</kbd> - rewind 5 seconds / fast-forward 5 seconds
+* <kbd>←</kbd> / <kbd>→</kbd> - rewind by 5 seconds / fast-forward by 5 seconds
+* <kbd>Shift</kdb> + <kbd>←</kbd> / <kbd>Shift</kbd> + <kbd>→</kbd> - rewind by 10% / fast-forward by 10%
 * <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd> ... <kbd>9</kbd> - jump to 0%, 10%, 20% ... 90%
 
 ## Development

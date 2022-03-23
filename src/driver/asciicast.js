@@ -2,14 +2,14 @@
 // TODO support ttyrec (via opts.format == 'ttyrec')
 
 import Stream from '../stream';
-import { parseNpt } from '../util';
 
 
-function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit }) {
+function asciicast({ url, fetchOpts = {} }, { feed, now, setTimeout, onFinish }, { idleTimeLimit, startAt }) {
   let cols;
   let rows;
   let frames;
   let duration;
+  let effectiveStartAt;
   let timeoutId;
   let nextFrameIndex = 0;
   let elapsedVirtualTime = 0;
@@ -18,11 +18,19 @@ function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit
 
   async function load() {
     if (!frames) {
-      const res = await fetch(url);
-      const asciicast = parseAsciicast(await res.text());
+      const response = await fetch(url, fetchOpts);
+
+      if (!response.ok) {
+        throw `failed fetching asciicast file: ${response.statusText} (${response.status})`
+      }
+
+      const asciicast = parseAsciicast(await response.text());
       cols = asciicast.cols;
       rows = asciicast.rows;
-      frames = prepareFrames(asciicast.frames, idleTimeLimit ?? asciicast.idleTimeLimit);
+      idleTimeLimit = idleTimeLimit ?? asciicast.idleTimeLimit
+      const result = prepareFrames(asciicast.frames, idleTimeLimit, startAt);
+      frames = result.frames;
+      effectiveStartAt = result.effectiveStartAt;
       duration = frames[frames.length - 1][0];
     }
   }
@@ -80,21 +88,23 @@ function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit
       pause();
     }
 
-    if (typeof where === 'number') {
-      where = Math.min(1, where / duration);
-    } else if (where === '<<') {
-      where = Math.max(0, ((pauseElapsedTime ?? 0) / (duration * 1000)) - 0.1);
-    } else if (where === '>>') {
-      where = Math.min(1, ((pauseElapsedTime ?? 0) / (duration * 1000)) + 0.1);
-    } else if (typeof where === 'string') {
-      if (where[where.length - 1] === '%') {
-        where = parseFloat(where.substring(0, where.length - 1)) / 100;
-      } else {
-        where = Math.min(1, parseNpt(where) / duration);
+    if (typeof where === 'string') {
+      const currentTime = (pauseElapsedTime ?? 0) / 1000;
+
+      if (where === '<<') {
+        where = currentTime - 5;
+      } else if (where === '>>') {
+        where = currentTime + 5;
+      } else if (where === '<<<') {
+        where = currentTime - (0.1 * duration);
+      } else if (where === '>>>') {
+        where = currentTime + (0.1 * duration);
+      } else if (where[where.length - 1] === '%') {
+        where = (parseFloat(where.substring(0, where.length - 1)) / 100) * duration;
       }
     }
 
-    const targetTime = duration * where * 1000;
+    const targetTime = Math.min(Math.max(where, 0), duration) * 1000;
 
     if (targetTime < elapsedVirtualTime) {
       feed('\x1bc'); // reset terminal
@@ -139,9 +149,9 @@ function asciicast({ url }, { feed, now, setTimeout, onFinish }, { idleTimeLimit
       return { cols, rows, duration };
     },
 
-    start: async startAt => {
+    start: async () => {
       await load();
-      seek(startAt ?? 0);
+      seek(effectiveStartAt);
       resume();
     },
 
@@ -223,10 +233,6 @@ function parseAsciicastV2(jsonl) {
   }
 }
 
-function prepareFrames(frames, idleTimeLimit) {
-  return Array.from(limitFrames(batchFrames(frames), idleTimeLimit));
-}
-
 function batchFrames(frames) {
   const maxFrameTime = 1.0 / 60;
   let prevFrame;
@@ -274,18 +280,31 @@ function batchFrames(frames) {
   });
 }
 
-function limitFrames(frames, idleTimeLimit = Infinity) {
+function prepareFrames(frames, idleTimeLimit = Infinity, startAt = 0) {
   let prevT = 0;
   let shift = 0;
+  let effectiveStartAt = startAt;
 
-  return frames.map(e => {
+  const fs = Array.from(batchFrames(frames).map(e => {
     const delay = e[0] - prevT;
-    const cappedDelay = Math.min(delay, idleTimeLimit);
-    shift += (delay - cappedDelay);
+    const delta = delay - idleTimeLimit;
     prevT = e[0];
 
+    if (delta > 0) {
+      shift += delta;
+
+      if (e[0] < startAt) {
+        effectiveStartAt -= delta;
+      }
+    }
+
     return [e[0] - shift, e[1], e[2]];
-  });
+  }));
+
+  return {
+    frames: fs,
+    effectiveStartAt: effectiveStartAt
+  }
 }
 
 export { asciicast };
