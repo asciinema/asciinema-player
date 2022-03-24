@@ -38,6 +38,7 @@ and the recordings yourself then read on, it's very simple.
 * [adjustable playback speed](#speed),
 * [looped playback](#loop), infinite or finite,
 * [starting playback at specific time](#startat),
+* [API for programmatic control](#api),
 * [keyboard shortcuts](#keyboard-shortcuts),
 * [multiple color schemes for standard 16 colors](#theme),
 * full support for 256 color palette and 24-bit true color (ISO-8613-3),
@@ -107,20 +108,15 @@ AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'));
 Finally, include player's CSS file - found in the npm package at
 `dist/bundle/asciinema-player.css` - in your CSS bundle.
 
-## API
+## Basic usage
 
-To mount the player in your page call the `create` function exported by the
+To mount the player on your page use the `create` function exported by the
 `asciinema-player` ES module with 2 arguments: the URL (or path) to the
 asciicast file and the container DOM element to mount the player in.
 
 ```javascript
-const player = AsciinemaPlayer.create(url, containerElement);
+AsciinemaPlayer.create(url, containerElement);
 ```
-
-The returned object contains the following attributes:
-
-- `el` - DOM element of the player
-- `dispose` - a function to dispose the player, i.e. to remove it from the page
 
 You can tweak file fetching by passing `{ url: "...", fetchOpts: { ... } }` as
 the 1st argument to `create`. `fetchOpts` object is then passed to
@@ -132,7 +128,7 @@ URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs
 For example:
 
 ```javascript
-const player = AsciinemaPlayer.create(
+AsciinemaPlayer.create(
   'data:text/plain;base64,eyJ2ZXJzaW9uIjogMiwgIndpZHRoIjogODAsICJoZWlnaHQiOiAyNH0KWzAuMSwgIm8iLCAiaGVsbCJdClswLjUsICJvIiwgIm8gIl0KWzIuNSwgIm8iLCAid29ybGQhXG5cciJdCg==',
   containerElement
 );
@@ -141,10 +137,10 @@ const player = AsciinemaPlayer.create(
 To pass additional options when mounting the player use 3 argument variant:
 
 ```javascript
-const player = AsciinemaPlayer.create(url, containerElement, opts);
+AsciinemaPlayer.create(url, containerElement, opts);
 ```
 
-For example, to enable looping and select Solarized Dark theme:
+For example, enable looping and select Solarized Dark theme:
 
 ```javascript
 AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
@@ -153,7 +149,22 @@ AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
 });
 ```
 
-See below for a full list of available options.
+See [Options](#options) for full list of available options.
+
+If you'd like to control the player programatically then you can use the
+functions exposed on the object returned from `create` function:
+
+```javascript
+const player = AsciinemaPlayer.create(url, containerElement);
+
+player.play();
+```
+
+See [API](#api) for details.
+
+## Options
+
+The following options can be used to tweak player's look and feel:
 
 ### `cols`
 
@@ -356,6 +367,117 @@ value of `1` makes the line height equal to the font size, leaving no space
 between lines. A value of `2` makes it double the font size, etc.
 
 Defaults to `1.33333333`.
+
+## API
+
+```javascript
+import * as AsciinemaPlayer from 'asciinema-player';
+// skip the above import when using standalone player bundle
+
+const player = AsciinemaPlayer.create(url, containerElement);
+```
+
+The object returned by `create` function (saved as `player` const above)
+contains several functions that can be used to control the player from
+your code.
+
+For example, initiate playback and print the recording duration when it starts:
+
+```javascript
+player.play().then(() => {
+  console.log(`started! duration: ${player.getDuration()}`);
+});
+```
+
+The following functions are available on the player object:
+
+### `getCurrentTime()`
+
+Returns the current playback time in seconds.
+
+```javascript
+player.getCurrentTime(); // => 1.23
+```
+
+### `getDuration()`
+
+Returns the length of the recording in seconds, or `null` if the recording is
+not loaded yet.
+
+```javascript
+player.getDuration(); // => 123.45
+```
+
+### `play()`
+
+Initiates playback of the recording. If the recording hasn't been
+[preloaded](#preload) then it's loaded, and playback is started.
+
+```javascript
+player.play();
+```
+
+This function returns a promise which is fulfilled when the playback actually
+starts.
+
+```javascript
+player.play().then(() => {
+  console.log(`started! duration: ${player.getDuration()}`);
+});
+```
+
+If you want to synchronize asciinema player with other elements on the page (for
+example `<audio>` element) then you can use this promise for coordination.
+Alternatively you can add event listener for `play` event (see below).
+
+### `pause()`
+
+Pauses playback.
+
+```javascript
+player.pause();
+```
+
+The playback is paused immediately.
+
+### `seek(t)`
+
+Changes the playback location to time `t` given in seconds (e.g. `15`) or
+percentage (e.g `'50%'`).
+
+This function returns a promise which is fulfilled when the location actually
+changes.
+
+```javascript
+player.seek(15).then(() => {
+  console.log(`current time: ${player.getCurrentTime()}`);
+});
+```
+
+### `addEventListener(eventName, handler)`
+
+Adds event listener, binding handler's `this` to the player object.
+
+The `play` event is dispatched when playback starts or resumes from pause.
+
+```javascript
+player.addEventListener('play', () => {
+  console.log(`playing! we're at: ${this.getCurrentTime()}`);
+})
+```
+
+The `pause` event is dispatched when playback is paused.
+
+```javascript
+player.addEventListener('pause', () => {
+  console.log("paused!");
+})
+```
+
+### `dispose()`
+
+Use this function to dispose of the player, i.e. to shut it down, release all
+resources and remove it from DOM.
 
 ## Keyboard shortcuts
 
