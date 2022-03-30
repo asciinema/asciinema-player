@@ -337,6 +337,14 @@ Defaults to `"small"`.
 > This option is effective only when `fit: false` option is specified as well
 > (see above).
 
+### `terminalFontFamily`
+
+Type: string
+
+Terminal font-family override.
+
+Use any valid CSS `font-family` value, e.g `"'JetBrains Mono', Consolas, Menlo, 'Bitstream Vera Sans Mono', monospace"`.
+
 ## Keyboard shortcuts
 
 The following keyboard shortcuts are currently available (when the player

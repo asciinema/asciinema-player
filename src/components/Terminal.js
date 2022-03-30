@@ -5,7 +5,8 @@ export default props => {
     return {
       width: `${props.cols}ch`,
       height: `${1.3333333333 * props.rows}em`,
-      "font-size": `${(props.scale || 1.0) * 100}%`
+      "font-size": `${(props.scale || 1.0) * 100}%`,
+      "font-family": props.fontFamily
     }
   }
 
