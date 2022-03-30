@@ -319,7 +319,7 @@ Defaults to `"width"`.
 > `false` value. If you're upgrading from v2 to v3 and want to preserve the sizing
 > behaviour then include `fit: false` option.
 
-### `fontSize`
+### `terminalFontSize`
 
 Type: string
 

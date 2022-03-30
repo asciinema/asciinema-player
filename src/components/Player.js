@@ -339,15 +339,15 @@ export default props => {
   const playerStyle = () => {
     const style = {};
 
-    if ((props.fit === false || props.fit === 'none') && props.fontSize !== undefined) {
-      if (props.fontSize === 'small') {
+    if ((props.fit === false || props.fit === 'none') && props.terminalFontSize !== undefined) {
+      if (props.terminalFontSize === 'small') {
         style['font-size'] = '12px';
-      } else if (props.fontSize === 'medium') {
+      } else if (props.terminalFontSize === 'medium') {
         style['font-size'] = '18px';
-      } else if (props.fontSize === 'big') {
+      } else if (props.terminalFontSize === 'big') {
         style['font-size'] = '24px';
       } else {
-        style['font-size'] = props.fontSize;
+        style['font-size'] = props.terminalFontSize;
       }
     }
 
