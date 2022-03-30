@@ -330,7 +330,7 @@ Possible values:
 * `"small"`
 * `"medium"`
 * `"big"`
-* any valid CSS `font-size` value (e.g. `"15px"`)
+* any valid CSS `font-size` value, e.g. `"15px"`
 
 Defaults to `"small"`.
 
