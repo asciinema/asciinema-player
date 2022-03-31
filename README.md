@@ -347,15 +347,15 @@ Use any valid CSS `font-family` value, e.g `"'JetBrains Mono', Consolas, Menlo, 
 
 ### `terminalLineHeight`
 
-Type: string
+Type: number
 
 Terminal line height override.
 
-It's _highly_ recommended to use `em` unit to make it relative to the font size,
-which can change dynamically (when player mounts on the page or enters
-full-screen mode).
+The value is relative to the font size (like `em` unit in CSS). For example a
+value of `1` makes the line height equal to the font size, leaving no space
+between lines. A value of `2` makes it double the font size, etc.
 
-Defaults to `1.33333333em`.
+Defaults to `1.33333333`.
 
 ## Keyboard shortcuts
 
