@@ -49,6 +49,6 @@ export default props => {
   }
 
   return (
-    <span class="line"><Index each={segments()}>{s => <Segment text={s()[0]} attrs={s()[1]} extraClass={s()[2]} />}</Index></span>
+    <span class="line" style={{height: props.height}}><Index each={segments()}>{s => <Segment text={s()[0]} attrs={s()[1]} extraClass={s()[2]} />}</Index></span>
   );
 }
