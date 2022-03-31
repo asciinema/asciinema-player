@@ -345,6 +345,18 @@ Terminal font-family override.
 
 Use any valid CSS `font-family` value, e.g `"'JetBrains Mono', Consolas, Menlo, 'Bitstream Vera Sans Mono', monospace"`.
 
+### `terminalLineHeight`
+
+Type: string
+
+Terminal line height override.
+
+It's _highly_ recommended to use `em` unit to make it relative to the font size,
+which can change dynamically (when player mounts on the page or enters
+full-screen mode).
+
+Defaults to `1.33333333em`.
+
 ## Keyboard shortcuts
 
 The following keyboard shortcuts are currently available (when the player
