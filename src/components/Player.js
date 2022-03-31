@@ -339,15 +339,15 @@ export default props => {
   const playerStyle = () => {
     const style = {};
 
-    if ((props.fit === false || props.fit === 'none') && props.fontSize !== undefined) {
-      if (props.fontSize === 'small') {
+    if ((props.fit === false || props.fit === 'none') && props.terminalFontSize !== undefined) {
+      if (props.terminalFontSize === 'small') {
         style['font-size'] = '12px';
-      } else if (props.fontSize === 'medium') {
+      } else if (props.terminalFontSize === 'medium') {
         style['font-size'] = '18px';
-      } else if (props.fontSize === 'big') {
+      } else if (props.terminalFontSize === 'big') {
         style['font-size'] = '24px';
       } else {
-        style['font-size'] = props.fontSize;
+        style['font-size'] = props.terminalFontSize;
       }
     }
 
@@ -374,7 +374,7 @@ export default props => {
   return (
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
       <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => showControls(true)} ref={playerRef}>
-        <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} ref={terminalRef} />
+        <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Switch>
           <Match when={state.state == 'initial' && !autoPlay}><StartOverlay onClick={play} /></Match>

@@ -319,7 +319,7 @@ Defaults to `"width"`.
 > `false` value. If you're upgrading from v2 to v3 and want to preserve the sizing
 > behaviour then include `fit: false` option.
 
-### `fontSize`
+### `terminalFontSize`
 
 Type: string
 
@@ -330,12 +330,32 @@ Possible values:
 * `"small"`
 * `"medium"`
 * `"big"`
-* any valid CSS `font-size` value (e.g. `"15px"`)
+* any valid CSS `font-size` value, e.g. `"15px"`
 
 Defaults to `"small"`.
 
 > This option is effective only when `fit: false` option is specified as well
 > (see above).
+
+### `terminalFontFamily`
+
+Type: string
+
+Terminal font-family override.
+
+Use any valid CSS `font-family` value, e.g `"'JetBrains Mono', Consolas, Menlo, 'Bitstream Vera Sans Mono', monospace"`.
+
+### `terminalLineHeight`
+
+Type: string
+
+Terminal line height override.
+
+It's _highly_ recommended to use `em` unit to make it relative to the font size,
+which can change dynamically (when player mounts on the page or enters
+full-screen mode).
+
+Defaults to `1.33333333em`.
 
 ## Keyboard shortcuts
 
