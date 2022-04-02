@@ -10,17 +10,17 @@ use on your own website.
 
 ## About
 
-asciinema player is an open-source terminal session player written in
-Javascript and Rust/WASM. Unlike other _video_ players asciinema player doesn't play
+asciinema player is an open-source terminal session player written in Javascript
+and Rust. Unlike other _video_ players asciinema player doesn't play
 heavy-weight video files (`.mp4`, `.webm` etc) and instead plays light-weight
 terminal session files called
 [asciicasts](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md).
 
-Asciicast is a capture of terminal's raw output, which has to be interpreted
-during the playback, so the player comes with its own interpreter based on [Paul
-Williams' parser for ANSI-compatible video
-terminals](https://vt100.net/emu/dec_ansi_parser). Its output is fully compatible
-with most widely used terminal emulators like xterm, Gnome Terminal, iTerm etc.
+Asciicast is a capture of terminal's raw output, which needs to be interpreted
+during playback, therefore the player comes with its own interpreter based on
+[Paul Williams' parser for ANSI-compatible video
+terminals](https://vt100.net/emu/dec_ansi_parser). It's fully compatible with
+most widely used terminal emulators like xterm, Gnome Terminal, iTerm etc.
 
 You can see the player in action on [asciinema.org](https://asciinema.org).
 
@@ -33,21 +33,20 @@ and the recordings yourself then read on, it's very simple.
 * ultra smooth, timing-accurate playback,
 * [automatic font scaling](#fit) to fit into container element in most efficient way,
 * [idle time optimization](#idletimelimit) to skip longer periods of inactivity,
-* [predefined and custom font sizes](#fontsize),
+* [predefined and custom font sizes](#terminalfontsize),
 * [NPT-based or custom text poster](#poster),
 * [adjustable playback speed](#speed),
 * [looped playback](#loop), infinite or finite,
 * [starting playback at specific time](#startat),
 * [API for programmatic control](#api),
 * [keyboard shortcuts](#keyboard-shortcuts),
-* [multiple color schemes for standard 16 colors](#theme),
+* [multiple color themes for standard 16 colors](#theme),
 * full support for 256 color palette and 24-bit true color (ISO-8613-3),
 * full-screen mode.
 
 ## Quick start
 
-The following examples show how to use asciinema player on your own website,
-without depending on asciinema.org.
+The following examples show how to use asciinema player on your own website.
 
 It assumes you have obtained terminal session recording file by either:
 
@@ -56,7 +55,7 @@ It assumes you have obtained terminal session recording file by either:
 * downloading an existing recording from asciinema.org by appending `.cast` to the
   asciicast page URL (for example: https://asciinema.org/a/28307.cast).
 
-### Use the standalone player bundle in your HTML page
+### Use standalone player bundle in your HTML page
 
 Download latest version of the player bundle from
 [releases page](https://github.com/asciinema/asciinema-player/releases). You
@@ -93,7 +92,7 @@ inside an empty `<div>` element:
 Add `asciinema-player` to your `devDependencies`:
 
 ```bash
-npm install --save-dev asciinema-player@3.0.0-rc.2
+npm install --save-dev asciinema-player@3.0.0-rc.3
 ```
 
 Add empty `<div id="demo"></div>` element to your page to contain the player.
@@ -105,8 +104,8 @@ import * as AsciinemaPlayer from 'asciinema-player';
 AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'));
 ```
 
-Finally, include player's CSS file - found in the npm package at
-`dist/bundle/asciinema-player.css` - in your CSS bundle.
+Finally, include player's CSS file in your site CSS bundle. You'll find it in
+the npm package at `dist/bundle/asciinema-player.css`.
 
 ## Basic usage
 
@@ -525,6 +524,6 @@ source [contributors](https://github.com/asciinema/asciinema-player/contributors
 
 ## License
 
-Copyright &copy; 2011-2021 Marcin Kulik.
+Copyright &copy; 2011-2022 Marcin Kulik.
 
 All code is licensed under the Apache License, Version 2.0. See LICENSE file for details.
