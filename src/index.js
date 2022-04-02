@@ -14,10 +14,23 @@ function create(src, elem, opts = {}) {
     return el;
   }, elem);
 
-  return {
+  const c = el.__controller;
+
+  const player = {
     el: el,
-    dispose: dispose
+    dispose: dispose,
+    getCurrentTime: c.getCurrentTime,
+    getDuration: c.getDuration,
+    play: c.play,
+    pause: c.pause,
+    seek: c.seek
   }
+
+  player.addEventListener = (name, callback, third = undefined) => {
+    return el.addEventListener(name, callback.bind(player), third);
+  }
+
+  return player;
 }
 
 function getDriver(src) {
