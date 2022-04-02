@@ -135,23 +135,36 @@ export default props => {
     if (s === 'playing') {
       startBlinking();
       startTimeUpdates();
+      wrapperRef.dispatchEvent(new CustomEvent('play'));
     } else if (s === 'paused') {
       stopBlinking();
       stopTimeUpdates();
       updateTime();
+      wrapperRef.dispatchEvent(new CustomEvent('pause'));
     }
   });
 
   const play = async () => {
-    setState('state', 'loading');
+    const loader = core.play();
 
-    const timeoutId = setTimeout(() => {
-      setState('state', 'waiting');
-    }, 1000);
+    if (loader !== undefined) {
+      setState('state', 'loading');
 
-    await core.play();
-    clearTimeout(timeoutId);
+      const timeoutId = setTimeout(() => {
+        setState('state', 'waiting');
+      }, 1000);
+
+      await loader;
+      clearTimeout(timeoutId);
+    }
+
     setState('state', 'playing');
+  }
+
+  const pause = () => {
+    if (state.state === 'playing') {
+      pauseOrResume();
+    }
   }
 
   const pauseOrResume = async () => {
@@ -371,7 +384,7 @@ export default props => {
 
   const terminalScale = () => terminalSize()?.scale;
 
-  return (
+  const el = (
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
       <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
@@ -383,4 +396,14 @@ export default props => {
       </div>
     </div>
   );
+
+  el.__controller = {
+    getCurrentTime: () => core.getCurrentTime(),
+    getDuration: () => core.getDuration(),
+    play: play,
+    pause: pause,
+    seek: seek
+  }
+
+  return el;
 }
