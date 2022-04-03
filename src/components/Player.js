@@ -391,7 +391,7 @@ export default props => {
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Switch>
           <Match when={state.state == 'initial' && !autoPlay}><StartOverlay onClick={play} /></Match>
-          <Match when={state.state == 'waiting'}><LoaderOverlay /></Match>
+          <Match when={state.state == 'waiting'}><LoaderOverlay cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} terminalFontFamily={props.terminalFontFamily} terminalLineHeight={props.terminalLineHeight} /></Match>
         </Switch>
       </div>
     </div>
