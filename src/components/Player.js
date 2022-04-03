@@ -9,7 +9,7 @@ import StartOverlay from './StartOverlay';
 
 export default props => {
   const [state, setState] = createStore({
-    state: 'initial',
+    coreState: 'initial',
     cols: props.cols,
     rows: props.rows,
     lines: [],
@@ -72,7 +72,7 @@ export default props => {
     },
 
     onFinish: () => {
-      setState('state', 'paused');
+      setState('coreState', 'paused');
     }
   });
 
@@ -130,7 +130,7 @@ export default props => {
   });
 
   createEffect(() => {
-    const s = state.state;
+    const s = state.coreState;
 
     if (s === 'playing') {
       startBlinking();
@@ -148,28 +148,28 @@ export default props => {
     const loader = core.play();
 
     if (loader !== undefined) {
-      setState('state', 'loading');
+      setState('coreState', 'loading');
 
       const timeoutId = setTimeout(() => {
-        setState('state', 'waiting');
+        setState('coreState', 'waiting');
       }, 1000);
 
       await loader;
       clearTimeout(timeoutId);
     }
 
-    setState('state', 'playing');
+    setState('coreState', 'playing');
   }
 
   const pause = () => {
-    if (state.state === 'playing') {
+    if (state.coreState === 'playing') {
       pauseOrResume();
     }
   }
 
   const pauseOrResume = async () => {
     const isPlaying = await core.pauseOrResume();
-    setState('state', isPlaying ? 'playing' : 'paused');
+    setState('coreState', isPlaying ? 'playing' : 'paused');
   }
 
   const seek = async pos => {
@@ -388,10 +388,10 @@ export default props => {
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
       <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
-        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.state == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
+        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
         <Switch>
-          <Match when={state.state == 'initial' && !autoPlay}><StartOverlay onClick={play} /></Match>
-          <Match when={state.state == 'waiting'}><LoaderOverlay cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} terminalFontFamily={props.terminalFontFamily} terminalLineHeight={props.terminalLineHeight} /></Match>
+          <Match when={state.coreState == 'initial' && !autoPlay}><StartOverlay onClick={play} /></Match>
+          <Match when={state.coreState == 'waiting'}><LoaderOverlay cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} terminalFontFamily={props.terminalFontFamily} terminalLineHeight={props.terminalLineHeight} /></Match>
         </Switch>
       </div>
     </div>
