@@ -1,6 +1,6 @@
 import buffer from '../buffer';
 
-function websocket({ url, bufferTime = 0 }, { feed, reset }) {
+function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting }) {
   const utfDecoder = new TextDecoder();
   let socket;
   let buf;
@@ -18,6 +18,7 @@ function websocket({ url, bufferTime = 0 }, { feed, reset }) {
 
     socket.onopen = () => {
       console.debug('websocket: opened');
+      setWaiting(false);
       initBuffer();
       reconnectDelay = 250;
     }
@@ -42,6 +43,7 @@ function websocket({ url, bufferTime = 0 }, { feed, reset }) {
         console.debug('websocket: closed');
       } else {
         console.debug(`websocket: unclean close, reconnecting in ${reconnectDelay}...`);
+        setWaiting(true);
         setTimeout(connect, reconnectDelay);
         reconnectDelay = Math.min(reconnectDelay * 2, 5000);
       }

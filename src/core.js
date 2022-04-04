@@ -64,10 +64,22 @@ class Core {
       }
     }
 
+    let wasWaiting = false;
+
+    const setWaiting = (isWaiting) => {
+      if (isWaiting && !wasWaiting) {
+        wasWaiting = true;
+        this.dispatchEvent('waiting');
+      } else if (!isWaiting && wasWaiting) {
+        wasWaiting = false;
+        this.dispatchEvent('play');
+      }
+    };
+
     this.wasm = await vt;
 
     this.driver = this.driverFn(
-      { feed, now, setTimeout, setInterval, onFinish, reset },
+      { feed, now, setTimeout, setInterval, onFinish, reset, setWaiting },
       { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt }
     );
 
