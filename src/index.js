@@ -1,4 +1,5 @@
 import { render } from 'solid-js/web';
+import Core from './core';
 import Player from './components/Player';
 import { asciicast } from "./driver/asciicast";
 import { test } from "./driver/test";
@@ -6,7 +7,29 @@ import { websocket } from "./driver/websocket";
 import { eventsource } from "./driver/eventsource";
 
 function create(src, elem, opts = {}) {
-  const props = { driverFn: getDriver(src), ...opts };
+  const core = new Core(getDriver(src), {
+    cols: opts.cols,
+    rows: opts.rows,
+    loop: opts.loop,
+    speed: opts.speed,
+    preload: opts.preload,
+    startAt: opts.startAt,
+    poster: opts.poster,
+    idleTimeLimit: opts.idleTimeLimit
+  });
+
+  const props = {
+    core: core,
+    cols: opts.cols,
+    rows: opts.rows,
+    fit: opts.fit,
+    autoPlay: opts.autoPlay ?? opts.autoplay,
+    terminalFontSize: opts.terminalFontSize,
+    terminalFontFamily: opts.terminalFontFamily,
+    terminalLineHeight: opts.terminalLineHeight,
+    theme: opts.theme
+  };
+
   let el;
 
   const dispose = render(() => {
@@ -14,20 +37,18 @@ function create(src, elem, opts = {}) {
     return el;
   }, elem);
 
-  const c = el.__controller;
-
   const player = {
     el: el,
     dispose: dispose,
-    getCurrentTime: c.getCurrentTime,
-    getDuration: c.getDuration,
-    play: c.play,
-    pause: c.pause,
-    seek: c.seek
+    getCurrentTime: () => core.getCurrentTime(),
+    getDuration: () => core.getDuration(),
+    play: () => core.play(),
+    pause: () => core.pause(),
+    seek: pos => core.seek(pos)
   }
 
-  player.addEventListener = (name, callback, third = undefined) => {
-    return el.addEventListener(name, callback.bind(player), third);
+  player.addEventListener = (name, callback) => {
+    return core.addEventListener(name, callback.bind(player));
   }
 
   return player;
