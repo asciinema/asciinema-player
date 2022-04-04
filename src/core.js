@@ -22,9 +22,27 @@ class Core {
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
     this.poster = opts.poster;
-    this.onSize = opts.onSize;
-    this.onFinish = opts.onFinish;
-    this.onTerminalUpdate = opts.onTerminalUpdate;
+
+    this.eventHandlers = new Map([
+      ['starting', []],
+      ['waiting', []],
+      ['reset', []],
+      ['play', []],
+      ['pause', []],
+      ['terminalUpdate', []],
+      ['seeked', []],
+      ['finish', []]
+    ]);
+  }
+
+  addEventListener(eventName, handler) {
+    this.eventHandlers.get(eventName).push(handler);
+  }
+
+  dispatchEvent(eventName, data = {}) {
+    for (const h of this.eventHandlers.get(eventName)) {
+      h(data);
+    }
   }
 
   async init() {
@@ -42,10 +60,7 @@ class Core {
         this.restart();
       } else {
         this.state = 'finished';
-
-        if (typeof this.onFinish === 'function') {
-          this.onFinish();
-        }
+        this.dispatchEvent('finish');
       }
     }
 
@@ -75,9 +90,9 @@ class Core {
     }
   }
 
-  play() {
+  async play() {
     if (this.state == 'initial') {
-      return this.start();
+      await this.start();
     } else if (this.state == 'paused') {
       this.resume();
     } else if (this.state == 'finished') {
@@ -85,18 +100,22 @@ class Core {
     }
   }
 
+  pause() {
+    if (this.state == 'playing') {
+      this.doPause();
+    }
+  }
+
   async pauseOrResume() {
     if (this.state == 'initial') {
       await this.start();
     } else if (this.state == 'playing') {
-      this.pause();
+      this.doPause();
     } else if (this.state == 'paused') {
       this.resume();
     } else if (this.state == 'finished') {
       await this.restart();
     }
-
-    return this.state == 'playing';
   }
 
   stop() {
@@ -106,19 +125,8 @@ class Core {
   }
 
   async seek(where) {
-    if (typeof this.driver.seek === 'function') {
-      await this.initializeDriver();
-
-      if (this.state != 'playing') {
-        this.state = 'paused';
-      }
-
-      this.driver.seek(where);
-
-      return true;
-    } else {
-      return false;
-    }
+    await this.doSeek(where);
+    this.dispatchEvent('seeked');
   }
 
   getChangedLines() {
@@ -170,9 +178,16 @@ class Core {
   // private
 
   async start() {
+    this.dispatchEvent('starting');
+
+    const timeoutId = setTimeout(() => {
+      this.dispatchEvent('waiting');
+    }, 2000);
+
     await this.initializeDriver();
-    this.onTerminalUpdate(); // clears the poster
+    this.dispatchEvent('terminalUpdate'); // clears the poster
     const stop = await this.driver.start();
+    clearTimeout(timeoutId);
 
     if (typeof stop === 'function') {
       this.driver.stop = stop;
@@ -180,12 +195,14 @@ class Core {
 
     this.startTime = this.now();
     this.state = 'playing';
+    this.dispatchEvent('play');
   }
 
-  pause() {
+  doPause() {
     if (typeof this.driver.pauseOrResume === 'function') {
       this.driver.pauseOrResume();
       this.state = 'paused';
+      this.dispatchEvent('pause');
     }
   }
 
@@ -193,12 +210,30 @@ class Core {
     if (typeof this.driver.pauseOrResume === 'function') {
       this.state = 'playing';
       this.driver.pauseOrResume();
+      this.dispatchEvent('play');
+    }
+  }
+
+  async doSeek(where) {
+    if (typeof this.driver.seek === 'function') {
+      await this.initializeDriver();
+
+      if (this.state != 'playing') {
+        this.state = 'paused';
+      }
+
+      this.driver.seek(where);
+
+      return true;
+    } else {
+      return false;
     }
   }
 
   async restart() {
-    if (await this.seek(0)) {
+    if (await this.doSeek(0)) {
       this.resume();
+      this.dispatchEvent('play');
     }
   }
 
@@ -206,7 +241,7 @@ class Core {
     const affectedLines = this.vt.feed(data);
     affectedLines.forEach(i => this.changedLines.add(i));
     this.cursor = undefined;
-    this.onTerminalUpdate();
+    this.dispatchEvent('terminalUpdate');
   }
 
   now() { return performance.now() * this.speed }
@@ -260,9 +295,7 @@ class Core {
       this.changedLines.add(i);
     }
 
-    if (typeof this.onSize === 'function') {
-      this.onSize(cols, rows);
-    }
+    this.dispatchEvent('reset', { cols, rows });
   }
 
   async renderPoster() {

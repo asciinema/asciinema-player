@@ -1,6 +1,5 @@
 import { createEffect, createMemo, Match, onCleanup, onMount, Switch } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
-import Core from '../core';
 import Terminal from './Terminal';
 import ControlBar from './ControlBar';
 import LoaderOverlay from './LoaderOverlay';
@@ -8,6 +7,9 @@ import StartOverlay from './StartOverlay';
 
 
 export default props => {
+  const core = props.core;
+  const autoPlay = props.autoPlay;
+
   const [state, setState] = createStore({
     coreState: 'initial',
     cols: props.cols,
@@ -21,6 +23,7 @@ export default props => {
     containerW: null,
     containerH: null,
     showControls: false,
+    showStartOverlay: !autoPlay,
     isPausable: true,
     isSeekable: true,
     isFullscreen: false,
@@ -31,48 +34,53 @@ export default props => {
     cursorHold: false
   });
 
-  const autoPlay = props.autoPlay ?? props.autoplay;
+  const terminalCols = () => state.cols || 80;
+  const terminalRows = () => state.rows || 24;
 
   let frameRequestId;
   let userActivityTimeoutId;
   let timeUpdateIntervalId;
   let blinkIntervalId;
-
   let wrapperRef;
   let playerRef;
   let terminalRef;
-
   let resizeObserver;
 
-  const terminalCols = () => state.cols || 80;
-  const terminalRows = () => state.rows || 24;
+  core.addEventListener('starting', () => {
+    setState('showStartOverlay', false);
+  });
 
-  const core = new Core(props.driverFn, {
-    cols: props.cols,
-    rows: props.rows,
-    loop: props.loop,
-    speed: props.speed,
-    preload: props.preload,
-    startAt: props.startAt,
-    poster: props.poster,
-    idleTimeLimit: props.idleTimeLimit,
+  core.addEventListener('waiting', () => {
+    setState('coreState', 'waiting');
+  });
 
-    onSize: (cols, rows) => {
-      if (rows < state.rows) {
-        setState('lines', state.lines.slice(0, rows));
-      }
+  core.addEventListener('reset', ({ cols, rows }) => {
+    if (rows < state.rows) {
+      setState('lines', state.lines.slice(0, rows));
+    }
 
-      setState({ cols, rows });
-    },
+    setState({ cols, rows });
+  });
 
-    onTerminalUpdate: () => {
-      if (frameRequestId === undefined) {
-        frameRequestId = requestAnimationFrame(updateTerminal);
-      }
-    },
+  core.addEventListener('play', () => {
+    setState('coreState', 'playing');
+  });
 
-    onFinish: () => {
-      setState('coreState', 'paused');
+  core.addEventListener('pause', () => {
+    setState('coreState', 'paused');
+  });
+
+  core.addEventListener('seeked', () => {
+    updateTime();
+  });
+
+  core.addEventListener('finish', () => {
+    setState('coreState', 'paused');
+  });
+
+  core.addEventListener('terminalUpdate', () => {
+    if (frameRequestId === undefined) {
+      frameRequestId = requestAnimationFrame(updateTerminal);
     }
   });
 
@@ -118,7 +126,7 @@ export default props => {
     }
 
     if (autoPlay) {
-      play();
+      core.play();
     }
   });
 
@@ -135,48 +143,12 @@ export default props => {
     if (s === 'playing') {
       startBlinking();
       startTimeUpdates();
-      wrapperRef.dispatchEvent(new CustomEvent('play'));
     } else if (s === 'paused') {
       stopBlinking();
       stopTimeUpdates();
       updateTime();
-      wrapperRef.dispatchEvent(new CustomEvent('pause'));
     }
   });
-
-  const play = async () => {
-    const loader = core.play();
-
-    if (loader !== undefined) {
-      setState('coreState', 'loading');
-
-      const timeoutId = setTimeout(() => {
-        setState('coreState', 'waiting');
-      }, 1000);
-
-      await loader;
-      clearTimeout(timeoutId);
-    }
-
-    setState('coreState', 'playing');
-  }
-
-  const pause = () => {
-    if (state.coreState === 'playing') {
-      pauseOrResume();
-    }
-  }
-
-  const pauseOrResume = async () => {
-    const isPlaying = await core.pauseOrResume();
-    setState('coreState', isPlaying ? 'playing' : 'paused');
-  }
-
-  const seek = async pos => {
-    if (await core.seek(pos)) {
-      updateTime();
-    }
-  }
 
   const updateTerminal = () => {
     const changedLines = core.getChangedLines();
@@ -262,9 +234,9 @@ export default props => {
 
     if (e.shiftKey) {
       if (e.key == 'ArrowLeft') {
-        seek('<<<');
+        core.seek('<<<');
       } else if (e.key == 'ArrowRight') {
-        seek('>>>');
+        core.seek('>>>');
       } else {
         return;
       }
@@ -275,16 +247,16 @@ export default props => {
     }
 
     if (e.key == ' ') {
-      pauseOrResume();
+      core.pauseOrResume();
     } else if (e.key == 'f') {
       toggleFullscreen();
     } else if (e.key == 'ArrowLeft') {
-      seek('<<');
+      core.seek('<<');
     } else if (e.key == 'ArrowRight') {
-      seek('>>');
+      core.seek('>>');
     } else if (e.key.charCodeAt(0) >= 48 && e.key.charCodeAt(0) <= 57) {
       const pos = (e.key.charCodeAt(0) - 48) / 10;
-      seek(`${pos * 100}%`);
+      core.seek(`${pos * 100}%`);
     } else {
       return;
     }
@@ -388,22 +360,14 @@ export default props => {
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
       <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
-        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={pauseOrResume} onFullscreenClick={toggleFullscreen} onSeekClick={seek} />
+        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.pauseOrResume()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} />
         <Switch>
-          <Match when={state.coreState == 'initial' && !autoPlay}><StartOverlay onClick={play} /></Match>
+          <Match when={state.showStartOverlay}><StartOverlay onClick={() => core.play()} /></Match>
           <Match when={state.coreState == 'waiting'}><LoaderOverlay cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} terminalFontFamily={props.terminalFontFamily} terminalLineHeight={props.terminalLineHeight} /></Match>
         </Switch>
       </div>
     </div>
   );
-
-  el.__controller = {
-    getCurrentTime: () => core.getCurrentTime(),
-    getDuration: () => core.getDuration(),
-    play: play,
-    pause: pause,
-    seek: seek
-  }
 
   return el;
 }

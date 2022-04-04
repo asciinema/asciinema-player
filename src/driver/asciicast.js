@@ -149,7 +149,6 @@ function asciicast({ url, fetchOpts = {} }, { feed, now, setTimeout, onFinish },
     },
 
     start: async () => {
-      await load();
       seek(effectiveStartAt);
       resume();
     },
