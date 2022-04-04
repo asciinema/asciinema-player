@@ -143,7 +143,7 @@ export default props => {
     if (s === 'playing') {
       startBlinking();
       startTimeUpdates();
-    } else if (s === 'paused') {
+    } else if (s !== 'initial') {
       stopBlinking();
       stopTimeUpdates();
       updateTime();
