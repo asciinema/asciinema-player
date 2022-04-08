@@ -4,9 +4,9 @@ _Note: This README applies to development branch. See the version for the latest
 
 [![Build status](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml/badge.svg)](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml)
 
-Web player for terminal session recordings (as produced
-by [asciinema recorder](https://github.com/asciinema/asciinema)) that you can
-use on your own website.
+Web player for terminal sessions (recorded with
+[asciinema](https://github.com/asciinema/asciinema)) you can use on your
+website.
 
 ## About
 
@@ -486,7 +486,7 @@ element is focused):
 * <kbd>space</kbd> - play / pause
 * <kbd>f</kbd> - toggle fullscreen mode
 * <kbd>←</kbd> / <kbd>→</kbd> - rewind by 5 seconds / fast-forward by 5 seconds
-* <kbd>Shift</kdb> + <kbd>←</kbd> / <kbd>Shift</kbd> + <kbd>→</kbd> - rewind by 10% / fast-forward by 10%
+* <kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>Shift</kbd> + <kbd>→</kbd> - rewind by 10% / fast-forward by 10%
 * <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd> ... <kbd>9</kbd> - jump to 0%, 10%, 20% ... 90%
 
 ## Development
