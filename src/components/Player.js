@@ -63,7 +63,7 @@ export default props => {
   });
 
   core.addEventListener('play', () => {
-    setState('coreState', 'playing');
+    setState({ coreState: 'playing', showStartOverlay: false });
   });
 
   core.addEventListener('pause', () => {
