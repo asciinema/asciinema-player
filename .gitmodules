@@ -1,3 +1,0 @@
-[submodule "src/vt/vt-rs"]
-	path = src/vt/vt-rs
-	url = https://github.com/asciinema/vt-rs.git
