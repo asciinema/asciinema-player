@@ -32,7 +32,7 @@
     "@rollup/plugin-babel": "^5.3.0",
     "@rollup/plugin-commonjs": "^21.0.0",
     "@rollup/plugin-node-resolve": "^13.0.4",
-    "@wasm-tool/rollup-plugin-rust": "^1.0.7",
+    "@wasm-tool/rollup-plugin-rust": "^2.2.1",
     "babel-preset-solid": "^1.1.2",
     "eslint": "^7.27.0",
     "eslint-config-airbnb-base": "^14.2.1",
