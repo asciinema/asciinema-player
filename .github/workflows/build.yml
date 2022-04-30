@@ -22,6 +22,7 @@ jobs:
         node-version: 14
         cache: 'npm'
     - run: npm ci
+    - run: rustup target add wasm32-unknown-unknown
     - run: npm run build
     - run: npm run bundle
     - run: ls -lhR dist
