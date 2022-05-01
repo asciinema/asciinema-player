@@ -4,7 +4,7 @@
 import Stream from '../stream';
 
 
-function asciicast({ url, fetchOpts = {} }, { feed, now, setTimeout, onFinish }, { idleTimeLimit, startAt }) {
+function asciicast(src, { feed, now, setTimeout, onFinish }, { idleTimeLimit, startAt }) {
   let cols;
   let rows;
   let frames;
@@ -17,21 +17,35 @@ function asciicast({ url, fetchOpts = {} }, { feed, now, setTimeout, onFinish },
   let pauseElapsedTime;
 
   async function load() {
-    if (!frames) {
+    if (frames) return;
+
+    const asciicast = parseAsciicast(await doFetch(src));
+    cols = asciicast.cols;
+    rows = asciicast.rows;
+    idleTimeLimit = idleTimeLimit ?? asciicast.idleTimeLimit
+    const result = prepareFrames(asciicast.frames, idleTimeLimit, startAt);
+    frames = result.frames;
+    effectiveStartAt = result.effectiveStartAt;
+    duration = frames[frames.length - 1][0];
+  }
+
+  async function doFetch({ url, data, fetchOpts = {} }) {
+    if (url !== undefined) {
       const response = await fetch(url, fetchOpts);
 
       if (!response.ok) {
-        throw `failed fetching asciicast file: ${response.statusText} (${response.status})`
+        throw `failed fetching asciicast file: ${response.statusText} (${response.status})`;
       }
 
-      const asciicast = parseAsciicast(await response.text());
-      cols = asciicast.cols;
-      rows = asciicast.rows;
-      idleTimeLimit = idleTimeLimit ?? asciicast.idleTimeLimit
-      const result = prepareFrames(asciicast.frames, idleTimeLimit, startAt);
-      frames = result.frames;
-      effectiveStartAt = result.effectiveStartAt;
-      duration = frames[frames.length - 1][0];
+      return await response.text();
+    } else if (data !== undefined) {
+      if (typeof data === 'function') {
+        data = data();
+      }
+
+      return await data;
+    } else {
+      throw 'failed fetching asciicast file: url/data missing in src';
     }
   }
 
