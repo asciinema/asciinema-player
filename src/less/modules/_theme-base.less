@@ -1,4 +1,6 @@
 .theme-base() {
+  background-color: @background;
+
   .asciinema-terminal {
     color: @foreground;
     background-color: @background;
@@ -45,5 +47,21 @@
 .theme-bright-is-bold() {
   .fg-8, .fg-9, .fg-10, .fg-11, .fg-12, .fg-13, .fg-14, .fg-15 {
     font-weight: bold;
+  }
+}
+
+.theme-play-icon-color(@color) {
+  .start-prompt {
+    .play-button {
+      svg {
+        .play-btn-fill {
+          fill: @color;
+        }
+
+        .play-btn-stroke {
+          stroke: @color;
+        }
+      }
+    }
   }
 }

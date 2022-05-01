@@ -1,0 +1,47 @@
+{
+  "name": "asciinema-player",
+  "description": "Web player for terminal session recordings.",
+  "version": "3.0.0",
+  "author": "Marcin Kulik",
+  "homepage": "https://github.com/asciinema/asciinema-player",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asciinema/asciinema-player.git"
+  },
+  "license": "Apache-2.0",
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c --environment production",
+    "bundle": "rollup -c rollup.config.bundle.js --environment production && lessc src/less/asciinema-player.less >dist/bundle/asciinema-player.css",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "browserslist": [
+    "defaults"
+  ],
+  "dependencies": {
+    "@babel/runtime": "^7.15.4",
+    "solid-js": "^1.3.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.15.5",
+    "@babel/plugin-transform-runtime": "^7.15.8",
+    "@babel/preset-env": "^7.15.8",
+    "@rollup/plugin-babel": "^5.3.0",
+    "@rollup/plugin-commonjs": "^21.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.4",
+    "@wasm-tool/rollup-plugin-rust": "^2.2.1",
+    "babel-preset-solid": "^1.1.2",
+    "eslint": "^7.27.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.23.3",
+    "eslint-plugin-jest": "^24.3.6",
+    "eslint-plugin-prettier": "^3.4.0",
+    "less": "^4.1.1",
+    "rollup": "^2.56.3",
+    "rollup-plugin-terser": "^7.0.2"
+  }
+}

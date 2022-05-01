@@ -17,6 +17,17 @@
     left: 0;
     transition: bottom 0.15s linear;
 
+    // disable text selection:
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+
+    // make control bar clickable even when overlay is displayed:
+    z-index: 30;
+
     * {
       box-sizing: inherit;
       font-size: 0;
@@ -82,7 +93,7 @@
 
       .bar {
         display: block;
-        cursor: pointer;
+        cursor: default;
         height: 100%;
         padding-top: 15px;
         font-size: 0;
@@ -102,10 +113,10 @@
       }
     }
 
-    &.live {
+    &.seekable {
       .progressbar {
         .bar {
-          cursor: default;
+          cursor: pointer;
         }
       }
     }

@@ -13,13 +13,46 @@
   border-radius: 0;
   border-style: solid;
   cursor: text;
-  border-width: 0.5em;
+  border-width: 0.75em;
 
   .terminal-font;
 
   .line {
     display: block;
     width: 200%;
+
+    .cursor-a {
+      display: inline-block;
+    }
+
+    .cursor-b {
+      display: none;
+      border-radius: 0.05em;
+    }
+
+    .blink {
+      visibility: hidden;
+    }
+  }
+
+  &.cursor {
+    .line {
+      .cursor-a {
+        display: none;
+      }
+
+      .cursor-b {
+        display: inline-block;
+      }
+    }
+  }
+
+  &.blink {
+    .line {
+      .blink {
+        visibility: visible;
+      }
+    }
   }
 
   .bright {
@@ -34,15 +67,11 @@
     font-style: italic;
   }
 
-  &.font-small {
-    font-size: 12px;
+  .strikethrough {
+    text-decoration: line-through;
   }
+}
 
-  &.font-medium {
-    font-size: 18px;
-  }
-
-  &.font-big {
-    font-size: 24px;
-  }
+.asciinema-player .loading > .asciinema-terminal {
+  background-color: transparent;
 }

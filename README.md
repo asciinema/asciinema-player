@@ -1,24 +1,24 @@
 # asciinema player
 
-[![Build Status](https://travis-ci.org/asciinema/asciinema-player.svg?branch=master)](https://travis-ci.org/asciinema/asciinema-player)
+[![Build status](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml/badge.svg)](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml)
 
-Web player for terminal session recordings (as produced
-by [asciinema recorder](https://github.com/asciinema/asciinema)) that you can
-use on your website by simply adding `<asciinema-player>` tag.
+Web player for terminal sessions (recorded with
+[asciinema](https://github.com/asciinema/asciinema)) you can use on your
+website.
 
 ## About
 
-asciinema player is an open-source terminal session player written in
-ClojureScript. Contrary to other _video_ players asciinema player doesn't play
-heavy-weight video files (`.mp4`, `.webm` etc) but instead it plays light-weight
+asciinema player is an open-source terminal session player written in Javascript
+and Rust. Unlike other _video_ players asciinema player doesn't play
+heavy-weight video files (`.mp4`, `.webm` etc) and instead plays light-weight
 terminal session files called
 [asciicasts](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md).
 
-Asciicast is a capture of terminal's raw output, which has to be interpreted
-during the playback, so the player comes with its own interpreter based on [Paul
-Williams' parser for ANSI-compatible video
-terminals](https://vt100.net/emu/dec_ansi_parser). Its output is fully compatible
-with most widely used terminal emulators like xterm, Gnome Terminal, iTerm etc.
+Asciicast is a capture of terminal's raw output, which needs to be interpreted
+during playback, therefore the player comes with its own interpreter based on
+[Paul Williams' parser for ANSI-compatible video
+terminals](https://vt100.net/emu/dec_ansi_parser). It's fully compatible with
+most widely used terminal emulators like xterm, Gnome Terminal, iTerm etc.
 
 You can see the player in action on [asciinema.org](https://asciinema.org).
 
@@ -27,24 +27,24 @@ and the recordings yourself then read on, it's very simple.
 
 ## Features
 
-* HTML5 [`<asciinema-player>` element](#use-the-player-in-your-html-page) you can use in your website's markup,
-* copy-paste of terminal content (it's just a text after all!),
-* [idle time optimization](#idle-time-limit),
-* [predefined and custom font sizes](#font-size),
-* [custom poster](#poster),
-* [custom playback speeds](#speed),
-* [looped playback](#loop),
-* [starting playback at specific time](#start-at),
-* [programmatic control via methods/events/properties on the HTML element](#controlling-the-player-programmatically),
+* ability to copy-paste terminal content - it's just a text after all!,
+* ultra smooth, timing-accurate playback,
+* [automatic font scaling](#fit) to fit into container element in most efficient way,
+* [idle time optimization](#idletimelimit) to skip longer periods of inactivity,
+* [predefined and custom font sizes](#terminalfontsize),
+* [NPT-based or custom text poster](#poster),
+* [adjustable playback speed](#speed),
+* [looped playback](#loop), infinite or finite,
+* [starting playback at specific time](#startat),
+* [API for programmatic control](#api),
 * [keyboard shortcuts](#keyboard-shortcuts),
-* [multiple color schemes for standard 16 colors](#theme),
-* 256 color palette / 24-bit true color (ISO-8613-3),
+* [multiple color themes for standard 16 colors](#theme),
+* full support for 256 color palette and 24-bit true color (ISO-8613-3),
 * full-screen mode.
 
-## Self-hosting quick start
+## Quick start
 
-The following example shows how to use asciinema player on your own website,
-without depending on asciinema.org.
+The following examples show how to use asciinema player on your own website.
 
 It assumes you have obtained terminal session recording file by either:
 
@@ -53,18 +53,18 @@ It assumes you have obtained terminal session recording file by either:
 * downloading an existing recording from asciinema.org by appending `.cast` to the
   asciicast page URL (for example: https://asciinema.org/a/28307.cast).
 
-### Download the player
+### Use standalone player bundle in your HTML page
 
-Download latest version of the player from
+Download latest version of the player bundle from
 [releases page](https://github.com/asciinema/asciinema-player/releases). You
-only need `asciinema-player.js` and `asciinema-player.css` files.
+only need `asciinema-player.min.js` and `asciinema-player.css` files.
 
-### Use the player in your HTML page
+First, add `asciinema-player.min.js`, `asciinema-player.css`and the `.cast` file of
+your recording to your site's assets. The HTML snippet below assumes they're in
+the web server's root directory.
 
-First, add `asciinema-player.js`, `asciinema-player.css`and the `.cast` file
-with your recording to your site's assets.
-
-Then add necessary includes to your HTML document:
+Then add necessary includes to your HTML document and initialize the player
+inside an empty `<div>` element:
 
 ```html
 <html>
@@ -75,16 +75,151 @@ Then add necessary includes to your HTML document:
 </head>
 <body>
   ...
-  <asciinema-player src="/demo.cast"></asciinema-player>
+  <div id="demo"></div>
   ...
-  <script src="/asciinema-player.js"></script>
+  <script src="/asciinema-player.min.js"></script>
+  <script>
+    AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'));
+  </script>
 </body>
 </html>
 ```
 
-## `<asciinema-player>` element attributes
+### Use the player in your own application bundle
+
+Add `asciinema-player` to your `devDependencies`:
+
+```bash
+npm install --save-dev asciinema-player@3.0.0
+```
+
+Add empty `<div id="demo"></div>` element to your page to contain the player.
+
+Import and use `create` function from `asciinema-player` module:
+
+```javascript
+import * as AsciinemaPlayer from 'asciinema-player';
+AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'));
+```
+
+Finally, include player's CSS file in your site CSS bundle. You'll find it in
+the npm package at `dist/bundle/asciinema-player.css`.
+
+## Basic usage
+
+To mount the player on your page use the `create` function exported by the
+`asciinema-player` ES module with 2 arguments: the URL (or path) to the
+asciicast file and the container DOM element to mount the player in.
+
+```javascript
+AsciinemaPlayer.create(url, containerElement);
+```
+
+You can tweak file fetching by passing `{ url: "...", fetchOpts: { ... } }` as
+the 1st argument to `create`. `fetchOpts` object is then passed to
+[fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) (as its 2nd
+argument). This can be used to change HTTP method, configure credentials, etc.
+
+If you'd like to inline the recording contents you can do so with [Data
+URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs).
+For example:
+
+```javascript
+AsciinemaPlayer.create(
+  'data:text/plain;base64,eyJ2ZXJzaW9uIjogMiwgIndpZHRoIjogODAsICJoZWlnaHQiOiAyNH0KWzAuMSwgIm8iLCAiaGVsbCJdClswLjUsICJvIiwgIm8gIl0KWzIuNSwgIm8iLCAid29ybGQhXG5cciJdCg==',
+  containerElement
+);
+```
+
+See [Source](#source) for more ways of loading a recording into the player.
+
+To pass additional options when mounting the player use 3 argument variant:
+
+```javascript
+AsciinemaPlayer.create(url, containerElement, opts);
+```
+
+For example, enable looping and select Solarized Dark theme:
+
+```javascript
+AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
+  loop: true,
+  theme: 'solarized-dark'
+});
+```
+
+See [Options](#options) for full list of available options.
+
+If you'd like to control the player programatically then you can use the
+functions exposed on the object returned from `create` function:
+
+```javascript
+const player = AsciinemaPlayer.create(url, containerElement);
+
+player.play();
+```
+
+See [API](#api) for details.
+
+## Source
+
+In the most common case the recording to be played is fetched from a URL. If
+you'd like to load it from a different source you can pass it to `create` as `{
+data: data }` where `data` can be one of:
+
+- a string containing asciicast in [v1](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v1.md) or [v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) format
+- an object representing asciicast in [v1](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v1.md) format
+- an array representing asciicast in [v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) format
+- a function which when invoked returns any of the above (may be async)
+
+For example:
+
+```javascript
+AsciinemaPlayer.create({ data: data }, containerElement);
+```
+
+`data` value is defined in one of the following ways:
+
+```javascript
+// object representing asciicast in v1 format
+{version: 1, width: 80, height: 24, stdout: [[1.0, "hello "], [1.0, "world!"]]};
+```
+
+```javascript
+// string representing asciicast in v1 format (json)
+'{"version": 1, "width": 80, "height": 24, "stdout": [[1.0, "hello "], [1.0, "world!"]]}';
+```
+
+```javascript
+// array representing asciicast in v2 format
+[
+  {version: 2, width: 80, height: 24},
+  [1.0, "o", "hello "],
+  [2.0, "o", "world!"]
+]
+```
+
+```javascript
+// string representing asciicast in v2 format (ndjson)
+'{"version": 2, "width": 80, "height": 24}\n[1.0, "o", "hello "]\n[2.0, "o", "world!"]';
+```
+
+```javascript
+// function returning a string representing asciicast in v2 format (ndjson)
+() => '{"version": 2, "width": 80, "height": 24}\n[1.0, "o", "hello "]\n[2.0, "o", "world!"]';
+```
+
+If `data` is a function then the player invokes the function when playback is
+started by a user. If `preload: true` option is used then the function is
+invoked during player initialization.
+
+## Options
+
+The following options can be used to tweak player's look and feel:
 
 ### `cols`
+
+Type: number
 
 Number of columns of player's terminal.
 
@@ -97,6 +232,8 @@ when it gets loaded.
 
 ### `rows`
 
+Type: number
+
 Number of lines of player's terminal.
 
 When not set it defaults to 24 (until asciicast gets loaded) and to terminal
@@ -104,40 +241,60 @@ height saved in the asciicast file (after it gets loaded).
 
 Same recommendation as for `cols` applies here.
 
-### `autoplay`
+### `autoPlay`
 
-Set this attribute to any value if playback should start automatically. Defaults
-to no autoplay.
+Type: boolean
+
+Set this option to `true` if playback should start automatically.
+
+Defaults to `false` - no auto play.
 
 ### `preload`
 
-Set this attribute to any value if the recording should be preloaded on player's
-initialization. Defaults to no preload.
+Type: boolean
+
+Set this option to `true` if the recording should be preloaded on player's
+initialization.
+
+Defaults to `false` - no preload.
 
 ### `loop`
 
-Set this attribute to any value if playback should be looped. Defaults to no
-looping.
+Type: boolean or number
 
-### `start-at`
+Set this option to either `true` or a number if playback should be looped. When
+set to a number (e.g. `3`) then the recording will be re-played given number of
+times and stopped after that.
 
-Start playback at given time.
+Defaults to `false` - no looping.
+
+### `startAt`
+
+Type: number or string
+
+Start playback at a given time.
 
 Supported formats:
 
-* 123 (number of seconds)
-* 2:03 ("mm:ss")
-* 1:02:03 ("hh:mm:ss")
+* `123` (number of seconds)
+* `"2:03"` ("mm:ss")
+* `"1:02:03"` ("hh:mm:ss")
 
-Defaults to 0.
+Defaults to `0`.
 
 ### `speed`
 
-Playback speed. Defaults to 1 (normal speed). 2 means 2x faster.
+Type: number
 
-### `idle-time-limit`
+Playback speed. The value of `2` means 2x faster.
 
-Limit terminal inactivity to given number of seconds.
+Defaults to `1` - normal speed.
+
+### `idleTimeLimit`
+
+Type: number
+
+Limit terminal inactivity to a given number of seconds.
 
 For example, when set to `2` any inactivity longer than 2 seconds will be
 "compressed" to 2 seconds.
@@ -148,23 +305,45 @@ Defaults to:
   `asciinema rec`),
 - no limit, when it was not specified at the time of recording.
 
+### `theme`
+
+Type: string
+
+Terminal color theme.
+
+One of:
+
+* `"asciinema"`
+* `"monokai"`
+* `"tango"`
+* `"solarized-dark"`
+* `"solarized-light"`
+
+Defaults to `"asciinema"`.
+
+You can also [use a custom theme](https://github.com/asciinema/asciinema-player/wiki/Custom-terminal-themes).
+
 ### `poster`
 
-Poster (preview) to display before playback start.
+Type: string
+
+Poster (a preview frame) to display until the playback is started.
 
 The following poster specifications are supported:
 
-* `npt:2:34` - show recording "frame" at given time
-* `data:text/plain,Poster text` - show given text
+* `npt:1:23` - display recording "frame" at given time using [NPT ("Normal Play Time") notation](https://www.ietf.org/rfc/rfc2326.txt)
+* `data:text/plain,Poster text` - print given text
 
-The easiest way of specifying a poster is to use `npt:2:34` format. This will
-preload the recording and display terminal contents from the recording at 2 min
-34 s.
+The easiest way of specifying a poster is to use NPT format. For example,
+`npt:1:23` will preload the recording and display terminal contents at 1 min 23
+sec.
 
 Example:
 
-```html
-<asciinema-player src="..." poster="npt:2:34"></asciinema-player>
+```javascript
+AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
+  poster: 'npt:1:23'
+});
 ```
 
 Alternatively, a `poster` value of `data:text/plain,This will be printed as
@@ -172,219 +351,227 @@ poster\n\rThis in second line` will display arbitrary text. All [ANSI escape
 codes](https://en.wikipedia.org/wiki/ANSI_escape_code) can be used to add color
 and move the cursor around to produce good looking poster.
 
-Example of using text poster with cursor positioning:
+Example of using custom text poster with control sequences (aka escape codes):
 
-```html
-<asciinema-player src="..." poster="data:text/plain,I'm regular \x1b[1;32mI'm bold green\x1b[3BI'm 3 lines down"></asciinema-player>
+```javascript
+AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
+  poster: "data:text/plain,I'm regular \x1b[1;32mI'm bold green\x1b[3BI'm 3 lines down"
+});
 ```
 
-Defaults to screen contents at `start-at` (or blank terminal when `start-at` is
-0).
+Defaults to blank terminal or, when `startAt` is specified, to screen contents
+at time specified by `startAt`.
 
-### `font-size`
+### `fit`
+
+Type: string
+
+Controls the player's fitting (sizing) behaviour inside its container element.
+
+Possible values:
+
+* `"width"` - scale to full width of the container
+* `"height"` - scale to full height of the container (requires the container element to have fixed height)
+* `"both"` - scale to either full width or height, maximizing usage of available space (requires the container element to have fixed height)
+* `false` / `"none"` - don't scale, use fixed size font (also see `fontSize` option below)
+
+Defaults to `"width"`.
+
+> Version 2.x of the player supported only the behaviour represented by the
+> `false` value. If you're upgrading from v2 to v3 and want to preserve the sizing
+> behaviour then include `fit: false` option.
+
+### `terminalFontSize`
+
+Type: string
 
 Size of the terminal font.
 
 Possible values:
 
-* `small`
-* `medium`
-* `big`
-* any CSS `font-size` value (e.g. `15px`)
+* `"small"`
+* `"medium"`
+* `"big"`
+* any valid CSS `font-size` value, e.g. `"15px"`
 
-Defaults to `small`.
+Defaults to `"small"`.
 
-### `theme`
+> This option is effective only when `fit: false` option is specified as well
+> (see above).
 
-Terminal color theme.
+### `terminalFontFamily`
 
-One of:
+Type: string
 
-* `asciinema`
-* `tango`
-* `solarized-dark`
-* `solarized-light`
-* `monokai`
+Terminal font-family override.
 
-Defaults to `asciinema`.
+Use any valid CSS `font-family` value, e.g `"'JetBrains Mono', Consolas, Menlo, 'Bitstream Vera Sans Mono', monospace"`.
 
-You can also [use a custom theme](https://github.com/asciinema/asciinema-player/wiki/Custom-terminal-themes).
+### `terminalLineHeight`
 
-### `title`
+Type: number
 
-Title of the asciicast, displayed in the titlebar in fullscreen mode.
+Terminal line height override.
 
-### `author`
+The value is relative to the font size (like `em` unit in CSS). For example a
+value of `1` makes the line height equal to the font size, leaving no space
+between lines. A value of `2` makes it double the font size, etc.
 
-Author of the asciicast, displayed in the titlebar in fullscreen mode.
+Defaults to `1.33333333`.
 
-### `author-url`
-
-URL of the author's homepage/profile. Author name (`author` above) is linked to
-this URL.
-
-### `author-img-url`
-
-URL of the author's image, displayed in the titlebar in fullscreen mode.
-
-### Example usage with options
-
-```html
-<asciinema-player src="/demo.cast" speed="2" theme="solarized-dark" loop="loop" poster="data:text/plain,\e[5;5HAwesome \e[1;33mdemo!"></asciinema-player>
-```
-
-## Controlling the player programmatically
-
-The player's DOM element provides several properties, methods and events
-mimicking
-[HTMLVideoElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLVideoElement),
-allowing for programmatical control over the player.
-
-### Properties
-
-#### duration
-
-`duration` property gives the length of the recording in seconds, or zero if no
-recording data is available (for ex. before `loadedmetadata` event is
-triggered).
+## API
 
 ```javascript
-document.getElementById('player').duration; // 123.45
+import * as AsciinemaPlayer from 'asciinema-player';
+// skip the above import when using standalone player bundle
+
+const player = AsciinemaPlayer.create(url, containerElement);
 ```
 
-#### currentTime
+The object returned by `create` function (saved as `player` const above)
+contains several functions that can be used to control the player from
+your code.
 
-`currentTime` property gives the current playback time in seconds. Setting this
-value seeks the recording to the new time.
+For example, initiate playback and print the recording duration when it starts:
 
 ```javascript
-document.getElementById('player').currentTime; // 1.23
-document.getElementById('player').currentTime = 33;
+player.play().then(() => {
+  console.log(`started! duration: ${player.getDuration()}`);
+});
 ```
 
-### Methods
+The following functions are available on the player object:
 
-#### play
+### `getCurrentTime()`
 
-`play` method attempts to begin playback of the recording. If the recording
-hasn't been preloaded then it tries to load it, and then starts the playback.
+Returns the current playback time in seconds.
 
 ```javascript
-document.getElementById('player').play();
+player.getCurrentTime(); // => 1.23
 ```
 
-NOTE: If you want to synchronize asciinema player's playback with other elements
-on the page (for example `<audio>` element) then you should wait for the `play`
-event to occur, which signifies actual start of the playback.
+### `getDuration()`
 
-#### pause
-
-`pause` method pauses playback.
+Returns the length of the recording in seconds, or `null` if the recording is
+not loaded yet.
 
 ```javascript
-document.getElementById('player').pause();
+player.getDuration(); // => 123.45
 ```
 
-### Events
+### `play()`
 
-#### loadedmetadata, loadeddata, canplay, canplaythrough
-
-The `loadedmetadata`, `loadeddata`, `canplay` and `canplaythrough` events are
-fired (all of them, in this order) when the recording has been loaded and is
-ready to play. The recordings are always fully fetched (you can't partially load
-resource with XHR) so there's no difference in the amount of metadata/data
-available between these 4 events - when either event occurs the player already
-has all the information for smooth playback. In other words, it's enough to
-listen to only one of them, e.g. `canplaythrough` (all 4 are supported to make
-it more in line with HTMLVideoElement).
+Initiates playback of the recording. If the recording hasn't been
+[preloaded](#preload) then it's loaded, and playback is started.
 
 ```javascript
-document.getElementById('player').addEventListener('loadedmetadata', function(e) {
-  console.log("duration is", this.duration);
-}
-
-document.getElementById('player').addEventListener('canplaythrough', function(e) {
-  console.log("all ready to play");
-}
+player.play();
 ```
 
-NOTE: The player starts fetching the recording either when `preload` attribute
-is set (in this case these events may not be immediately followed by `play`
-event), or when user starts the playback (in this case these events are
-immediately followed by `play` event).
-
-#### play
-
-The `play` event is fired when playback has begun.
+This function returns a promise which is fulfilled when the playback actually
+starts.
 
 ```javascript
-document.getElementById('player').addEventListener('play', function(e) {
-  console.log("it's playing");
-  console.log("we're at", this.currentTime);
-}
+player.play().then(() => {
+  console.log(`started! duration: ${player.getDuration()}`);
+});
 ```
 
-#### pause
+If you want to synchronize asciinema player with other elements on the page (for
+example `<audio>` element) then you can use this promise for coordination.
+Alternatively you can add event listener for `play` event (see below).
 
-The `pause` event is fired when playback has been paused.
+### `pause()`
+
+Pauses playback.
 
 ```javascript
-document.getElementById('player').addEventListener('pause', function(e) {
-  console.log("it's paused");
-}
+player.pause();
 ```
+
+The playback is paused immediately.
+
+### `seek(t)`
+
+Changes the playback location to time `t` given in seconds (e.g. `15`) or
+percentage (e.g `'50%'`).
+
+This function returns a promise which is fulfilled when the location actually
+changes.
+
+```javascript
+player.seek(15).then(() => {
+  console.log(`current time: ${player.getCurrentTime()}`);
+});
+```
+
+### `addEventListener(eventName, handler)`
+
+Adds event listener, binding handler's `this` to the player object.
+
+The `play` event is dispatched when playback starts or resumes from pause.
+
+```javascript
+player.addEventListener('play', () => {
+  console.log(`playing! we're at: ${this.getCurrentTime()}`);
+})
+```
+
+The `pause` event is dispatched when playback is paused.
+
+```javascript
+player.addEventListener('pause', () => {
+  console.log("paused!");
+})
+```
+
+The `ended` event is dispatched when playback stops after reaching the end of
+the recording.
+
+```javascript
+player.addEventListener('ended', () => {
+  console.log("ended!");
+})
+```
+
+### `dispose()`
+
+Use this function to dispose of the player, i.e. to shut it down, release all
+resources and remove it from DOM.
 
 ## Keyboard shortcuts
 
 The following keyboard shortcuts are currently available (when the player
 element is focused):
 
-* `space` - play / pause
-* `f` - toggle fullscreen mode
-* `←` / `→` - rewind 5 seconds / fast-forward 5 seconds
-* `0, 1, 2 ... 9` - jump to 0%, 10%, 20% ... 90%
-* `<` / `>` - decrease / increase playback speed
+* <kbd>space</kbd> - play / pause
+* <kbd>f</kbd> - toggle fullscreen mode
+* <kbd>←</kbd> / <kbd>→</kbd> - rewind by 5 seconds / fast-forward by 5 seconds
+* <kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>Shift</kbd> + <kbd>→</kbd> - rewind by 10% / fast-forward by 10%
+* <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd> ... <kbd>9</kbd> - jump to 0%, 10%, 20% ... 90%
 
 ## Development
 
-The project uses [leiningen](http://leiningen.org/) for development and build
-related tasks so make sure you have it installed (as well as Java 7 or 8).
+The project requires [Node.js](https://nodejs.org/),
+[npm](https://www.npmjs.com/) and [Rust](https://www.rust-lang.org/) for
+development and build related tasks so make sure you have the latest versions
+installed.
 
-Clone this repository:
+To build the project:
 
     git clone https://github.com/asciinema/asciinema-player
     cd asciinema-player
+    git submodule update --init
+    npm install
+    npm run build
+    npm run bundle
 
-Make sure git submodules are fetched and up to date:
+This produces:
 
-    git submodule update --init --recursive
-
-Start local web server with auto-compilation and live code reloading in the browser:
-
-    lein figwheel dev
-
-Start auto-compilation of `.less` files:
-
-    lein less auto
-
-Once the above tasks are running, open [localhost:3449](http://localhost:3449/)
-in the browser to load the player with sample asciicast. Any changes made to
-`.cljs` or `.less` files will be automatically pushed to the browser, preserving
-player's state.
-
-Run tests with:
-
-    lein doo phantom test
-
-### Building from source
-
-To build stand-alone `.js` and `.css` files clone repository, initialize git
-submodules (as shown above), then run:
-
-    lein cljsbuild once release
-    lein less once
-
-This produces `resources/public/js/asciinema-player.js` and `resources/public/css/asciinema-player.css`.
+- `dist/index.js` - ES module, to be `import`-ed in your JS bundle
+- `dist/bundle/asciinema-player.js` - standalone player script, to be linked directly from a website
+- `dist/bundle/asciinema-player.min.js` - minimized version of the above
+- `dist/bundle/asciinema-player.css` - stylesheet, to be linked directly from a website or included in a CSS bundle
 
 ## Contributing
 
@@ -398,6 +585,6 @@ source [contributors](https://github.com/asciinema/asciinema-player/contributors
 
 ## License
 
-Copyright &copy; 2011-2018 Marcin Kulik.
+Copyright &copy; 2011-2022 Marcin Kulik.
 
 All code is licensed under the Apache License, Version 2.0. See LICENSE file for details.
