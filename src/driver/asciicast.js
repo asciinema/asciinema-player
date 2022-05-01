@@ -19,12 +19,17 @@ function asciicast(src, { feed, now, setTimeout, onFinish }, { idleTimeLimit, st
   async function load() {
     if (frames) return;
 
-    const asciicast = parseAsciicast(await doFetch(src));
+    const asciicast = loadAsciicast(await doFetch(src));
     cols = asciicast.cols;
     rows = asciicast.rows;
     idleTimeLimit = idleTimeLimit ?? asciicast.idleTimeLimit
     const result = prepareFrames(asciicast.frames, idleTimeLimit, startAt);
     frames = result.frames;
+
+    if (frames.length === 0) {
+      throw 'asciicast is missing events';
+    }
+
     effectiveStartAt = result.effectiveStartAt;
     duration = frames[frames.length - 1][0];
   }
@@ -199,43 +204,72 @@ function asciicast(src, { feed, now, setTimeout, onFinish }, { idleTimeLimit, st
   }
 }
 
-function parseAsciicast(json) {
-  try {
-    return parseAsciicastV2(json);
-  } catch (_error) {
-    // not a v2 format - let's try parsing as v1
-    return parseAsciicastV1(json);
+function loadAsciicast(data) {
+  let header;
+  let events = new Stream([]);
+
+  if (typeof data === 'string') {
+    const result = parseJsonl(data);;
+
+    if (result !== undefined) {
+      header = result.header;
+      events = result.events;
+    } else {
+      header = JSON.parse(data);
+    }
+  } else if (typeof data === 'object' && typeof data.version === 'number') {
+    header = data;
+  } else if (Array.isArray(data)) {
+    header = data[0];
+    events = (new Stream(data)).drop(1);
+  } else {
+    throw 'invalid data';
+  }
+
+  if (header.version === 1) {
+    return buildAsciicastV1(header);
+  } else if (header.version === 2) {
+    return buildAsciicastV2(header, events);
+  } else {
+    throw `asciicast v${header.version} format not supported`;
   }
 }
 
-function parseAsciicastV1(json) {
-  const asciicast = JSON.parse(json);
+function parseJsonl(jsonl) {
+  const lines = jsonl.split('\n');
+  let header;
+
+  try {
+    header = JSON.parse(lines[0]);
+  } catch (_error) {
+    return;
+  }
+
+  const events = new Stream(lines)
+    .drop(1)
+    .filter(l => l[0] === '[')
+    .map(l => JSON.parse(l));
+
+  return { header, events };
+}
+
+function buildAsciicastV1(data) {
   let time = 0;
 
-  const frames = new Stream(asciicast.stdout).map(e => {
+  const frames = new Stream(data.stdout).map(e => {
     time += e[0];
     return [time, e[1]];
   });
 
   return {
-    cols: asciicast.width,
-    rows: asciicast.height,
+    cols: data.width,
+    rows: data.height,
     frames: frames
   }
 }
 
-function parseAsciicastV2(jsonl) {
-  const lines = jsonl.split('\n');
-  const header = JSON.parse(lines[0]);
-
-  if (header.version !== 2) {
-    throw 'not asciicast v2 format';
-  }
-
-  const frames = new Stream(lines)
-    .drop(1)
-    .filter(l => l[0] === '[')
-    .map(l => JSON.parse(l))
+function buildAsciicastV2(header, events) {
+  const frames = events
     .filter(e => e[1] === 'o')
     .map(e => [e[0], e[2]]);
 
