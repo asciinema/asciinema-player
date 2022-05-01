@@ -31,7 +31,7 @@ class Core {
       ['pause', []],
       ['terminalUpdate', []],
       ['seeked', []],
-      ['finish', []]
+      ['ended', []]
     ]);
   }
 
@@ -60,7 +60,7 @@ class Core {
         this.restart();
       } else {
         this.state = 'finished';
-        this.dispatchEvent('finish');
+        this.dispatchEvent('ended');
       }
     }
 

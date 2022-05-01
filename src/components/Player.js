@@ -74,7 +74,7 @@ export default props => {
     updateTime();
   });
 
-  core.addEventListener('finish', () => {
+  core.addEventListener('ended', () => {
     setState('coreState', 'paused');
   });
 
