@@ -473,6 +473,15 @@ player.addEventListener('pause', () => {
 })
 ```
 
+The `ended` event is dispatched when playback stops after reaching the end of
+the recording.
+
+```javascript
+player.addEventListener('ended', () => {
+  console.log("ended!");
+})
+```
+
 ### `dispose()`
 
 Use this function to dispose of the player, i.e. to shut it down, release all
