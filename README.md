@@ -169,9 +169,9 @@ In the most common case the recording to be played is fetched from a URL. If
 you'd like to load it from a different source you can pass it to `create` as `{
 data: data }` where `data` can be one of:
 
-- a string containing asciicast in v1 or v2 format
-- an object representing asciicast in v1 format
-- an array representing asciicast in v2 format
+- a string containing asciicast in [v1](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v1.md) or [v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) format
+- an object representing asciicast in [v1](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v1.md) format
+- an array representing asciicast in [v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) format
 - a function which when invoked returns any of the above (may be async)
 
 For example:
