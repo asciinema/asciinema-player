@@ -133,6 +133,8 @@ AsciinemaPlayer.create(
 );
 ```
 
+See [Source](#source) for more ways of loading a recording into the player.
+
 To pass additional options when mounting the player use 3 argument variant:
 
 ```javascript
@@ -160,6 +162,58 @@ player.play();
 ```
 
 See [API](#api) for details.
+
+## Source
+
+In the most common case the recording to be played is fetched from a URL. If
+you'd like to load it from a different source you can pass it to `create` as `{
+data: data }` where `data` can be one of:
+
+- a string containing asciicast in v1 or v2 format
+- an object representing asciicast in v1 format
+- an array representing asciicast in v2 format
+- a function which when invoked returns any of the above (may be async)
+
+For example:
+
+```javascript
+AsciinemaPlayer.create({ data: data }, containerElement);
+```
+
+`data` value is defined in one of the following ways:
+
+```javascript
+// object representing asciicast in v1 format
+{version: 1, width: 80, height: 24, stdout: [[1.0, "hello "], [1.0, "world!"]]};
+```
+
+```javascript
+// string representing asciicast in v1 format (json)
+'{"version": 1, "width": 80, "height": 24, "stdout": [[1.0, "hello "], [1.0, "world!"]]}';
+```
+
+```javascript
+// array representing asciicast in v2 format
+[
+  {version: 2, width: 80, height: 24},
+  [1.0, "o", "hello "],
+  [2.0, "o", "world!"]
+]
+```
+
+```javascript
+// string representing asciicast in v2 format (ndjson)
+'{"version": 2, "width": 80, "height": 24}\n[1.0, "o", "hello "]\n[2.0, "o", "world!"]';
+```
+
+```javascript
+// function returning a string representing asciicast in v2 format (ndjson)
+() => '{"version": 2, "width": 80, "height": 24}\n[1.0, "o", "hello "]\n[2.0, "o", "world!"]';
+```
+
+If `data` is a function then the player invokes the function when playback is
+started by a user. If `preload: true` option is used then the function is
+invoked during player initialization.
 
 ## Options
 
