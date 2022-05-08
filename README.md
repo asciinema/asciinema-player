@@ -57,8 +57,7 @@ It assumes you have obtained terminal session recording file by either:
 
 ### Use standalone player bundle in your HTML page
 
-Download latest version of the player bundle from
-[releases page](https://github.com/asciinema/asciinema-player/releases). You
+Build the latest version of the player bundle by following the instructions at [Development](#Development) below. You
 only need `asciinema-player.min.js` and `asciinema-player.css` files.
 
 First, add `asciinema-player.min.js`, `asciinema-player.css`and the `.cast` file of
@@ -564,6 +563,7 @@ To build the project:
     git clone https://github.com/asciinema/asciinema-player
     cd asciinema-player
     git submodule update --init
+    rustup target add wasm32-unknown-unknown
     npm install
     npm run build
     npm run bundle
