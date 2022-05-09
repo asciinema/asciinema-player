@@ -57,7 +57,8 @@ It assumes you have obtained terminal session recording file by either:
 
 ### Use standalone player bundle in your HTML page
 
-Build the latest version of the player bundle by following the instructions at [Development](#Development) below. You
+Download latest version of the player bundle from
+[releases page](https://github.com/asciinema/asciinema-player/releases). You
 only need `asciinema-player.min.js` and `asciinema-player.css` files.
 
 First, add `asciinema-player.min.js`, `asciinema-player.css`and the `.cast` file of
