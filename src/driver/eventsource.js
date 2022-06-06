@@ -1,6 +1,6 @@
 import buffer from '../buffer';
 
-function eventsource({ url, bufferTime = 0 }, { feed, reset }) {
+function eventsource({ url, bufferTime = 0 }, { feed, reset, onFinish }) {
   let es;
   let buf;
 
@@ -32,6 +32,7 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset }) {
       es.addEventListener('done', () => {
         console.debug('eventsource: closed');
         es.close();
+        onFinish();
       });
     },
 
