@@ -1,6 +1,6 @@
 export default props => {
   return (
-    <span class={className(props.attrs, props.extraClass)} classList={classList(props.attrs)} style={style(props.attrs)}>{props.text}</span>
+    <span class={className(props.attrs, props.extraClass)} style={style(props.attrs)}>{props.text}</span>
   );
 }
 
@@ -26,16 +26,23 @@ function className(attrs, extraClass) {
     cls += ' ' + bgClass;
   }
 
-  return cls;
-}
+  if (attrs.has('bold')) {
+    cls += ' bright';
+  }
 
-function classList(attrs) {
-  return {
-    bright: attrs.has('bold'),
-    italic: attrs.has('italic'),
-    underline: attrs.has('underline'),
-    blink: attrs.has('blink')
-  };
+  if (attrs.has('italic')) {
+    cls += ' italic';
+  }
+
+  if (attrs.has('underline')) {
+    cls += ' underline';
+  }
+
+  if (attrs.has('blink')) {
+    cls += ' blink';
+  }
+
+  return cls;
 }
 
 function colorClass(color, intense, prefix) {
