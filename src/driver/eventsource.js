@@ -1,6 +1,6 @@
 import buffer from '../buffer';
 
-function eventsource({ url, bufferTime = 0 }, { feed, reset, onFinish }) {
+function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish }) {
   let es;
   let buf;
 
@@ -15,7 +15,14 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, onFinish }) {
 
       es.addEventListener('open', () => {
         console.debug('eventsource: opened');
+        setWaiting(false);
         initBuffer();
+      });
+
+      es.addEventListener('error', e => {
+        console.debug('eventsource: errored');
+        console.debug(e);
+        setWaiting(true);
       });
 
       es.addEventListener('message', event => {
