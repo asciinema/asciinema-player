@@ -1,4 +1,4 @@
-import buffer from '../buffer';
+import getBuffer from '../buffer';
 
 function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish }) {
   const utfDecoder = new TextDecoder();
@@ -9,7 +9,7 @@ function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish 
 
   function initBuffer() {
     if (buf !== undefined) buf.stop();
-    buf = buffer(feed, bufferTime);
+    buf = getBuffer(feed, bufferTime);
   }
 
   function connect() {

@@ -1,4 +1,4 @@
-import buffer from '../buffer';
+import getBuffer from '../buffer';
 
 function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish }) {
   let es;
@@ -6,7 +6,7 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
 
   function initBuffer() {
     if (buf !== undefined) buf.stop();
-    buf = buffer(feed, bufferTime);
+    buf = getBuffer(feed, bufferTime);
   }
 
   return {
