@@ -320,6 +320,7 @@ One of:
 * `"tango"`
 * `"solarized-dark"`
 * `"solarized-light"`
+* `"nord"`
 
 Defaults to `"asciinema"`.
 
