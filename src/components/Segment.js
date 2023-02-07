@@ -30,6 +30,10 @@ function className(attrs, extraClass) {
     cls += ' bright';
   }
 
+  if (attrs.has('faint')) {
+    cls += ' faint';
+  }
+
   if (attrs.has('italic')) {
     cls += ' italic';
   }
