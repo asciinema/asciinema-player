@@ -1,5 +1,29 @@
 import Queue from "./queue";
 
+function getBuffer(feed, bufferTime) {
+  if (bufferTime > 0) {
+    return buffer(feed, bufferTime);
+  } else {
+    return nullBuffer(feed);
+  }
+}
+
+function nullBuffer(feed) {
+  return {
+    pushEvent(event) {
+      if (event[1] === 'o') {
+        feed(event[2]);
+      }
+    },
+
+    pushText(text) {
+      feed(text);
+    },
+
+    stop() {}
+  }
+}
+
 function buffer(feed, bufferTime) {
   const events = new Queue();
   let startTime;
@@ -51,4 +75,4 @@ function sleep(t) {
   });
 }
 
-export default buffer;
+export default getBuffer;

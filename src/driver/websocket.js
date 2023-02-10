@@ -1,6 +1,6 @@
-import buffer from '../buffer';
+import getBuffer from '../buffer';
 
-function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting }) {
+function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish }) {
   const utfDecoder = new TextDecoder();
   let socket;
   let buf;
@@ -9,7 +9,7 @@ function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting }) {
 
   function initBuffer() {
     if (buf !== undefined) buf.stop();
-    buf = buffer(feed, bufferTime);
+    buf = getBuffer(feed, bufferTime);
   }
 
   function connect() {
@@ -39,8 +39,9 @@ function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting }) {
     }
 
     socket.onclose = event => {
-      if (stop || event.wasClean) {
+      if (stop || event.code === 1000 || event.code === 1005) {
         console.debug('websocket: closed');
+        onFinish();
       } else {
         console.debug(`websocket: unclean close, reconnecting in ${reconnectDelay}...`);
         setWaiting(true);

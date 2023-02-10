@@ -1,12 +1,12 @@
-import buffer from '../buffer';
+import getBuffer from '../buffer';
 
-function eventsource({ url, bufferTime = 0 }, { feed, reset }) {
+function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish }) {
   let es;
   let buf;
 
   function initBuffer() {
     if (buf !== undefined) buf.stop();
-    buf = buffer(feed, bufferTime);
+    buf = getBuffer(feed, bufferTime);
   }
 
   return {
@@ -15,7 +15,14 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset }) {
 
       es.addEventListener('open', () => {
         console.debug('eventsource: opened');
+        setWaiting(false);
         initBuffer();
+      });
+
+      es.addEventListener('error', e => {
+        console.debug('eventsource: errored');
+        console.debug(e);
+        setWaiting(true);
       });
 
       es.addEventListener('message', event => {
@@ -32,6 +39,7 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset }) {
       es.addEventListener('done', () => {
         console.debug('eventsource: closed');
         es.close();
+        onFinish();
       });
     },
 

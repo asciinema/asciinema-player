@@ -90,7 +90,7 @@ inside an empty `<div>` element:
 Add `asciinema-player` to your `devDependencies`:
 
 ```bash
-npm install --save-dev asciinema-player@3.0.0
+npm install --save-dev asciinema-player@3.0.1
 ```
 
 Add empty `<div id="demo"></div>` element to your page to contain the player.
@@ -318,6 +318,7 @@ One of:
 * `"tango"`
 * `"solarized-dark"`
 * `"solarized-light"`
+* `"nord"`
 
 Defaults to `"asciinema"`.
 
@@ -562,6 +563,7 @@ To build the project:
     git clone https://github.com/asciinema/asciinema-player
     cd asciinema-player
     git submodule update --init
+    rustup target add wasm32-unknown-unknown
     npm install
     npm run build
     npm run bundle
