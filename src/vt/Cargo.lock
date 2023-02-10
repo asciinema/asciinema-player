@@ -208,9 +208,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.92"
+version = "1.0.93"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7434af0dc1cbd59268aa98b4c22c131c0584d2232f6fb166efb993e2832e896a"
+checksum = "cad406b69c91885b5107daf2c29572f6c8cdb3c66826821e286c533490c0bc76"
 dependencies = [
  "itoa",
  "ryu",
@@ -236,8 +236,8 @@ checksum = "84a22b9f218b40614adcb3f4ff08b703773ad44fa9423e4e0d346d5db86e4ebc"
 
 [[package]]
 name = "vt"
-version = "0.3.0"
-source = "git+https://github.com/asciinema/vt-rs#e363079197abd037fee439047a5db4a2ac046361"
+version = "0.4.0"
+source = "git+https://github.com/asciinema/vt-rs?tag=v0.4.0#6f93383eed7fa24cac750418abad27f98eae937f"
 dependencies = [
  "rgb",
  "serde",
