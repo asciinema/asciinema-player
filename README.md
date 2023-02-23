@@ -587,6 +587,6 @@ source [contributors](https://github.com/asciinema/asciinema-player/contributors
 
 ## License
 
-Copyright &copy; 2011-2022 Marcin Kulik.
+© 2011 Marcin Kulik.
 
 All code is licensed under the Apache License, Version 2.0. See LICENSE file for details.
