@@ -27,6 +27,7 @@ function nullBuffer(feed) {
 function buffer(feed, bufferTime) {
   const events = new Queue();
   let startTime;
+  let stop = false;
 
   const stopFeeding = events.forEach(async event => {
     const elapsedWallTime = now() - startTime;
@@ -36,6 +37,7 @@ function buffer(feed, bufferTime) {
       await sleep(elapsedStreamTime - elapsedWallTime);
     }
 
+    if (stop) return;
     feed(event[2]);
   });
 
@@ -60,6 +62,7 @@ function buffer(feed, bufferTime) {
     },
 
     stop() {
+      stop = true;
       stopFeeding();
     }
   }
