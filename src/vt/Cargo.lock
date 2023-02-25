@@ -236,8 +236,8 @@ checksum = "84a22b9f218b40614adcb3f4ff08b703773ad44fa9423e4e0d346d5db86e4ebc"
 
 [[package]]
 name = "vt"
-version = "0.4.0"
-source = "git+https://github.com/asciinema/vt-rs?tag=v0.4.0#6f93383eed7fa24cac750418abad27f98eae937f"
+version = "0.5.0"
+source = "git+https://github.com/asciinema/vt-rs?tag=v0.5.0#dd885473b2d9495a9dd354b0c992840456adbd18"
 dependencies = [
  "rgb",
  "serde",
