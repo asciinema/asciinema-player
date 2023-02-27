@@ -92,7 +92,7 @@ inside an empty `<div>` element:
 Add `asciinema-player` to your `devDependencies`:
 
 ```bash
-npm install --save-dev asciinema-player@3.1.0
+npm install --save-dev asciinema-player@3.1.1
 ```
 
 Add empty `<div id="demo"></div>` element to your page to contain the player.
