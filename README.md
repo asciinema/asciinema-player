@@ -321,6 +321,7 @@ One of:
 * `"solarized-dark"`
 * `"solarized-light"`
 * `"nord"`
+* `"urban"`
 
 Defaults to `"asciinema"`.
 
