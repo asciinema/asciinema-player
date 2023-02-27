@@ -1,4 +1,5 @@
 import getBuffer from '../buffer';
+import Clock from '../clock';
 
 function exponentialDelay(attempt) {
   return Math.min(500 * Math.pow(2, attempt), 5000);
@@ -8,6 +9,7 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
   const utfDecoder = new TextDecoder();
   let socket;
   let buf;
+  let clock;
   let reconnectAttempt = 0;
   let stop = false;
 
@@ -34,8 +36,10 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
         if (e.cols !== undefined || e.width !== undefined) {
           initBuffer();
           reset(e.cols ?? e.width, e.rows ?? e.height);
+          clock = new Clock();
         } else {
           buf.pushEvent(e);
+          clock.setTime(e[0]);
         }
       } else {
         buf.pushText(utfDecoder.decode(event.data));
@@ -64,6 +68,14 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
       stop = true;
       if (buf !== undefined) buf.stop();
       if (socket !== undefined) socket.close();
+    },
+
+    getCurrentTime: () => {
+      if (clock === undefined) {
+        return 0;
+      } else {
+        return clock.getTime();
+      }
     }
   }
 }
