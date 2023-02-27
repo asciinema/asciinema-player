@@ -1,5 +1,6 @@
 import loadVt from "./vt/Cargo.toml";
 import { parseNpt } from "./util";
+import Clock from './clock';
 const vt = loadVt(); // trigger async loading of wasm
 
 
@@ -15,8 +16,8 @@ class Core {
     this.duration = null;
     this.cols = opts.cols;
     this.rows = opts.rows;
-    this.startTime = null;
     this.speed = opts.speed ?? 1.0;
+    this.clock = undefined;
     this.loop = opts.loop;
     this.idleTimeLimit = opts.idleTimeLimit;
     this.preload = opts.preload;
@@ -166,8 +167,8 @@ class Core {
   getCurrentTime() {
     if (typeof this.driver.getCurrentTime === 'function') {
       return this.driver.getCurrentTime();
-    } else if (this.startTime) {
-      return (this.now() - this.startTime) / 1000;
+    } else if (this.clock !== undefined) {
+      return this.clock.getTime();
     }
   }
 
@@ -205,7 +206,7 @@ class Core {
       this.driver.stop = stop;
     }
 
-    this.startTime = this.now();
+    this.clock = new Clock(this.speed);
     this.state = 'playing';
     this.dispatchEvent('play');
   }
