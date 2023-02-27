@@ -1,7 +1,7 @@
 import getBuffer from '../buffer';
 
 function exponentialDelay(attempt) {
-  return Math.min(250 * Math.pow(2, attempt), 5000);
+  return Math.min(500 * Math.pow(2, attempt), 5000);
 }
 
 function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, { feed, reset, setWaiting, onFinish }) {
