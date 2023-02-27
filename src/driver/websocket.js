@@ -1,10 +1,14 @@
 import getBuffer from '../buffer';
 
-function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish }) {
+function exponentialDelay(attempt) {
+  return Math.min(250 * Math.pow(2, attempt), 5000);
+}
+
+function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, { feed, reset, setWaiting, onFinish }) {
   const utfDecoder = new TextDecoder();
   let socket;
   let buf;
-  let reconnectDelay = 250;
+  let reconnectAttempt = 0;
   let stop = false;
 
   function initBuffer() {
@@ -20,7 +24,7 @@ function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish 
       console.debug('websocket: opened');
       setWaiting(false);
       initBuffer();
-      reconnectDelay = 250;
+      reconnectAttempt = 0;
     }
 
     socket.onmessage = event => {
@@ -43,10 +47,10 @@ function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish 
         console.debug('websocket: closed');
         onFinish();
       } else {
-        console.debug(`websocket: unclean close, reconnecting in ${reconnectDelay}...`);
+        const delay = reconnectDelay(reconnectAttempt++);
+        console.debug(`websocket: unclean close, reconnecting in ${delay}...`);
         setWaiting(true);
-        setTimeout(connect, reconnectDelay);
-        reconnectDelay = Math.min(reconnectDelay * 2, 5000);
+        setTimeout(connect, delay);
       }
     }
   }
