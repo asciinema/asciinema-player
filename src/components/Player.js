@@ -1,5 +1,6 @@
 import { createEffect, createMemo, Match, onCleanup, onMount, Switch } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
+import { debounce } from "../util";
 import Terminal from './Terminal';
 import ControlBar from './ControlBar';
 import LoaderOverlay from './LoaderOverlay';
@@ -96,14 +97,14 @@ export default props => {
   }
 
   const setupResizeObserver = () => {
-    resizeObserver = new ResizeObserver(_entries => {
+    resizeObserver = new ResizeObserver(debounce(_entries => {
       setState({
         containerW: wrapperRef.offsetWidth,
         containerH: wrapperRef.offsetHeight
       });
 
       wrapperRef.dispatchEvent(new CustomEvent('resize', {detail: {el: playerRef}}));
-    });
+    }, 10));
 
     resizeObserver.observe(wrapperRef);
   }

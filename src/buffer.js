@@ -27,7 +27,8 @@ function nullBuffer(feed) {
 function buffer(feed, bufferTime) {
   const queue = new Queue();
   const maxFrameTime = 1000.0 / 60;
-  let startTime;
+  let startWallTime;
+  let baseStreamTime;
   let stop = false;
   let prevElapsedStreamTime = -maxFrameTime;
 
@@ -37,15 +38,14 @@ function buffer(feed, bufferTime) {
       if (stop) return;
 
       for (const event of events) {
-        const elapsedStreamTime = (event[0] + bufferTime) * 1000;
+        const elapsedStreamTime = (event[0] - baseStreamTime + bufferTime) * 1000;
 
         if (elapsedStreamTime - prevElapsedStreamTime < maxFrameTime) {
           feed(event[2]);
           continue;
         }
 
-        prevElapsedStreamTime = elapsedStreamTime;
-        const elapsedWallTime = now() - startTime;
+        const elapsedWallTime = now() - startWallTime;
 
         if (elapsedStreamTime > elapsedWallTime) {
           await sleep(elapsedStreamTime - elapsedWallTime);
@@ -53,14 +53,16 @@ function buffer(feed, bufferTime) {
         }
 
         feed(event[2]);
+        prevElapsedStreamTime = elapsedStreamTime;
       }
     }
   }, 0);
 
   return {
     pushEvent(event) {
-      if (startTime === undefined) {
-        startTime = now();
+      if (startWallTime === undefined) {
+        startWallTime = now();
+        baseStreamTime = event[0];
       }
 
       if (event[1] != 'o') return;
@@ -69,11 +71,12 @@ function buffer(feed, bufferTime) {
     },
 
     pushText(text) {
-      if (startTime === undefined) {
-        startTime = now();
+      if (startWallTime === undefined) {
+        startWallTime = now();
+        baseStreamTime = 0;
       }
 
-      const time = (now() - startTime) / 1000;
+      const time = (now() - startWallTime) / 1000;
       queue.push([time, 'o', text]);
     },
 

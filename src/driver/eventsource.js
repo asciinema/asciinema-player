@@ -1,8 +1,10 @@
 import getBuffer from '../buffer';
+import Clock from '../clock';
 
 function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish }) {
   let es;
   let buf;
+  let clock;
 
   function initBuffer() {
     if (buf !== undefined) buf.stop();
@@ -31,8 +33,10 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
         if (e.cols !== undefined || e.width !== undefined) {
           initBuffer();
           reset(e.cols ?? e.width, e.rows ?? e.height);
+          clock = new Clock();
         } else {
           buf.pushEvent(e);
+          clock.setTime(e[0]);
         }
       });
 
@@ -46,6 +50,14 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
     stop: () => {
       if (buf !== undefined) buf.stop();
       if (es !== undefined) es.close();
+    },
+
+    getCurrentTime: () => {
+      if (clock === undefined) {
+        return 0;
+      } else {
+        return clock.getTime();
+      }
     }
   }
 }

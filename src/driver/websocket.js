@@ -1,10 +1,16 @@
 import getBuffer from '../buffer';
+import Clock from '../clock';
 
-function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish }) {
+function exponentialDelay(attempt) {
+  return Math.min(500 * Math.pow(2, attempt), 5000);
+}
+
+function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, { feed, reset, setWaiting, onFinish }) {
   const utfDecoder = new TextDecoder();
   let socket;
   let buf;
-  let reconnectDelay = 250;
+  let clock;
+  let reconnectAttempt = 0;
   let stop = false;
 
   function initBuffer() {
@@ -20,7 +26,7 @@ function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish 
       console.debug('websocket: opened');
       setWaiting(false);
       initBuffer();
-      reconnectDelay = 250;
+      reconnectAttempt = 0;
     }
 
     socket.onmessage = event => {
@@ -30,8 +36,10 @@ function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish 
         if (e.cols !== undefined || e.width !== undefined) {
           initBuffer();
           reset(e.cols ?? e.width, e.rows ?? e.height);
+          clock = new Clock();
         } else {
           buf.pushEvent(e);
+          clock.setTime(e[0]);
         }
       } else {
         buf.pushText(utfDecoder.decode(event.data));
@@ -43,10 +51,10 @@ function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish 
         console.debug('websocket: closed');
         onFinish();
       } else {
-        console.debug(`websocket: unclean close, reconnecting in ${reconnectDelay}...`);
+        const delay = reconnectDelay(reconnectAttempt++);
+        console.debug(`websocket: unclean close, reconnecting in ${delay}...`);
         setWaiting(true);
-        setTimeout(connect, reconnectDelay);
-        reconnectDelay = Math.min(reconnectDelay * 2, 5000);
+        setTimeout(connect, delay);
       }
     }
   }
@@ -60,6 +68,14 @@ function websocket({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish 
       stop = true;
       if (buf !== undefined) buf.stop();
       if (socket !== undefined) socket.close();
+    },
+
+    getCurrentTime: () => {
+      if (clock === undefined) {
+        return 0;
+      } else {
+        return clock.getTime();
+      }
     }
   }
 }

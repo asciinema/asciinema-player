@@ -12,4 +12,13 @@ function parseNpt(time) {
   }
 }
 
-export { parseNpt };
+function debounce(f, delay) {
+  let timeout;
+
+  return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => f.apply(this, args), delay);
+  }
+}
+
+export { parseNpt, debounce };
