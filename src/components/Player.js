@@ -249,6 +249,9 @@ export default props => {
 
     if (e.key == ' ') {
       core.pauseOrResume();
+    } else if (e.key == '.') {
+      core.step();
+      updateTime();
     } else if (e.key == 'f') {
       toggleFullscreen();
     } else if (e.key == 'ArrowLeft') {

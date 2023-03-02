@@ -146,6 +146,20 @@ function asciicast(src, { feed, now, setTimeout, onFinish }, { idleTimeLimit, st
     }
   }
 
+  function step() {
+      let nextFrame = frames[nextFrameIndex];
+
+      if (nextFrame !== undefined) {
+        feed(nextFrame[1]);
+        elapsedVirtualTime = nextFrame[0] * 1000;
+        pauseElapsedTime = elapsedVirtualTime;
+        nextFrameIndex++;
+      } else {
+        pauseElapsedTime = duration * 1000;
+        onFinish();
+      }
+  }
+
   function getPoster(time) {
     const posterTime = time * 1000;
     const poster = [];
@@ -188,6 +202,10 @@ function asciicast(src, { feed, now, setTimeout, onFinish }, { idleTimeLimit, st
 
     seek: where => {
       return seek(where);
+    },
+
+    step: () => {
+      step();
     },
 
     getPoster: t => {
