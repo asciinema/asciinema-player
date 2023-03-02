@@ -11,9 +11,10 @@ crate-type = ["cdylib", "rlib"]
 # default = ["console_error_panic_hook"]
 
 [dependencies]
-rand = "^0.7"
+rand = "^0.8"
+getrandom = { version = "0.2", features = ["js"] }
 vt = { git = "https://github.com/asciinema/vt-rs", tag = "v0.5.0" }
-serde-wasm-bindgen = "0.4.2"
+serde-wasm-bindgen = "0.4.5"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
