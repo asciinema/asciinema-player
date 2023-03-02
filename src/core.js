@@ -142,6 +142,12 @@ class Core {
     this.dispatchEvent('seeked');
   }
 
+  step() {
+    if (this.state == 'paused' && typeof this.driver.step === 'function') {
+      this.driver.step();
+    }
+  }
+
   getChangedLines() {
     if (this.changedLines.size > 0) {
       const lines = new Map();
