@@ -26,6 +26,7 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
       logger.info('websocket: opened');
       setWaiting(false);
       initBuffer();
+      clock = new Clock();
       reconnectAttempt = 0;
     }
 
