@@ -1,7 +1,7 @@
 import { render } from 'solid-js/web';
 import Core from './core';
 import Player from './components/Player';
-import DummyLogger from './dummy_logger';
+import DummyLogger from './logging';
 import { asciicast } from "./driver/asciicast";
 import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
