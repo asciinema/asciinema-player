@@ -1,13 +1,17 @@
 import { render } from 'solid-js/web';
 import Core from './core';
 import Player from './components/Player';
+import DummyLogger from './dummy_logger';
 import { asciicast } from "./driver/asciicast";
 import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
 import { eventsource } from "./driver/eventsource";
 
 function create(src, elem, opts = {}) {
+  const logger = opts.logger ?? new DummyLogger();
+
   const core = new Core(getDriver(src), {
+    logger: logger,
     cols: opts.cols,
     rows: opts.rows,
     loop: opts.loop,
@@ -19,6 +23,7 @@ function create(src, elem, opts = {}) {
   });
 
   const props = {
+    logger: logger,
     core: core,
     cols: opts.cols,
     rows: opts.rows,

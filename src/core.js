@@ -8,6 +8,7 @@ class Core {
   // public
 
   constructor(driverFn, opts) {
+    this.logger = opts.logger;
     this.state = 'initial';
     this.driver = null;
     this.driverFn = driverFn;
@@ -80,7 +81,7 @@ class Core {
     this.wasm = await vt;
 
     this.driver = this.driverFn(
-      { feed, now, setTimeout, setInterval, onFinish, reset, setWaiting },
+      { feed, now, setTimeout, setInterval, onFinish, reset, setWaiting, logger: this.logger },
       { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt }
     );
 
