@@ -1,7 +1,7 @@
 import getBuffer from '../buffer';
 import Clock from '../clock';
 
-function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish }) {
+function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish, logger }) {
   let es;
   let buf;
   let clock;
@@ -16,14 +16,14 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
       es = new EventSource(url);
 
       es.addEventListener('open', () => {
-        console.debug('eventsource: opened');
+        logger.info('eventsource: opened');
         setWaiting(false);
         initBuffer();
       });
 
       es.addEventListener('error', e => {
-        console.debug('eventsource: errored');
-        console.debug(e);
+        logger.info('eventsource: errored');
+        logger.debug({e});
         setWaiting(true);
       });
 
@@ -41,7 +41,7 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
       });
 
       es.addEventListener('done', () => {
-        console.debug('eventsource: closed');
+        logger.info('eventsource: closed');
         es.close();
         onFinish();
       });

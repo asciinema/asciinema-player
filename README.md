@@ -422,6 +422,14 @@ between lines. A value of `2` makes it double the font size, etc.
 
 Defaults to `1.33333333`.
 
+### `logger`
+
+Type: console-like object
+
+Set this option to `console` (`{ logger: console }`) or any object implementing
+console API (`.log()`, `.debug()`, `.info()`, `.warn()`, `.error()` methods) to
+enable logging. Useful during development or when debugging player issues.
+
 ## API
 
 ```javascript

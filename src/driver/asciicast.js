@@ -4,7 +4,7 @@
 import Stream from '../stream';
 
 
-function asciicast(src, { feed, now, setTimeout, onFinish }, { idleTimeLimit, startAt }) {
+function asciicast(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeLimit, startAt }) {
   let cols;
   let rows;
   let frames;
@@ -23,7 +23,7 @@ function asciicast(src, { feed, now, setTimeout, onFinish }, { idleTimeLimit, st
     cols = asciicast.cols;
     rows = asciicast.rows;
     idleTimeLimit = idleTimeLimit ?? asciicast.idleTimeLimit
-    const result = prepareFrames(asciicast.frames, idleTimeLimit, startAt);
+    const result = prepareFrames(asciicast.frames, logger, idleTimeLimit, startAt);
     frames = result.frames;
 
     if (frames.length === 0) {
@@ -299,7 +299,7 @@ function buildAsciicastV2(header, events) {
   }
 }
 
-function batchFrames(frames) {
+function batchFrames(frames, logger) {
   const maxFrameTime = 1.0 / 60;
   let prevFrame;
 
@@ -331,18 +331,18 @@ function batchFrames(frames) {
           oc++;
         }
 
-        console.debug(`batched ${ic} frames to ${oc} frames`);
+        logger.debug(`batched ${ic} frames to ${oc} frames`);
       }
     }
   });
 }
 
-function prepareFrames(frames, idleTimeLimit = Infinity, startAt = 0) {
+function prepareFrames(frames, logger, idleTimeLimit = Infinity, startAt = 0) {
   let prevT = 0;
   let shift = 0;
   let effectiveStartAt = startAt;
 
-  const fs = Array.from(batchFrames(frames).map(e => {
+  const fs = Array.from(batchFrames(frames, logger).map(e => {
     const delay = e[0] - prevT;
     const delta = delay - idleTimeLimit;
     prevT = e[0];

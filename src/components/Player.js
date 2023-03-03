@@ -8,6 +8,7 @@ import StartOverlay from './StartOverlay';
 
 
 export default props => {
+  const logger = props.logger;
   const core = props.core;
   const autoPlay = props.autoPlay;
 
@@ -110,7 +111,7 @@ export default props => {
   }
 
   onMount(async () => {
-    console.debug('player mounted');
+    logger.info('player mounted');
 
     measureDomElements();
     setupResizeObserver();
@@ -171,7 +172,7 @@ export default props => {
       return;
     }
 
-    console.debug(`containerW = ${state.containerW}`);
+    logger.debug(`containerW = ${state.containerW}`);
 
     const terminalW = (state.charW * terminalCols()) + state.bordersW;
     const terminalH = (state.charH * terminalRows()) + state.bordersH;
