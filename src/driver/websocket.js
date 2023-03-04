@@ -35,8 +35,11 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
         const e = JSON.parse(event.data);
 
         if (e.cols !== undefined || e.width !== undefined) {
+          const cols = e.cols ?? e.width;
+          const rows = e.rows ?? e.height;
+          logger.debug(`websocket: vt reset (${cols}x${rows})`);
           initBuffer();
-          reset(e.cols ?? e.width, e.rows ?? e.height);
+          reset(cols, rows);
           clock = new Clock();
         } else {
           buf.pushEvent(e);

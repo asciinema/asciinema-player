@@ -32,8 +32,11 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
         const e = JSON.parse(event.data);
 
         if (e.cols !== undefined || e.width !== undefined) {
+          const cols = e.cols ?? e.width;
+          const rows = e.rows ?? e.height;
+          logger.debug(`eventsource: vt reset (${cols}x${rows})`);
           initBuffer();
-          reset(e.cols ?? e.width, e.rows ?? e.height);
+          reset(cols, rows);
           clock = new Clock();
         } else {
           buf.pushEvent(e);
