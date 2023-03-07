@@ -11,6 +11,7 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
   let buf;
   let clock;
   let reconnectAttempt = 0;
+  let successfulConnectionTimeout;
   let stop = false;
 
   function initBuffer() {
@@ -27,7 +28,7 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
       setWaiting(false);
       initBuffer();
       clock = new Clock();
-      reconnectAttempt = 0;
+      successfulConnectionTimeout = setTimeout(() => { reconnectAttempt = 0; }, 1000);
     }
 
     socket.onmessage = event => {
@@ -55,6 +56,7 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
         logger.info('websocket: closed');
         onFinish();
       } else {
+        clearTimeout(successfulConnectionTimeout);
         const delay = reconnectDelay(reconnectAttempt++);
         logger.info(`websocket: unclean close, reconnecting in ${delay}...`);
         setWaiting(true);
