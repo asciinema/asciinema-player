@@ -67,7 +67,7 @@ export default props => {
   });
 
   return (
-    <div class="control-bar" classList={{ seekable: props.isSeekable }}>
+    <div class="control-bar" classList={{ seekable: props.isSeekable }} ref={props.ref}>
       <Show when={props.isPausable}>
         <span class="playback-button" onClick={e(props.onPlayClick)}>
           <Switch>
