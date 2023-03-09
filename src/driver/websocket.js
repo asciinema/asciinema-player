@@ -27,7 +27,6 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
       logger.info('websocket: opened');
       setWaiting(false);
       initBuffer();
-      clock = new Clock();
       successfulConnectionTimeout = setTimeout(() => { reconnectAttempt = 0; }, 1000);
     }
 
@@ -44,7 +43,10 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
           clock = new Clock();
         } else {
           buf.pushEvent(e);
-          clock.setTime(e[0]);
+
+          if (clock !== undefined) {
+            clock.setTime(e[0]);
+          }
         }
       } else {
         buf.pushText(utfDecoder.decode(event.data));
