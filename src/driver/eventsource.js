@@ -19,7 +19,6 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
         logger.info('eventsource: opened');
         setWaiting(false);
         initBuffer();
-        clock = new Clock();
       });
 
       es.addEventListener('error', e => {
@@ -40,7 +39,10 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
           clock = new Clock();
         } else {
           buf.pushEvent(e);
-          clock.setTime(e[0]);
+
+          if (clock !== undefined) {
+            clock.setTime(e[0]);
+          }
         }
       });
 
