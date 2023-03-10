@@ -62,6 +62,7 @@ export default props => {
     }
 
     setState({ cols, rows });
+    updateTerminal();
   });
 
   core.addEventListener('play', () => {

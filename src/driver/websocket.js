@@ -34,18 +34,22 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
       if (typeof event.data === 'string') {
         const e = JSON.parse(event.data);
 
-        if (e.cols !== undefined || e.width !== undefined) {
-          const cols = e.cols ?? e.width;
-          const rows = e.rows ?? e.height;
-          logger.debug(`websocket: vt reset (${cols}x${rows})`);
-          initBuffer();
-          reset(cols, rows);
-          clock = new Clock();
-        } else {
+        if (Array.isArray(e)) {
           buf.pushEvent(e);
 
           if (clock !== undefined) {
             clock.setTime(e[0]);
+          }
+        } else if (e.cols !== undefined || e.width !== undefined) {
+          const cols = e.cols ?? e.width;
+          const rows = e.rows ?? e.height;
+          logger.debug(`websocket: vt reset (${cols}x${rows})`);
+          initBuffer();
+          reset(cols, rows, e.init ?? undefined);
+          clock = new Clock();
+
+          if (e.time !== undefined) {
+            clock.setTime(e.time);
           }
         }
       } else {
