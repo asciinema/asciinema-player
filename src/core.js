@@ -53,7 +53,7 @@ class Core {
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
-    const reset = (cols, rows) => { this.resetVt(cols, rows) };
+    const reset = this.resetVt.bind(this);
 
     const onFinish = () => {
       playCount++;
@@ -258,10 +258,14 @@ class Core {
   }
 
   feed(data) {
+    this.doFeed(data);
+    this.dispatchEvent('terminalUpdate');
+  }
+
+  doFeed(data) {
     const affectedLines = this.vt.feed(data);
     affectedLines.forEach(i => this.changedLines.add(i));
     this.cursor = undefined;
-    this.dispatchEvent('terminalUpdate');
   }
 
   now() { return performance.now() * this.speed }
@@ -295,13 +299,20 @@ class Core {
     }
 
     this.initializeVt(cols, rows);
+    this.dispatchEvent('reset', { cols, rows });
   }
 
-  resetVt(cols, rows) {
+  resetVt(cols, rows, init = undefined) {
     this.cols = cols;
     this.rows = rows;
-
+    this.cursor = undefined;
     this.initializeVt(cols, rows);
+
+    if (init !== undefined && init !== '') {
+      this.doFeed(init);
+    }
+
+    this.dispatchEvent('reset', { cols, rows });
   }
 
   initializeVt(cols, rows) {
@@ -314,8 +325,6 @@ class Core {
     for (let i = 0; i < rows; i++) {
       this.changedLines.add(i);
     }
-
-    this.dispatchEvent('reset', { cols, rows });
   }
 
   async renderPoster() {
@@ -334,6 +343,7 @@ class Core {
 
     poster.forEach(text => this.vt.feed(text));
 
+    this.cursor = undefined;
     const cursor = this.getCursor();
     const lines = [];
 

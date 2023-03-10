@@ -30,18 +30,22 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
       es.addEventListener('message', event => {
         const e = JSON.parse(event.data);
 
-        if (e.cols !== undefined || e.width !== undefined) {
-          const cols = e.cols ?? e.width;
-          const rows = e.rows ?? e.height;
-          logger.debug(`eventsource: vt reset (${cols}x${rows})`);
-          initBuffer();
-          reset(cols, rows);
-          clock = new Clock();
-        } else {
+        if (Array.isArray(e)) {
           buf.pushEvent(e);
 
           if (clock !== undefined) {
             clock.setTime(e[0]);
+          }
+        } else if (e.cols !== undefined || e.width !== undefined) {
+          const cols = e.cols ?? e.width;
+          const rows = e.rows ?? e.height;
+          logger.debug(`eventsource: vt reset (${cols}x${rows})`);
+          initBuffer();
+          reset(cols, rows, e.init ?? undefined);
+          clock = new Clock();
+
+          if (e.time !== undefined) {
+            clock.setTime(e.time);
           }
         }
       });
