@@ -84,7 +84,7 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
 
     getCurrentTime: () => {
       if (clock === undefined) {
-        return 0;
+        return undefined;
       } else {
         return clock.getTime();
       }

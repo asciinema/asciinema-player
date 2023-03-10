@@ -64,7 +64,7 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
 
     getCurrentTime: () => {
       if (clock === undefined) {
-        return 0;
+        return undefined;
       } else {
         return clock.getTime();
       }
