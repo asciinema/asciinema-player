@@ -48,7 +48,6 @@ class Core {
   }
 
   async init() {
-    let playCount = 0;
     const feed = this.feed.bind(this);
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
@@ -56,14 +55,8 @@ class Core {
     const reset = this.resetVt.bind(this);
 
     const onFinish = () => {
-      playCount++;
-
-      if (this.loop === true || (typeof this.loop === 'number' && playCount < this.loop)) {
-        this.restart();
-      } else {
-        this.state = 'finished';
-        this.dispatchEvent('ended');
-      }
+      this.state = 'finished';
+      this.dispatchEvent('ended');
     }
 
     let wasWaiting = false;
@@ -82,7 +75,7 @@ class Core {
 
     this.driver = this.driverFn(
       { feed, now, setTimeout, setInterval, onFinish, reset, setWaiting, logger: this.logger },
-      { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt }
+      { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt, loop: this.loop }
     );
 
     if (typeof this.driver === 'function') {

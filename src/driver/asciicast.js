@@ -4,7 +4,7 @@
 import Stream from '../stream';
 
 
-function asciicast(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeLimit, startAt }) {
+function asciicast(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeLimit, startAt, loop }) {
   let cols;
   let rows;
   let frames;
@@ -15,6 +15,7 @@ function asciicast(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
   let elapsedVirtualTime = 0;
   let startTime;
   let pauseElapsedTime;
+  let playCount = 0;
 
   async function load() {
     if (frames) return;
@@ -68,9 +69,18 @@ function asciicast(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
 
       timeoutId = setTimeout(runFrame, timeout);
     } else {
-      timeoutId = null;
-      pauseElapsedTime = duration * 1000;
-      onFinish();
+      playCount++;
+
+      if (loop === true || (typeof loop === 'number' && playCount < loop)) {
+        nextFrameIndex = 0;
+        startTime = now();
+        feed('\x1bc'); // reset terminal
+        scheduleNextFrame();
+      } else {
+        timeoutId = null;
+        pauseElapsedTime = duration * 1000;
+        onFinish();
+      }
     }
   }
 
