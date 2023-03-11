@@ -132,8 +132,17 @@ class Core {
   }
 
   async seek(where) {
-    await this.doSeek(where);
-    this.dispatchEvent('seeked');
+    if (this.state == 'initial') {
+      return false;
+    }
+
+    const seeked = await this.doSeek(where);
+
+    if (seeked) {
+      this.dispatchEvent('seeked');
+    }
+
+    return seeked;
   }
 
   step() {
@@ -227,17 +236,15 @@ class Core {
     }
   }
 
-  async doSeek(where) {
+  doSeek(where) {
     if (typeof this.driver.seek === 'function') {
-      await this.initializeDriver();
+      const seeked = this.driver.seek(where);
 
-      if (this.state != 'playing') {
+      if (seeked && this.state == 'ended') {
         this.state = 'paused';
       }
 
-      this.driver.seek(where);
-
-      return true;
+      return seeked;
     } else {
       return false;
     }
