@@ -132,13 +132,16 @@ class Core {
   }
 
   async seek(where) {
-    if (this.state == 'initial') {
-      return false;
-    }
+    if (this.state == 'initial') return false;
+    if (typeof this.driver.seek !== 'function') return false;
 
-    const seeked = await this.doSeek(where);
+    const seeked = this.driver.seek(where);
 
     if (seeked) {
+      if (this.state == 'ended') {
+        this.state = 'paused';
+      }
+
       this.dispatchEvent('seeked');
     }
 
@@ -233,20 +236,6 @@ class Core {
       this.state = 'playing';
       this.driver.pauseOrResume();
       this.dispatchEvent('play');
-    }
-  }
-
-  doSeek(where) {
-    if (typeof this.driver.seek === 'function') {
-      const seeked = this.driver.seek(where);
-
-      if (seeked && this.state == 'ended') {
-        this.state = 'paused';
-      }
-
-      return seeked;
-    } else {
-      return false;
     }
   }
 
