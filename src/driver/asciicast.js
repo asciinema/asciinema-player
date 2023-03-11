@@ -202,6 +202,15 @@ function asciicast(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
       clearTimeout(timeoutId);
     },
 
+    restart: () => {
+      if (timeoutId) return false;
+
+      seek(0);
+      resume();
+
+      return true;
+    },
+
     pauseOrResume: () => {
       if (timeoutId) {
         pause();

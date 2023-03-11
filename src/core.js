@@ -103,7 +103,7 @@ class Core {
     } else if (this.state == 'paused') {
       this.resume();
     } else if (this.state == 'ended') {
-      this.restart();
+      await this.restart();
     }
   }
 
@@ -251,9 +251,13 @@ class Core {
   }
 
   async restart() {
-    if (await this.doSeek(0)) {
-      this.resume();
-      this.dispatchEvent('play');
+    if (typeof this.driver.restart === 'function') {
+      const restarted = await this.driver.restart();
+
+      if (restarted) {
+        this.state = 'playing';
+        this.dispatchEvent('play');
+      }
     }
   }
 
