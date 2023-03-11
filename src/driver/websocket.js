@@ -51,6 +51,9 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
           if (e.time !== undefined) {
             clock.setTime(e.time);
           }
+        } else if (e.state === 'offline') {
+          logger.info('websocket: stream offline');
+          clock = undefined;
         }
       } else {
         buf.pushText(utfDecoder.decode(event.data));

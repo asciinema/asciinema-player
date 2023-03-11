@@ -47,6 +47,9 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
           if (e.time !== undefined) {
             clock.setTime(e.time);
           }
+        } else if (e.state === 'offline') {
+          logger.info('eventsource: stream offline');
+          clock = undefined;
         }
       });
 
