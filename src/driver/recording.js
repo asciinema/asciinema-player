@@ -17,15 +17,15 @@ function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
   async function load() {
     if (frames) return;
 
-    const asciicast = loadAsciicast(await doFetch(src));
-    cols = asciicast.cols;
-    rows = asciicast.rows;
-    idleTimeLimit = idleTimeLimit ?? asciicast.idleTimeLimit
-    const result = prepareFrames(asciicast.frames, logger, idleTimeLimit, startAt);
+    const recording = src.parser(await doFetch(src));
+    cols = recording.cols;
+    rows = recording.rows;
+    idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit
+    const result = prepareFrames(recording.frames, logger, idleTimeLimit, startAt);
     frames = result.frames;
 
     if (frames.length === 0) {
-      throw 'asciicast is missing events';
+      throw 'recording is missing events';
     }
 
     effectiveStartAt = result.effectiveStartAt;
@@ -37,7 +37,7 @@ function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
       const response = await fetch(url, fetchOpts);
 
       if (!response.ok) {
-        throw `failed fetching asciicast file: ${response.statusText} (${response.status})`;
+        throw `failed fetching recording file: ${response.statusText} (${response.status})`;
       }
 
       return await response.text();
@@ -48,7 +48,7 @@ function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
 
       return await data;
     } else {
-      throw 'failed fetching asciicast file: url/data missing in src';
+      throw 'failed fetching recording file: url/data missing in src';
     }
   }
 
@@ -236,83 +236,6 @@ function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
   }
 }
 
-function loadAsciicast(data) {
-  let header;
-  let events = new Stream([]);
-
-  if (typeof data === 'string') {
-    const result = parseJsonl(data);;
-
-    if (result !== undefined) {
-      header = result.header;
-      events = result.events;
-    } else {
-      header = JSON.parse(data);
-    }
-  } else if (typeof data === 'object' && typeof data.version === 'number') {
-    header = data;
-  } else if (Array.isArray(data)) {
-    header = data[0];
-    events = (new Stream(data)).drop(1);
-  } else {
-    throw 'invalid data';
-  }
-
-  if (header.version === 1) {
-    return buildAsciicastV1(header);
-  } else if (header.version === 2) {
-    return buildAsciicastV2(header, events);
-  } else {
-    throw `asciicast v${header.version} format not supported`;
-  }
-}
-
-function parseJsonl(jsonl) {
-  const lines = jsonl.split('\n');
-  let header;
-
-  try {
-    header = JSON.parse(lines[0]);
-  } catch (_error) {
-    return;
-  }
-
-  const events = new Stream(lines)
-    .drop(1)
-    .filter(l => l[0] === '[')
-    .map(l => JSON.parse(l));
-
-  return { header, events };
-}
-
-function buildAsciicastV1(data) {
-  let time = 0;
-
-  const frames = new Stream(data.stdout).map(e => {
-    time += e[0];
-    return [time, e[1]];
-  });
-
-  return {
-    cols: data.width,
-    rows: data.height,
-    frames: frames
-  }
-}
-
-function buildAsciicastV2(header, events) {
-  const frames = events
-    .filter(e => e[1] === 'o')
-    .map(e => [e[0], e[2]]);
-
-  return {
-    cols: header.width,
-    rows: header.height,
-    idleTimeLimit: header.idle_time_limit,
-    frames: frames
-  }
-}
-
 function batchFrames(frames, logger) {
   const maxFrameTime = 1.0 / 60;
   let prevFrame;
@@ -355,6 +278,10 @@ function prepareFrames(frames, logger, idleTimeLimit = Infinity, startAt = 0) {
   let prevT = 0;
   let shift = 0;
   let effectiveStartAt = startAt;
+
+  if (!(frames instanceof Stream)) {
+    frames = new Stream(frames);
+  }
 
   const fs = Array.from(batchFrames(frames, logger).map(e => {
     const delay = e[0] - prevT;
