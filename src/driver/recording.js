@@ -1,10 +1,7 @@
-// TODO rename to file driver
-// TODO support ttyrec (via opts.format == 'ttyrec')
-
 import Stream from '../stream';
 
 
-function asciicast(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeLimit, startAt, loop }) {
+function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeLimit, startAt, loop }) {
   let cols;
   let rows;
   let frames;
@@ -381,4 +378,4 @@ function prepareFrames(frames, logger, idleTimeLimit = Infinity, startAt = 0) {
   }
 }
 
-export { asciicast };
+export { recording };
