@@ -6,6 +6,7 @@ import { recording } from "./driver/recording";
 import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
 import { eventsource } from "./driver/eventsource";
+import { parseAsciicast } from "./parser/asciicast";
 
 function create(src, elem, opts = {}) {
   const logger = opts.logger ?? new DummyLogger();
@@ -60,6 +61,8 @@ function create(src, elem, opts = {}) {
 }
 
 function getDriver(src) {
+  if (typeof src === 'function') return src;
+
   if (typeof src === 'string') {
     if (src.substring(0, 5) == 'ws://' || src.substring(0, 6) == 'wss://') {
       src = { driver: 'websocket', url: src };
@@ -74,6 +77,10 @@ function getDriver(src) {
     src.driver = 'recording';
   }
 
+  if (src.driver == 'recording' && src.parser === undefined) {
+    src.parser = parseAsciicast;
+  }
+
   const drivers = new Map([
     ['recording', recording],
     ['websocket', websocket],
@@ -81,9 +88,7 @@ function getDriver(src) {
     ['test', test]
   ]);
 
-  if (typeof src === 'function') {
-    return src;
-  } else if (drivers.has(src.driver)) {
+  if (drivers.has(src.driver)) {
     const driver = drivers.get(src.driver);
     return (callbacks, opts) => driver(src, callbacks, opts);
   } else {
