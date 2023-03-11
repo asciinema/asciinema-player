@@ -210,13 +210,9 @@ function asciicast(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
       }
     },
 
-    seek: where => {
-      return seek(where);
-    },
+    seek,
 
-    step: () => {
-      step();
-    },
+    step,
 
     getPoster: t => {
       return getPoster(t);
