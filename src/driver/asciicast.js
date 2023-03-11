@@ -154,6 +154,8 @@ function asciicast(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
     if (isPlaying) {
       resume();
     }
+
+    return true;
   }
 
   function step() {
