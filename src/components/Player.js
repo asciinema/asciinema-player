@@ -52,8 +52,8 @@ export default props => {
     setState('showStartOverlay', false);
   });
 
-  core.addEventListener('waiting', () => {
-    setState('coreState', 'waiting');
+  core.addEventListener('loading', () => {
+    setState('coreState', 'loading');
   });
 
   core.addEventListener('reset', ({ cols, rows }) => {
@@ -369,7 +369,7 @@ export default props => {
         <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.pauseOrResume()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} />
         <Switch>
           <Match when={state.showStartOverlay}><StartOverlay onClick={() => core.play()} /></Match>
-          <Match when={state.coreState == 'waiting'}><LoaderOverlay cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} terminalFontFamily={props.terminalFontFamily} terminalLineHeight={props.terminalLineHeight} /></Match>
+          <Match when={state.coreState == 'loading'}><LoaderOverlay cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} terminalFontFamily={props.terminalFontFamily} terminalLineHeight={props.terminalLineHeight} /></Match>
         </Switch>
       </div>
     </div>

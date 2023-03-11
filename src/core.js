@@ -27,7 +27,7 @@ class Core {
 
     this.eventHandlers = new Map([
       ['starting', []],
-      ['waiting', []],
+      ['loading', []],
       ['reset', []],
       ['play', []],
       ['pause', []],
@@ -59,14 +59,14 @@ class Core {
       this.dispatchEvent('ended');
     }
 
-    let wasWaiting = false;
+    let wasLoading = false;
 
-    const setWaiting = (isWaiting) => {
-      if (isWaiting && !wasWaiting) {
-        wasWaiting = true;
-        this.dispatchEvent('waiting');
-      } else if (!isWaiting && wasWaiting) {
-        wasWaiting = false;
+    const setLoading = (isLoading) => {
+      if (isLoading && !wasLoading) {
+        wasLoading = true;
+        this.dispatchEvent('loading');
+      } else if (!isLoading && wasLoading) {
+        wasLoading = false;
         this.dispatchEvent('play');
       }
     };
@@ -74,7 +74,7 @@ class Core {
     this.wasm = await vt;
 
     this.driver = this.driverFn(
-      { feed, now, setTimeout, setInterval, onFinish, reset, setWaiting, logger: this.logger },
+      { feed, now, setTimeout, setInterval, onFinish, reset, setLoading, logger: this.logger },
       { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt, loop: this.loop }
     );
 
@@ -194,7 +194,7 @@ class Core {
     this.dispatchEvent('starting');
 
     const timeoutId = setTimeout(() => {
-      this.dispatchEvent('waiting');
+      this.dispatchEvent('loading');
     }, 2000);
 
     await this.initializeDriver();
