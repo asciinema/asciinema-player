@@ -2,7 +2,7 @@ import { render } from 'solid-js/web';
 import Core from './core';
 import Player from './components/Player';
 import DummyLogger from './logging';
-import { asciicast } from "./driver/asciicast";
+import { recording } from "./driver/recording";
 import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
 import { eventsource } from "./driver/eventsource";
@@ -66,16 +66,16 @@ function getDriver(src) {
     } else if (src.substring(0, 7) == 'test://') {
       src = { driver: 'test', kind: src.substring(7) };
     } else {
-      src = { driver: 'asciicast', url: src };
+      src = { driver: 'recording', url: src };
     }
   }
 
   if (src.driver === undefined) {
-    src.driver = 'asciicast';
+    src.driver = 'recording';
   }
 
   const drivers = new Map([
-    ['asciicast', asciicast],
+    ['recording', recording],
     ['websocket', websocket],
     ['eventsource', eventsource],
     ['test', test]
