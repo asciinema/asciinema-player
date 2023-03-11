@@ -55,7 +55,7 @@ class Core {
     const reset = this.resetVt.bind(this);
 
     const onFinish = () => {
-      this.state = 'finished';
+      this.state = 'ended';
       this.dispatchEvent('ended');
     }
 
@@ -102,7 +102,7 @@ class Core {
       await this.start();
     } else if (this.state == 'paused') {
       this.resume();
-    } else if (this.state == 'finished') {
+    } else if (this.state == 'ended') {
       this.restart();
     }
   }
@@ -120,7 +120,7 @@ class Core {
       this.doPause();
     } else if (this.state == 'paused') {
       this.resume();
-    } else if (this.state == 'finished') {
+    } else if (this.state == 'ended') {
       await this.restart();
     }
   }
