@@ -325,6 +325,8 @@ class Core {
 
     this.ensureVt();
 
+    // obtain poster text
+
     let poster = [];
 
     if (this.poster.substring(0, 16) == "data:text/plain,") {
@@ -334,19 +336,22 @@ class Core {
       poster = this.driver.getPoster(this.parseNptPoster(this.poster));
     }
 
+    // feed vt with poster text
+
     poster.forEach(text => this.vt.feed(text));
 
-    this.cursor = undefined;
-    const cursor = this.getCursor();
+    // get cursor position and terminal lines
+
+    const cursor = this.vt.get_cursor() ?? false;
     const lines = [];
 
     for (let i = 0; i < this.vt.rows; i++) {
       lines.push({ id: i, segments: this.vt.get_line(i) });
-      this.changedLines.add(i);
     }
 
-    this.vt.feed('\x1bc'); // reset vt
-    this.cursor = undefined;
+    // clear terminal for next (post-poster) render
+
+    this.doFeed('\x1bc'); // reset vt
 
     return {
       cursor: cursor,
