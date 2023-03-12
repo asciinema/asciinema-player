@@ -7,17 +7,17 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-use vt::VT;
+use avt::Vt;
 
 #[wasm_bindgen]
 pub struct VtWrapper {
-    vt: VT,
+    vt: Vt,
 }
 
 #[wasm_bindgen]
 pub fn create(w: usize, h: usize) -> VtWrapper {
     utils::set_panic_hook();
-    VtWrapper { vt: VT::new(w, h) }
+    VtWrapper { vt: Vt::new(w, h) }
 }
 
 #[wasm_bindgen]

@@ -3,6 +3,15 @@
 version = 3
 
 [[package]]
+name = "avt"
+version = "0.5.1"
+source = "git+https://github.com/asciinema/avt?tag=v0.5.1#917a3b881043fe9a33b42aa10bb374343c37e2cf"
+dependencies = [
+ "rgb",
+ "serde",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -226,23 +235,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "84a22b9f218b40614adcb3f4ff08b703773ad44fa9423e4e0d346d5db86e4ebc"
 
 [[package]]
-name = "vt"
-version = "0.5.0"
-source = "git+https://github.com/asciinema/vt-rs?tag=v0.5.0#c25b2c30aebae8fd994646c8697f16387218e616"
-dependencies = [
- "rgb",
- "serde",
-]
-
-[[package]]
 name = "vt-js"
 version = "0.1.0"
 dependencies = [
+ "avt",
  "console_error_panic_hook",
  "getrandom",
  "rand",
  "serde-wasm-bindgen",
- "vt",
  "wasm-bindgen",
  "wasm-bindgen-test",
  "web-sys",
