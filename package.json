@@ -1,7 +1,7 @@
 {
   "name": "asciinema-player",
   "description": "Web player for terminal session recordings.",
-  "version": "3.1.2",
+  "version": "3.2.0",
   "author": "Marcin Kulik",
   "homepage": "https://github.com/asciinema/asciinema-player",
   "repository": {
