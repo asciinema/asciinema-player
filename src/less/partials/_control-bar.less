@@ -13,9 +13,10 @@
     box-sizing: content-box;
     line-height: 1;
     position: absolute;
-    bottom: -35px;
+    bottom: 0;
     left: 0;
-    transition: bottom 0.15s linear;
+    opacity: 0;
+    transition: opacity 0.15s linear;
 
     // disable text selection:
     -webkit-touch-callout: none;
@@ -147,7 +148,7 @@
 
 .asciinema-player-wrapper {
   &.hud .control-bar {
-    bottom: 0px;
+    opacity: 1;
   }
 
   .in-fullscreen() {
