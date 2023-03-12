@@ -44,7 +44,7 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setLoading, onFinis
           reset(cols, rows, e.init ?? undefined);
           clock = new Clock();
 
-          if (e.time !== undefined) {
+          if (typeof e.time === 'number') {
             clock.setTime(e.time);
           }
         } else if (e.state === 'offline') {
