@@ -3,7 +3,7 @@
 
 class Stream {
   constructor(input, xfs) {
-    this.input = input;
+    this.input = typeof input.next === 'function' ? input : input[Symbol.iterator]();
     this.xfs = xfs ?? [];
   }
 
@@ -36,7 +36,6 @@ class Stream {
   }
 
   [Symbol.iterator]() {
-    let i = 0;
     let v = 0;
     let values = [];
     let flushed = false;
@@ -49,8 +48,14 @@ class Stream {
           v = 0;
         }
 
-        while (values.length === 0 && i < this.input.length) {
-          xf.step(this.input[i++]);
+        while (values.length === 0) {
+          const next = this.input.next();
+
+          if (next.done) {
+            break;
+          } else {
+            xf.step(next.value);
+          }
         }
 
         if (values.length === 0 && !flushed) {
