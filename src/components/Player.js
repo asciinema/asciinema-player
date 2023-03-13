@@ -8,6 +8,7 @@ import StartOverlay from './StartOverlay';
 
 
 export default props => {
+  const logger = props.logger;
   const core = props.core;
   const autoPlay = props.autoPlay;
 
@@ -21,6 +22,7 @@ export default props => {
     charH: null,
     bordersW: null,
     bordersH: null,
+    controlBarH: null,
     containerW: null,
     containerH: null,
     showControls: false,
@@ -45,14 +47,15 @@ export default props => {
   let wrapperRef;
   let playerRef;
   let terminalRef;
+  let controlBarRef;
   let resizeObserver;
 
   core.addEventListener('starting', () => {
     setState('showStartOverlay', false);
   });
 
-  core.addEventListener('waiting', () => {
-    setState('coreState', 'waiting');
+  core.addEventListener('loading', () => {
+    setState('coreState', 'loading');
   });
 
   core.addEventListener('reset', ({ cols, rows }) => {
@@ -61,6 +64,7 @@ export default props => {
     }
 
     setState({ cols, rows });
+    updateTerminal();
   });
 
   core.addEventListener('play', () => {
@@ -91,6 +95,7 @@ export default props => {
       charH: terminalRef.clientHeight / terminalRows(),
       bordersW: terminalRef.offsetWidth - terminalRef.clientWidth,
       bordersH: terminalRef.offsetHeight - terminalRef.clientHeight,
+      controlBarH: controlBarRef.offsetHeight,
       containerW: wrapperRef.offsetWidth,
       containerH: wrapperRef.offsetHeight
     });
@@ -110,7 +115,7 @@ export default props => {
   }
 
   onMount(async () => {
-    console.debug('player mounted');
+    logger.info('player mounted');
 
     measureDomElements();
     setupResizeObserver();
@@ -171,7 +176,7 @@ export default props => {
       return;
     }
 
-    console.debug(`containerW = ${state.containerW}`);
+    logger.debug(`containerW = ${state.containerW}`);
 
     const terminalW = (state.charW * terminalCols()) + state.bordersW;
     const terminalH = (state.charH * terminalRows()) + state.bordersH;
@@ -179,7 +184,7 @@ export default props => {
     let fit = props.fit ?? 'width';
 
     if (fit === 'both' || state.isFullscreen) {
-      const containerRatio = state.containerW / state.containerH;
+      const containerRatio = state.containerW / (state.containerH - state.controlBarH);
       const terminalRatio = terminalW / terminalH;
 
       if (containerRatio > terminalRatio) {
@@ -197,10 +202,10 @@ export default props => {
       return {
         scale: scale,
         width: state.containerW,
-        height: terminalH * scale
+        height: terminalH * scale + state.controlBarH
       };
     } else if (fit === 'height') {
-      const scale = state.containerH / terminalH;
+      const scale = (state.containerH - state.controlBarH) / terminalH;
 
       return {
         scale: scale,
@@ -249,6 +254,9 @@ export default props => {
 
     if (e.key == ' ') {
       core.pauseOrResume();
+    } else if (e.key == '.') {
+      core.step();
+      updateTime();
     } else if (e.key == 'f') {
       toggleFullscreen();
     } else if (e.key == 'ArrowLeft') {
@@ -361,10 +369,10 @@ export default props => {
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
       <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
-        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.pauseOrResume()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} />
+        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.pauseOrResume()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
         <Switch>
           <Match when={state.showStartOverlay}><StartOverlay onClick={() => core.play()} /></Match>
-          <Match when={state.coreState == 'waiting'}><LoaderOverlay cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} terminalFontFamily={props.terminalFontFamily} terminalLineHeight={props.terminalLineHeight} /></Match>
+          <Match when={state.coreState == 'loading'}><LoaderOverlay cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} terminalFontFamily={props.terminalFontFamily} terminalLineHeight={props.terminalLineHeight} /></Match>
         </Switch>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import getBuffer from '../buffer';
 import Clock from '../clock';
 
-function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinish }) {
+function eventsource({ url, bufferTime = 0 }, { feed, reset, setLoading, onFinish, logger }) {
   let es;
   let buf;
   let clock;
@@ -16,32 +16,45 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
       es = new EventSource(url);
 
       es.addEventListener('open', () => {
-        console.debug('eventsource: opened');
-        setWaiting(false);
+        logger.info('eventsource: opened');
+        setLoading(false);
         initBuffer();
       });
 
       es.addEventListener('error', e => {
-        console.debug('eventsource: errored');
-        console.debug(e);
-        setWaiting(true);
+        logger.info('eventsource: errored');
+        logger.debug({e});
+        setLoading(true);
       });
 
       es.addEventListener('message', event => {
         const e = JSON.parse(event.data);
 
-        if (e.cols !== undefined || e.width !== undefined) {
-          initBuffer();
-          reset(e.cols ?? e.width, e.rows ?? e.height);
-          clock = new Clock();
-        } else {
+        if (Array.isArray(e)) {
           buf.pushEvent(e);
-          clock.setTime(e[0]);
+
+          if (clock !== undefined) {
+            clock.setTime(e[0]);
+          }
+        } else if (e.cols !== undefined || e.width !== undefined) {
+          const cols = e.cols ?? e.width;
+          const rows = e.rows ?? e.height;
+          logger.debug(`eventsource: vt reset (${cols}x${rows})`);
+          initBuffer();
+          reset(cols, rows, e.init ?? undefined);
+          clock = new Clock();
+
+          if (typeof e.time === 'number') {
+            clock.setTime(e.time);
+          }
+        } else if (e.state === 'offline') {
+          logger.info('eventsource: stream offline');
+          clock = undefined;
         }
       });
 
       es.addEventListener('done', () => {
-        console.debug('eventsource: closed');
+        logger.info('eventsource: closed');
         es.close();
         onFinish();
       });
@@ -54,7 +67,7 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setWaiting, onFinis
 
     getCurrentTime: () => {
       if (clock === undefined) {
-        return 0;
+        return undefined;
       } else {
         return clock.getTime();
       }

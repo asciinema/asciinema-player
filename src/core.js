@@ -8,6 +8,7 @@ class Core {
   // public
 
   constructor(driverFn, opts) {
+    this.logger = opts.logger;
     this.state = 'initial';
     this.driver = null;
     this.driverFn = driverFn;
@@ -26,7 +27,7 @@ class Core {
 
     this.eventHandlers = new Map([
       ['starting', []],
-      ['waiting', []],
+      ['loading', []],
       ['reset', []],
       ['play', []],
       ['pause', []],
@@ -47,32 +48,25 @@ class Core {
   }
 
   async init() {
-    let playCount = 0;
     const feed = this.feed.bind(this);
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
-    const reset = (cols, rows) => { this.resetVt(cols, rows) };
+    const reset = this.resetVt.bind(this);
 
     const onFinish = () => {
-      playCount++;
-
-      if (this.loop === true || (typeof this.loop === 'number' && playCount < this.loop)) {
-        this.restart();
-      } else {
-        this.state = 'finished';
-        this.dispatchEvent('ended');
-      }
+      this.state = 'ended';
+      this.dispatchEvent('ended');
     }
 
-    let wasWaiting = false;
+    let wasLoading = false;
 
-    const setWaiting = (isWaiting) => {
-      if (isWaiting && !wasWaiting) {
-        wasWaiting = true;
-        this.dispatchEvent('waiting');
-      } else if (!isWaiting && wasWaiting) {
-        wasWaiting = false;
+    const setLoading = (isLoading) => {
+      if (isLoading && !wasLoading) {
+        wasLoading = true;
+        this.dispatchEvent('loading');
+      } else if (!isLoading && wasLoading) {
+        wasLoading = false;
         this.dispatchEvent('play');
       }
     };
@@ -80,8 +74,8 @@ class Core {
     this.wasm = await vt;
 
     this.driver = this.driverFn(
-      { feed, now, setTimeout, setInterval, onFinish, reset, setWaiting },
-      { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt }
+      { feed, now, setTimeout, setInterval, onFinish, reset, setLoading, logger: this.logger },
+      { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt, loop: this.loop }
     );
 
     if (typeof this.driver === 'function') {
@@ -108,8 +102,8 @@ class Core {
       await this.start();
     } else if (this.state == 'paused') {
       this.resume();
-    } else if (this.state == 'finished') {
-      this.restart();
+    } else if (this.state == 'ended') {
+      await this.restart();
     }
   }
 
@@ -126,7 +120,7 @@ class Core {
       this.doPause();
     } else if (this.state == 'paused') {
       this.resume();
-    } else if (this.state == 'finished') {
+    } else if (this.state == 'ended') {
       await this.restart();
     }
   }
@@ -138,8 +132,26 @@ class Core {
   }
 
   async seek(where) {
-    await this.doSeek(where);
-    this.dispatchEvent('seeked');
+    if (this.state == 'initial') return false;
+    if (typeof this.driver.seek !== 'function') return false;
+
+    const seeked = this.driver.seek(where);
+
+    if (seeked) {
+      if (this.state == 'ended') {
+        this.state = 'paused';
+      }
+
+      this.dispatchEvent('seeked');
+    }
+
+    return seeked;
+  }
+
+  step() {
+    if (this.state == 'paused' && typeof this.driver.step === 'function') {
+      this.driver.step();
+    }
   }
 
   getChangedLines() {
@@ -194,7 +206,7 @@ class Core {
     this.dispatchEvent('starting');
 
     const timeoutId = setTimeout(() => {
-      this.dispatchEvent('waiting');
+      this.dispatchEvent('loading');
     }, 2000);
 
     await this.initializeDriver();
@@ -227,34 +239,26 @@ class Core {
     }
   }
 
-  async doSeek(where) {
-    if (typeof this.driver.seek === 'function') {
-      await this.initializeDriver();
-
-      if (this.state != 'playing') {
-        this.state = 'paused';
-      }
-
-      this.driver.seek(where);
-
-      return true;
-    } else {
-      return false;
-    }
-  }
-
   async restart() {
-    if (await this.doSeek(0)) {
-      this.resume();
-      this.dispatchEvent('play');
+    if (typeof this.driver.restart === 'function') {
+      const restarted = await this.driver.restart();
+
+      if (restarted) {
+        this.state = 'playing';
+        this.dispatchEvent('play');
+      }
     }
   }
 
   feed(data) {
+    this.doFeed(data);
+    this.dispatchEvent('terminalUpdate');
+  }
+
+  doFeed(data) {
     const affectedLines = this.vt.feed(data);
     affectedLines.forEach(i => this.changedLines.add(i));
     this.cursor = undefined;
-    this.dispatchEvent('terminalUpdate');
   }
 
   now() { return performance.now() * this.speed }
@@ -288,13 +292,20 @@ class Core {
     }
 
     this.initializeVt(cols, rows);
+    this.dispatchEvent('reset', { cols, rows });
   }
 
-  resetVt(cols, rows) {
+  resetVt(cols, rows, init = undefined) {
     this.cols = cols;
     this.rows = rows;
-
+    this.cursor = undefined;
     this.initializeVt(cols, rows);
+
+    if (init !== undefined && init !== '') {
+      this.doFeed(init);
+    }
+
+    this.dispatchEvent('reset', { cols, rows });
   }
 
   initializeVt(cols, rows) {
@@ -307,14 +318,14 @@ class Core {
     for (let i = 0; i < rows; i++) {
       this.changedLines.add(i);
     }
-
-    this.dispatchEvent('reset', { cols, rows });
   }
 
   async renderPoster() {
     if (!this.poster) return;
 
     this.ensureVt();
+
+    // obtain poster text
 
     let poster = [];
 
@@ -325,18 +336,22 @@ class Core {
       poster = this.driver.getPoster(this.parseNptPoster(this.poster));
     }
 
+    // feed vt with poster text
+
     poster.forEach(text => this.vt.feed(text));
 
-    const cursor = this.getCursor();
+    // get cursor position and terminal lines
+
+    const cursor = this.vt.get_cursor() ?? false;
     const lines = [];
 
     for (let i = 0; i < this.vt.rows; i++) {
       lines.push({ id: i, segments: this.vt.get_line(i) });
-      this.changedLines.add(i);
     }
 
-    this.vt.feed('\x1bc'); // reset vt
-    this.cursor = undefined;
+    // clear terminal for next (post-poster) render
+
+    this.doFeed('\x1bc'); // reset vt
 
     return {
       cursor: cursor,

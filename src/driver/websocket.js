@@ -5,12 +5,13 @@ function exponentialDelay(attempt) {
   return Math.min(500 * Math.pow(2, attempt), 5000);
 }
 
-function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, { feed, reset, setWaiting, onFinish }) {
+function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, { feed, reset, setLoading, onFinish, logger }) {
   const utfDecoder = new TextDecoder();
   let socket;
   let buf;
   let clock;
   let reconnectAttempt = 0;
+  let successfulConnectionTimeout;
   let stop = false;
 
   function initBuffer() {
@@ -23,23 +24,36 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
     socket.binaryType = 'arraybuffer';
 
     socket.onopen = () => {
-      console.debug('websocket: opened');
-      setWaiting(false);
+      logger.info('websocket: opened');
+      setLoading(false);
       initBuffer();
-      reconnectAttempt = 0;
+      successfulConnectionTimeout = setTimeout(() => { reconnectAttempt = 0; }, 1000);
     }
 
     socket.onmessage = event => {
       if (typeof event.data === 'string') {
         const e = JSON.parse(event.data);
 
-        if (e.cols !== undefined || e.width !== undefined) {
-          initBuffer();
-          reset(e.cols ?? e.width, e.rows ?? e.height);
-          clock = new Clock();
-        } else {
+        if (Array.isArray(e)) {
           buf.pushEvent(e);
-          clock.setTime(e[0]);
+
+          if (clock !== undefined) {
+            clock.setTime(e[0]);
+          }
+        } else if (e.cols !== undefined || e.width !== undefined) {
+          const cols = e.cols ?? e.width;
+          const rows = e.rows ?? e.height;
+          logger.debug(`websocket: vt reset (${cols}x${rows})`);
+          initBuffer();
+          reset(cols, rows, e.init ?? undefined);
+          clock = new Clock();
+
+          if (typeof e.time === 'number') {
+            clock.setTime(e.time);
+          }
+        } else if (e.state === 'offline') {
+          logger.info('websocket: stream offline');
+          clock = undefined;
         }
       } else {
         buf.pushText(utfDecoder.decode(event.data));
@@ -48,12 +62,13 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
 
     socket.onclose = event => {
       if (stop || event.code === 1000 || event.code === 1005) {
-        console.debug('websocket: closed');
+        logger.info('websocket: closed');
         onFinish();
       } else {
+        clearTimeout(successfulConnectionTimeout);
         const delay = reconnectDelay(reconnectAttempt++);
-        console.debug(`websocket: unclean close, reconnecting in ${delay}...`);
-        setWaiting(true);
+        logger.info(`websocket: unclean close, reconnecting in ${delay}...`);
+        setLoading(true);
         setTimeout(connect, delay);
       }
     }
@@ -72,7 +87,7 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
 
     getCurrentTime: () => {
       if (clock === undefined) {
-        return 0;
+        return undefined;
       } else {
         return clock.getTime();
       }

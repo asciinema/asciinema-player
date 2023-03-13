@@ -1,13 +1,18 @@
 import { render } from 'solid-js/web';
 import Core from './core';
 import Player from './components/Player';
-import { asciicast } from "./driver/asciicast";
+import DummyLogger from './logging';
+import { recording } from "./driver/recording";
 import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
 import { eventsource } from "./driver/eventsource";
+import { parseAsciicast } from "./parser/asciicast";
 
 function create(src, elem, opts = {}) {
+  const logger = opts.logger ?? new DummyLogger();
+
   const core = new Core(getDriver(src), {
+    logger: logger,
     cols: opts.cols,
     rows: opts.rows,
     loop: opts.loop,
@@ -19,6 +24,7 @@ function create(src, elem, opts = {}) {
   });
 
   const props = {
+    logger: logger,
     core: core,
     cols: opts.cols,
     rows: opts.rows,
@@ -55,30 +61,34 @@ function create(src, elem, opts = {}) {
 }
 
 function getDriver(src) {
+  if (typeof src === 'function') return src;
+
   if (typeof src === 'string') {
     if (src.substring(0, 5) == 'ws://' || src.substring(0, 6) == 'wss://') {
       src = { driver: 'websocket', url: src };
     } else if (src.substring(0, 7) == 'test://') {
       src = { driver: 'test', kind: src.substring(7) };
     } else {
-      src = { driver: 'asciicast', url: src };
+      src = { driver: 'recording', url: src };
     }
   }
 
   if (src.driver === undefined) {
-    src.driver = 'asciicast';
+    src.driver = 'recording';
+  }
+
+  if (src.driver == 'recording' && src.parser === undefined) {
+    src.parser = parseAsciicast;
   }
 
   const drivers = new Map([
-    ['asciicast', asciicast],
+    ['recording', recording],
     ['websocket', websocket],
     ['eventsource', eventsource],
     ['test', test]
   ]);
 
-  if (typeof src === 'function') {
-    return src;
-  } else if (drivers.has(src.driver)) {
+  if (drivers.has(src.driver)) {
     const driver = drivers.get(src.driver);
     return (callbacks, opts) => driver(src, callbacks, opts);
   } else {
