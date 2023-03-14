@@ -1,15 +1,16 @@
 # Parsers
 
-Parser is a function which transforms data fetched from a URL into an object
-representing a recording. The player handles fetching while parser's only job is
-to transform the response into a recording object.
+Parser is a function which transforms a recording encoded in an arbitrary file
+format into a simple object representing a recording. Once the player fetches a
+file it runs its contents through a parser which turns it into a recording
+object ready to be played.
 
 asciinema player uses very simple internal representation of a recording. The
 object has following properties:
 
 - `cols` - number of terminal columns (terminal width in chars),
 - `rows` - number of terminal rows (terminal height in lines),
-- `frames` - iterable of frames (e.g. array, generator), where each frame is a 2
+- `frames` - iterable (e.g. array, generator) of frames, where each frame is a 2
   element array containing frame time and a text to print (or specifically, to
   feed into virtual terminal emulator).
 
@@ -28,7 +29,12 @@ Example recording in its internal representation:
 
 ## Default parser
 
-Default parser used by the player is [asciicast](asciicast.js) which handles both [asciicast v1](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v1.md) and [asciicast v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) formats.
+Default parser used by the player is [asciicast](asciicast.js) which handles
+both [asciicast
+v1](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v1.md) and
+[asciicast
+v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md)
+file formats.
 
 The exact above recording object would be returned from asciicast parser when
 invoked with following input text:
