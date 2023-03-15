@@ -19,7 +19,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "browserslist": [
-    "defaults"
+    "defaults and supports wasm"
   ],
   "dependencies": {
     "@babel/runtime": "^7.15.4",
