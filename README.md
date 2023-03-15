@@ -109,7 +109,7 @@ the npm package at `dist/bundle/asciinema-player.css`.
 
 ## Basic usage
 
-To mount the player on a page use the `create` function exported by the
+To mount the player on a page, use the `create` function exported by the
 `asciinema-player` ES module with 2 arguments: source (recording URL) and the
 container DOM element to mount the player in:
 
@@ -117,14 +117,14 @@ container DOM element to mount the player in:
 AsciinemaPlayer.create(src, containerElement);
 ```
 
-In the most common case a recording to be played is fetched from a URL and is in
+In the most common case, a recording is fetched from a URL and is in
 [asciicast](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md)
 format. You can pass it as full URL, e.g. `"https://example.com/demo.cast"`, or
 a path, e.g. `"/demo.cast"`.
 
 See [Source](#source) for more ways of loading a recording into the player.
 
-To pass additional options when mounting the player use 3 argument variant:
+To pass additional options, when mounting the player, use 3 argument variant:
 
 ```javascript
 AsciinemaPlayer.create(src, containerElement, opts);
@@ -141,8 +141,8 @@ AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
 
 See [Options](#options) for full list of available options.
 
-If you'd like to control the player programatically then you can use the
-functions exposed on the object returned from `create` function:
+If you'd like to control the player programatically, you can use the functions
+exposed on the object returned from `create` function:
 
 ```javascript
 const player = AsciinemaPlayer.create(src, containerElement);
@@ -160,7 +160,7 @@ replace it completely.
 
 ### Inlining a recording
 
-If a recording file is small and you'd rather avoid additional HTTP request you
+If a recording file is small and you'd rather avoid additional HTTP request, you
 can inline the recording by using [Data
 URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs):
 
@@ -179,22 +179,22 @@ AsciinemaPlayer.create(
 
 ### Loading a recording from another source
 
-If you'd like to load a recording yourself and just pass it over to the player
-then use `{ data: data }` object as source argument to `create`:
+If you'd like to load a recording yourself and just pass it over to the player,
+use `{ data: data }` object as source argument to `create`:
 
 ```javascript
 AsciinemaPlayer.create({ data: data }, containerElement);
 ```
 
-where `data` can be one of:
+where `data` can be:
 
 - a string containing asciicast in [v1](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v1.md) or [v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) format
 - an object representing asciicast in [v1](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v1.md) format
 - an array representing asciicast in [v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md) format
 - a function which when invoked returns one of the above (may be async)
 
-If `data` is a function then the player invokes it when playback is started by a
-user. If [preload](#preload) option is used then the function is invoked during
+If `data` is a function, then the player invokes it when playback is started by
+a user. If [preload](#preload) option is used, the function is invoked during
 player initialization (mounting in DOM).
 
 Provided `data` is parsed with built-in asciicast format parser by default (also
@@ -231,8 +231,8 @@ Examples of supported `data` specifications:
 () => '{"version": 2, "width": 80, "height": 24}\n[1.0, "o", "hello "]\n[2.0, "o", "world!"]';
 ```
 
-Let's say you'd like to embed asciicast contents in a (hidden) HTML tag on your
-page. Following data source can be used to extract it and pass it to the player:
+Say you'd like to embed asciicast contents in a (hidden) HTML tag on your page,
+following data source can be used to extract it and pass it to the player:
 
 ```javascript
 AsciinemaPlayer.create(
@@ -243,8 +243,8 @@ AsciinemaPlayer.create(
 
 ### Customizing URL fetching
 
-If you'd like to fetch a recording from a URL but you need to tweak how HTTP
-request is peformed (configure credentials, change HTTP method, etc) you can do
+If you'd like to fetch a recording from a URL, but you need to tweak how HTTP
+request is peformed (configure credentials, change HTTP method, etc), you can do
 so by using `{ url: "...", fetchOpts: { ... } }` object as the source argument.
 `fetchOpts` object is then passed to
 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) (as its 2nd
@@ -256,7 +256,7 @@ For example:
 AsciinemaPlayer.create({ url: url, fetchOpts: { method: 'POST' } }, containerElement);
 ```
 
-Alternatively you can use custom data source (as described in previous section)
+Alternatively, you can use custom data source (as described in previous section)
 and call `fetch` yourself:
 
 ```javascript
@@ -268,11 +268,12 @@ AsciinemaPlayer.create(
 
 ### Parsing other recording formats
 
-By default a recording is parsed with built-in
+By default, a recording is parsed with built-in
 [asciicast](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md)
 format parser. However, if you happen to have a recording produced by other
-terminal session recording tool (e.g. ttyrec) you can still play it in asciinema
-player as long as you write a parser for it.
+terminal session recording tool (e.g. ttyrec) or a log file that you want to
+animate, you can still play it in asciinema player, as long as you write a
+parser for it.
 
 Custom format parser can be used like this:
 
