@@ -42,6 +42,12 @@
   .bg-14 { background-color: @color14 }
   .fg-15 { color: @color15 }
   .bg-15 { background-color: @color15 }
+
+  .loading {
+    .loader {
+      border-color: fade(@foreground, 30%) fade(@foreground, 50%) fade(@foreground, 70%) fade(@foreground, 100%);
+    }
+  }
 }
 
 .theme-bright-is-bold() {
