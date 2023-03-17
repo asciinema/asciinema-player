@@ -1,7 +1,7 @@
 import Stream from '../stream';
 
 
-function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeLimit, startAt, loop }) {
+function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop }) {
   let cols;
   let rows;
   let frames;
@@ -76,7 +76,7 @@ function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
       } else {
         timeoutId = null;
         pauseElapsedTime = duration * 1000;
-        onFinish();
+        setState('ended');
       }
     }
   }
@@ -96,12 +96,22 @@ function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
   }
 
   function pause() {
+    setState('paused');
+    doPause();
+  }
+
+  function doPause() {
     clearTimeout(timeoutId);
     timeoutId = null;
     pauseElapsedTime = now() - startTime;
   }
 
   function resume() {
+    setState('playing');
+    doResume();
+  }
+
+  function doResume() {
     startTime = now() - pauseElapsedTime;
     pauseElapsedTime = null;
     scheduleNextFrame();
@@ -111,7 +121,7 @@ function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
     const isPlaying = !!timeoutId;
 
     if (isPlaying) {
-      pause();
+      doPause();
     }
 
     if (typeof where === 'string') {
@@ -149,7 +159,7 @@ function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
     pauseElapsedTime = targetTime;
 
     if (isPlaying) {
-      resume();
+      doResume();
     }
 
     return true;
@@ -165,7 +175,7 @@ function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
         nextFrameIndex++;
       } else {
         pauseElapsedTime = duration * 1000;
-        onFinish();
+        setState('ended');
       }
   }
 
@@ -218,7 +228,19 @@ function recording(src, { feed, now, setTimeout, onFinish, logger }, { idleTimeL
       }
     },
 
-    seek,
+    seek: where => {
+      const ended = timeoutId === null && frames[nextFrameIndex] === undefined;
+
+      if (seek(where)) {
+        if (ended) {
+          setState('paused');
+        }
+
+        return true;
+      }
+
+      return false;
+    },
 
     step,
 

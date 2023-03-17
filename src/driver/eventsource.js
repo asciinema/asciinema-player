@@ -1,7 +1,7 @@
 import getBuffer from '../buffer';
 import Clock from '../clock';
 
-function eventsource({ url, bufferTime = 0 }, { feed, reset, setLoading, onFinish, logger }) {
+function eventsource({ url, bufferTime = 0 }, { feed, reset, setState, logger }) {
   let es;
   let buf;
   let clock;
@@ -17,14 +17,14 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setLoading, onFinis
 
       es.addEventListener('open', () => {
         logger.info('eventsource: opened');
-        setLoading(false);
+        setState('playing');
         initBuffer();
       });
 
       es.addEventListener('error', e => {
         logger.info('eventsource: errored');
         logger.debug({e});
-        setLoading(true);
+        setState('loading');
       });
 
       es.addEventListener('message', event => {
@@ -56,7 +56,7 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setLoading, onFinis
       es.addEventListener('done', () => {
         logger.info('eventsource: closed');
         es.close();
-        onFinish();
+        setState('ended');
       });
     },
 
