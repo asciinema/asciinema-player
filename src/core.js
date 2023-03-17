@@ -48,33 +48,17 @@ class Core {
   }
 
   async init() {
+    this.wasm = await vt;
+
     const feed = this.feed.bind(this);
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
     const reset = this.resetVt.bind(this);
-
-    const onFinish = () => {
-      this.state = 'ended';
-      this.dispatchEvent('ended');
-    }
-
-    let wasLoading = false;
-
-    const setLoading = (isLoading) => {
-      if (isLoading && !wasLoading) {
-        wasLoading = true;
-        this.dispatchEvent('loading');
-      } else if (!isLoading && wasLoading) {
-        wasLoading = false;
-        this.dispatchEvent('play');
-      }
-    };
-
-    this.wasm = await vt;
+    const setState = this.setState.bind(this);
 
     this.driver = this.driverFn(
-      { feed, now, setTimeout, setInterval, onFinish, reset, setLoading, logger: this.logger },
+      { feed, reset, now, setTimeout, setInterval, setState, logger: this.logger },
       { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt, loop: this.loop }
     );
 
@@ -132,20 +116,15 @@ class Core {
   }
 
   async seek(where) {
-    if (this.state == 'initial') return false;
+    if (this.state == 'initial' || this.state == 'loading') return false;
     if (typeof this.driver.seek !== 'function') return false;
 
-    const seeked = this.driver.seek(where);
-
-    if (seeked) {
-      if (this.state == 'ended') {
-        this.state = 'paused';
-      }
-
+    if (this.driver.seek(where)) {
       this.dispatchEvent('seeked');
+      return true;
     }
 
-    return seeked;
+    return false;
   }
 
   step() {
@@ -202,6 +181,21 @@ class Core {
 
   // private
 
+  setState(newState) {
+    if (this.state === newState) return;
+    this.state = newState;
+
+    if (newState === 'playing') {
+      this.dispatchEvent('play');
+    } else if (newState === 'loading') {
+      this.dispatchEvent('loading');
+    } else if (newState === 'paused') {
+      this.dispatchEvent('pause');
+    } else if (newState === 'ended') {
+      this.dispatchEvent('ended');
+    }
+  }
+
   async start() {
     this.dispatchEvent('starting');
 
@@ -226,27 +220,20 @@ class Core {
   doPause() {
     if (typeof this.driver.pauseOrResume === 'function') {
       this.driver.pauseOrResume();
-      this.state = 'paused';
-      this.dispatchEvent('pause');
     }
   }
 
   resume() {
     if (typeof this.driver.pauseOrResume === 'function') {
-      this.state = 'playing';
       this.driver.pauseOrResume();
-      this.dispatchEvent('play');
     }
   }
 
   async restart() {
     if (typeof this.driver.restart === 'function') {
-      const restarted = await this.driver.restart();
-
-      if (restarted) {
-        this.state = 'playing';
-        this.dispatchEvent('play');
-      }
+      return await this.driver.restart();
+    } else {
+      return false;
     }
   }
 

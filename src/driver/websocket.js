@@ -5,7 +5,7 @@ function exponentialDelay(attempt) {
   return Math.min(500 * Math.pow(2, attempt), 5000);
 }
 
-function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, { feed, reset, setLoading, onFinish, logger }) {
+function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, { feed, reset, setState, logger }) {
   const utfDecoder = new TextDecoder();
   let socket;
   let buf;
@@ -25,7 +25,7 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
 
     socket.onopen = () => {
       logger.info('websocket: opened');
-      setLoading(false);
+      setState('playing');
       initBuffer();
       successfulConnectionTimeout = setTimeout(() => { reconnectAttempt = 0; }, 1000);
     }
@@ -63,12 +63,12 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
     socket.onclose = event => {
       if (stop || event.code === 1000 || event.code === 1005) {
         logger.info('websocket: closed');
-        onFinish();
+        setState('ended');
       } else {
         clearTimeout(successfulConnectionTimeout);
         const delay = reconnectDelay(reconnectAttempt++);
         logger.info(`websocket: unclean close, reconnecting in ${delay}...`);
-        setLoading(true);
+        setState('loading');
         setTimeout(connect, delay);
       }
     }
