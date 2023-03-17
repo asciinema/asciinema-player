@@ -6,9 +6,9 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setLoading, onFinis
   let buf;
   let clock;
 
-  function initBuffer() {
+  function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
-    buf = getBuffer(feed, bufferTime);
+    buf = getBuffer(feed, bufferTime, baseStreamTime);
   }
 
   return {
@@ -40,7 +40,7 @@ function eventsource({ url, bufferTime = 0 }, { feed, reset, setLoading, onFinis
           const cols = e.cols ?? e.width;
           const rows = e.rows ?? e.height;
           logger.debug(`eventsource: vt reset (${cols}x${rows})`);
-          initBuffer();
+          initBuffer(e.time);
           reset(cols, rows, e.init ?? undefined);
           clock = new Clock();
 
