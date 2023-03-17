@@ -14,9 +14,9 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
   let successfulConnectionTimeout;
   let stop = false;
 
-  function initBuffer() {
+  function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
-    buf = getBuffer(feed, bufferTime);
+    buf = getBuffer(feed, bufferTime, baseStreamTime);
   }
 
   function connect() {
@@ -44,7 +44,7 @@ function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, {
           const cols = e.cols ?? e.width;
           const rows = e.rows ?? e.height;
           logger.debug(`websocket: vt reset (${cols}x${rows})`);
-          initBuffer();
+          initBuffer(e.time);
           reset(cols, rows, e.init ?? undefined);
           clock = new Clock();
 

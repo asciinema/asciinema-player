@@ -1,8 +1,8 @@
 import Queue from "./queue";
 
-function getBuffer(feed, bufferTime) {
+function getBuffer(feed, bufferTime, baseStreamTime) {
   if (bufferTime > 0) {
-    return buffer(feed, bufferTime);
+    return buffer(feed, bufferTime, baseStreamTime ?? 0.0);
   } else {
     return nullBuffer(feed);
   }
@@ -24,11 +24,10 @@ function nullBuffer(feed) {
   }
 }
 
-function buffer(feed, bufferTime) {
+function buffer(feed, bufferTime, baseStreamTime) {
   const queue = new Queue();
   const maxFrameTime = 1000.0 / 60;
-  let startWallTime;
-  let baseStreamTime;
+  const startWallTime = now();
   let stop = false;
   let prevElapsedStreamTime = -maxFrameTime;
 
@@ -60,22 +59,11 @@ function buffer(feed, bufferTime) {
 
   return {
     pushEvent(event) {
-      if (startWallTime === undefined) {
-        startWallTime = now();
-        baseStreamTime = event[0];
-      }
-
       if (event[1] != 'o') return;
-
       queue.push(event);
     },
 
     pushText(text) {
-      if (startWallTime === undefined) {
-        startWallTime = now();
-        baseStreamTime = 0;
-      }
-
       const time = (now() - startWallTime) / 1000;
       queue.push([time, 'o', text]);
     },
