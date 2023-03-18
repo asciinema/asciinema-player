@@ -91,17 +91,11 @@ class Core {
     }
   }
 
-  pause() {
-    if (this.state == 'playing') {
-      this.doPause();
-    }
-  }
-
   async pauseOrResume() {
     if (this.state == 'initial') {
       await this.start();
     } else if (this.state == 'playing') {
-      this.doPause();
+      this.pause();
     } else if (this.state == 'paused') {
       this.resume();
     } else if (this.state == 'ended') {
@@ -217,7 +211,7 @@ class Core {
     this.dispatchEvent('play');
   }
 
-  doPause() {
+  pause() {
     if (typeof this.driver.pauseOrResume === 'function') {
       this.driver.pauseOrResume();
     }
