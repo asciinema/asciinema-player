@@ -218,7 +218,7 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
       return true;
     },
 
-    pauseOrResume: () => {
+    togglePlay: () => {
       if (timeoutId) {
         pause();
         return false;
