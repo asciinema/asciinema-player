@@ -75,7 +75,7 @@ class Core {
     }
 
     return {
-      isPausable: !!this.driver.pauseOrResume,
+      isPausable: !!this.driver.togglePlay,
       isSeekable: !!this.driver.seek,
       poster: await this.renderPoster()
     }
@@ -91,15 +91,23 @@ class Core {
     }
   }
 
-  async pauseOrResume() {
-    if (this.state == 'initial') {
-      await this.start();
-    } else if (this.state == 'playing') {
+  pause() {
+    if (this.state == 'playing' && typeof this.driver.togglePlay === 'function') {
+      this.driver.togglePlay();
+    }
+  }
+
+  resume() {
+    if (this.state == 'paused' && typeof this.driver.togglePlay === 'function') {
+      this.driver.togglePlay();
+    }
+  }
+
+  async togglePlay() {
+    if (this.state == 'playing') {
       this.pause();
-    } else if (this.state == 'paused') {
-      this.resume();
-    } else if (this.state == 'ended') {
-      await this.restart();
+    } else {
+      await this.play();
     }
   }
 
@@ -209,18 +217,6 @@ class Core {
     this.clock = new Clock(this.speed);
     this.state = 'playing';
     this.dispatchEvent('play');
-  }
-
-  pause() {
-    if (typeof this.driver.pauseOrResume === 'function') {
-      this.driver.pauseOrResume();
-    }
-  }
-
-  resume() {
-    if (typeof this.driver.pauseOrResume === 'function') {
-      this.driver.pauseOrResume();
-    }
   }
 
   async restart() {
