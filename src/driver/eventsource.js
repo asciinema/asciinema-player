@@ -1,7 +1,7 @@
 import getBuffer from '../buffer';
 import Clock from '../clock';
 
-function eventsource({ url, bufferTime = 0 }, { feed, reset, setState, logger }) {
+function eventsource({ url, bufferTime = 0.1 }, { feed, reset, setState, logger }) {
   let es;
   let buf;
   let clock;
