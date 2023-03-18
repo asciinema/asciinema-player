@@ -5,7 +5,7 @@ function exponentialDelay(attempt) {
   return Math.min(500 * Math.pow(2, attempt), 5000);
 }
 
-function websocket({ url, bufferTime = 0, reconnectDelay = exponentialDelay }, { feed, reset, setState, logger }) {
+function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay }, { feed, reset, setState, logger }) {
   const utfDecoder = new TextDecoder();
   let socket;
   let buf;
