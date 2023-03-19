@@ -74,11 +74,37 @@ class Core {
       this.initializeDriver();
     }
 
-    return {
+    const config = {
       isPausable: !!this.driver.togglePlay,
       isSeekable: !!this.driver.seek,
       poster: await this.renderPoster()
     }
+
+    if (this.driver.init === undefined) {
+      this.driver.init = () => { return {} };
+    }
+
+    if (this.driver.togglePlay === undefined) {
+      this.driver.togglePlay = () => {};
+    }
+
+    if (this.driver.stop === undefined) {
+      this.driver.stop = () => {};
+    }
+
+    if (this.driver.seek === undefined) {
+      this.driver.seek = where => false;
+    }
+
+    if (this.driver.step === undefined) {
+      this.driver.step = () => {};
+    }
+
+    if (this.driver.restart === undefined) {
+      this.driver.restart = () => false;
+    }
+
+    return config;
   }
 
   async play() {
@@ -92,13 +118,13 @@ class Core {
   }
 
   pause() {
-    if (this.state == 'playing' && typeof this.driver.togglePlay === 'function') {
+    if (this.state == 'playing') {
       this.driver.togglePlay();
     }
   }
 
   resume() {
-    if (this.state == 'paused' && typeof this.driver.togglePlay === 'function') {
+    if (this.state == 'paused') {
       this.driver.togglePlay();
     }
   }
@@ -112,14 +138,11 @@ class Core {
   }
 
   stop() {
-    if (typeof this.driver.stop === 'function') {
-      this.driver.stop();
-    }
+    this.driver.stop();
   }
 
   async seek(where) {
     if (this.state == 'initial' || this.state == 'loading') return false;
-    if (typeof this.driver.seek !== 'function') return false;
 
     if (this.driver.seek(where)) {
       this.dispatchEvent('seeked');
@@ -130,7 +153,7 @@ class Core {
   }
 
   step() {
-    if (this.state == 'paused' && typeof this.driver.step === 'function') {
+    if (this.state == 'paused') {
       this.driver.step();
     }
   }
@@ -220,11 +243,7 @@ class Core {
   }
 
   async restart() {
-    if (typeof this.driver.restart === 'function') {
-      return await this.driver.restart();
-    } else {
-      return false;
-    }
+    return await this.driver.restart();
   }
 
   feed(data) {
@@ -249,14 +268,10 @@ class Core {
   }
 
   async doInitializeDriver() {
-    if (typeof this.driver.init === 'function') {
-      const meta = await this.driver.init();
-
-      this.duration = this.duration ?? meta.duration;
-      this.cols = this.cols ?? meta.cols;
-      this.rows = this.rows ?? meta.rows;
-    }
-
+    const meta = await this.driver.init();
+    this.duration = this.duration ?? meta.duration;
+    this.cols = this.cols ?? meta.cols;
+    this.rows = this.rows ?? meta.rows;
     this.ensureVt();
   }
 
