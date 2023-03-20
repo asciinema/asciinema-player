@@ -4,12 +4,81 @@ import Clock from './clock';
 const vt = loadVt(); // trigger async loading of wasm
 
 
+class State {
+  constructor(core) {
+    this.core = core;
+    this.driver = core.driver;
+  }
+
+  play() {}
+  pause() {}
+  seek(where) { return false; }
+  step() {}
+  stop() { this.driver.stop(); }
+}
+
+class UninitializedState extends State {
+  async play() {
+    await this.core.initializeDriver();
+    return await this.core.play();
+  }
+
+  async seek(where) {
+    await this.core.initializeDriver();
+    return await this.core.seek(where);
+  }
+
+  async step() {
+    await this.core.initializeDriver();
+    return await this.core.step();
+  }
+
+  stop() {}
+}
+
+class StoppedState extends State {
+  async play() {
+    const stop = await this.driver.play();
+
+    if (stop === true) {
+      this.core.setState('playing');
+    } else if (typeof stop === 'function') {
+      this.core.setState('playing');
+      this.driver.stop = stop;
+    }
+
+    this.core.initializeClock();
+  }
+
+  seek(where) {
+    return this.driver.seek(where);
+  }
+
+  step() {
+    this.driver.step();
+  }
+}
+
+class PlayingState extends State {
+  pause() {
+    if (this.driver.pause()) {
+      this.core.setState('stopped', { reason: 'paused' })
+    }
+  }
+
+  seek(where) {
+    return this.driver.seek(where);
+  }
+}
+
+class LoadingState extends State {}
+
 class Core {
   // public
 
   constructor(driverFn, opts) {
     this.logger = opts.logger;
-    this.state = 'initial';
+    this.state = new UninitializedState(this);
     this.driver = null;
     this.driverFn = driverFn;
     this.changedLines = new Set();
@@ -63,7 +132,7 @@ class Core {
     );
 
     if (typeof this.driver === 'function') {
-      this.driver = { start: this.driver };
+      this.driver = { play: this.driver };
     }
 
     this.duration = this.driver.duration;
@@ -75,7 +144,7 @@ class Core {
     }
 
     const config = {
-      isPausable: !!this.driver.togglePlay,
+      isPausable: !!this.driver.pause,
       isSeekable: !!this.driver.seek,
       poster: await this.renderPoster()
     }
@@ -84,12 +153,8 @@ class Core {
       this.driver.init = () => { return {} };
     }
 
-    if (this.driver.togglePlay === undefined) {
-      this.driver.togglePlay = () => {};
-    }
-
-    if (this.driver.stop === undefined) {
-      this.driver.stop = () => {};
+    if (this.driver.pause === undefined) {
+      this.driver.pause = () => {};
     }
 
     if (this.driver.seek === undefined) {
@@ -100,62 +165,41 @@ class Core {
       this.driver.step = () => {};
     }
 
-    if (this.driver.restart === undefined) {
-      this.driver.restart = () => false;
+    if (this.driver.stop === undefined) {
+      this.driver.stop = () => {};
+    }
+
+    if (this.driver.getCurrentTime === undefined) {
+      this.driver.getCurrentTime = () => {
+        if (this.clock !== undefined) {
+          return this.clock.getTime();
+        };
+      }
     }
 
     return config;
   }
 
   async play() {
-    if (this.state == 'initial') {
-      await this.start();
-    } else if (this.state == 'paused') {
-      this.resume();
-    } else if (this.state == 'ended') {
-      await this.restart();
-    }
+    await this.state.play();
   }
 
   pause() {
-    if (this.state == 'playing') {
-      this.driver.togglePlay();
-    }
-  }
-
-  resume() {
-    if (this.state == 'paused') {
-      this.driver.togglePlay();
-    }
-  }
-
-  async togglePlay() {
-    if (this.state == 'playing') {
-      this.pause();
-    } else {
-      await this.play();
-    }
-  }
-
-  stop() {
-    this.driver.stop();
+    this.state.pause();
   }
 
   async seek(where) {
-    if (this.state == 'initial' || this.state == 'loading') return false;
-
-    if (this.driver.seek(where)) {
+    if (await this.state.seek(where)) {
       this.dispatchEvent('seeked');
-      return true;
     }
-
-    return false;
   }
 
-  step() {
-    if (this.state == 'paused') {
-      this.driver.step();
-    }
+  async step() {
+    await this.state.step();
+  }
+
+  stop() {
+    this.state.stop();
   }
 
   getChangedLines() {
@@ -181,11 +225,7 @@ class Core {
   }
 
   getCurrentTime() {
-    if (typeof this.driver.getCurrentTime === 'function') {
-      return this.driver.getCurrentTime();
-    } else if (this.clock !== undefined) {
-      return this.clock.getTime();
-    }
+    return this.driver.getCurrentTime();
   }
 
   getRemainingTime() {
@@ -206,44 +246,24 @@ class Core {
 
   // private
 
-  setState(newState) {
-    if (this.state === newState) return;
-    this.state = newState;
-
+  setState(newState, data = {}) {
     if (newState === 'playing') {
+      this.state = new PlayingState(this);
       this.dispatchEvent('play');
+    } else if (newState === 'stopped') {
+      this.state = new StoppedState(this);
+
+      if (data.reason === 'paused') {
+        this.dispatchEvent('pause');
+      } else if (data.reason === 'ended') {
+        this.dispatchEvent('ended');
+      }
     } else if (newState === 'loading') {
+      this.state = new LoadingState(this);
       this.dispatchEvent('loading');
-    } else if (newState === 'paused') {
-      this.dispatchEvent('pause');
-    } else if (newState === 'ended') {
-      this.dispatchEvent('ended');
+    } else {
+      throw `invalid state: ${newState}`;
     }
-  }
-
-  async start() {
-    this.dispatchEvent('starting');
-
-    const timeoutId = setTimeout(() => {
-      this.dispatchEvent('loading');
-    }, 2000);
-
-    await this.initializeDriver();
-    this.dispatchEvent('terminalUpdate'); // clears the poster
-    const stop = await this.driver.start();
-    clearTimeout(timeoutId);
-
-    if (typeof stop === 'function') {
-      this.driver.stop = stop;
-    }
-
-    this.clock = new Clock(this.speed);
-    this.state = 'playing';
-    this.dispatchEvent('play');
-  }
-
-  async restart() {
-    return await this.driver.restart();
   }
 
   feed(data) {
@@ -259,6 +279,12 @@ class Core {
 
   now() { return performance.now() * this.speed }
 
+  initializeClock() {
+    if (this.clock === undefined) {
+      this.clock = new Clock(this.speed);
+    }
+  }
+
   initializeDriver() {
     if (this.initializeDriverPromise === undefined) {
       this.initializeDriverPromise = this.doInitializeDriver();
@@ -273,6 +299,7 @@ class Core {
     this.cols = this.cols ?? meta.cols;
     this.rows = this.rows ?? meta.rows;
     this.ensureVt();
+    this.setState('stopped');
   }
 
   ensureVt() {
