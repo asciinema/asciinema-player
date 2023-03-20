@@ -39,7 +39,7 @@ function clock({ feed }, { cols = 5, rows = 1 }) {
     rows: rows,
     duration: 24 * 60,
 
-    start: () => {
+    play: () => {
       setTimeout(() => {
         feed(`\x1b[?25l\x1b[1m\x1b[${middleRow}B`);
       }, 0);
@@ -58,6 +58,8 @@ function clock({ feed }, { cols = 5, rows = 1 }) {
         if (m < 10) { feed('0') }
         feed(`${m}`);
       }, 1000);
+
+      return true;
     },
 
     stop: () => {

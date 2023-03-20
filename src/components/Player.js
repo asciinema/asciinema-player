@@ -147,6 +147,7 @@ export default props => {
     const s = state.coreState;
 
     if (s === 'playing') {
+      updateTerminal();
       startBlinking();
       startTimeUpdates();
     } else if (s !== 'initial') {
@@ -233,6 +234,14 @@ export default props => {
     }
   }
 
+  const togglePlay = () => {
+    if (state.coreState === 'playing') {
+      core.pause();
+    } else {
+      core.play();
+    }
+  }
+
   const onKeyPress = (e) => {
     if (e.altKey || e.metaKey || e.ctrlKey) {
       return;
@@ -253,7 +262,7 @@ export default props => {
     }
 
     if (e.key == ' ') {
-      core.togglePlay();
+      togglePlay();
     } else if (e.key == '.') {
       core.step();
       updateTime();
@@ -369,7 +378,7 @@ export default props => {
     <div class="asciinema-player-wrapper" classList={{ hud: state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
       <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
-        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
+        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
         <Switch>
           <Match when={state.showStartOverlay}><StartOverlay onClick={() => core.play()} /></Match>
           <Match when={state.coreState == 'loading'}><LoaderOverlay /></Match>

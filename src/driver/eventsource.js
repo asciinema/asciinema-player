@@ -12,7 +12,7 @@ function eventsource({ url, bufferTime = 0.1 }, { feed, reset, setState, logger 
   }
 
   return {
-    start: () => {
+    play: () => {
       es = new EventSource(url);
 
       es.addEventListener('open', () => {
@@ -56,7 +56,7 @@ function eventsource({ url, bufferTime = 0.1 }, { feed, reset, setState, logger 
       es.addEventListener('done', () => {
         logger.info('eventsource: closed');
         es.close();
-        setState('ended');
+        setState('stopped', { reason: 'ended' });
       });
     },
 

@@ -14,9 +14,7 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
   let pauseElapsedTime;
   let playCount = 0;
 
-  async function load() {
-    if (frames) return;
-
+  async function init() {
     const recording = src.parser(await doFetch(src));
     cols = recording.cols;
     rows = recording.rows;
@@ -30,6 +28,8 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
 
     effectiveStartAt = result.effectiveStartAt;
     duration = frames[frames.length - 1][0];
+
+    return { cols, rows, duration };
   }
 
   async function doFetch({ url, data, fetchOpts = {} }) {
@@ -76,7 +76,8 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
       } else {
         timeoutId = null;
         pauseElapsedTime = duration * 1000;
-        setState('ended');
+        effectiveStartAt = null;
+        setState('stopped', { reason: 'ended' });
       }
     }
   }
@@ -95,23 +96,33 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
     scheduleNextFrame();
   }
 
-  function pause() {
-    setState('paused');
-    doPause();
+  function play() {
+    if (timeoutId) return true;
+
+    if (frames[nextFrameIndex] === undefined) { // ended
+      effectiveStartAt = 0;
+    }
+
+    if (effectiveStartAt !== null) {
+      seek(effectiveStartAt);
+    }
+
+    resume();
+
+    return true;
   }
 
-  function doPause() {
+  function pause() {
+    if (!timeoutId) return true;
+
     clearTimeout(timeoutId);
     timeoutId = null;
     pauseElapsedTime = now() - startTime;
+
+    return true;
   }
 
   function resume() {
-    setState('playing');
-    doResume();
-  }
-
-  function doResume() {
     startTime = now() - pauseElapsedTime;
     pauseElapsedTime = null;
     scheduleNextFrame();
@@ -119,10 +130,7 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
 
   function seek(where) {
     const isPlaying = !!timeoutId;
-
-    if (isPlaying) {
-      doPause();
-    }
+    pause();
 
     if (typeof where === 'string') {
       const currentTime = (pauseElapsedTime ?? 0) / 1000;
@@ -157,26 +165,26 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
     }
 
     pauseElapsedTime = targetTime;
+    effectiveStartAt = null;
 
     if (isPlaying) {
-      doResume();
+      resume();
     }
 
     return true;
   }
 
   function step() {
-      let nextFrame = frames[nextFrameIndex];
+    let nextFrame = frames[nextFrameIndex];
 
-      if (nextFrame !== undefined) {
-        feed(nextFrame[1]);
-        elapsedVirtualTime = nextFrame[0] * 1000;
-        pauseElapsedTime = elapsedVirtualTime;
-        nextFrameIndex++;
-      } else {
-        pauseElapsedTime = duration * 1000;
-        setState('ended');
-      }
+    if (nextFrame !== undefined) {
+      feed(nextFrame[1]);
+      elapsedVirtualTime = nextFrame[0] * 1000;
+      pauseElapsedTime = elapsedVirtualTime;
+      nextFrameIndex++;
+    }
+
+    effectiveStartAt = null;
   }
 
   function getPoster(time) {
@@ -193,68 +201,23 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
     return poster;
   }
 
-  return {
-    init: async () => {
-      await load();
-
-      return { cols, rows, duration };
-    },
-
-    start: async () => {
-      seek(effectiveStartAt);
-      resume();
-    },
-
-    stop: () => {
-      clearTimeout(timeoutId);
-    },
-
-    restart: () => {
-      if (timeoutId) return false;
-
-      seek(0);
-      resume();
-
-      return true;
-    },
-
-    togglePlay: () => {
-      if (timeoutId) {
-        pause();
-        return false;
-      } else {
-        resume();
-        return true;
-      }
-    },
-
-    seek: where => {
-      const ended = timeoutId === null && frames[nextFrameIndex] === undefined;
-
-      if (seek(where)) {
-        if (ended) {
-          setState('paused');
-        }
-
-        return true;
-      }
-
-      return false;
-    },
-
-    step,
-
-    getPoster: t => {
-      return getPoster(t);
-    },
-
-    getCurrentTime: () => {
-      if (timeoutId) {
-        return (now() - startTime) / 1000;
-      } else {
-        return (pauseElapsedTime ?? 0) / 1000;
-      }
+  function getCurrentTime() {
+    if (timeoutId) {
+      return (now() - startTime) / 1000;
+    } else {
+      return (pauseElapsedTime ?? 0) / 1000;
     }
+  }
+
+  return {
+    init,
+    play,
+    pause,
+    seek,
+    step,
+    stop: pause,
+    getPoster,
+    getCurrentTime
   }
 }
 

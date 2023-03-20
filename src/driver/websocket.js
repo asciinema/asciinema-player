@@ -63,7 +63,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay },
     socket.onclose = event => {
       if (stop || event.code === 1000 || event.code === 1005) {
         logger.info('websocket: closed');
-        setState('ended');
+        setState('stopped', { reason: 'ended' });
       } else {
         clearTimeout(successfulConnectionTimeout);
         const delay = reconnectDelay(reconnectAttempt++);
@@ -75,7 +75,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay },
   }
 
   return {
-    start: () => {
+    play: () => {
       connect();
     },
 
