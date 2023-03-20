@@ -95,6 +95,7 @@ class Core {
     this.poster = opts.poster;
 
     this.eventHandlers = new Map([
+      ['stateChanged', []],
       ['loading', []],
       ['reset', []],
       ['play', []],
@@ -263,6 +264,8 @@ class Core {
     } else {
       throw `invalid state: ${newState}`;
     }
+
+    this.dispatchEvent('stateChanged', { newState, data });
   }
 
   feed(data) {
@@ -298,7 +301,7 @@ class Core {
     this.cols = this.cols ?? meta.cols;
     this.rows = this.rows ?? meta.rows;
     this.ensureVt();
-    this.setState('stopped');
+    this.state = new StoppedState(this);
   }
 
   ensureVt() {
