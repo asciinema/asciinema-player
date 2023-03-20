@@ -13,7 +13,7 @@ export default props => {
   const autoPlay = props.autoPlay;
 
   const [state, setState] = createStore({
-    coreState: 'initial',
+    coreState: 'stopped',
     cols: props.cols,
     rows: props.rows,
     lines: [],
@@ -50,8 +50,19 @@ export default props => {
   let controlBarRef;
   let resizeObserver;
 
-  core.addEventListener('loading', () => {
-    setState('coreState', 'loading');
+  core.addEventListener('stateChanged', ({ newState, data }) => {
+    setState('coreState', newState);
+
+    if (newState === 'playing') {
+      setState('showStartOverlay', false);
+      updateTerminal();
+      startBlinking();
+      startTimeUpdates();
+    } else {
+      stopBlinking();
+      stopTimeUpdates();
+      updateTime();
+    }
   });
 
   core.addEventListener('reset', ({ cols, rows }) => {
@@ -63,20 +74,8 @@ export default props => {
     updateTerminal();
   });
 
-  core.addEventListener('play', () => {
-    setState({ coreState: 'playing', showStartOverlay: false });
-  });
-
-  core.addEventListener('pause', () => {
-    setState('coreState', 'paused');
-  });
-
   core.addEventListener('seeked', () => {
     updateTime();
-  });
-
-  core.addEventListener('ended', () => {
-    setState('coreState', 'paused');
   });
 
   core.addEventListener('terminalUpdate', () => {
@@ -137,20 +136,6 @@ export default props => {
     stopBlinking();
     stopTimeUpdates();
     resizeObserver.disconnect();
-  });
-
-  createEffect(() => {
-    const s = state.coreState;
-
-    if (s === 'playing') {
-      updateTerminal();
-      startBlinking();
-      startTimeUpdates();
-    } else if (s !== 'initial') {
-      stopBlinking();
-      stopTimeUpdates();
-      updateTime();
-    }
   });
 
   const updateTerminal = () => {
@@ -233,7 +218,7 @@ export default props => {
   const togglePlay = () => {
     if (state.coreState === 'playing') {
       core.pause();
-    } else {
+    } else if (state.coreState === 'stopped') {
       core.play();
     }
   }
