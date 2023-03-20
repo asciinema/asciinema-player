@@ -34,30 +34,30 @@ function clock({ feed }, { cols = 5, rows = 1 }) {
   const leftPad = Math.floor(cols / 2) - 2;
   let intervalId;
 
+  const render = () => {
+    const d = new Date();
+    const h = d.getHours();
+    const m = d.getMinutes();
+
+    feed('\r');
+    for (let i = 0; i < leftPad; i++) { feed(' ') }
+    feed('\x1b[32m');
+    if (h < 10) { feed('0') }
+    feed(`${h}`);
+    feed('\x1b[39;5m:\x1b[25;35m')
+    if (m < 10) { feed('0') }
+    feed(`${m}`);
+  };
+
   return {
     cols: cols,
     rows: rows,
     duration: 24 * 60,
 
     play: () => {
-      setTimeout(() => {
-        feed(`\x1b[?25l\x1b[1m\x1b[${middleRow}B`);
-      }, 0);
-
-      intervalId = setInterval(() => {
-        const d = new Date();
-        const h = d.getHours();
-        const m = d.getMinutes();
-
-        feed('\r');
-        for (let i = 0; i < leftPad; i++) { feed(' ') }
-        feed('\x1b[32m');
-        if (h < 10) { feed('0') }
-        feed(`${h}`);
-        feed('\x1b[39;5m:\x1b[25;35m')
-        if (m < 10) { feed('0') }
-        feed(`${m}`);
-      }, 1000);
+      feed(`\x1b[?25l\x1b[1m\x1b[${middleRow}B`);
+      render();
+      intervalId = setInterval(render, 1000);
 
       return true;
     },
