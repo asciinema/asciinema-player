@@ -50,10 +50,6 @@ export default props => {
   let controlBarRef;
   let resizeObserver;
 
-  core.addEventListener('starting', () => {
-    setState('showStartOverlay', false);
-  });
-
   core.addEventListener('loading', () => {
     setState('coreState', 'loading');
   });

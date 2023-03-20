@@ -95,7 +95,6 @@ class Core {
     this.poster = opts.poster;
 
     this.eventHandlers = new Map([
-      ['starting', []],
       ['loading', []],
       ['reset', []],
       ['play', []],
