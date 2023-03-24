@@ -78,4 +78,19 @@ function parseAsciicastV2(header, events) {
   }
 }
 
-export { parseAsciicast };
+function unparseAsciicastV2(recording) {
+  const header = JSON.stringify({
+    version: 2,
+    width: recording.cols,
+    height: recording.rows,
+  })
+
+  const events = Array.from(recording.frames)
+    .map(f => [f[0], 'o', f[1]])
+    .map(e => JSON.stringify(e))
+    .join('\n');
+
+  return `${header}\n${events}\n`;
+}
+
+export { parseAsciicast, unparseAsciicastV2 };
