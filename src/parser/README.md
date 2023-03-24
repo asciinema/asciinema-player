@@ -125,3 +125,52 @@ function parseLogs(text) {
   }
 };
 ```
+
+Here's slightly more advanced parser, for [Simon Jansen's Star Wars
+Asciimation](https://www.asciimation.co.nz/):
+
+```javascript
+function parseAsciimation(text) {
+  const LINES_PER_FRAME = 14;
+  const FRAME_DELAY = 67;
+  const lines = text.split('\n');
+
+  return {
+    cols: 67,
+    rows: LINES_PER_FRAME - 1,
+
+    frames: function*() {
+      let time = 0;
+      let prevFrameDuration = 0;
+
+      yield [0, '\x9b?25l']; // hide cursor
+
+      for (let i = 0; i + LINES_PER_FRAME - 1 < lines.length; i += LINES_PER_FRAME) {
+        time += prevFrameDuration;
+        prevFrameDuration = parseInt(lines[i], 10) * FRAME_DELAY;
+        const frame = lines.slice(i + 1, i + LINES_PER_FRAME).join('\r\n');
+        let text = '\x1b[H'; // move cursor home
+        text += '\x1b[J'; // clear screen
+        text += frame; // print current frame's lines
+        yield [time / 1000, text];
+      }
+    }()
+  }
+}
+
+AsciinemaPlayer.create(
+  { url: '/starwars.txt', parser: parseAsciimation },
+  document.getElementById('demo')
+);
+```
+
+It parses [Simon's Asciimation in its original format](starwars.txt) (please do
+not redistribute without giving Simon credit for it), where each animation frame
+is defined by 14 lines. First of every 14 lines defines duration a frame should
+be displayed for (multiplied by a speed constant, by default `67` ms), while
+lines 2-14 define frame content - text to display.
+
+Note that `frames` in the above parser function is a generator (note `*` in
+`function*`) that is immediately called (note `()` after `}` at the end). In
+fact `frames` can be any iterable or iterator which is finite, which in practice
+means you can return an array or a finite generator, amongst others.
