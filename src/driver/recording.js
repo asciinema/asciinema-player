@@ -15,11 +15,12 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
   let playCount = 0;
 
   async function init() {
-    const recording = src.parser(await doFetch(src));
+    const { parser, minFrameTime } = src;
+    const recording = parser(await doFetch(src));
     cols = recording.cols;
     rows = recording.rows;
     idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit
-    const result = prepareFrames(recording.frames, logger, idleTimeLimit, startAt);
+    const result = prepareFrames(recording.frames, logger, idleTimeLimit, startAt, minFrameTime);
     frames = result.frames;
 
     if (frames.length === 0) {
@@ -221,8 +222,7 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
   }
 }
 
-function batchFrames(frames, logger) {
-  const maxFrameTime = 1.0 / 60;
+function batchFrames(frames, logger, minFrameTime = 1.0 / 60) {
   let prevFrame;
 
   return frames.transform(emit => {
@@ -238,7 +238,7 @@ function batchFrames(frames, logger) {
           return;
         }
 
-        if (frame[0] - prevFrame[0] < maxFrameTime) {
+        if (frame[0] - prevFrame[0] < minFrameTime) {
           prevFrame[1] += frame[1];
         } else {
           emit(prevFrame);
@@ -259,7 +259,7 @@ function batchFrames(frames, logger) {
   });
 }
 
-function prepareFrames(frames, logger, idleTimeLimit = Infinity, startAt = 0) {
+function prepareFrames(frames, logger, idleTimeLimit = Infinity, startAt = 0, minFrameTime) {
   let prevT = 0;
   let shift = 0;
   let effectiveStartAt = startAt;
@@ -268,7 +268,7 @@ function prepareFrames(frames, logger, idleTimeLimit = Infinity, startAt = 0) {
     frames = new Stream(frames);
   }
 
-  const fs = Array.from(batchFrames(frames, logger).map(e => {
+  const fs = Array.from(batchFrames(frames, logger, minFrameTime).map(e => {
     const delay = e[0] - prevT;
     const delta = delay - idleTimeLimit;
     prevT = e[0];
