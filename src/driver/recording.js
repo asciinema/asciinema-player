@@ -1,3 +1,4 @@
+import { unparseAsciicastV2 } from '../parser/asciicast';
 import Stream from '../stream';
 
 
@@ -15,7 +16,7 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
   let playCount = 0;
 
   async function init() {
-    const { parser, minFrameTime } = src;
+    const { parser, minFrameTime, dumpFilename } = src;
     const recording = parser(await doFetch(src));
     cols = recording.cols;
     rows = recording.rows;
@@ -25,6 +26,14 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
 
     if (frames.length === 0) {
       throw 'recording is missing events';
+    }
+
+    if (dumpFilename !== undefined) {
+      const link = document.createElement('a');
+      const asciicast = unparseAsciicastV2({ ...recording, frames });
+      link.href = URL.createObjectURL(new Blob([asciicast], { type: 'text/plain' }));
+      link.download = dumpFilename;
+      link.click();
     }
 
     effectiveStartAt = result.effectiveStartAt;
