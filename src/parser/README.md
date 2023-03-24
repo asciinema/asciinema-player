@@ -47,11 +47,41 @@ parseAsciicast('{ "version": 2, "width": 80, "height": 24 }\n[1.0, "o", "hello "
 
 ## Custom parser
 
-The following example illustrates implementation and usage of a custom parser:
+The following example illustrates implementation of a custom parser:
 
 ```javascript
 import * as AsciinemaPlayer from 'asciinema-player';
 
+function parse(text) {
+  return {
+    cols: 80,
+    rows: 24,
+    frames: [[1.0, "hello"], [2.0, " world!"]]
+  }
+};
+
+AsciinemaPlayer.create(
+  { url: '/example.txt', parser: parse },
+  document.getElementById('demo')
+);
+```
+
+The above `parse` function returns a recording object, which makes the player
+print "hello" (at time = 1.0 sec), followed by "world!" a second later.  The
+parser is then passed to `create` together with a URL as source argument, which
+makes the player fetch a file (`example.txt`) and pass it through the parser
+function.
+
+This parser is not quite there though because it ignores downloaded file's
+content, always returning hardcoded frames. Also, `cols` and `rows` are made up
+as well - if possible they should reflect the size of a terminal at the time of
+recording, otherwise their values should be chosen to make the recording look
+legible. The example illustrates what kind of data the player expects though.
+
+A more realistic example, where content of a file is actually used to construct
+frames, could look like this:
+
+```javascript
 function parseLogs(text) {
   return {
     cols: 80,
@@ -61,14 +91,37 @@ function parseLogs(text) {
 };
 
 AsciinemaPlayer.create(
-  { url: '/access.log', parser: parseLogs },
+  { url: '/example.log', parser: parseLogs },
   document.getElementById('demo')
 );
 ```
 
 `parseLogs` function parses a log file into a recording which prints one log
-line every half a second.
+line every half a second. This replays logs at a fixed rate.
 
-It is then passed to `create` together with a URL as source argument, which
-makes the player fetch a log file (`access.log`) and pass it through the parser
-function.
+That's not very fun to watch. If log lines started with a timestamp (where 0.0
+means start of the recording) followed by log message then the timestamp could
+be used for frame timing.
+
+For example:
+
+
+```
+# example.log
+1.0 first log line
+1.2 second log line
+3.8 third log line
+```
+
+```javascript
+function parseLogs(text) {
+  return {
+    cols: 80,
+    rows: 24,
+    frames: text.split('\n').map(line => {
+      const [_, time, message] = /^([\d.]+) (.*)/.exec(line);
+      return [parseFloat(time), message + '\n']
+    })
+  }
+};
+```
