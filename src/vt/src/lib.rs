@@ -31,7 +31,7 @@ impl VtWrapper {
     }
 
     pub fn get_line(&self, l: usize) -> JsValue {
-        let line = self.vt.get_line(l);
+        let line: Vec<_> = self.vt.line(l).segments().collect();
         serde_wasm_bindgen::to_value(&line).unwrap()
     }
 
