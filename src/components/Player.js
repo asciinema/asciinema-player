@@ -103,7 +103,7 @@ export default props => {
         containerH: wrapperRef.offsetHeight
       });
 
-      wrapperRef.dispatchEvent(new CustomEvent('resize', {detail: {el: playerRef}}));
+      wrapperRef.dispatchEvent(new CustomEvent('resize', { detail: { el: playerRef } }));
     }, 10));
 
     resizeObserver.observe(wrapperRef);
