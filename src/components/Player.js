@@ -111,14 +111,10 @@ export default props => {
 
   onMount(async () => {
     logger.info('player mounted');
-
     measureDomElements();
     logger.debug('font measurements', { charW: state.charW, charH: state.charH });
-
     setupResizeObserver();
-
     const { isPausable, isSeekable, poster } = await core.init();
-
     setState({ isPausable, isSeekable });
 
     if (poster !== undefined && !autoPlay) {
