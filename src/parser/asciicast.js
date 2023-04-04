@@ -53,28 +53,24 @@ function parseJsonl(jsonl) {
 function parseAsciicastV1(data) {
   let time = 0;
 
-  const frames = new Stream(data.stdout).map(e => {
+  const events = new Stream(data.stdout).map(e => {
     time += e[0];
-    return [time, e[1]];
+    return [time, 'o', e[1]];
   });
 
   return {
     cols: data.width,
     rows: data.height,
-    frames: frames
+    events: events
   }
 }
 
 function parseAsciicastV2(header, events) {
-  const frames = events
-    .filter(e => e[1] === 'o')
-    .map(e => [e[0], e[2]]);
-
   return {
     cols: header.width,
     rows: header.height,
-    idleTimeLimit: header.idle_time_limit,
-    frames: frames
+    events: events.filter(e => e[1] === 'o' || e[1] === 'i'),
+    idleTimeLimit: header.idle_time_limit
   }
 }
 
@@ -85,8 +81,8 @@ function unparseAsciicastV2(recording) {
     height: recording.rows,
   })
 
-  const events = Array.from(recording.frames)
-    .map(f => [f[0], 'o', f[1]])
+  const events = Array.from(recording.events)
+    .filter(e => e[1] === 'o' || e[1] === 'i')
     .map(e => JSON.stringify(e))
     .join('\n');
 
