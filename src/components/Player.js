@@ -113,6 +113,8 @@ export default props => {
     logger.info('player mounted');
 
     measureDomElements();
+    logger.debug('font measurements', { charW: state.charW, charH: state.charH });
+
     setupResizeObserver();
 
     const { isPausable, isSeekable, poster } = await core.init();
