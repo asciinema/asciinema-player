@@ -478,6 +478,8 @@ Terminal font-family override.
 
 Use any valid CSS `font-family` value, e.g `"'JetBrains Mono', Consolas, Menlo, 'Bitstream Vera Sans Mono', monospace"`.
 
+See [Fonts](#fonts) for more information on using custom fonts.
+
 ### `terminalLineHeight`
 
 Type: number
@@ -617,6 +619,67 @@ player.addEventListener('ended', () => {
 
 Use this function to dispose of the player, i.e. to shut it down, release all
 resources and remove it from DOM.
+
+## Fonts
+
+By default the player uses a web safe, platform specific monospace font via
+`font-family` value like this: `"Consolas, Menlo, 'Bitstream Vera Sans Mono',
+monospace"`.
+
+You can use any custom monospace font with the player by adding `@font-face`
+definitions in CSS and calling `AsciinemaPlayer.create` with
+`terminalFontFamily` option. Regular font face is necessary, bold (weight 700)
+is recommended, italic is optional (italics are rarely used in terminal).
+
+If you use [icons](https://fontawesome.com/) or
+[other](https://github.com/powerline/powerline)
+[symbols](https://github.com/romkatv/powerlevel10k) in your shell you may want
+to use one of [Nerd Fonts](https://www.nerdfonts.com/).
+
+For example to use [Fira Code](https://github.com/tonsky/FiraCode) Nerd Font try
+this:
+
+```css
+/* app.css */
+
+@font-face {
+    font-family: "FiraCode Nerd Font";
+    src:    local(Fira Code Bold Nerd Font Complete Mono),
+            url("/fonts/Fira Code Bold Nerd Font Complete Mono.ttf") format("truetype");
+    font-stretch: normal;
+    font-style: normal;
+    font-weight: 700;
+}
+
+@font-face {
+    font-family: "FiraCode Nerd Font";
+    src:    local(Fira Code Regular Nerd Font Complete Mono),
+            url("/fonts/Fira Code Regular Nerd Font Complete Mono.ttf") format("truetype");
+    font-stretch: normal;
+}
+
+```
+
+```javascript
+// app.js
+
+AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
+  terminalFontFamily: "'FiraCode Nerd Font', monospace"
+});
+```
+
+Note that the player performs measurement of font metrics (width/height) when it
+mounts on the page, therefore it's highly recommended to ensure chosen font is
+already loaded before calling `create`. This can be achieved by using [CSS Font
+Loading API](https://developer.mozilla.org/en-US/docs/Web/API/FontFaceSet/load):
+
+```javascript
+document.fonts.load("1em FiraCode Nerd Font").then(() => {
+  AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
+    terminalFontFamily: "'FiraCode Nerd Font', monospace"
+  });
+}
+```
 
 ## Keyboard shortcuts
 
