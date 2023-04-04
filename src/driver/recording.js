@@ -21,7 +21,7 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
     cols = recording.cols;
     rows = recording.rows;
     idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit
-    const result = prepareFrames(recording.frames, logger, idleTimeLimit, startAt, minFrameTime);
+    const result = prepareFrames(recording.events, logger, idleTimeLimit, startAt, minFrameTime);
     frames = result.frames;
 
     if (frames.length === 0) {
@@ -231,10 +231,10 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
   }
 }
 
-function batchFrames(frames, logger, minFrameTime = 1.0 / 60) {
+function batcher(logger, minFrameTime = 1.0 / 60) {
   let prevFrame;
 
-  return frames.transform(emit => {
+  return emit => {
     let ic = 0;
     let oc = 0;
 
@@ -265,36 +265,40 @@ function batchFrames(frames, logger, minFrameTime = 1.0 / 60) {
         logger.debug(`batched ${ic} frames to ${oc} frames`);
       }
     }
-  });
+  };
 }
 
-function prepareFrames(frames, logger, idleTimeLimit = Infinity, startAt = 0, minFrameTime) {
+function prepareFrames(events, logger, idleTimeLimit = Infinity, startAt = 0, minFrameTime) {
   let prevT = 0;
   let shift = 0;
   let effectiveStartAt = startAt;
 
-  if (!(frames instanceof Stream)) {
-    frames = new Stream(frames);
+  if (!(events instanceof Stream)) {
+    events = new Stream(events);
   }
 
-  const fs = Array.from(batchFrames(frames, logger, minFrameTime).map(e => {
-    const delay = e[0] - prevT;
-    const delta = delay - idleTimeLimit;
-    prevT = e[0];
+  const frames = events
+    .filter(e => e[1] === 'o')
+    .map(e => [e[0], e[2]])
+    .transform(batcher(logger, minFrameTime))
+    .map(e => {
+      const delay = e[0] - prevT;
+      const delta = delay - idleTimeLimit;
+      prevT = e[0];
 
-    if (delta > 0) {
-      shift += delta;
+      if (delta > 0) {
+        shift += delta;
 
-      if (e[0] < startAt) {
-        effectiveStartAt -= delta;
+        if (e[0] < startAt) {
+          effectiveStartAt -= delta;
+        }
       }
-    }
 
-    return [e[0] - shift, e[1]];
-  }));
+      return [e[0] - shift, e[1]];
+  });
 
   return {
-    frames: fs,
+    frames: Array.from(frames),
     effectiveStartAt: effectiveStartAt
   }
 }

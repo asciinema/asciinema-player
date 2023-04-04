@@ -3,16 +3,21 @@
 Parser is a function, which transforms a recording encoded in an arbitrary file
 format into a simple object representing a recording. Once the player fetches a
 file, it runs its contents through a parser, which turns it into a recording
-object ready to be played.
+object used by player's [recording driver](../driver/recording.js).
+
+## Data model of a recording
 
 asciinema player uses very simple internal representation of a recording. The
 object has following properties:
 
 - `cols` - number of terminal columns (terminal width in chars),
 - `rows` - number of terminal rows (terminal height in lines),
-- `frames` - iterable (e.g. array, generator) of frames, where each frame is a 2
-  element array, containing frame time (in seconds) and a text to print (or
-  specifically, to feed into virtual terminal emulator).
+- `events` - iterable (e.g. array, generator) of recorded events, where each
+   event is a 3 element array, containing
+   - event time, in seconds,
+   - event type, [as defined by asciicast v2
+     format](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md#supported-event-types),
+   - event data, specific to a type.
 
 Example recording in its internal representation:
 
@@ -20,12 +25,15 @@ Example recording in its internal representation:
 {
   cols: 80,
   rows: 24,
-  frames: [
-    [1.0, 'hello '],
-    [2.0, 'world!']
+  events: [
+    [1.0, 'o', 'hello '],
+    [2.0, 'o', 'world!']
   ]
 }
 ```
+
+Data model of a recording is _very_ similar to [asciicast v2
+format](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md#supported-event-types).
 
 ## Default parser
 
@@ -47,6 +55,9 @@ parseAsciicast('{ "version": 2, "width": 80, "height": 24 }\n[1.0, "o", "hello "
 
 ## Custom parser
 
+Custom format parser can be built by implementing a function which takes file
+content and returns a value conforming to the above data model.
+
 The following example illustrates implementation of a custom parser:
 
 ```javascript
@@ -56,7 +67,7 @@ function parse(text) {
   return {
     cols: 80,
     rows: 24,
-    frames: [[1.0, "hello"], [2.0, " world!"]]
+    events: [[1.0, "o", "hello"], [2.0, "o", " world!"]]
   }
 };
 
@@ -73,20 +84,20 @@ makes the player fetch a file (`example.txt`) and pass it through the parser
 function.
 
 This parser is not quite there though because it ignores downloaded file's
-content, always returning hardcoded frames. Also, `cols` and `rows` are made up
+content, always returning hardcoded events. Also, `cols` and `rows` are made up
 as well - if possible they should reflect the size of a terminal at the time of
 recording, otherwise their values should be chosen to make the recording look
 legible. The example illustrates what kind of data the player expects though.
 
 A more realistic example, where content of a file is actually used to construct
-frames, could look like this:
+events, could look like this:
 
 ```javascript
 function parseLogs(text) {
   return {
     cols: 80,
     rows: 24,
-    frames: text.split('\n').map((line, i) => [i * 0.5, line + '\n'])
+    events: text.split('\n').map((line, i) => [i * 0.5, 'o', line + '\n'])
   }
 };
 
@@ -97,11 +108,11 @@ AsciinemaPlayer.create(
 ```
 
 `parseLogs` function parses a log file into a recording which prints one log
-line every half a second. This replays logs at a fixed rate.
+line every half a second.
 
-That's not very fun to watch. If log lines started with a timestamp (where 0.0
-means start of the recording) followed by log message then the timestamp could
-be used for frame timing.
+This replays logs at a fixed rate. That's not very fun to watch. If log lines
+started with a timestamp (where 0.0 means start of the recording) followed by
+log message then the timestamp could be used for event timing.
 
 For example:
 
@@ -118,9 +129,9 @@ function parseLogs(text) {
   return {
     cols: 80,
     rows: 24,
-    frames: text.split('\n').map(line => {
+    events: text.split('\n').map(line => {
       const [_, time, message] = /^([\d.]+) (.*)/.exec(line);
-      return [parseFloat(time), message + '\n']
+      return [parseFloat(time), 'o', message + '\n']
     })
   }
 };
@@ -139,11 +150,11 @@ function parseAsciimation(text) {
     cols: 67,
     rows: LINES_PER_FRAME - 1,
 
-    frames: function*() {
+    events: function*() {
       let time = 0;
       let prevFrameDuration = 0;
 
-      yield [0, '\x9b?25l']; // hide cursor
+      yield [0, 'o', '\x9b?25l']; // hide cursor
 
       for (let i = 0; i + LINES_PER_FRAME - 1 < lines.length; i += LINES_PER_FRAME) {
         time += prevFrameDuration;
@@ -152,7 +163,7 @@ function parseAsciimation(text) {
         let text = '\x1b[H'; // move cursor home
         text += '\x1b[J'; // clear screen
         text += frame; // print current frame's lines
-        yield [time / 1000, text];
+        yield [time / 1000, 'o', text];
       }
     }()
   }
@@ -170,7 +181,7 @@ is defined by 14 lines. First of every 14 lines defines duration a frame should
 be displayed for (multiplied by a speed constant, by default `67` ms), while
 lines 2-14 define frame content - text to display.
 
-Note that `frames` in the above parser function is a generator (note `*` in
+Note that `events` in the above parser function is a generator (note `*` in
 `function*`) that is immediately called (note `()` after `}` at the end). In
-fact `frames` can be any iterable or iterator which is finite, which in practice
+fact `events` can be any iterable or iterator which is finite, which in practice
 means you can return an array or a finite generator, amongst others.
