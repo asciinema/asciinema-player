@@ -21,11 +21,11 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
     cols = recording.cols;
     rows = recording.rows;
     idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit
-    const result = prepareFrames(recording.events, logger, idleTimeLimit, startAt, minFrameTime);
-    frames = result.frames;
+    const result = prepareFrames(recording, logger, idleTimeLimit, startAt, minFrameTime);
+    frames = result.output;
 
     if (frames.length === 0) {
-      throw 'recording is missing events';
+      throw 'recording is missing output events';
     }
 
     if (dumpFilename !== undefined) {
@@ -268,18 +268,16 @@ function batcher(logger, minFrameTime = 1.0 / 60) {
   };
 }
 
-function prepareFrames(events, logger, idleTimeLimit = Infinity, startAt = 0, minFrameTime) {
+function prepareFrames({ output }, logger, idleTimeLimit = Infinity, startAt = 0, minFrameTime) {
   let prevT = 0;
   let shift = 0;
   let effectiveStartAt = startAt;
 
-  if (!(events instanceof Stream)) {
-    events = new Stream(events);
+  if (!(output instanceof Stream)) {
+    output = new Stream(output);
   }
 
-  const frames = events
-    .filter(e => e[1] === 'o')
-    .map(e => [e[0], e[2]])
+  output = output
     .transform(batcher(logger, minFrameTime))
     .map(e => {
       const delay = e[0] - prevT;
@@ -295,12 +293,10 @@ function prepareFrames(events, logger, idleTimeLimit = Infinity, startAt = 0, mi
       }
 
       return [e[0] - shift, e[1]];
-  });
+    })
+    .toArray();
 
-  return {
-    frames: Array.from(frames),
-    effectiveStartAt: effectiveStartAt
-  }
+  return { output, effectiveStartAt };
 }
 
 export { recording };

@@ -3,7 +3,7 @@ import Stream from '../stream';
 
 function parseAsciicast(data) {
   let header;
-  let events = new Stream([]);
+  let events;
 
   if (typeof data === 'string') {
     const result = parseJsonl(data);;
@@ -18,7 +18,7 @@ function parseAsciicast(data) {
     header = data;
   } else if (Array.isArray(data)) {
     header = data[0];
-    events = (new Stream(data)).drop(1);
+    events = data.slice(1, data.length);
   } else {
     throw 'invalid data';
   }
@@ -45,7 +45,8 @@ function parseJsonl(jsonl) {
   const events = new Stream(lines)
     .drop(1)
     .filter(l => l[0] === '[')
-    .map(l => JSON.parse(l));
+    .map(JSON.parse)
+    .toArray();
 
   return { header, events };
 }
@@ -53,15 +54,15 @@ function parseJsonl(jsonl) {
 function parseAsciicastV1(data) {
   let time = 0;
 
-  const events = new Stream(data.stdout).map(e => {
+  const output = new Stream(data.stdout).map(e => {
     time += e[0];
-    return [time, 'o', e[1]];
+    return [time, e[1]];
   });
 
   return {
     cols: data.width,
     rows: data.height,
-    events: events
+    output
   }
 }
 
@@ -69,7 +70,8 @@ function parseAsciicastV2(header, events) {
   return {
     cols: header.width,
     rows: header.height,
-    events: events.filter(e => e[1] === 'o' || e[1] === 'i'),
+    output: (new Stream(events)).filter(e => e[1] === 'o').map(e => [e[0], e[2]]),
+    input: (new Stream(events)).filter(e => e[1] === 'i').map(e => [e[0], e[2]]),
     idleTimeLimit: header.idle_time_limit
   }
 }
@@ -81,9 +83,8 @@ function unparseAsciicastV2(recording) {
     height: recording.rows,
   })
 
-  const events = Array.from(recording.events)
-    .filter(e => e[1] === 'o' || e[1] === 'i')
-    .map(e => JSON.stringify(e))
+  const events = recording.output
+    .map(e => JSON.stringify([e[0], 'o', e[1]]))
     .join('\n');
 
   return `${header}\n${events}\n`;

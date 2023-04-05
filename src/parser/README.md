@@ -12,12 +12,12 @@ object has following properties:
 
 - `cols` - number of terminal columns (terminal width in chars),
 - `rows` - number of terminal rows (terminal height in lines),
-- `events` - iterable (e.g. array, generator) of recorded events, where each
-   event is a 3 element array, containing
-   - event time, in seconds,
-   - event type, [as defined by asciicast v2
-     format](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md#supported-event-types),
-   - event data, specific to a type.
+- `output` - iterable (e.g. array, generator) of terminal writes, where each
+  item is a 2 element array, containing write time (in seconds) + data written to
+  a terminal,
+- `input` (optional) - iterable of terminal reads (individual key presses),
+  where each item is a 2 element array, containing read time (in seconds) and a
+  character that was read from keyboard.
 
 Example recording in its internal representation:
 
@@ -25,15 +25,12 @@ Example recording in its internal representation:
 {
   cols: 80,
   rows: 24,
-  events: [
-    [1.0, 'o', 'hello '],
-    [2.0, 'o', 'world!']
+  output: [
+    [1.0, 'hello '],
+    [2.0, 'world!']
   ]
 }
 ```
-
-Data model of a recording is _very_ similar to [asciicast v2
-format](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md#supported-event-types).
 
 ## Default parser
 
@@ -67,7 +64,7 @@ function parse(text) {
   return {
     cols: 80,
     rows: 24,
-    events: [[1.0, "o", "hello"], [2.0, "o", " world!"]]
+    output: [[1.0, "hello"], [2.0, " world!"]]
   }
 };
 
@@ -84,20 +81,20 @@ makes the player fetch a file (`example.txt`) and pass it through the parser
 function.
 
 This parser is not quite there though because it ignores downloaded file's
-content, always returning hardcoded events. Also, `cols` and `rows` are made up
+content, always returning hardcoded output. Also, `cols` and `rows` are made up
 as well - if possible they should reflect the size of a terminal at the time of
 recording, otherwise their values should be chosen to make the recording look
 legible. The example illustrates what kind of data the player expects though.
 
 A more realistic example, where content of a file is actually used to construct
-events, could look like this:
+output, could look like this:
 
 ```javascript
 function parseLogs(text) {
   return {
     cols: 80,
     rows: 24,
-    events: text.split('\n').map((line, i) => [i * 0.5, 'o', line + '\n'])
+    output: text.split('\n').map((line, i) => [i * 0.5, line + '\n'])
   }
 };
 
@@ -112,7 +109,7 @@ line every half a second.
 
 This replays logs at a fixed rate. That's not very fun to watch. If log lines
 started with a timestamp (where 0.0 means start of the recording) followed by
-log message then the timestamp could be used for event timing.
+log message then the timestamp could be used for output timing.
 
 For example:
 
@@ -126,12 +123,14 @@ For example:
 
 ```javascript
 function parseLogs(text) {
+  const pattern = /^([\d.]+) (.*)/;
+
   return {
     cols: 80,
     rows: 24,
-    events: text.split('\n').map(line => {
-      const [_, time, message] = /^([\d.]+) (.*)/.exec(line);
-      return [parseFloat(time), 'o', message + '\n']
+    output: text.split('\n').map(line => {
+      const [_, time, message] = pattern.exec(line);
+      return [parseFloat(time), message + '\n']
     })
   }
 };
@@ -150,11 +149,11 @@ function parseAsciimation(text) {
     cols: 67,
     rows: LINES_PER_FRAME - 1,
 
-    events: function*() {
+    output: function*() {
       let time = 0;
       let prevFrameDuration = 0;
 
-      yield [0, 'o', '\x9b?25l']; // hide cursor
+      yield [0, '\x9b?25l']; // hide cursor
 
       for (let i = 0; i + LINES_PER_FRAME - 1 < lines.length; i += LINES_PER_FRAME) {
         time += prevFrameDuration;
@@ -163,7 +162,7 @@ function parseAsciimation(text) {
         let text = '\x1b[H'; // move cursor home
         text += '\x1b[J'; // clear screen
         text += frame; // print current frame's lines
-        yield [time / 1000, 'o', text];
+        yield [time / 1000, text];
       }
     }()
   }
@@ -181,7 +180,7 @@ is defined by 14 lines. First of every 14 lines defines duration a frame should
 be displayed for (multiplied by a speed constant, by default `67` ms), while
 lines 2-14 define frame content - text to display.
 
-Note that `events` in the above parser function is a generator (note `*` in
+Note that `output` in the above parser function is a generator (note `*` in
 `function*`) that is immediately called (note `()` after `}` at the end). In
-fact `events` can be any iterable or iterator which is finite, which in practice
+fact `output` can be any iterable or iterator which is finite, which in practice
 means you can return an array or a finite generator, amongst others.

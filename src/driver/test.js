@@ -85,9 +85,9 @@ function benchmark({ url, iterations = 10 }, { feed, now }) {
 
   return {
     async init() {
-      const asciicast = parseAsciicast(await (await fetch(url)).text());
-      const { cols, rows } = asciicast;
-      frames = Array.from(asciicast.frames);
+      const recording = parseAsciicast(await (await fetch(url)).text());
+      const { cols, rows } = recording;
+      frames = Array.from(recording.output);
       const duration = frames[frames.length - 1][0];
 
       for (const [_, text] of frames) {
