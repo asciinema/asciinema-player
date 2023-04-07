@@ -19,14 +19,15 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
   let playCount = 0;
 
   async function init() {
-    const { parser, minFrameTime, dumpFilename } = src;
-    const recording = parser(await doFetch(src));
-    cols = recording.cols;
-    rows = recording.rows;
-    idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit
-    const result = prepareOutput(recording.output, logger, idleTimeLimit, startAt, minFrameTime);
-    outputs = result.output;
-    inputs = Array.from(recording.input ?? []);
+    const { parser, minFrameTime, inputOffset, dumpFilename } = src;
+
+    const recording = prepare(
+      parser(await doFetch(src)),
+      logger,
+      { idleTimeLimit, startAt, minFrameTime, inputOffset }
+    );
+
+    ({ output: outputs, input: inputs, cols, rows, duration, effectiveStartAt } = recording);
 
     if (outputs.length === 0) {
       throw 'recording is missing output events';
@@ -34,14 +35,11 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
 
     if (dumpFilename !== undefined) {
       const link = document.createElement('a');
-      const asciicast = unparseAsciicastV2({ ...recording, output: outputs });
+      const asciicast = unparseAsciicastV2(recording);
       link.href = URL.createObjectURL(new Blob([asciicast], { type: 'text/plain' }));
       link.download = dumpFilename;
       link.click();
     }
-
-    effectiveStartAt = result.effectiveStartAt;
-    duration = outputs[outputs.length - 1][0];
 
     return { cols, rows, duration };
   }
@@ -318,7 +316,9 @@ function batcher(logger, minFrameTime = 1.0 / 60) {
   };
 }
 
-function prepareOutput(output, logger, idleTimeLimit = Infinity, startAt = 0, minFrameTime) {
+function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, inputOffset }) {
+  idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
+  let { output, input } = recording;
   let prevT = 0;
   let shift = 0;
   let effectiveStartAt = startAt;
@@ -346,7 +346,21 @@ function prepareOutput(output, logger, idleTimeLimit = Infinity, startAt = 0, mi
     })
     .toArray();
 
-  return { output, effectiveStartAt };
+  const duration = output[output.length - 1][0];
+
+  if (inputOffset !== undefined) {
+    if (!(input instanceof Stream)) {
+      input = new Stream(input);
+    }
+
+    input = input.map(i => [i[0] + inputOffset, i[1]]);
+  }
+
+  if (!Array.isArray(input)) {
+    input = input.toArray();
+  }
+
+  return { ...recording, output, input, duration, effectiveStartAt };
 }
 
 export { recording };
