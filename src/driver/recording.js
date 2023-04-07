@@ -318,7 +318,7 @@ function batcher(logger, minFrameTime = 1.0 / 60) {
 
 function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, inputOffset }) {
   idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
-  let { output, input } = recording;
+  let { output, input = [] } = recording;
   let prevT = 0;
   let shift = 0;
   let effectiveStartAt = startAt;
