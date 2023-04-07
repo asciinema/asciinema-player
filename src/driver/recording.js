@@ -2,42 +2,44 @@ import { unparseAsciicastV2 } from '../parser/asciicast';
 import Stream from '../stream';
 
 
-function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop }) {
+function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop }) {
   let cols;
   let rows;
-  let frames;
+  let outputs;
+  let inputs;
   let duration;
   let effectiveStartAt;
-  let timeoutId;
-  let nextFrameIndex = 0;
+  let outputTimeoutId;
+  let inputTimeoutId;
+  let nextOutputIndex = 0;
+  let nextInputIndex = 0;
   let elapsedVirtualTime = 0;
   let startTime;
   let pauseElapsedTime;
   let playCount = 0;
 
   async function init() {
-    const { parser, minFrameTime, dumpFilename } = src;
-    const recording = parser(await doFetch(src));
-    cols = recording.cols;
-    rows = recording.rows;
-    idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit
-    const result = prepareFrames(recording.frames, logger, idleTimeLimit, startAt, minFrameTime);
-    frames = result.frames;
+    const { parser, minFrameTime, inputOffset, dumpFilename } = src;
 
-    if (frames.length === 0) {
-      throw 'recording is missing events';
+    const recording = prepare(
+      parser(await doFetch(src)),
+      logger,
+      { idleTimeLimit, startAt, minFrameTime, inputOffset }
+    );
+
+    ({ output: outputs, input: inputs, cols, rows, duration, effectiveStartAt } = recording);
+
+    if (outputs.length === 0) {
+      throw 'recording is missing output events';
     }
 
     if (dumpFilename !== undefined) {
       const link = document.createElement('a');
-      const asciicast = unparseAsciicastV2({ ...recording, frames });
+      const asciicast = unparseAsciicastV2(recording);
       link.href = URL.createObjectURL(new Blob([asciicast], { type: 'text/plain' }));
       link.download = dumpFilename;
       link.click();
     }
-
-    effectiveStartAt = result.effectiveStartAt;
-    duration = frames[frames.length - 1][0];
 
     return { cols, rows, duration };
   }
@@ -62,54 +64,86 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
     }
   }
 
-  function scheduleNextFrame() {
-    const nextFrame = frames[nextFrameIndex];
+  function delay(targetTime) {
+    let delay = (targetTime * 1000) - (now() - startTime);
 
-    if (nextFrame) {
-      const t = nextFrame[0] * 1000;
-      const elapsedWallTime = now() - startTime;
-      let timeout = t - elapsedWallTime;
+    if (delay < 0) {
+      delay = 0;
+    }
 
-      if (timeout < 0) {
-        timeout = 0;
-      }
+    return delay;
+  }
 
-      timeoutId = setTimeout(runFrame, timeout);
+  function scheduleNextOutput() {
+    const nextOutput = outputs[nextOutputIndex];
+
+    if (nextOutput) {
+      outputTimeoutId = setTimeout(runNextOutput, delay(nextOutput[0]));
     } else {
-      playCount++;
-
-      if (loop === true || (typeof loop === 'number' && playCount < loop)) {
-        nextFrameIndex = 0;
-        startTime = now();
-        feed('\x1bc'); // reset terminal
-        scheduleNextFrame();
-      } else {
-        timeoutId = null;
-        pauseElapsedTime = duration * 1000;
-        effectiveStartAt = null;
-        setState('stopped', { reason: 'ended' });
-      }
+      onEnd();
     }
   }
 
-  function runFrame() {
-    let frame = frames[nextFrameIndex];
+  function runNextOutput() {
+    let output = outputs[nextOutputIndex];
     let elapsedWallTime;
 
     do {
-      feed(frame[1]);
-      elapsedVirtualTime = frame[0] * 1000;
-      frame = frames[++nextFrameIndex];
+      feed(output[1]);
+      elapsedVirtualTime = output[0] * 1000;
+      output = outputs[++nextOutputIndex];
       elapsedWallTime = now() - startTime;
-    } while (frame && (elapsedWallTime > frame[0] * 1000));
+    } while (output && (elapsedWallTime > output[0] * 1000));
 
-    scheduleNextFrame();
+    scheduleNextOutput();
+  }
+
+  function cancelNextOutput() {
+    clearTimeout(outputTimeoutId);
+    outputTimeoutId = null;
+  }
+
+  function scheduleNextInput() {
+    const nextInput = inputs[nextInputIndex];
+
+    if (nextInput) {
+      inputTimeoutId = setTimeout(runNextInput, delay(nextInput[0]));
+    }
+  }
+
+  function runNextInput() {
+    onInput(inputs[nextInputIndex++][1]);
+    scheduleNextInput();
+  }
+
+  function cancelNextInput() {
+    clearTimeout(inputTimeoutId);
+    inputTimeoutId = null;
+  }
+
+  function onEnd() {
+    cancelNextOutput();
+    cancelNextInput();
+    playCount++;
+
+    if (loop === true || (typeof loop === 'number' && playCount < loop)) {
+      nextOutputIndex = 0;
+      nextInputIndex = 0;
+      startTime = now();
+      feed('\x1bc'); // reset terminal
+      scheduleNextOutput();
+      scheduleNextInput();
+    } else {
+      pauseElapsedTime = duration * 1000;
+      effectiveStartAt = null;
+      setState('stopped', { reason: 'ended' });
+    }
   }
 
   function play() {
-    if (timeoutId) return true;
+    if (outputTimeoutId) return true;
 
-    if (frames[nextFrameIndex] === undefined) { // ended
+    if (outputs[nextOutputIndex] === undefined) { // ended
       effectiveStartAt = 0;
     }
 
@@ -123,10 +157,10 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
   }
 
   function pause() {
-    if (!timeoutId) return true;
+    if (!outputTimeoutId) return true;
 
-    clearTimeout(timeoutId);
-    timeoutId = null;
+    cancelNextOutput();
+    cancelNextInput();
     pauseElapsedTime = now() - startTime;
 
     return true;
@@ -135,11 +169,12 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
   function resume() {
     startTime = now() - pauseElapsedTime;
     pauseElapsedTime = null;
-    scheduleNextFrame();
+    scheduleNextOutput();
+    scheduleNextInput();
   }
 
   function seek(where) {
-    const isPlaying = !!timeoutId;
+    const isPlaying = !!outputTimeoutId;
     pause();
 
     if (typeof where === 'string') {
@@ -162,16 +197,23 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
 
     if (targetTime < elapsedVirtualTime) {
       feed('\x1bc'); // reset terminal
-      nextFrameIndex = 0;
+      nextOutputIndex = 0;
+      nextInputIndex = 0;
       elapsedVirtualTime = 0;
     }
 
-    let frame = frames[nextFrameIndex];
+    let output = outputs[nextOutputIndex];
 
-    while (frame && (frame[0] * 1000 < targetTime)) {
-      feed(frame[1]);
-      elapsedVirtualTime = frame[0] * 1000;
-      frame = frames[++nextFrameIndex];
+    while (output && (output[0] * 1000 < targetTime)) {
+      feed(output[1]);
+      elapsedVirtualTime = output[0] * 1000;
+      output = outputs[++nextOutputIndex];
+    }
+
+    let input = inputs[nextInputIndex];
+
+    while (input && (input[0] * 1000 < targetTime)) {
+      input = inputs[++nextInputIndex];
     }
 
     pauseElapsedTime = targetTime;
@@ -185,13 +227,19 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
   }
 
   function step() {
-    let nextFrame = frames[nextFrameIndex];
+    let nextOutput = outputs[nextOutputIndex];
 
-    if (nextFrame !== undefined) {
-      feed(nextFrame[1]);
-      elapsedVirtualTime = nextFrame[0] * 1000;
+    if (nextOutput !== undefined) {
+      feed(nextOutput[1]);
+      const targetTime = nextOutput[0] * 1000;
+      elapsedVirtualTime = targetTime;
       pauseElapsedTime = elapsedVirtualTime;
-      nextFrameIndex++;
+      nextOutputIndex++;
+      let input = inputs[nextInputIndex];
+
+      while (input && (input[0] * 1000 < targetTime)) {
+        input = inputs[++nextInputIndex];
+      }
     }
 
     effectiveStartAt = null;
@@ -200,19 +248,19 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
   function getPoster(time) {
     const posterTime = time * 1000;
     const poster = [];
-    let nextFrameIndex = 0;
-    let frame = frames[0];
+    let nextOutputIndex = 0;
+    let output = outputs[0];
 
-    while (frame && (frame[0] * 1000 < posterTime)) {
-      poster.push(frame[1]);
-      frame = frames[++nextFrameIndex];
+    while (output && (output[0] * 1000 < posterTime)) {
+      poster.push(output[1]);
+      output = outputs[++nextOutputIndex];
     }
 
     return poster;
   }
 
   function getCurrentTime() {
-    if (timeoutId) {
+    if (outputTimeoutId) {
       return (now() - startTime) / 1000;
     } else {
       return (pauseElapsedTime ?? 0) / 1000;
@@ -231,72 +279,88 @@ function recording(src, { feed, now, setTimeout, setState, logger }, { idleTimeL
   }
 }
 
-function batchFrames(frames, logger, minFrameTime = 1.0 / 60) {
-  let prevFrame;
+function batcher(logger, minFrameTime = 1.0 / 60) {
+  let prevOutput;
 
-  return frames.transform(emit => {
+  return emit => {
     let ic = 0;
     let oc = 0;
 
     return {
-      step: frame => {
+      step: output => {
         ic++;
 
-        if (prevFrame === undefined) {
-          prevFrame = frame;
+        if (prevOutput === undefined) {
+          prevOutput = output;
           return;
         }
 
-        if (frame[0] - prevFrame[0] < minFrameTime) {
-          prevFrame[1] += frame[1];
+        if (output[0] - prevOutput[0] < minFrameTime) {
+          prevOutput[1] += output[1];
         } else {
-          emit(prevFrame);
-          prevFrame = frame;
+          emit(prevOutput);
+          prevOutput = output;
           oc++;
         }
       },
 
       flush: () => {
-        if (prevFrame !== undefined) {
-          emit(prevFrame);
+        if (prevOutput !== undefined) {
+          emit(prevOutput);
           oc++;
         }
 
         logger.debug(`batched ${ic} frames to ${oc} frames`);
       }
     }
-  });
+  };
 }
 
-function prepareFrames(frames, logger, idleTimeLimit = Infinity, startAt = 0, minFrameTime) {
+function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, inputOffset }) {
+  idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
+  let { output, input } = recording;
   let prevT = 0;
   let shift = 0;
   let effectiveStartAt = startAt;
 
-  if (!(frames instanceof Stream)) {
-    frames = new Stream(frames);
+  if (!(output instanceof Stream)) {
+    output = new Stream(output);
   }
 
-  const fs = Array.from(batchFrames(frames, logger, minFrameTime).map(e => {
-    const delay = e[0] - prevT;
-    const delta = delay - idleTimeLimit;
-    prevT = e[0];
+  output = output
+    .transform(batcher(logger, minFrameTime))
+    .map(e => {
+      const delay = e[0] - prevT;
+      const delta = delay - idleTimeLimit;
+      prevT = e[0];
 
-    if (delta > 0) {
-      shift += delta;
+      if (delta > 0) {
+        shift += delta;
 
-      if (e[0] < startAt) {
-        effectiveStartAt -= delta;
+        if (e[0] < startAt) {
+          effectiveStartAt -= delta;
+        }
       }
+
+      return [e[0] - shift, e[1]];
+    })
+    .toArray();
+
+  const duration = output[output.length - 1][0];
+
+  if (inputOffset !== undefined) {
+    if (!(input instanceof Stream)) {
+      input = new Stream(input);
     }
 
-    return [e[0] - shift, e[1]];
-  }));
-
-  return {
-    frames: fs,
-    effectiveStartAt: effectiveStartAt
+    input = input.map(i => [i[0] + inputOffset, i[1]]);
   }
+
+  if (!Array.isArray(input)) {
+    input = input.toArray();
+  }
+
+  return { ...recording, output, input, duration, effectiveStartAt };
 }
 
 export { recording };
