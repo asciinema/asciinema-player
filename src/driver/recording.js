@@ -13,7 +13,7 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
   let inputTimeoutId;
   let nextOutputIndex = 0;
   let nextInputIndex = 0;
-  let elapsedVirtualTime = 0;
+  let lastOutputTime = 0;
   let startTime;
   let pauseElapsedTime;
   let playCount = 0;
@@ -90,7 +90,7 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
 
     do {
       feed(output[1]);
-      elapsedVirtualTime = output[0] * 1000;
+      lastOutputTime = output[0];
       output = outputs[++nextOutputIndex];
       elapsedWallTime = now() - startTime;
     } while (output && (elapsedWallTime > output[0] * 1000));
@@ -193,30 +193,30 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
       }
     }
 
-    const targetTime = Math.min(Math.max(where, 0), duration) * 1000;
+    const targetTime = Math.min(Math.max(where, 0), duration);
 
-    if (targetTime < elapsedVirtualTime) {
+    if (targetTime < lastOutputTime) {
       feed('\x1bc'); // reset terminal
       nextOutputIndex = 0;
       nextInputIndex = 0;
-      elapsedVirtualTime = 0;
+      lastOutputTime = 0;
     }
 
     let output = outputs[nextOutputIndex];
 
-    while (output && (output[0] * 1000 < targetTime)) {
+    while (output && (output[0] < targetTime)) {
       feed(output[1]);
-      elapsedVirtualTime = output[0] * 1000;
+      lastOutputTime = output[0];
       output = outputs[++nextOutputIndex];
     }
 
     let input = inputs[nextInputIndex];
 
-    while (input && (input[0] * 1000 < targetTime)) {
+    while (input && (input[0] < targetTime)) {
       input = inputs[++nextInputIndex];
     }
 
-    pauseElapsedTime = targetTime;
+    pauseElapsedTime = targetTime * 1000;
     effectiveStartAt = null;
 
     if (isPlaying) {
@@ -231,13 +231,13 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
 
     if (nextOutput !== undefined) {
       feed(nextOutput[1]);
-      const targetTime = nextOutput[0] * 1000;
-      elapsedVirtualTime = targetTime;
-      pauseElapsedTime = elapsedVirtualTime;
+      const targetTime = nextOutput[0];
+      lastOutputTime = targetTime;
+      pauseElapsedTime = targetTime * 1000;
       nextOutputIndex++;
       let input = inputs[nextInputIndex];
 
-      while (input && (input[0] * 1000 < targetTime)) {
+      while (input && (input[0] < targetTime)) {
         input = inputs[++nextInputIndex];
       }
     }
