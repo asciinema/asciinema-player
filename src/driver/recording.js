@@ -34,11 +34,7 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     }
 
     if (dumpFilename !== undefined) {
-      const link = document.createElement('a');
-      const asciicast = unparseAsciicastV2(recording);
-      link.href = URL.createObjectURL(new Blob([asciicast], { type: 'text/plain' }));
-      link.download = dumpFilename;
-      link.click();
+      dump(recording, dumpFilename);
     }
 
     return { cols, rows, duration };
@@ -361,6 +357,14 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
   }
 
   return { ...recording, output, input, duration, effectiveStartAt };
+}
+
+function dump(recording, filename) {
+  const link = document.createElement('a');
+  const asciicast = unparseAsciicastV2(recording);
+  link.href = URL.createObjectURL(new Blob([asciicast], { type: 'text/plain' }));
+  link.download = filename;
+  link.click();
 }
 
 export { recording };
