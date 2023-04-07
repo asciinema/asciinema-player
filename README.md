@@ -590,7 +590,7 @@ player.seek(15).then(() => {
 
 Adds event listener, binding handler's `this` to the player object.
 
-The `play` event is dispatched when playback starts or resumes from pause.
+`play` event is dispatched when playback starts or resumes from pause.
 
 ```javascript
 player.addEventListener('play', () => {
@@ -598,7 +598,7 @@ player.addEventListener('play', () => {
 })
 ```
 
-The `pause` event is dispatched when playback is paused.
+`pause` event is dispatched when playback is paused.
 
 ```javascript
 player.addEventListener('pause', () => {
@@ -606,7 +606,7 @@ player.addEventListener('pause', () => {
 })
 ```
 
-The `ended` event is dispatched when playback stops after reaching the end of
+`ended` event is dispatched when playback stops after reaching the end of
 the recording.
 
 ```javascript
@@ -614,6 +614,26 @@ player.addEventListener('ended', () => {
   console.log("ended!");
 })
 ```
+
+`input` event is dispatched for every keyboard input that was recorded.
+Callback's 1st argument is an object with `data` field, which contains
+registered input value. Usually this is ASCII character representing a key, but
+may be a control character, like `"\r"` (enter), `"\u0001"` (ctrl-a), `"\u0003"`
+(ctrl-c), etc. See [input events in asciicast file
+format](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md#supported-event-types)
+for more information.
+
+This event can be used to play keyboard typing sound or display key presses on
+the screen amongst other use cases.
+
+```javascript
+player.addEventListener('input', { data } => {
+  console.log('input!', JSON.stringify(data));
+})
+```
+
+Note: `input` events are dispatched only for asciicasts recorded with `--stdin`
+option, e.g. `asciinema rec --stdin demo.cast`.
 
 ### `dispose()`
 

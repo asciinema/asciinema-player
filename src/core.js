@@ -101,6 +101,7 @@ class Core {
       ['play', []],
       ['pause', []],
       ['terminalUpdate', []],
+      ['input', []],
       ['seeked', []],
       ['ended', []]
     ]);
@@ -120,6 +121,7 @@ class Core {
     this.wasm = await vt;
 
     const feed = this.feed.bind(this);
+    const onInput = data => { this.dispatchEvent('input', { data }) };
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
@@ -127,7 +129,7 @@ class Core {
     const setState = this.setState.bind(this);
 
     this.driver = this.driverFn(
-      { feed, reset, now, setTimeout, setInterval, setState, logger: this.logger },
+      { feed, onInput, reset, now, setTimeout, setInterval, setState, logger: this.logger },
       { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt, loop: this.loop }
     );
 
