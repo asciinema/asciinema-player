@@ -1,4 +1,4 @@
-import { createEffect, createMemo, Match, onCleanup, onMount, Switch } from 'solid-js';
+import { createMemo, Match, onCleanup, onMount, Switch } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import { debounce } from "../util";
 import Terminal from './Terminal';
