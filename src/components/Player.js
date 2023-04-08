@@ -18,13 +18,13 @@ export default props => {
     rows: props.rows,
     lines: [],
     cursor: undefined,
-    charW: null,
-    charH: null,
-    bordersW: null,
-    bordersH: null,
-    controlBarH: null,
-    containerW: null,
-    containerH: null,
+    charW: props.charW,
+    charH: props.charH,
+    bordersW: props.bordersW,
+    bordersH: props.bordersH,
+    controlBarH: 32, // must match height of div.control-bar in CSS
+    containerW: 0,
+    containerH: 0,
     showControls: false,
     showStartOverlay: !autoPlay,
     isPausable: true,
@@ -84,18 +84,6 @@ export default props => {
     }
   });
 
-  const measureDomElements = () => {
-    setState({
-      charW: terminalRef.clientWidth / terminalCols(),
-      charH: terminalRef.clientHeight / terminalRows(),
-      bordersW: terminalRef.offsetWidth - terminalRef.clientWidth,
-      bordersH: terminalRef.offsetHeight - terminalRef.clientHeight,
-      controlBarH: controlBarRef.offsetHeight,
-      containerW: wrapperRef.offsetWidth,
-      containerH: wrapperRef.offsetHeight
-    });
-  }
-
   const setupResizeObserver = () => {
     resizeObserver = new ResizeObserver(debounce(_entries => {
       setState({
@@ -111,11 +99,16 @@ export default props => {
 
   onMount(async () => {
     logger.info('player mounted');
-    measureDomElements();
     logger.debug('font measurements', { charW: state.charW, charH: state.charH });
     setupResizeObserver();
     const { isPausable, isSeekable, poster } = await core.init();
-    setState({ isPausable, isSeekable });
+
+    setState({
+      isPausable,
+      isSeekable,
+      containerW: wrapperRef.offsetWidth,
+      containerH: wrapperRef.offsetHeight
+    });
 
     if (poster !== undefined && !autoPlay) {
       setState({
@@ -152,10 +145,6 @@ export default props => {
   }
 
   const terminalSize = createMemo(() => {
-    if (!state.charW) {
-      return;
-    }
-
     logger.debug(`containerW = ${state.containerW}`);
 
     const terminalW = (state.charW * terminalCols()) + state.bordersW;
@@ -334,11 +323,6 @@ export default props => {
     }
 
     const size = terminalSize();
-
-    if (size === undefined) {
-      style['height'] = 0;
-      return style;
-    }
 
     if (size.width !== undefined) {
       style['width'] = `${size.width}px`;
