@@ -27,7 +27,7 @@ class UninitializedState extends State {
   async play() {
     this.core.dispatchEvent('play');
     const stoppedState = await this.init();
-    return await stoppedState.play();
+    return await stoppedState.doPlay();
   }
 
   togglePlay() {
@@ -58,8 +58,12 @@ class UninitializedState extends State {
 }
 
 class StoppedState extends State {
-  async play() {
+  play() {
     this.core.dispatchEvent('play');
+    return this.doPlay();
+  }
+
+  async doPlay() {
     const stop = await this.driver.play();
 
     if (stop === true) {
