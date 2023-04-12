@@ -91,7 +91,7 @@ class StoppedState extends State {
 
 class PlayingState extends State {
   pause() {
-    if (this.driver.pause()) {
+    if (this.driver.pause() === true) {
       this.core.setState('stopped', { reason: 'paused' })
     }
   }
