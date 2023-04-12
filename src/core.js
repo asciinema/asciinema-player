@@ -10,34 +10,56 @@ class State {
     this.driver = core.driver;
   }
 
+  preload() {}
   play() {}
   pause() {}
+  togglePlay() {}
   seek(where) { return false; }
   step() {}
   stop() { this.driver.stop(); }
 }
 
 class UninitializedState extends State {
+  preload() {
+    return this.init();
+  }
+
   async play() {
-    await this.core.initializeDriver();
-    return await this.core.play();
+    this.core.dispatchEvent('play');
+    const stoppedState = await this.init();
+    return await stoppedState.play();
+  }
+
+  togglePlay() {
+    return this.play();
   }
 
   async seek(where) {
-    await this.core.initializeDriver();
-    return await this.core.seek(where);
+    const stoppedState = await this.init();
+    return await stoppedState.seek(where);
   }
 
   async step() {
-    await this.core.initializeDriver();
-    return await this.core.step();
+    const stoppedState = await this.init();
+    return await stoppedState.step();
   }
 
   stop() {}
+
+  async init() {
+    try {
+      await this.core.initializeDriver();
+      return this.core.setState('stopped');
+    } catch (e) {
+      this.core.setState('errored');
+      throw e;
+    }
+  }
 }
 
 class StoppedState extends State {
   async play() {
+    this.core.dispatchEvent('play');
     const stop = await this.driver.play();
 
     if (stop === true) {
@@ -48,6 +70,10 @@ class StoppedState extends State {
     }
 
     this.core.initializeClock();
+  }
+
+  togglePlay() {
+    return this.play();
   }
 
   seek(where) {
@@ -66,12 +92,18 @@ class PlayingState extends State {
     }
   }
 
+  togglePlay() {
+    return this.pause();
+  }
+
   seek(where) {
     return this.driver.seek(where);
   }
 }
 
 class LoadingState extends State {}
+
+class ErroredState extends State {}
 
 class Core {
   // public
@@ -93,17 +125,20 @@ class Core {
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
     this.poster = opts.poster;
+    this.queue = Promise.resolve();
 
     this.eventHandlers = new Map([
       ['stateChanged', []],
       ['loading', []],
       ['reset', []],
       ['play', []],
+      ['playing', []],
       ['pause', []],
       ['terminalUpdate', []],
       ['input', []],
       ['seeked', []],
-      ['ended', []]
+      ['ended', []],
+      ['errored', []]
     ]);
   }
 
@@ -142,7 +177,7 @@ class Core {
     this.rows = this.rows ?? this.driver.rows;
 
     if (this.preload) {
-      this.initializeDriver();
+      this.withState(state => state.preload());
     }
 
     const config = {
@@ -182,26 +217,42 @@ class Core {
     return config;
   }
 
-  async play() {
-    await this.state.play();
+  play() {
+    return this.withState(state => state.play());
   }
 
   pause() {
-    this.state.pause();
+    return this.withState(state => state.pause());
   }
 
-  async seek(where) {
-    if (await this.state.seek(where)) {
-      this.dispatchEvent('seeked');
-    }
+  togglePlay() {
+    return this.withState(state => state.togglePlay());
   }
 
-  async step() {
-    await this.state.step();
+  seek(where) {
+    return this.withState(async state => {
+      if (await state.seek(where)) {
+        this.dispatchEvent('seeked');
+      }
+    });
+  }
+
+  step() {
+    return this.withState(state => state.step());
   }
 
   stop() {
-    this.state.stop();
+    return this.withState(state => state.stop());
+  }
+
+  withState(f) {
+    return this.enqueue(() => f(this.state));
+  }
+
+  enqueue(f) {
+    this.queue = this.queue.then(f);
+
+    return this.queue;
   }
 
   getChangedLines() {
@@ -251,7 +302,7 @@ class Core {
   setState(newState, data = {}) {
     if (newState === 'playing') {
       this.state = new PlayingState(this);
-      this.dispatchEvent('play');
+      this.dispatchEvent('playing');
     } else if (newState === 'stopped') {
       this.state = new StoppedState(this);
 
@@ -263,11 +314,15 @@ class Core {
     } else if (newState === 'loading') {
       this.state = new LoadingState(this);
       this.dispatchEvent('loading');
+    } else if (newState === 'errored') {
+      this.state = new ErroredState(this);
     } else {
       throw `invalid state: ${newState}`;
     }
 
     this.dispatchEvent('stateChanged', { newState, data });
+
+    return this.state;
   }
 
   feed(data) {
@@ -289,21 +344,12 @@ class Core {
     }
   }
 
-  initializeDriver() {
-    if (this.initializeDriverPromise === undefined) {
-      this.initializeDriverPromise = this.doInitializeDriver();
-    }
-
-    return this.initializeDriverPromise;
-  }
-
-  async doInitializeDriver() {
+  async initializeDriver() {
     const meta = await this.driver.init();
     this.duration = this.duration ?? meta.duration;
     this.cols = this.cols ?? meta.cols;
     this.rows = this.rows ?? meta.rows;
     this.ensureVt();
-    this.state = new StoppedState(this);
   }
 
   ensureVt() {
@@ -355,7 +401,7 @@ class Core {
     if (this.poster.substring(0, 16) == "data:text/plain,") {
       poster = [this.poster.substring(16)];
     } else if (this.poster.substring(0, 4) == 'npt:' && typeof this.driver.getPoster === 'function') {
-      await this.initializeDriver();
+      await this.withState(state => state.preload());
       poster = this.driver.getPoster(this.parseNptPoster(this.poster));
     }
 
