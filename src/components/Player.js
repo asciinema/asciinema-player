@@ -51,26 +51,39 @@ export default props => {
   let controlBarRef;
   let resizeObserver;
 
+  function onPlaying() {
+    updateTerminal();
+    startBlinking();
+    startTimeUpdates();
+  }
+
+  function onStopped() {
+    stopBlinking();
+    stopTimeUpdates();
+    updateTime();
+  }
+
   core.addEventListener('play', () => {
     setState('showStartOverlay', false);
   });
 
-  core.addEventListener('stateChanged', ({ newState }) => {
-    setState('coreState', newState);
+  core.addEventListener('playing', () => {
+    setState('coreState', 'playing');
+    onPlaying();
+  });
 
-    if (newState === 'playing') {
-      updateTerminal();
-      startBlinking();
-      startTimeUpdates();
-    } else {
-      stopBlinking();
-      stopTimeUpdates();
-      updateTime();
-    }
+  core.addEventListener('stopped', () => {
+    setState('coreState', 'stopped');
+    onStopped();
+  });
 
-    if (newState === 'errored') {
-      setState('showStartOverlay', false);
-    }
+  core.addEventListener('loading', () => {
+    setState('coreState', 'loading');
+    onStopped();
+  });
+
+  core.addEventListener('errored', () => {
+    setState({ coreState: 'errored', showStartOverlay: false });
   });
 
   core.addEventListener('reset', ({ cols, rows }) => {

@@ -128,7 +128,6 @@ class Core {
     this.queue = Promise.resolve();
 
     this.eventHandlers = new Map([
-      ['stateChanged', []],
       ['loading', []],
       ['reset', []],
       ['play', []],
@@ -137,6 +136,7 @@ class Core {
       ['terminalUpdate', []],
       ['input', []],
       ['seeked', []],
+      ['stopped', []],
       ['ended', []],
       ['errored', []]
     ]);
@@ -305,6 +305,7 @@ class Core {
       this.dispatchEvent('playing');
     } else if (newState === 'stopped') {
       this.state = new StoppedState(this);
+      this.dispatchEvent('stopped');
 
       if (data.reason === 'paused') {
         this.dispatchEvent('pause');
@@ -316,11 +317,10 @@ class Core {
       this.dispatchEvent('loading');
     } else if (newState === 'errored') {
       this.state = new ErroredState(this);
+      this.dispatchEvent('errored');
     } else {
       throw `invalid state: ${newState}`;
     }
-
-    this.dispatchEvent('stateChanged', { newState, data });
 
     return this.state;
   }
