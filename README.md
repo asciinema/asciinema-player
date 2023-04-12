@@ -560,7 +560,8 @@ player.play().then(() => {
 
 If you want to synchronize asciinema player with other elements on the page (for
 example `<audio>` element) then you can use this promise for coordination.
-Alternatively you can add event listener for `play` event (see below).
+Alternatively you can add event listener for `play`/`playing` events (see
+below).
 
 ### `pause()`
 
@@ -590,10 +591,20 @@ player.seek(15).then(() => {
 
 Adds event listener, binding handler's `this` to the player object.
 
-`play` event is dispatched when playback starts or resumes from pause.
+`play` event is dispatched when playback is _initiated_, either by clicking play
+button or calling `player.play()` method, but _not yet started_.
 
 ```javascript
 player.addEventListener('play', () => {
+  console.log('play!');
+})
+```
+
+`playing` event is dispatched when playback actually starts or resumes from
+pause.
+
+```javascript
+player.addEventListener('playing', () => {
   console.log(`playing! we're at: ${this.getCurrentTime()}`);
 })
 ```
