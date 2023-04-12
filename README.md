@@ -627,6 +627,7 @@ player.addEventListener('ended', () => {
 ```
 
 `input` event is dispatched for every keyboard input that was recorded.
+
 Callback's 1st argument is an object with `data` field, which contains
 registered input value. Usually this is ASCII character representing a key, but
 may be a control character, like `"\r"` (enter), `"\u0001"` (ctrl-a), `"\u0003"`
@@ -640,6 +641,21 @@ the screen amongst other use cases.
 ```javascript
 player.addEventListener('input', { data } => {
   console.log('input!', JSON.stringify(data));
+})
+```
+
+`inputOffset` source option can be used to shift fired input events in time,
+e.g. when you need them to fire earlier due audio latency etc:
+
+```javascript
+const player = AsciinemaPlayer.create({
+  url: '/demo.cast',
+  inputOffset: -1.0
+}, document.getElementById('demo'));
+
+player.addEventListener('input', { data } => {
+  // this is now fired 1 sec ahead of original key press time
+  playSound(data);
 })
 ```
 
