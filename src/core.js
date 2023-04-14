@@ -10,6 +10,7 @@ class State {
     this.driver = core.driver;
   }
 
+  onEnter(data) {}
   preload() {}
   play() {}
   pause() {}
@@ -58,6 +59,16 @@ class UninitializedState extends State {
 }
 
 class StoppedState extends State {
+  onEnter(data) {
+    this.core.dispatchEvent('stopped');
+
+    if (data.reason === 'paused') {
+      this.core.dispatchEvent('pause');
+    } else if (data.reason === 'ended') {
+      this.core.dispatchEvent('ended');
+    }
+  }
+
   play() {
     this.core.dispatchEvent('play');
     return this.doPlay();
@@ -90,6 +101,10 @@ class StoppedState extends State {
 }
 
 class PlayingState extends State {
+  onEnter() {
+    this.core.dispatchEvent('playing');
+  }
+
   pause() {
     if (this.driver.pause() === true) {
       this.core.setState('stopped', { reason: 'paused' })
@@ -105,11 +120,23 @@ class PlayingState extends State {
   }
 }
 
-class LoadingState extends State {}
+class LoadingState extends State {
+  onEnter() {
+    this.core.dispatchEvent('loading');
+  }
+}
 
-class OfflineState extends State {}
+class OfflineState extends State {
+  onEnter() {
+    this.core.dispatchEvent('offline');
+  }
+}
 
-class ErroredState extends State {}
+class ErroredState extends State {
+  onEnter() {
+    this.core.dispatchEvent('errored');
+  }
+}
 
 class Core {
   // public
@@ -314,28 +341,19 @@ class Core {
 
     if (newState === 'playing') {
       this.state = new PlayingState(this);
-      this.dispatchEvent('playing');
     } else if (newState === 'stopped') {
       this.state = new StoppedState(this);
-      this.dispatchEvent('stopped');
-
-      if (data.reason === 'paused') {
-        this.dispatchEvent('pause');
-      } else if (data.reason === 'ended') {
-        this.dispatchEvent('ended');
-      }
     } else if (newState === 'loading') {
       this.state = new LoadingState(this);
-      this.dispatchEvent('loading');
     } else if (newState === 'offline') {
       this.state = new OfflineState(this);
-      this.dispatchEvent('offline');
     } else if (newState === 'errored') {
       this.state = new ErroredState(this);
-      this.dispatchEvent('errored');
     } else {
       throw `invalid state: ${newState}`;
     }
+
+    this.state.onEnter(data);
 
     return this.state;
   }
