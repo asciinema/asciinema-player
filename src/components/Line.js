@@ -26,8 +26,8 @@ export default props => {
           segs.push([seg[0].substring(0, pos), seg[1]]);
         }
 
-        segs.push([seg[0][pos], cursorAttrsA, ' cursor-a']);
-        segs.push([seg[0][pos], cursorAttrsB, ' cursor-b']);
+        segs.push([seg[0][pos], cursorAttrsA, ' ap-cursor-a']);
+        segs.push([seg[0][pos], cursorAttrsB, ' ap-cursor-b']);
 
         if (pos < seg[0].length - 1) {
           segs.push([seg[0].substring(pos + 1), seg[1]]);
@@ -49,6 +49,6 @@ export default props => {
   }
 
   return (
-    <span class="line" style={{height: props.height}}><Index each={segments()}>{s => <Segment text={s()[0]} attrs={s()[1]} extraClass={s()[2]} />}</Index></span>
+    <span class="ap-line" style={{height: props.height}}><Index each={segments()}>{s => <Segment text={s()[0]} attrs={s()[1]} extraClass={s()[2]} />}</Index></span>
   );
 }

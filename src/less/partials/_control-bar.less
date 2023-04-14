@@ -1,8 +1,7 @@
 @active-controls: #bbb;
-// @inactive-controls: #999;
 
 .asciinema-player {
-  .control-bar {
+  .ap-control-bar {
     width: 100%;
     height: 32px;
     background: rgba(0,0,0,0.8); /* no gradient fallback */
@@ -34,13 +33,13 @@
       font-size: 0;
     }
 
-    svg.icon {
+    svg.ap-icon {
       path {
         fill: @active-controls;
       }
     }
 
-    .playback-button {
+    .ap-playback-button {
       display: block;
       float: left;
       cursor: pointer;
@@ -54,7 +53,7 @@
       }
     }
 
-    .timer {
+    .ap-timer {
       display: block;
       float: left;
       width: 50px;
@@ -71,35 +70,35 @@
         font-size: inherit;
       }
 
-      .time-remaining {
+      .ap-time-remaining {
         display: none;
       }
 
       &:hover {
-        .time-elapsed {
+        .ap-time-elapsed {
           display: none;
         }
 
-        .time-remaining {
+        .ap-time-remaining {
           display: inline;
         }
       }
     }
 
-    .progressbar {
+    .ap-progressbar {
       display: block;
       overflow: hidden;
       height: 100%;
       padding: 0 10px;
 
-      .bar {
+      .ap-bar {
         display: block;
         cursor: default;
         height: 100%;
         padding-top: 15px;
         font-size: 0;
 
-        .gutter {
+        .ap-gutter {
           display: block;
           height: 3px;
           background-color: #333;
@@ -114,15 +113,15 @@
       }
     }
 
-    &.seekable {
-      .progressbar {
-        .bar {
+    &.ap-seekable {
+      .ap-progressbar {
+        .ap-bar {
           cursor: pointer;
         }
       }
     }
 
-    .fullscreen-button {
+    .ap-fullscreen-button {
       display: block;
       float: right;
       width: 14px;
@@ -147,12 +146,12 @@
 }
 
 .asciinema-player-wrapper {
-  &.hud .control-bar {
+  &.ap-hud .ap-control-bar {
     opacity: 1;
   }
 
   .in-fullscreen() {
-    .fullscreen-button {
+    .ap-fullscreen-button {
       svg:first-child {
         display: none;
       }
