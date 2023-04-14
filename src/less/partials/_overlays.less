@@ -1,0 +1,85 @@
+.asciinema-player {
+  .ap-overlay {
+    z-index: 10;
+    background-repeat: no-repeat;
+    background-position: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .ap-overlay-start {
+    cursor: pointer;
+
+    .play-button {
+      font-size: 0px;
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      text-align: center;
+      color: white;
+
+      height: 80px;
+      max-height: 66%;
+      margin: auto;
+
+      div {
+        height: 100%;
+
+        span {
+          height: 100%;
+          display: block;
+
+          svg {
+            height: 100%;
+          }
+        }
+      }
+    }
+  }
+
+  .ap-overlay-loading {
+    .loader {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: inline-block;
+      position: relative;
+      border: 10px solid;
+      border-color: rgba(255, 255, 255, 0.15) rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.5);
+      box-sizing: border-box;
+      animation: asciinema-player-loader-rotation 1s linear infinite;
+    }
+  }
+
+  .ap-overlay-offline {
+    span {
+      .terminal-font;
+      font-size: 2em;
+    }
+  }
+
+  .ap-overlay-error {
+    span {
+      font-size: 8em;
+    }
+  }
+}
+
+@keyframes asciinema-player-loader-rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}

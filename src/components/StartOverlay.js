@@ -2,7 +2,7 @@ export default props => {
   const e = (f) => { return e => { e.preventDefault(); f(e); } };
 
   return (
-    <div class="start-prompt" onClick={e(props.onClick)}>
+    <div class="ap-overlay ap-overlay-start" onClick={e(props.onClick)}>
       <div class="play-button">
         <div>
           <span>

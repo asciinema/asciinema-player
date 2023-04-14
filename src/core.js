@@ -107,6 +107,8 @@ class PlayingState extends State {
 
 class LoadingState extends State {}
 
+class OfflineState extends State {}
+
 class ErroredState extends State {}
 
 class Core {
@@ -115,6 +117,7 @@ class Core {
   constructor(driverFn, opts) {
     this.logger = opts.logger;
     this.state = new UninitializedState(this);
+    this.stateName = 'uninitialized';
     this.driver = null;
     this.driverFn = driverFn;
     this.changedLines = new Set();
@@ -132,17 +135,19 @@ class Core {
     this.queue = Promise.resolve();
 
     this.eventHandlers = new Map([
+      ['ended', []],
+      ['errored', []],
+      ['init', []],
+      ['input', []],
       ['loading', []],
-      ['reset', []],
+      ['offline', []],
+      ['pause', []],
       ['play', []],
       ['playing', []],
-      ['pause', []],
-      ['terminalUpdate', []],
-      ['input', []],
+      ['reset', []],
       ['seeked', []],
       ['stopped', []],
-      ['ended', []],
-      ['errored', []]
+      ['terminalUpdate', []],
     ]);
   }
 
@@ -304,6 +309,9 @@ class Core {
   // private
 
   setState(newState, data = {}) {
+    if (this.stateName === newState) return this.state;
+    this.stateName = newState;
+
     if (newState === 'playing') {
       this.state = new PlayingState(this);
       this.dispatchEvent('playing');
@@ -319,6 +327,9 @@ class Core {
     } else if (newState === 'loading') {
       this.state = new LoadingState(this);
       this.dispatchEvent('loading');
+    } else if (newState === 'offline') {
+      this.state = new OfflineState(this);
+      this.dispatchEvent('offline');
     } else if (newState === 'errored') {
       this.state = new ErroredState(this);
       this.dispatchEvent('errored');
@@ -365,7 +376,7 @@ class Core {
     }
 
     this.initializeVt(cols, rows);
-    this.dispatchEvent('reset', { cols, rows });
+    this.dispatchEvent('init', { cols, rows });
   }
 
   resetVt(cols, rows, init = undefined) {

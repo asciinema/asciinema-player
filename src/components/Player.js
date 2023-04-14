@@ -5,6 +5,7 @@ import Terminal from './Terminal';
 import ControlBar from './ControlBar';
 import ErrorOverlay from './ErrorOverlay';
 import LoaderOverlay from './LoaderOverlay';
+import OfflineOverlay from './OfflineOverlay';
 import StartOverlay from './StartOverlay';
 
 
@@ -63,6 +64,16 @@ export default props => {
     updateTime();
   }
 
+  function resize({ cols, rows }) {
+    if (rows < state.rows) {
+      setState('lines', state.lines.slice(0, rows));
+    }
+
+    setState({ cols, rows });
+  }
+
+  core.addEventListener('init', resize);
+
   core.addEventListener('play', () => {
     setState('showStartOverlay', false);
   });
@@ -82,16 +93,17 @@ export default props => {
     onStopped();
   });
 
+  core.addEventListener('offline', () => {
+    setState('coreState', 'offline');
+    onStopped();
+  });
+
   core.addEventListener('errored', () => {
     setState({ coreState: 'errored', showStartOverlay: false });
   });
 
-  core.addEventListener('reset', ({ cols, rows }) => {
-    if (rows < state.rows) {
-      setState('lines', state.lines.slice(0, rows));
-    }
-
-    setState({ cols, rows });
+  core.addEventListener('reset', size => {
+    resize(size);
     updateTerminal();
   });
 
@@ -358,6 +370,7 @@ export default props => {
         <Switch>
           <Match when={state.showStartOverlay}><StartOverlay onClick={() => core.play()} /></Match>
           <Match when={state.coreState == 'loading'}><LoaderOverlay /></Match>
+          <Match when={state.coreState == 'offline'}><OfflineOverlay fontFamily={props.terminalFontFamily} /></Match>
           <Match when={state.coreState == 'errored'}><ErrorOverlay /></Match>
         </Switch>
       </div>

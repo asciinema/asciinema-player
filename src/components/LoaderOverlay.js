@@ -1,6 +1,6 @@
 export default props => {
   return (
-    <div class="loading">
+    <div class="ap-overlay ap-overlay-loading">
       <span class="loader"></span>
     </div>
   );
