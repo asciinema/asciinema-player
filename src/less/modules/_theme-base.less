@@ -45,8 +45,8 @@
   .fg-15 { color: @color15 }
   .bg-15 { background-color: @color15 }
 
-  .loading {
-    .loader {
+  .ap-overlay-loading {
+    .ap-loader {
       border-color: fade(@foreground, 30%) fade(@foreground, 50%) fade(@foreground, 70%) fade(@foreground, 100%);
     }
   }
@@ -59,14 +59,14 @@
 }
 
 .theme-play-icon-color(@color) {
-  .start-prompt {
-    .play-button {
+  .ap-overlay-start {
+    .ap-play-button {
       svg {
-        .play-btn-fill {
+        .ap-play-btn-fill {
           fill: @color;
         }
 
-        .play-btn-stroke {
+        .ap-play-btn-stroke {
           stroke: @color;
         }
       }

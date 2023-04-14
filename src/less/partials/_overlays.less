@@ -17,7 +17,7 @@
   .ap-overlay-start {
     cursor: pointer;
 
-    .play-button {
+    .ap-play-button {
       font-size: 0px;
       position: absolute;
       left: 0;
@@ -47,7 +47,7 @@
   }
 
   .ap-overlay-loading {
-    .loader {
+    .ap-loader {
       width: 48px;
       height: 48px;
       border-radius: 50%;
@@ -56,7 +56,7 @@
       border: 10px solid;
       border-color: rgba(255, 255, 255, 0.15) rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.5);
       box-sizing: border-box;
-      animation: asciinema-player-loader-rotation 1s linear infinite;
+      animation: ap-loader-rotation 1s linear infinite;
     }
   }
 
@@ -74,7 +74,7 @@
   }
 }
 
-@keyframes asciinema-player-loader-rotation {
+@keyframes ap-loader-rotation {
   0% {
     transform: rotate(0deg);
   }

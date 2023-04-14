@@ -27,23 +27,23 @@ function className(attrs, extraClass) {
   }
 
   if (attrs.has('bold')) {
-    cls += ' bright';
+    cls += ' ap-bright';
   }
 
   if (attrs.has('faint')) {
-    cls += ' faint';
+    cls += ' ap-faint';
   }
 
   if (attrs.has('italic')) {
-    cls += ' italic';
+    cls += ' ap-italic';
   }
 
   if (attrs.has('underline')) {
-    cls += ' underline';
+    cls += ' ap-underline';
   }
 
   if (attrs.has('blink')) {
-    cls += ' blink';
+    cls += ' ap-blink';
   }
 
   return cls;
