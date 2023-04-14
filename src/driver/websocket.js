@@ -25,7 +25,6 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay },
 
     socket.onopen = () => {
       logger.info('websocket: opened');
-      setState('playing');
       initBuffer();
       successfulConnectionTimeout = setTimeout(() => { reconnectAttempt = 0; }, 1000);
     }
@@ -44,6 +43,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay },
           const cols = e.cols ?? e.width;
           const rows = e.rows ?? e.height;
           logger.debug(`websocket: vt reset (${cols}x${rows})`);
+          setState('playing');
           initBuffer(e.time);
           reset(cols, rows, e.init ?? undefined);
           clock = new Clock();
@@ -53,6 +53,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay },
           }
         } else if (e.state === 'offline') {
           logger.info('websocket: stream offline');
+          setState('offline');
           clock = undefined;
         }
       } else {

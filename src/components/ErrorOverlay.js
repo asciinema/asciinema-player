@@ -1,5 +1,7 @@
 export default props => {
   return (
-    <div class="loading"><span class="error">💥</span></div>
+    <div class="ap-overlay ap-overlay-error">
+      <span>💥</span>
+    </div>
   );
 }

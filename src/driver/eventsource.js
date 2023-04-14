@@ -17,7 +17,6 @@ function eventsource({ url, bufferTime = 0.1 }, { feed, reset, setState, logger 
 
       es.addEventListener('open', () => {
         logger.info('eventsource: opened');
-        setState('playing');
         initBuffer();
       });
 
@@ -40,6 +39,7 @@ function eventsource({ url, bufferTime = 0.1 }, { feed, reset, setState, logger 
           const cols = e.cols ?? e.width;
           const rows = e.rows ?? e.height;
           logger.debug(`eventsource: vt reset (${cols}x${rows})`);
+          setState('playing');
           initBuffer(e.time);
           reset(cols, rows, e.init ?? undefined);
           clock = new Clock();
@@ -49,6 +49,7 @@ function eventsource({ url, bufferTime = 0.1 }, { feed, reset, setState, logger 
           }
         } else if (e.state === 'offline') {
           logger.info('eventsource: stream offline');
+          setState('offline');
           clock = undefined;
         }
       });
