@@ -61,7 +61,9 @@ export default props => {
   const onDocumentMouseUp = () => {
     setMouseDown(false);
   };
+
   document.addEventListener('mouseup', onDocumentMouseUp);
+
   onCleanup(() => {
     document.removeEventListener('mouseup', onDocumentMouseUp);
   });
