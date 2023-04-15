@@ -159,7 +159,7 @@ class Core {
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
     this.poster = opts.poster;
-    this.queue = Promise.resolve();
+    this.actionQueue = Promise.resolve();
 
     this.eventHandlers = new Map([
       ['ended', []],
@@ -282,13 +282,13 @@ class Core {
   }
 
   withState(f) {
-    return this.enqueue(() => f(this.state));
+    return this.enqueueAction(() => f(this.state));
   }
 
-  enqueue(f) {
-    this.queue = this.queue.then(f);
+  enqueueAction(f) {
+    this.actionQueue = this.actionQueue.then(f);
 
-    return this.queue;
+    return this.actionQueue;
   }
 
   getChangedLines() {
