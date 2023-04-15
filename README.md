@@ -639,7 +639,7 @@ This event can be used to play keyboard typing sound or display key presses on
 the screen amongst other use cases.
 
 ```javascript
-player.addEventListener('input', { data } => {
+player.addEventListener('input', ({data}) => {
   console.log('input!', JSON.stringify(data));
 })
 ```
@@ -653,7 +653,7 @@ const player = AsciinemaPlayer.create({
   inputOffset: -1.0
 }, document.getElementById('demo'));
 
-player.addEventListener('input', { data } => {
+player.addEventListener('input', ({data}) => {
   // this is now fired 1 sec ahead of original key press time
   playSound(data);
 })
