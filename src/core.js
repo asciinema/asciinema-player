@@ -360,7 +360,7 @@ class Core {
 
   feed(data) {
     this.doFeed(data);
-    this.dispatchEvent('terminalUpdate');
+    this.dispatchEvent('terminalUpdate', { data });
   }
 
   doFeed(data) {
