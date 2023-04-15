@@ -1,4 +1,5 @@
 import { Match, Switch, createSignal, onCleanup } from "solid-js";
+import { throttle } from "../util";
 
 function formatTime(seconds) {
   seconds = Math.floor(seconds);
@@ -32,29 +33,30 @@ export default props => {
     }
   };
 
-  const [mouseDown, setMouseDown] = createSignal(false);
-
-  const onSeek = (e) => {
-    if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey) {
-      return;
-    }
-
+  const calcPosition = (e) => {
     const barWidth = e.currentTarget.offsetWidth;
     const rect = e.currentTarget.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const pos = Math.max(0, mouseX / barWidth);
 
-    return props.onSeekClick(`${pos * 100}%`);
+    return `${pos * 100}%`;
   };
 
+  const [mouseDown, setMouseDown] = createSignal(false);
+  const throttledSeek = throttle(props.onSeekClick, 50);
+
   const onClick = (e) => {
+    if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey) return;
+
     setMouseDown(true);
-    onSeek(e);
+    props.onSeekClick(calcPosition(e));
   };
 
   const onMove = (e) => {
+    if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey) return;
+
     if (mouseDown()) {
-      onSeek(e);
+      throttledSeek(calcPosition(e));
     }
   };
 

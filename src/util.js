@@ -21,4 +21,16 @@ function debounce(f, delay) {
   }
 }
 
-export { parseNpt, debounce };
+function throttle(f, interval) {
+  let enableCall = true;
+
+  return function(...args) {
+    if (!enableCall) return;
+
+    enableCall = false;
+    f.apply(this, args);
+    setTimeout(() => enableCall = true, interval);
+  }
+}
+
+export { parseNpt, debounce, throttle };
