@@ -6,7 +6,7 @@ function parseAsciicast(data) {
   let events;
 
   if (typeof data === 'string') {
-    const result = parseJsonl(data);;
+    const result = parseJsonl(data);
 
     if (result !== undefined) {
       header = result.header;
