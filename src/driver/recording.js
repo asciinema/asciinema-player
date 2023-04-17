@@ -60,7 +60,7 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     const response = await fetch(url, fetchOpts);
 
     if (!response.ok) {
-      throw `failed fetching recording file: ${response.statusText} (${response.status})`;
+      throw `failed fetching recording from ${url}: ${response.status} ${response.statusText}`;
     }
 
     return await response.text();
