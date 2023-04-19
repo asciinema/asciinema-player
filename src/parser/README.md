@@ -45,9 +45,9 @@ The exact above recording object would be returned from asciicast parser when
 invoked with following input text:
 
 ```javascript
-import { parseAsciicast } from "asciinema-player/parser/asciicast";
+import parse from "asciinema-player/parser/asciicast";
 
-parseAsciicast('{ "version": 2, "width": 80, "height": 24 }\n[1.0, "o", "hello "]\n[2.0, "o", "world!"]\n');
+parse('{ "version": 2, "width": 80, "height": 24 }\n[1.0, "o", "hello "]\n[2.0, "o", "world!"]\n');
 ```
 
 ## Custom parser

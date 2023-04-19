@@ -1,4 +1,4 @@
-async function parseTypescript(responses) {
+async function parse(responses) {
   const utfDecoder = new TextDecoder();
   let cols;
   let rows;
@@ -64,4 +64,4 @@ async function parseTypescript(responses) {
   return { cols, rows, output, input };
 }
 
-export default parseTypescript;
+export default parse;

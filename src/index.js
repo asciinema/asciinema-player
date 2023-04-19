@@ -7,7 +7,7 @@ import { recording } from "./driver/recording";
 import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
 import { eventsource } from "./driver/eventsource";
-import { parseAsciicast } from "./parser/asciicast";
+import parseAsciicast from "./parser/asciicast";
 import parseTypescript from "./parser/typescript";
 
 const drivers = new Map([

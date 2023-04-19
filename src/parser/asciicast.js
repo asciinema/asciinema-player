@@ -1,7 +1,7 @@
 import Stream from '../stream';
 
 
-async function parseAsciicast(data) {
+async function parse(data) {
   let header;
   let events;
 
@@ -94,4 +94,5 @@ function unparseAsciicastV2(recording) {
   return `${header}\n${events}\n`;
 }
 
-export { parseAsciicast, unparseAsciicastV2 };
+export default parse;
+export { parse, unparseAsciicastV2 };
