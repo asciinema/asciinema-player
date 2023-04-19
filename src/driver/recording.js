@@ -22,7 +22,7 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     const { parser, minFrameTime, inputOffset, dumpFilename } = src;
 
     const recording = prepare(
-      parser(await doFetch(src)),
+      await parser(await doFetch(src)),
       logger,
       { idleTimeLimit, startAt, minFrameTime, inputOffset }
     );
@@ -63,7 +63,7 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
       throw `failed fetching recording from ${url}: ${response.status} ${response.statusText}`;
     }
 
-    return await response.text();
+    return response;
   }
 
   function delay(targetTime) {

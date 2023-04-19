@@ -8,6 +8,19 @@ import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
 import { eventsource } from "./driver/eventsource";
 import { parseAsciicast } from "./parser/asciicast";
+import parseTypescript from "./parser/typescript";
+
+const drivers = new Map([
+  ['recording', recording],
+  ['websocket', websocket],
+  ['eventsource', eventsource],
+  ['test', test]
+]);
+
+const parsers = new Map([
+  ['asciicast', parseAsciicast],
+  ['typescript', parseTypescript]
+]);
 
 function create(src, elem, opts = {}) {
   const logger = opts.logger ?? new DummyLogger();
@@ -81,16 +94,19 @@ function getDriver(src) {
     src.driver = 'recording';
   }
 
-  if (src.driver == 'recording' && src.parser === undefined) {
-    src.parser = parseAsciicast;
-  }
+  if (src.driver == 'recording') {
+    if (src.parser === undefined) {
+      src.parser = 'asciicast';
+    }
 
-  const drivers = new Map([
-    ['recording', recording],
-    ['websocket', websocket],
-    ['eventsource', eventsource],
-    ['test', test]
-  ]);
+    if (typeof src.parser === 'string') {
+      if (parsers.has(src.parser)) {
+        src.parser = parsers.get(src.parser);
+      } else {
+        throw `unknown parser: ${src.parser}`;
+      }
+    }
+  }
 
   if (drivers.has(src.driver)) {
     const driver = drivers.get(src.driver);

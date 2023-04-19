@@ -1,9 +1,13 @@
 import Stream from '../stream';
 
 
-function parseAsciicast(data) {
+async function parseAsciicast(data) {
   let header;
   let events;
+
+  if (data instanceof Response) {
+    data = await data.text();
+  }
 
   if (typeof data === 'string') {
     const result = parseJsonl(data);
