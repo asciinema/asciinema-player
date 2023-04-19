@@ -50,7 +50,17 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
         data = data();
       }
 
-      return data;
+      if (!(data instanceof Promise)) {
+        data = Promise.resolve(data);
+      }
+
+      return data.then(value => {
+        if (typeof value === 'string' || value instanceof ArrayBuffer) {
+          return new Response(value);
+        } else {
+          return value;
+        }
+      });
     } else {
       throw 'failed fetching recording file: url/data missing in src';
     }

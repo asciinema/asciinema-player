@@ -6,17 +6,14 @@ async function parse(data) {
   let events;
 
   if (data instanceof Response) {
-    data = await data.text();
-  }
-
-  if (typeof data === 'string') {
-    const result = parseJsonl(data);
+    const text = await data.text();
+    const result = parseJsonl(text);
 
     if (result !== undefined) {
       header = result.header;
       events = result.events;
     } else {
-      header = JSON.parse(data);
+      header = JSON.parse(text);
     }
   } else if (typeof data === 'object' && typeof data.version === 'number') {
     header = data;
