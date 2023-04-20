@@ -26,7 +26,7 @@ async function parse(response) {
     frame = parseFrame(array.slice(cursor));
   }
 
-  return { cols, rows, output, input: [] };
+  return { cols, rows, output };
 }
 
 function parseFrame(array) {
