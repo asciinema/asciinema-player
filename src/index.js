@@ -9,6 +9,7 @@ import { websocket } from "./driver/websocket";
 import { eventsource } from "./driver/eventsource";
 import parseAsciicast from "./parser/asciicast";
 import parseTypescript from "./parser/typescript";
+import parseTtyrec from "./parser/ttyrec";
 
 const drivers = new Map([
   ['recording', recording],
@@ -19,7 +20,8 @@ const drivers = new Map([
 
 const parsers = new Map([
   ['asciicast', parseAsciicast],
-  ['typescript', parseTypescript]
+  ['typescript', parseTypescript],
+  ['ttyrec', parseTtyrec],
 ]);
 
 function create(src, elem, opts = {}) {

@@ -92,6 +92,25 @@ AsciinemaPlayer.create({
 }, document.getElementById('demo'));
 ```
 
+### ttyrec
+
+`ttyrec` parser handles recordings in [ttyrec
+format](https://nethackwiki.com/wiki/Ttyrec) produced by
+[ttyrec](http://0xcc.net/ttyrec/), [termrec](http://angband.pl/termrec.html) or
+[ipbt](https://www.chiark.greenend.org.uk/~sgtatham/ipbt/) amongst others.
+
+This parser understands `\e[8;Y;Xt` terminal size sequence injected into the
+first frame by termrec.
+
+Usage:
+
+```javascript
+AsciinemaPlayer.create({
+  url: '/demo.ttyrec',
+  parser: 'ttyrec'
+}, document.getElementById('demo'));
+```
+
 ## Custom parser
 
 Custom format parser can be used by using a _function_ as `parser` option:
