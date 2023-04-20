@@ -1,18 +1,19 @@
 import Stream from '../stream';
 
 
-function parseAsciicast(data) {
+async function parse(data) {
   let header;
   let events;
 
-  if (typeof data === 'string') {
-    const result = parseJsonl(data);;
+  if (data instanceof Response) {
+    const text = await data.text();
+    const result = parseJsonl(text);
 
     if (result !== undefined) {
       header = result.header;
       events = result.events;
     } else {
-      header = JSON.parse(data);
+      header = JSON.parse(text);
     }
   } else if (typeof data === 'object' && typeof data.version === 'number') {
     header = data;
@@ -90,4 +91,5 @@ function unparseAsciicastV2(recording) {
   return `${header}\n${events}\n`;
 }
 
-export { parseAsciicast, unparseAsciicastV2 };
+export default parse;
+export { parse, unparseAsciicastV2 };

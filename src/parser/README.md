@@ -5,6 +5,15 @@ format into a simple object representing a recording. Once the player fetches a
 file, it runs its contents through a parser, which turns it into a recording
 object used by player's [recording driver](../driver/recording.js).
 
+Default parser used by the player is [asciicast parser](#asciicast), however
+another [built-in](#built-in-parsers) or [custom parser](#custom-parser) can be
+used by including `parser` option in source argument of
+`AsciinemaPlayer.create`:
+
+```javascript
+AsciinemaPlayer.create({ url: url, parser: parser }, containerElement);
+```
+
 ## Data model of a recording
 
 asciinema player uses very simple internal representation of a recording. The
@@ -32,35 +41,75 @@ Example recording in its internal representation:
 }
 ```
 
-## Default parser
+## Built-in parsers
 
-Default parser used by the player is [asciicast](asciicast.js), which handles
-both [asciicast
+Built-in parser can be used by passing the parser name (string) as `parser`
+option:
+
+```javascript
+AsciinemaPlayer.create({ url: url, parser: 'built-in-parser-name' }, containerElement);
+```
+
+### asciicast
+
+`asciicast` parser handles both [asciicast
 v1](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v1.md) and
 [asciicast
 v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md)
-file formats.
+file formats produced by [asciinema
+recorder](https://github.com/asciinema/asciinema).
 
-The exact above recording object would be returned from asciicast parser when
-invoked with following input text:
+This parser is the default and does not have to be explicitly selected.
+
+### typescript
+
+`typescript` parser handles recordings in typescript format (not to be confused
+with Typescript language) produced by venerable [script
+command](https://www.man7.org/linux/man-pages/man1/script.1.html).
+
+This parser supports both "classic" and "advanced" logging formats, including
+input streams.
+
+Usage:
 
 ```javascript
-import { parseAsciicast } from "asciinema-player/parser/asciicast";
+AsciinemaPlayer.create({
+  url: ['/demo.timing', '/demo.data'],
+  parser: 'typescript'
+}, document.getElementById('demo'));
+```
 
-parseAsciicast('{ "version": 2, "width": 80, "height": 24 }\n[1.0, "o", "hello "]\n[2.0, "o", "world!"]\n');
+Note `url` above being an array of URLs pointing to typescript timing and data
+files.
+
+Usage for 3 file variant - timing file + output file + input file (created when
+recording with `script --log-in <file>`):
+
+```javascript
+AsciinemaPlayer.create({
+  url: ['/demo.timing', '/demo.output', '/demo.input'],
+  parser: 'typescript'
+}, document.getElementById('demo'));
 ```
 
 ## Custom parser
 
-Custom format parser can be built by implementing a function which takes file
-content and returns a value conforming to the above data model.
+Custom format parser can be used by using a _function_ as `parser` option:
+
+```javascript
+AsciinemaPlayer.create({ url: url, parser: myParserFunction }, containerElement);
+```
+
+Custom parser function takes a [Response
+object](https://developer.mozilla.org/en-US/docs/Web/API/Response) and returns
+an object conforming to the [recording data model](#data-model-of-a-recording).
 
 The following example illustrates implementation of a custom parser:
 
 ```javascript
 import * as AsciinemaPlayer from 'asciinema-player';
 
-function parse(text) {
+function parse(response) {
   return {
     cols: 80,
     rows: 24,
@@ -82,15 +131,17 @@ function.
 
 This parser is not quite there though because it ignores downloaded file's
 content, always returning hardcoded output. Also, `cols` and `rows` are made up
-as well - if possible they should reflect the size of a terminal at the time of
-recording, otherwise their values should be chosen to make the recording look
-legible. The example illustrates what kind of data the player expects though.
+as well - if possible they should be extracted from the file and reflect the
+size of a terminal at the time recording session happened. The example
+illustrates what kind of data the player expects though.
 
 A more realistic example, where content of a file is actually used to construct
 output, could look like this:
 
 ```javascript
-function parseLogs(text) {
+async function parseLogs(response) {
+  const text = await response.text();
+
   return {
     cols: 80,
     rows: 24,
@@ -122,7 +173,8 @@ For example:
 ```
 
 ```javascript
-function parseLogs(text) {
+async function parseLogs(response) {
+  const text = await response.text();
   const pattern = /^([\d.]+) (.*)/;
 
   return {
@@ -140,13 +192,16 @@ Here's slightly more advanced parser, for [Simon Jansen's Star Wars
 Asciimation](https://www.asciimation.co.nz/):
 
 ```javascript
-function parseAsciimation(text) {
-  const LINES_PER_FRAME = 14;
-  const FRAME_DELAY = 67;
+const LINES_PER_FRAME = 14;
+const FRAME_DELAY = 67;
+const COLUMNS = 67;
+
+async function parseAsciimation(response) {
+  const text = await response.text();
   const lines = text.split('\n');
 
   return {
-    cols: 67,
+    cols: COLUMNS,
     rows: LINES_PER_FRAME - 1,
 
     output: function*() {

@@ -22,7 +22,7 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     const { parser, minFrameTime, inputOffset, dumpFilename } = src;
 
     const recording = prepare(
-      parser(await doFetch(src)),
+      await parser(await doFetch(src)),
       logger,
       { idleTimeLimit, startAt, minFrameTime, inputOffset }
     );
@@ -40,24 +40,40 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     return { cols, rows, duration };
   }
 
-  async function doFetch({ url, data, fetchOpts = {} }) {
-    if (url !== undefined) {
-      const response = await fetch(url, fetchOpts);
-
-      if (!response.ok) {
-        throw `failed fetching recording file: ${response.statusText} (${response.status})`;
-      }
-
-      return await response.text();
+  function doFetch({ url, data, fetchOpts = {} }) {
+    if (typeof url === 'string') {
+      return doFetchOne(url, fetchOpts);
+    } else if (Array.isArray(url)) {
+      return Promise.all(url.map(url => doFetchOne(url, fetchOpts)));
     } else if (data !== undefined) {
       if (typeof data === 'function') {
         data = data();
       }
 
-      return await data;
+      if (!(data instanceof Promise)) {
+        data = Promise.resolve(data);
+      }
+
+      return data.then(value => {
+        if (typeof value === 'string' || value instanceof ArrayBuffer) {
+          return new Response(value);
+        } else {
+          return value;
+        }
+      });
     } else {
       throw 'failed fetching recording file: url/data missing in src';
     }
+  }
+
+  async function doFetchOne(url, fetchOpts) {
+    const response = await fetch(url, fetchOpts);
+
+    if (!response.ok) {
+      throw `failed fetching recording from ${url}: ${response.status} ${response.statusText}`;
+    }
+
+    return response;
   }
 
   function delay(targetTime) {

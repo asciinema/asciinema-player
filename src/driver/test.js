@@ -1,4 +1,4 @@
-import { parseAsciicast } from '../parser/asciicast';
+import parseAsciicast from '../parser/asciicast';
 
 
 function test(src, callbacks, opts) {
