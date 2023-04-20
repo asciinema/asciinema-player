@@ -198,7 +198,7 @@ a user. If [preload](#preload) option is used, the function is invoked during
 player initialization (mounting in DOM).
 
 Provided `data` is parsed with built-in asciicast format parser by default (also
-see [Parsing other recording formats](#parsing-other-recording-formats)).
+see [Playing other recording formats](#playing-other-recording-formats)).
 
 Examples of supported `data` specifications:
 
@@ -266,22 +266,26 @@ AsciinemaPlayer.create(
 );
 ```
 
-### Parsing other recording formats
+### Playing other recording formats
 
 By default, a recording is parsed with built-in
 [asciicast](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md)
-format parser. However, if you happen to have a recording produced by other
-terminal session recording tool (e.g. ttyrec) or a log file that you want to
-animate, you can still play it in asciinema player, as long as you write a
-parser for it.
+format parser.
 
-Custom format parser can be used like this:
+If you have a recording produced by other terminal session recording tool (e.g.
+script, ttyrec) you can use one of [built-in file format
+parsers](src/parser/README.md#built-in-parsers), or [implement a custom parser
+function](src/parser/README.md#custom-parser).
+
+Recording format parser can be specified in the source argument to
+`AsciinemaPlayer.create` as a string (built-in) or function (custom):
 
 ```javascript
 AsciinemaPlayer.create({ url: url, parser: parser }, containerElement);
 ```
 
-See [Parsers](src/parser/README.md) for details on implementing a custom parser.
+See [Parsers](src/parser/README.md) for information on available built-in
+parsers and how to implement a custom parser.
 
 ## Options
 
