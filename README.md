@@ -273,12 +273,12 @@ By default, a recording is parsed with built-in
 format parser.
 
 If you have a recording produced by other terminal session recording tool (e.g.
-script, ttyrec) you can use one of [built-in file format
+script, termrec, ttyrec) you can use one of [built-in file format
 parsers](src/parser/README.md#built-in-parsers), or [implement a custom parser
 function](src/parser/README.md#custom-parser).
 
 Recording format parser can be specified in the source argument to
-`AsciinemaPlayer.create` as a string (built-in) or function (custom):
+`AsciinemaPlayer.create` as a string (built-in) or a function (custom):
 
 ```javascript
 AsciinemaPlayer.create({ url: url, parser: parser }, containerElement);
