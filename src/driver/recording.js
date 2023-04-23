@@ -331,46 +331,60 @@ function batcher(logger, minFrameTime = 1.0 / 60) {
 function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, inputOffset }) {
   idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
   let { output, input = [] } = recording;
-  let prevT = 0;
-  let shift = 0;
-  let effectiveStartAt = startAt;
 
   if (!(output instanceof Stream)) {
     output = new Stream(output);
   }
 
+  if (!(input instanceof Stream)) {
+    input = new Stream(input);
+  }
+
   output = output
     .transform(batcher(logger, minFrameTime))
+    .map(e => ['o', e]);
+
+  input = input.map(e => ['i', e]);
+
+  let prevT = 0;
+  let shift = 0;
+  let effectiveStartAt = startAt;
+
+  const compressed = output
+    .multiplex(input, (a, b) => a[1][0] < b[1][0])
     .map(e => {
-      const delay = e[0] - prevT;
+      const delay = e[1][0] - prevT;
       const delta = delay - idleTimeLimit;
-      prevT = e[0];
+      prevT = e[1][0];
 
       if (delta > 0) {
         shift += delta;
 
-        if (e[0] < startAt) {
+        if (e[1][0] < startAt) {
           effectiveStartAt -= delta;
         }
       }
 
-      return [e[0] - shift, e[1]];
-    })
-    .toArray();
+      return [e[0], [e[1][0] - shift, e[1][1]]];
+    });
 
-  const duration = output[output.length - 1][0];
+  const streams = new Map([
+    ['o', []],
+    ['i', []]
+  ]);
+
+  for (const e of compressed) {
+    streams.get(e[0]).push(e[1]);
+  }
+
+  output = streams.get('o');
+  input = streams.get('i');
 
   if (inputOffset !== undefined) {
-    if (!(input instanceof Stream)) {
-      input = new Stream(input);
-    }
-
     input = input.map(i => [i[0] + inputOffset, i[1]]);
   }
 
-  if (!Array.isArray(input)) {
-    input = input.toArray();
-  }
+  const duration = output[output.length - 1][0];
 
   return { ...recording, output, input, duration, effectiveStartAt };
 }

@@ -1,5 +1,5 @@
 // Efficient array transformations without intermediate array objects.
-// Inspired by Clojure's transducers and Elixir's streams.
+// Inspired by Elixir's streams and Rust's iterator adapters.
 
 class Stream {
   constructor(input, xfs) {
@@ -29,6 +29,12 @@ class Stream {
 
   transform(f) {
     return new Stream(this.input, this.xfs.concat([f]));
+  }
+
+  multiplex(other, comparator) {
+    return new Stream(
+      new Multiplexer(this[Symbol.iterator](), other[Symbol.iterator](), comparator)
+    );
   }
 
   toArray() {
@@ -138,6 +144,63 @@ function toXf(xf) {
     return { step: xf, flush: () => {} };
   } else {
     return xf;
+  }
+}
+
+class Multiplexer {
+  constructor(left, right, comparator) {
+    this.left = left;
+    this.right = right;
+    this.comparator = comparator;
+  }
+
+  [Symbol.iterator]() {
+    let leftItem;
+    let rightItem;
+
+    return {
+      next: () => {
+        if (leftItem === undefined && this.left !== undefined) {
+          const result = this.left.next();
+
+          if (result.done) {
+            this.left = undefined;
+          } else {
+            leftItem = result.value;
+          }
+        }
+
+        if (rightItem === undefined && this.right !== undefined) {
+          const result = this.right.next();
+
+          if (result.done) {
+            this.right = undefined;
+          } else {
+            rightItem = result.value;
+          }
+        }
+
+        if (leftItem === undefined && rightItem === undefined) {
+          return { done: true };
+        } else if (leftItem === undefined) {
+          const value = rightItem;
+          rightItem = undefined;
+          return { done: false, value: value };
+        } else if (rightItem === undefined) {
+          const value = leftItem;
+          leftItem = undefined;
+          return { done: false, value: value };
+        } else if (this.comparator(leftItem, rightItem)) {
+          const value = leftItem;
+          leftItem = undefined;
+          return { done: false, value: value };
+        } else {
+          const value = rightItem;
+          rightItem = undefined;
+          return { done: false, value: value };
+        }
+      }
+    }
   }
 }
 
