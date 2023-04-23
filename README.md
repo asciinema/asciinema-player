@@ -4,9 +4,9 @@ _Note: This README applies to development branch. See the version for the latest
 
 [![Build status](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml/badge.svg)](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml)
 
-Web player for terminal sessions (recorded with
-[asciinema](https://github.com/asciinema/asciinema)) you can use on your
-website.
+Web player for terminal sessions recorded with
+[asciinema](https://github.com/asciinema/asciinema), which you can use on your
+own website.
 
 ## About
 
@@ -29,19 +29,19 @@ and the recordings yourself then read on, it's very simple.
 
 ## Features
 
-* ability to copy-paste terminal content - it's just a text after all!,
-* ultra smooth, timing-accurate playback,
-* [automatic font scaling](#fit) to fit into container element in most efficient way,
-* [idle time optimization](#idletimelimit) to skip longer periods of inactivity,
-* [predefined and custom font sizes](#terminalfontsize),
+* ability to copy-paste terminal content - it's just text after all!
+* smooth, timing-accurate playback,
+* [automatic terminal scaling](#fit) to fit into container element in most efficient way,
+* [idle time optimization](#idletimelimit) to skip periods of inactivity,
+* configurable [font families](#fonts) and [line height](#terminallineheight)
 * [NPT-based or custom text poster](#poster),
 * [adjustable playback speed](#speed),
 * [looped playback](#loop), infinite or finite,
 * [starting playback at specific time](#startat),
 * [API for programmatic control](#api),
 * [keyboard shortcuts](#keyboard-shortcuts),
-* [multiple color themes for standard 16 colors](#theme),
-* full support for 256 color palette and 24-bit true color (ISO-8613-3),
+* [multiple color themes for standard 16 colors](#theme) + support for 256 color palette and 24-bit true color (ISO-8613-3),
+* [support for other recording formats](#playing-other-recording-formats) like ttyrec, typescript,
 * full-screen mode.
 
 ## Quick start
@@ -69,6 +69,7 @@ Then add necessary includes to your HTML document and initialize the player
 inside an empty `<div>` element:
 
 ```html
+<!DOCTYPE html>
 <html>
 <head>
   ...
@@ -162,7 +163,7 @@ replace it completely.
 
 If a recording file is small and you'd rather avoid additional HTTP request, you
 can inline the recording by using [Data
-URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs):
+URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs):
 
 ```javascript
 AsciinemaPlayer.create('data:text/plain;base64,' + base64encodedAsciicast, containerElement);
@@ -253,7 +254,10 @@ argument).
 For example:
 
 ```javascript
-AsciinemaPlayer.create({ url: url, fetchOpts: { method: 'POST' } }, containerElement);
+AsciinemaPlayer.create(
+  { url: url, fetchOpts: { method: 'POST' } },
+  containerElement
+);
 ```
 
 Alternatively, you can use custom data source (as described in previous section)
@@ -261,7 +265,7 @@ and call `fetch` yourself:
 
 ```javascript
 AsciinemaPlayer.create(
-  { data: () => fetch(url, { method: 'POST' }).then(resp => resp.text()) },
+  { data: () => fetch(url, { method: 'POST' }) },
   containerElement
 );
 ```
@@ -285,11 +289,11 @@ AsciinemaPlayer.create({ url: url, parser: parser }, containerElement);
 ```
 
 See [Parsers](src/parser/README.md) for information on available built-in
-parsers and how to implement a custom parser.
+parsers and how to implement a custom one.
 
 ## Options
 
-The following options can be used to tweak player's look and feel:
+The following options can be used to adjust look and feel of the player:
 
 ### `cols`
 
@@ -300,9 +304,9 @@ Number of columns of player's terminal.
 When not set it defaults to 80 (until asciicast gets loaded) and to terminal
 width saved in the asciicast file (after it gets loaded).
 
-It's recommended to set it to the same value as in asciicast file to prevent
-player to resize itself from 80x24 to the actual dimensions of the asciicast
-when it gets loaded.
+It's recommended to set it to the same value as in asciicast file to avoid
+player resizing itself from 80x24 to actual dimensions of the recording when it
+gets loaded.
 
 ### `rows`
 
@@ -370,8 +374,8 @@ Type: number
 
 Limit terminal inactivity to a given number of seconds.
 
-For example, when set to `2` any inactivity longer than 2 seconds will be
-"compressed" to 2 seconds.
+For example, when set to `2` any inactivity (pauses) longer than 2 seconds will
+be "compressed" to 2 seconds.
 
 Defaults to:
 
@@ -462,17 +466,17 @@ Type: string
 
 Size of the terminal font.
 
+_This option is effective only when `fit: false` option is specified as well
+(see above)._
+
 Possible values:
 
+* any valid CSS `font-size` value, e.g. `"15px"`
 * `"small"`
 * `"medium"`
 * `"big"`
-* any valid CSS `font-size` value, e.g. `"15px"`
 
 Defaults to `"small"`.
-
-> This option is effective only when `fit: false` option is specified as well
-> (see above).
 
 ### `terminalFontFamily`
 
@@ -517,7 +521,8 @@ The object returned by `create` function (saved as `player` const above)
 contains several functions that can be used to control the player from
 your code.
 
-For example, initiate playback and print the recording duration when it starts:
+For example, initiate playback and print the length of the recording when it
+starts:
 
 ```javascript
 player.play().then(() => {
@@ -649,7 +654,7 @@ player.addEventListener('input', ({data}) => {
 ```
 
 `inputOffset` source option can be used to shift fired input events in time,
-e.g. when you need them to fire earlier due audio latency etc:
+e.g. when you need them to fire earlier due to audio latency etc:
 
 ```javascript
 const player = AsciinemaPlayer.create({
