@@ -92,6 +92,22 @@ AsciinemaPlayer.create({
 }, document.getElementById('demo'));
 ```
 
+If the recording was created in a terminal configured with character encoding
+other than UTF-8 then `encoding` option should be used to specify matching
+encoding to use when decoding text:
+
+```javascript
+AsciinemaPlayer.create({
+  url: ['/demo.timing', '/demo.data'],
+  parser: 'typescript',
+  encoding: 'iso-8859-2'
+}, document.getElementById('demo'));
+```
+
+See [TextDecoder's encodings
+list](https://developer.mozilla.org/en-US/docs/Web/API/Encoding_API/Encodings)
+for valid names.
+
 ### ttyrec
 
 `ttyrec` parser handles recordings in [ttyrec
@@ -110,6 +126,22 @@ AsciinemaPlayer.create({
   parser: 'ttyrec'
 }, document.getElementById('demo'));
 ```
+
+If the recording was created in a terminal configured with character encoding
+other than UTF-8 then `encoding` option should be used to specify matching
+encoding to use when decoding text:
+
+```javascript
+AsciinemaPlayer.create({
+  url: '/demo.ttyrec',
+  parser: 'ttyrec',
+  encoding: 'iso-8859-2'
+}, document.getElementById('demo'));
+```
+
+See [TextDecoder's encodings
+list](https://developer.mozilla.org/en-US/docs/Web/API/Encoding_API/Encodings)
+for valid names.
 
 ## Custom parser
 

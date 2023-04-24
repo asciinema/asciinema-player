@@ -1,10 +1,10 @@
-async function parse(response) {
-  const utfDecoder = new TextDecoder();
+async function parse(response, { encoding }) {
+  const textDecoder = new TextDecoder(encoding);
   const buffer = await response.arrayBuffer();
   const array = new Uint8Array(buffer);
   const firstFrame = parseFrame(array);
   const baseTime = firstFrame.time;
-  const firstFrameText = utfDecoder.decode(firstFrame.data);
+  const firstFrameText = textDecoder.decode(firstFrame.data);
   const sizeMatch = firstFrameText.match(/\x1b\[8;(\d+);(\d+)t/);
   const output = [];
   let cols = 80;
@@ -20,7 +20,7 @@ async function parse(response) {
 
   while (frame !== undefined) {
     const time = frame.time - baseTime;
-    const text = utfDecoder.decode(frame.data);
+    const text = textDecoder.decode(frame.data);
     output.push([time, text]);
     cursor += frame.len;
     frame = parseFrame(array.slice(cursor));

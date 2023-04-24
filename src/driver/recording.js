@@ -19,10 +19,10 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
   let playCount = 0;
 
   async function init() {
-    const { parser, minFrameTime, inputOffset, dumpFilename } = src;
+    const { parser, minFrameTime, inputOffset, dumpFilename, encoding = 'utf-8' } = src;
 
     const recording = prepare(
-      await parser(await doFetch(src)),
+      await parser(await doFetch(src), { encoding }),
       logger,
       { idleTimeLimit, startAt, minFrameTime, inputOffset }
     );

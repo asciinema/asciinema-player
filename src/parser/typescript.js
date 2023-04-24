@@ -1,5 +1,5 @@
-async function parse(responses) {
-  const utfDecoder = new TextDecoder();
+async function parse(responses, { encoding }) {
+  const textDecoder = new TextDecoder(encoding);
   let cols;
   let rows;
 
@@ -15,7 +15,7 @@ async function parse(responses) {
   const buffer = await responses[1].arrayBuffer();
   const array = new Uint8Array(buffer);
   const dataOffset = array.findIndex(byte => byte == 0x0a) + 1;
-  const header = utfDecoder.decode(array.slice(0, dataOffset));
+  const header = textDecoder.decode(array.slice(0, dataOffset));
   const sizeMatch = header.match(/COLUMNS="(\d+)" LINES="(\d+)"/);
 
   if (sizeMatch !== null) {
@@ -42,13 +42,13 @@ async function parse(responses) {
     if (entry[0] === 'O') {
       const count = parseInt(entry[2], 10);
       const bytes = stdout.array.slice(stdout.cursor, stdout.cursor + count);
-      const text = utfDecoder.decode(bytes);
+      const text = textDecoder.decode(bytes);
       output.push([time, text]);
       stdout.cursor += count;
     } else if (entry[0] === 'I') {
       const count = parseInt(entry[2], 10);
       const bytes = stdin.array.slice(stdin.cursor, stdin.cursor + count);
-      const text = utfDecoder.decode(bytes);
+      const text = textDecoder.decode(bytes);
       input.push([time, text]);
       stdin.cursor += count;
     } else if (entry[0] === 'H' && entry[2] === 'COLUMNS') {
