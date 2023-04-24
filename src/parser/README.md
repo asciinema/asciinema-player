@@ -94,7 +94,7 @@ AsciinemaPlayer.create({
 
 If the recording was created in a terminal configured with character encoding
 other than UTF-8 then `encoding` option should be used to specify matching
-encoding to use when decoding text:
+encoding to be used when decoding text:
 
 ```javascript
 AsciinemaPlayer.create({
@@ -129,7 +129,7 @@ AsciinemaPlayer.create({
 
 If the recording was created in a terminal configured with character encoding
 other than UTF-8 then `encoding` option should be used to specify matching
-encoding to use when decoding text:
+encoding to be used when decoding text:
 
 ```javascript
 AsciinemaPlayer.create({
