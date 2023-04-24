@@ -237,7 +237,7 @@ following data source can be used to extract it and pass it to the player:
 
 ```javascript
 AsciinemaPlayer.create(
-  { data: document.getElementById('asciicast').textContent },
+  { data: document.getElementById('asciicast').textContent.trim() },
   document.getElementById('demo')
 );
 ```
