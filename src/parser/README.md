@@ -165,7 +165,7 @@ function parse(response) {
     cols: 80,
     rows: 24,
     output: [[1.0, "hello"], [2.0, " world!"]]
-  }
+  };
 };
 
 AsciinemaPlayer.create(
@@ -197,7 +197,7 @@ async function parseLogs(response) {
     cols: 80,
     rows: 24,
     output: text.split('\n').map((line, i) => [i * 0.5, line + '\n'])
-  }
+  };
 };
 
 AsciinemaPlayer.create(
@@ -235,7 +235,7 @@ async function parseLogs(response) {
       const [_, time, message] = pattern.exec(line);
       return [parseFloat(time), message + '\n']
     })
-  }
+  };
 };
 ```
 
@@ -271,7 +271,7 @@ async function parseAsciimation(response) {
         yield [time / 1000, text];
       }
     }()
-  }
+  };
 }
 
 AsciinemaPlayer.create(
@@ -290,3 +290,27 @@ Note that `output` in the above parser function is a generator (note `*` in
 `function*`) that is immediately called (note `()` after `}` at the end). In
 fact `output` can be any iterable or iterator which is finite, which in practice
 means you can return an array or a finite generator, amongst others.
+
+All example parsers above parsed text (`response.text()`) however any binary
+format can be parsed easily by using [binary data
+buffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer)
+with [typed array
+object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray)
+like
+[Uint8Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array):
+
+```javascript
+async function parseMyBinaryFormat(response) {
+  const buffer = await response.arrayBuffer();
+  const array = new Uint8Array(buffer);
+  const output = [];
+  const firstByte = array[0];
+  const secondByte = array[1];
+  // do something with the bytes to construct output
+
+  return { cols: 80, rows: 24, output };
+}
+```
+
+See [ttyrec.js](ttyrec.js) or [typescript.js](typescript.js) as examples of
+binary parsers.
