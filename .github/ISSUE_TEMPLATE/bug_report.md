@@ -9,7 +9,7 @@ assignees: ''
 
 To make life of the project maintainers easier please submit bug reports only.
 
-This is bug tracker for asciinema web player. If your issue seems to be with another component (recorder, server) then open an issue in related repository.
+This is bug tracker for asciinema web player. If your issue seems to be with another component (cli recorder, server) then open an issue in related repository.
 
 Ideas, feature requests, help requests, questions and general discussions should be discussed in project's Discussions instead: https://github.com/orgs/asciinema/discussions
 
@@ -35,7 +35,7 @@ If applicable, add screenshots to help explain your problem.
 
 **Versions:**
  - OS: [e.g. macOS 12.6, Ubuntu 23.04]
- - Browser [e.g. chrome, safari]
+ - Browser [e.g. Firefox 111]
  - asciinema player: [e.g. 3.3.0]
 
 **Additional context**
