@@ -159,6 +159,8 @@ class Core {
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
     this.poster = opts.poster;
+    this.breakpoints = opts.breakpoints;
+    this.pauseOnBreakpoints = opts.pauseOnBreakpoints;
     this.actionQueue = Promise.resolve();
 
     this.eventHandlers = new Map([
@@ -201,7 +203,15 @@ class Core {
 
     this.driver = this.driverFn(
       { feed, onInput, reset, now, setTimeout, setInterval, setState, logger: this.logger },
-      { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt, loop: this.loop }
+      {
+        cols: this.cols,
+        rows: this.rows,
+        idleTimeLimit: this.idleTimeLimit,
+        startAt: this.startAt,
+        loop: this.loop,
+        breakpoints: this.breakpoints,
+        pauseOnBreakpoints: this.pauseOnBreakpoints
+      }
     );
 
     if (typeof this.driver === 'function') {

@@ -2,18 +2,23 @@ import { unparseAsciicastV2 } from '../parser/asciicast';
 import Stream from '../stream';
 
 
-function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop }) {
+function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, breakpoints: bps, pauseOnBreakpoints }) {
   let cols;
   let rows;
   let outputs;
   let inputs;
+  let breakpoints;
   let duration;
   let effectiveStartAt;
   let outputTimeoutId;
   let inputTimeoutId;
+  let breakpointTimeoutId;
   let nextOutputIndex = 0;
   let nextInputIndex = 0;
+  let nextBreakpointIndex = 0;
   let lastOutputTime = 0;
+  let lastInputTime = 0;
+  let lastBreakpointTime = 0;
   let startTime;
   let pauseElapsedTime;
   let playCount = 0;
@@ -24,10 +29,10 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     const recording = prepare(
       await parser(await doFetch(src), { encoding }),
       logger,
-      { idleTimeLimit, startAt, minFrameTime, inputOffset }
+      { idleTimeLimit, startAt, minFrameTime, inputOffset, bps }
     );
 
-    ({ output: outputs, input: inputs, cols, rows, duration, effectiveStartAt } = recording);
+    ({ cols, rows, output: outputs, input: inputs, breakpoints, duration, effectiveStartAt } = recording);
 
     if (outputs.length === 0) {
       throw 'recording is missing output events';
@@ -124,7 +129,9 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
   }
 
   function runNextInput() {
-    onInput(inputs[nextInputIndex++][1]);
+    let input = inputs[nextInputIndex++];
+    lastInputTime = input[0];
+    onInput(input[1]);
     scheduleNextInput();
   }
 
@@ -133,18 +140,43 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     inputTimeoutId = null;
   }
 
+  function scheduleNextBreakpoint() {
+    if (!pauseOnBreakpoints) return;
+
+    const nextBreakpoint = breakpoints[nextBreakpointIndex];
+
+    if (nextBreakpoint) {
+      breakpointTimeoutId = setTimeout(runNextBreakpoint, delay(nextBreakpoint[0]));
+    }
+  }
+
+  function runNextBreakpoint() {
+    let breakpoint = breakpoints[nextBreakpointIndex++];
+    lastBreakpointTime = breakpoint[0];
+    pause();
+    setState('stopped', { reason: 'paused' });
+  }
+
+  function cancelNextBreakpoint() {
+    clearTimeout(breakpointTimeoutId);
+    breakpointTimeoutId = null;
+  }
+
   function onEnd() {
     cancelNextOutput();
     cancelNextInput();
+    cancelNextBreakpoint();
     playCount++;
 
     if (loop === true || (typeof loop === 'number' && playCount < loop)) {
       nextOutputIndex = 0;
       nextInputIndex = 0;
+      nextBreakpointIndex = 0;
       startTime = now();
       feed('\x1bc'); // reset terminal
       scheduleNextOutput();
       scheduleNextInput();
+      scheduleNextBreakpoint();
     } else {
       pauseElapsedTime = duration * 1000;
       effectiveStartAt = null;
@@ -173,6 +205,7 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
 
     cancelNextOutput();
     cancelNextInput();
+    cancelNextBreakpoint();
     pauseElapsedTime = now() - startTime;
 
     return true;
@@ -183,6 +216,7 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     pauseElapsedTime = null;
     scheduleNextOutput();
     scheduleNextInput();
+    scheduleNextBreakpoint();
   }
 
   function seek(where) {
@@ -210,7 +244,6 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     if (targetTime < lastOutputTime) {
       feed('\x1bc'); // reset terminal
       nextOutputIndex = 0;
-      nextInputIndex = 0;
       lastOutputTime = 0;
     }
 
@@ -222,10 +255,28 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
       output = outputs[++nextOutputIndex];
     }
 
+    if (targetTime < lastInputTime) {
+      nextInputIndex = 0;
+      lastInputTime = 0;
+    }
+
     let input = inputs[nextInputIndex];
 
     while (input && (input[0] < targetTime)) {
+      lastInputTime = input[0];
       input = inputs[++nextInputIndex];
+    }
+
+    if (targetTime < lastBreakpointTime) {
+      nextBreakpointIndex = 0;
+      lastBreakpointTime = 0;
+    }
+
+    let breakpoint = breakpoints[nextBreakpointIndex];
+
+    while (breakpoint && (breakpoint[0] < targetTime)) {
+      lastBreakpointTime = breakpoint[0];
+      breakpoint = breakpoints[++nextBreakpointIndex];
     }
 
     pauseElapsedTime = targetTime * 1000;
@@ -239,19 +290,25 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
   }
 
   function step() {
-    let nextOutput = outputs[nextOutputIndex];
+    let nextOutput = outputs[nextOutputIndex++];
+    if (nextOutput === undefined) return;
+    feed(nextOutput[1]);
+    const targetTime = nextOutput[0];
+    lastOutputTime = targetTime;
+    pauseElapsedTime = targetTime * 1000;
 
-    if (nextOutput !== undefined) {
-      feed(nextOutput[1]);
-      const targetTime = nextOutput[0];
-      lastOutputTime = targetTime;
-      pauseElapsedTime = targetTime * 1000;
-      nextOutputIndex++;
-      let input = inputs[nextInputIndex];
+    let input = inputs[nextInputIndex];
 
-      while (input && (input[0] < targetTime)) {
-        input = inputs[++nextInputIndex];
-      }
+    while (input && (input[0] < targetTime)) {
+      lastInputTime = input[0];
+      input = inputs[++nextInputIndex];
+    }
+
+    let breakpoint = breakpoints[nextBreakpointIndex];
+
+    while (breakpoint && (breakpoint[0] < targetTime)) {
+      lastBreakpointTime = breakpoint[0];
+      breakpoint = breakpoints[++nextBreakpointIndex];
     }
 
     effectiveStartAt = null;
@@ -328,9 +385,13 @@ function batcher(logger, minFrameTime = 1.0 / 60) {
   };
 }
 
-function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, inputOffset }) {
+function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, inputOffset, bps }) {
   idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
-  let { output, input = [] } = recording;
+  let { output, input = [], breakpoints = [] } = recording;
+
+  if (bps !== undefined) {
+    breakpoints = bps;
+  }
 
   if (!(output instanceof Stream)) {
     output = new Stream(output);
@@ -340,11 +401,21 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
     input = new Stream(input);
   }
 
+  if (!(breakpoints instanceof Stream)) {
+    breakpoints = new Stream(breakpoints);
+  }
+
   output = output
     .transform(batcher(logger, minFrameTime))
-    .map(e => ['o', e]);
+    .map(o => ['o', o]);
 
-  input = input.map(e => ['i', e]);
+  input = input.map(i => ['i', i]);
+
+  breakpoints = breakpoints.map(b =>
+    typeof b === 'number'
+    ? ['b', [b, '']]
+    : ['b', b]
+  );
 
   let prevT = 0;
   let shift = 0;
@@ -352,6 +423,7 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
 
   const compressed = output
     .multiplex(input, (a, b) => a[1][0] < b[1][0])
+    .multiplex(breakpoints, (a, b) => a[1][0] < b[1][0])
     .map(e => {
       const delay = e[1][0] - prevT;
       const delta = delay - idleTimeLimit;
@@ -370,7 +442,8 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
 
   const streams = new Map([
     ['o', []],
-    ['i', []]
+    ['i', []],
+    ['b', []]
   ]);
 
   for (const e of compressed) {
@@ -379,6 +452,7 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
 
   output = streams.get('o');
   input = streams.get('i');
+  breakpoints = streams.get('b');
 
   if (inputOffset !== undefined) {
     input = input.map(i => [i[0] + inputOffset, i[1]]);
@@ -386,7 +460,7 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
 
   const duration = output[output.length - 1][0];
 
-  return { ...recording, output, input, duration, effectiveStartAt };
+  return { ...recording, output, input, duration, breakpoints, effectiveStartAt };
 }
 
 function dump(recording, filename) {
