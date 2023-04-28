@@ -1,9 +1,9 @@
 # Parsers
 
 Parser is a function, which transforms a recording encoded in an arbitrary file
-format into a simple object representing a recording. Once the player fetches a
-file, it runs its contents through a parser, which turns it into a recording
-object used by player's [recording driver](../driver/recording.js).
+format into a simple object representing terminal recording. Once the player
+fetches a file, it runs its contents through a parser, which turns it into a
+recording object used by player's [recording driver](../driver/recording.js).
 
 Default parser used by the player is [asciicast parser](#asciicast), however
 another [built-in](#built-in-parsers) or [custom parser](#custom-parser) can be
@@ -100,8 +100,8 @@ AsciinemaPlayer.create({
 ```
 
 If the recording was created in a terminal configured with character encoding
-other than UTF-8 then `encoding` option should be used to specify matching
-encoding to be used when decoding text:
+other than UTF-8 then `encoding` option should be included, specifying matching
+encoding to be used for decoding bytes into text:
 
 ```javascript
 AsciinemaPlayer.create({
@@ -135,8 +135,8 @@ AsciinemaPlayer.create({
 ```
 
 If the recording was created in a terminal configured with character encoding
-other than UTF-8 then `encoding` option should be used to specify matching
-encoding to be used when decoding text:
+other than UTF-8 then `encoding` option should be included, specifying matching
+encoding to be used for decoding bytes into text:
 
 ```javascript
 AsciinemaPlayer.create({
