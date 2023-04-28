@@ -16,17 +16,24 @@ AsciinemaPlayer.create({ url: url, parser: parser }, containerElement);
 
 ## Data model of a recording
 
-asciinema player uses very simple internal representation of a recording. The
-object has following properties:
+asciinema player uses very simple internal representation of a recording.
+
+The object has following _required_ fields:
 
 - `cols` - number of terminal columns (terminal width in chars),
 - `rows` - number of terminal rows (terminal height in lines),
 - `output` - iterable (e.g. array, generator) of terminal writes, where each
   item is a 2 element array, containing write time (in seconds) + data written to
-  a terminal,
-- `input` (optional) - iterable of terminal reads (individual key presses),
-  where each item is a 2 element array, containing read time (in seconds) and a
-  character that was read from keyboard.
+  a terminal.
+
+Following _optional_ fields can be included, when available:
+
+- `input` - iterable of terminal reads (individual key presses), where each item
+  is a 2 element array, containing read time (in seconds) and a character that was
+  read from keyboard,
+- `breakpoints` - iterable of breakpoints, where each item is either a number
+  representing breakpoint time (in seconds), or a 2 element array, containing
+  breakpoint time and breakpoint label (string).
 
 Example recording in its internal representation:
 
