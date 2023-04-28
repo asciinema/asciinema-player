@@ -223,9 +223,9 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     const isPlaying = !!outputTimeoutId;
     pause();
 
-    if (typeof where === 'string') {
-      const currentTime = (pauseElapsedTime ?? 0) / 1000;
+    const currentTime = (pauseElapsedTime ?? 0) / 1000;
 
+    if (typeof where === 'string') {
       if (where === '<<') {
         where = currentTime - 5;
       } else if (where === '>>') {
@@ -236,6 +236,16 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
         where = currentTime + (0.1 * duration);
       } else if (where[where.length - 1] === '%') {
         where = (parseFloat(where.substring(0, where.length - 1)) / 100) * duration;
+      }
+    } else if (typeof where === 'object') {
+      if (where.breakpoint === 'prev') {
+        where = findBreakpointTimeBefore(currentTime) ?? 0;
+
+        if (isPlaying && (currentTime - where) < 1) {
+          where = findBreakpointTimeBefore(where) ?? 0;
+        }
+      } else if (where.breakpoint === 'next') {
+        where = findBreakpointTimeAfter(currentTime) ?? duration;
       }
     }
 
@@ -287,6 +297,36 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     }
 
     return true;
+  }
+
+  function findBreakpointTimeBefore(time) {
+    if (breakpoints.length == 0) return;
+
+    let i = 0;
+    let breakpoint = breakpoints[i];
+    let lastBreakpointTimeBefore;
+
+    while (breakpoint && (breakpoint[0] < time)) {
+      lastBreakpointTimeBefore = breakpoint[0];
+      breakpoint = breakpoints[++i];
+    }
+
+    return lastBreakpointTimeBefore;
+  }
+
+  function findBreakpointTimeAfter(time) {
+    if (breakpoints.length == 0) return;
+
+    let i = breakpoints.length - 1;
+    let breakpoint = breakpoints[i];
+    let firstBreakpointTimeAfter;
+
+    while (breakpoint && (breakpoint[0] > time)) {
+      firstBreakpointTimeAfter = breakpoint[0];
+      breakpoint = breakpoints[--i];
+    }
+
+    return firstBreakpointTimeAfter;
   }
 
   function step() {
