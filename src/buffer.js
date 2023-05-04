@@ -1,8 +1,8 @@
 import Queue from "./queue";
 
-function getBuffer(feed, setTime, bufferTime, baseStreamTime) {
+function getBuffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime) {
   if (bufferTime > 0) {
-    return buffer(feed, setTime, bufferTime, baseStreamTime ?? 0.0);
+    return buffer(feed, setTime, bufferTime, baseStreamTime ?? 0.0, minFrameTime);
   } else {
     return nullBuffer(feed);
   }
@@ -24,12 +24,11 @@ function nullBuffer(feed) {
   }
 }
 
-function buffer(feed, setTime, bufferTime, baseStreamTime) {
+function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 60) {
   const queue = new Queue();
-  const maxFrameTime = 1000.0 / 60;
   const startWallTime = now();
   let stop = false;
-  let prevElapsedStreamTime = -maxFrameTime;
+  let prevElapsedStreamTime = -minFrameTime;
 
   setTimeout(async () => {
     while (!stop) {
@@ -37,17 +36,18 @@ function buffer(feed, setTime, bufferTime, baseStreamTime) {
       if (stop) return;
 
       for (const event of events) {
-        const elapsedStreamTime = (event[0] - baseStreamTime + bufferTime) * 1000;
+        const elapsedStreamTime = event[0] - baseStreamTime + bufferTime;
 
-        if (elapsedStreamTime - prevElapsedStreamTime < maxFrameTime) {
+        if (elapsedStreamTime - prevElapsedStreamTime < minFrameTime) {
           feed(event[2]);
           continue;
         }
 
-        const elapsedWallTime = now() - startWallTime;
+        const elapsedWallTime = (now() - startWallTime) / 1000;
+        const delay = elapsedStreamTime - elapsedWallTime;
 
-        if (elapsedStreamTime > elapsedWallTime) {
-          await sleep(elapsedStreamTime - elapsedWallTime);
+        if (delay > 0) {
+          await sleep(delay);
           if (stop) return;
         }
 
