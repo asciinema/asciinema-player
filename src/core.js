@@ -164,6 +164,7 @@ class Core {
     this.actionQueue = Promise.resolve();
 
     this.eventHandlers = new Map([
+      ['breakpoint', []],
       ['ended', []],
       ['errored', []],
       ['init', []],
@@ -195,6 +196,7 @@ class Core {
 
     const feed = this.feed.bind(this);
     const onInput = data => { this.dispatchEvent('input', { data }) };
+    const onBreakpoint = (time, data) => { this.dispatchEvent('breakpoint', { time, data }) };
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
@@ -202,7 +204,7 @@ class Core {
     const setState = this.setState.bind(this);
 
     this.driver = this.driverFn(
-      { feed, onInput, reset, now, setTimeout, setInterval, setState, logger: this.logger },
+      { feed, onInput, onBreakpoint, reset, now, setTimeout, setInterval, setState, logger: this.logger },
       {
         cols: this.cols,
         rows: this.rows,

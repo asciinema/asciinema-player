@@ -2,7 +2,7 @@ import { unparseAsciicastV2 } from '../parser/asciicast';
 import Stream from '../stream';
 
 
-function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, breakpoints: bps, pauseOnBreakpoints }) {
+function recording(src, { feed, onInput, onBreakpoint, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, breakpoints: bps, pauseOnBreakpoints }) {
   let cols;
   let rows;
   let outputs;
@@ -141,8 +141,6 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
   }
 
   function scheduleNextBreakpoint() {
-    if (!pauseOnBreakpoints) return;
-
     const nextBreakpoint = breakpoints[nextBreakpointIndex];
 
     if (nextBreakpoint) {
@@ -153,8 +151,14 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
   function runNextBreakpoint() {
     let breakpoint = breakpoints[nextBreakpointIndex++];
     lastBreakpointTime = breakpoint[0];
-    pause();
-    setState('stopped', { reason: 'paused' });
+    onBreakpoint(breakpoint[0], breakpoint[1]);
+
+    if (pauseOnBreakpoints) {
+      pause();
+      setState('stopped', { reason: 'paused' });
+    } else {
+      scheduleNextBreakpoint();
+    }
   }
 
   function cancelNextBreakpoint() {
