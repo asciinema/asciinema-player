@@ -14,9 +14,15 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay },
   let successfulConnectionTimeout;
   let stop = false;
 
+  function setTime(time) {
+    if (clock !== undefined) {
+      clock.setTime(time);
+    }
+  }
+
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
-    buf = getBuffer(feed, bufferTime, baseStreamTime);
+    buf = getBuffer(feed, setTime, bufferTime, baseStreamTime);
   }
 
   function connect() {
@@ -35,10 +41,6 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay },
 
         if (Array.isArray(e)) {
           buf.pushEvent(e);
-
-          if (clock !== undefined) {
-            clock.setTime(e[0]);
-          }
         } else if (e.cols !== undefined || e.width !== undefined) {
           const cols = e.cols ?? e.width;
           const rows = e.rows ?? e.height;

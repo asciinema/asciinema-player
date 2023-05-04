@@ -6,9 +6,15 @@ function eventsource({ url, bufferTime = 0.1 }, { feed, reset, setState, logger 
   let buf;
   let clock;
 
+  function setTime(time) {
+    if (clock !== undefined) {
+      clock.setTime(time);
+    }
+  }
+
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
-    buf = getBuffer(feed, bufferTime, baseStreamTime);
+    buf = getBuffer(feed, setTime, bufferTime, baseStreamTime);
   }
 
   return {
@@ -31,10 +37,6 @@ function eventsource({ url, bufferTime = 0.1 }, { feed, reset, setState, logger 
 
         if (Array.isArray(e)) {
           buf.pushEvent(e);
-
-          if (clock !== undefined) {
-            clock.setTime(e[0]);
-          }
         } else if (e.cols !== undefined || e.width !== undefined) {
           const cols = e.cols ?? e.width;
           const rows = e.rows ?? e.height;
