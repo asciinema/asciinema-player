@@ -266,9 +266,9 @@ export default props => {
     } else if (e.key == 'ArrowRight') {
       core.seek('>>');
     } else if (e.key == '[') {
-      core.seek({ breakpoint: 'prev' });
+      core.seek({ marker: 'prev' });
     } else if (e.key == ']') {
-      core.seek({ breakpoint: 'next' });
+      core.seek({ marker: 'next' });
     } else if (e.key.charCodeAt(0) >= 48 && e.key.charCodeAt(0) <= 57) {
       const pos = (e.key.charCodeAt(0) - 48) / 10;
       core.seek(`${pos * 100}%`);

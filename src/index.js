@@ -36,8 +36,8 @@ function create(src, elem, opts = {}) {
     preload: opts.preload,
     startAt: opts.startAt,
     poster: opts.poster,
-    breakpoints: opts.breakpoints,
-    pauseOnBreakpoints: opts.pauseOnBreakpoints,
+    markers: opts.markers,
+    pauseOnMarkers: opts.pauseOnMarkers,
     idleTimeLimit: opts.idleTimeLimit
   });
 

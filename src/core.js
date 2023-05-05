@@ -159,12 +159,12 @@ class Core {
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
     this.poster = opts.poster;
-    this.breakpoints = opts.breakpoints;
-    this.pauseOnBreakpoints = opts.pauseOnBreakpoints;
+    this.markers = opts.markers;
+    this.pauseOnMarkers = opts.pauseOnMarkers;
     this.actionQueue = Promise.resolve();
 
     this.eventHandlers = new Map([
-      ['breakpoint', []],
+      ['marker', []],
       ['ended', []],
       ['errored', []],
       ['init', []],
@@ -196,7 +196,7 @@ class Core {
 
     const feed = this.feed.bind(this);
     const onInput = data => { this.dispatchEvent('input', { data }) };
-    const onBreakpoint = (time, data) => { this.dispatchEvent('breakpoint', { time, data }) };
+    const onMarker = (time, label) => { this.dispatchEvent('marker', { time, label }) };
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
@@ -204,15 +204,15 @@ class Core {
     const setState = this.setState.bind(this);
 
     this.driver = this.driverFn(
-      { feed, onInput, onBreakpoint, reset, now, setTimeout, setInterval, setState, logger: this.logger },
+      { feed, onInput, onMarker, reset, now, setTimeout, setInterval, setState, logger: this.logger },
       {
         cols: this.cols,
         rows: this.rows,
         idleTimeLimit: this.idleTimeLimit,
         startAt: this.startAt,
         loop: this.loop,
-        breakpoints: this.breakpoints,
-        pauseOnBreakpoints: this.pauseOnBreakpoints
+        markers: this.markers,
+        pauseOnMarkers: this.pauseOnMarkers
       }
     );
 

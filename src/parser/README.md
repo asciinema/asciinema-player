@@ -31,9 +31,9 @@ Following _optional_ fields can be included, when available:
 - `input` - iterable of terminal reads (individual key presses), where each item
   is a 2 element array, containing read time (in seconds) and a character that was
   read from keyboard,
-- `breakpoints` - iterable of breakpoints, where each item is either a number
-  representing breakpoint time (in seconds), or a 2 element array, containing
-  breakpoint time and breakpoint label (string).
+- `markers` - iterable of markers, where each item is either a number
+  representing marker time (in seconds), or a 2 element array, containing marker
+  time and marker label (string).
 
 Example recording in its internal representation:
 
