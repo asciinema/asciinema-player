@@ -155,6 +155,7 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
 
     if (pauseOnMarkers) {
       pause();
+      pauseElapsedTime = marker[0] * 1000;
       setState('stopped', { reason: 'paused' });
     } else {
       scheduleNextMarker();
