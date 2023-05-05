@@ -582,10 +582,17 @@ player.pause();
 
 The playback is paused immediately.
 
-### `seek(t)`
+### `seek(location)`
 
-Changes the playback location to time `t` given in seconds (e.g. `15`) or
-percentage (e.g `'50%'`).
+Changes the playback location to specified time or marker.
+
+`location` argument can be:
+
+- time in seconds, as number, e.g. `15`
+- position in percentage, as string, e.g `'50%'`
+- specific marker by its 0-based index, as `{ marker: i }` object, e.g. `{ marker: 3 }`
+- previous marker, as `{ marker: 'prev' }` object,
+- next marker, as `{ marker: 'next' }` object.
 
 This function returns a promise which is fulfilled when the location actually
 changes.
@@ -670,6 +677,27 @@ player.addEventListener('input', ({data}) => {
 
 Note: `input` events are dispatched only for asciicasts recorded with `--stdin`
 option, e.g. `asciinema rec --stdin demo.cast`.
+
+#### `marker` event
+
+`marker` event is dispatched for every [marker](#markers-1) encountered during
+playback.
+
+Callback's 1st argument is an object with `index`, `time` and `label` fields,
+which represent marker's index (0-based), time and label respectively.
+
+The following example shows how to implement looping over a section of a
+recording with combination of `marker` event and [`seek` method](#seeklocation):
+
+```javascript
+player.addEventListener('marker', ({ index, time, label }) => {
+  console.log(`marker! ${index} - ${time} - ${label}`);
+
+  if (index == 3) {
+    player.seek({ marker: 2 });
+  }
+})
+```
 
 ### `dispose()`
 

@@ -252,6 +252,14 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
         }
       } else if (where.marker === 'next') {
         where = findMarkerTimeAfter(currentTime) ?? duration;
+      } else if (typeof where.marker === 'number') {
+        const marker = markers[where.marker];
+
+        if (marker === undefined) {
+          throw `invalid marker index: ${where.marker}`;
+        } else {
+          where = marker[0];
+        }
       }
     }
 
