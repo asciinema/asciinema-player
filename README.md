@@ -607,6 +607,8 @@ player.seek(15).then(() => {
 
 Adds event listener, binding handler's `this` to the player object.
 
+#### `play` event
+
 `play` event is dispatched when playback is _initiated_, either by clicking play
 button or calling `player.play()` method, but _not yet started_.
 
@@ -615,6 +617,8 @@ player.addEventListener('play', () => {
   console.log('play!');
 })
 ```
+
+#### `playing` event
 
 `playing` event is dispatched when playback actually starts or resumes from
 pause.
@@ -625,6 +629,8 @@ player.addEventListener('playing', () => {
 })
 ```
 
+#### `pause` event
+
 `pause` event is dispatched when playback is paused.
 
 ```javascript
@@ -632,6 +638,8 @@ player.addEventListener('pause', () => {
   console.log("paused!");
 })
 ```
+
+#### `ended` event
 
 `ended` event is dispatched when playback stops after reaching the end of
 the recording.
@@ -641,6 +649,8 @@ player.addEventListener('ended', () => {
   console.log("ended!");
 })
 ```
+
+#### `input` event
 
 `input` event is dispatched for every keyboard input that was recorded.
 
