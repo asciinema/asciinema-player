@@ -149,9 +149,10 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
   }
 
   function runNextMarker() {
-    let marker = markers[nextMarkerIndex++];
+    let marker = markers[nextMarkerIndex];
     lastMarkerTime = marker[0];
-    onMarker(marker[0], marker[1]);
+    onMarker(nextMarkerIndex, marker[0], marker[1]);
+    nextMarkerIndex++;
 
     if (pauseOnMarkers) {
       pause();
