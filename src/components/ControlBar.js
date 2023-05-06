@@ -66,7 +66,7 @@ export default props => {
   const throttledSeek = throttle(props.onSeekClick, 50);
 
   const onClick = (e) => {
-    if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey) return;
+    if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey || e.button !== 0) return;
 
     setMouseDown(true);
     props.onSeekClick(calcPosition(e));
