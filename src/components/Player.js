@@ -36,16 +36,16 @@ export default props => {
     cursorHold: false
   });
 
-  const [size, setSize] = createSignal({ cols: props.cols, rows: props.rows });
+  const [terminalSize, setTerminalSize] = createSignal({ cols: props.cols, rows: props.rows });
   const [duration, setDuration] = createSignal(undefined);
   const [markers, setMarkers] = createStore([]);
   const [userActive, setUserActive] = createSignal(false);
 
   const terminalCols = () =>
-    size().cols || 80;
+    terminalSize().cols || 80;
 
   const terminalRows = () =>
-    size().rows || 24;
+    terminalSize().rows || 24;
 
   const controlBarHeight = () =>
     props.controls === false ? 0 : CONTROL_BAR_HEIGHT;
@@ -76,11 +76,11 @@ export default props => {
   }
 
   function resize(size_) {
-    if (size_.rows < size().rows) {
+    if (size_.rows < terminalSize().rows) {
       setState('lines', state.lines.slice(0, size_.rows));
     }
 
-    setSize(size_);
+    setTerminalSize(size_);
   }
 
   core.addEventListener('resize', resize);
@@ -151,7 +151,7 @@ export default props => {
     logger.debug('font measurements', { charW: state.charW, charH: state.charH });
     setupResizeObserver();
     const { cols, rows, duration, markers, isPausable, isSeekable, poster } = await core.init();
-    setSize({ cols, rows });
+    setTerminalSize({ cols, rows });
     setDuration(duration);
     setMarkers(markers);
 
@@ -196,7 +196,7 @@ export default props => {
     frameRequestId = undefined;
   }
 
-  const terminalSize = createMemo(() => {
+  const terminalElementSize = createMemo(() => {
     logger.debug(`containerW = ${state.containerW}`);
 
     const terminalW = (state.charW * terminalCols()) + state.bordersW;
@@ -370,7 +370,7 @@ export default props => {
       }
     }
 
-    const size = terminalSize();
+    const size = terminalElementSize();
 
     if (size.width !== undefined) {
       style['width'] = `${size.width}px`;
@@ -383,7 +383,8 @@ export default props => {
   const playerClass = () =>
     `ap-player asciinema-theme-${props.theme ?? 'asciinema'}`;
 
-  const terminalScale = () => terminalSize()?.scale;
+  const terminalScale = () =>
+    terminalElementSize()?.scale;
 
   const el = (
     <div class="ap-wrapper" classList={{ 'ap-hud': controlsVisible() }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
