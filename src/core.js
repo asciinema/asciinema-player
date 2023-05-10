@@ -149,7 +149,7 @@ class Core {
     this.driverFn = driverFn;
     this.changedLines = new Set();
     this.cursor = undefined;
-    this.duration = null;
+    this.duration = undefined;
     this.cols = opts.cols;
     this.rows = opts.rows;
     this.speed = opts.speed ?? 1.0;
@@ -159,9 +159,12 @@ class Core {
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
     this.poster = opts.poster;
+    this.markers = this.normalizeMarkers(opts.markers);
+    this.pauseOnMarkers = opts.pauseOnMarkers;
     this.actionQueue = Promise.resolve();
 
     this.eventHandlers = new Map([
+      ['marker', []],
       ['ended', []],
       ['errored', []],
       ['init', []],
@@ -172,6 +175,7 @@ class Core {
       ['play', []],
       ['playing', []],
       ['reset', []],
+      ['resize', []],
       ['seeked', []],
       ['stopped', []],
       ['terminalUpdate', []],
@@ -193,6 +197,7 @@ class Core {
 
     const feed = this.feed.bind(this);
     const onInput = data => { this.dispatchEvent('input', { data }) };
+    const onMarker = (index, time, label) => { this.dispatchEvent('marker', { index, time, label }) };
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
@@ -200,27 +205,42 @@ class Core {
     const setState = this.setState.bind(this);
 
     this.driver = this.driverFn(
-      { feed, onInput, reset, now, setTimeout, setInterval, setState, logger: this.logger },
-      { cols: this.cols, rows: this.rows, idleTimeLimit: this.idleTimeLimit, startAt: this.startAt, loop: this.loop }
+      { feed, onInput, onMarker, reset, now, setTimeout, setInterval, setState, logger: this.logger },
+      {
+        cols: this.cols,
+        rows: this.rows,
+        idleTimeLimit: this.idleTimeLimit,
+        startAt: this.startAt,
+        loop: this.loop,
+        markers: this.markers,
+        pauseOnMarkers: this.pauseOnMarkers
+      }
     );
 
     if (typeof this.driver === 'function') {
       this.driver = { play: this.driver };
     }
 
-    this.duration = this.driver.duration;
     this.cols = this.cols ?? this.driver.cols;
     this.rows = this.rows ?? this.driver.rows;
+    this.duration = this.driver.duration;
+    this.markers = this.normalizeMarkers(this.driver.markers) ?? this.markers;
 
     if (this.preload) {
       this.withState(state => state.preload());
     }
 
+    const poster = await this.renderPoster();
+
     const config = {
+      cols: this.cols,
+      rows: this.rows,
+      duration: this.duration,
+      markers: this.markers ?? [],
       isPausable: !!this.driver.pause,
       isSeekable: !!this.driver.seek,
-      poster: await this.renderPoster()
-    }
+      poster
+    };
 
     if (this.driver.init === undefined) {
       this.driver.init = () => { return {} };
@@ -379,10 +399,12 @@ class Core {
 
   async initializeDriver() {
     const meta = await this.driver.init();
-    this.duration = this.duration ?? meta.duration;
     this.cols = this.cols ?? meta.cols;
     this.rows = this.rows ?? meta.rows;
+    this.duration = this.duration ?? meta.duration;
+    this.markers = this.normalizeMarkers(meta.markers) ?? this.markers ?? [];
     this.ensureVt();
+    this.dispatchEvent('init', { duration: this.duration, markers: this.markers });
   }
 
   ensureVt() {
@@ -394,7 +416,7 @@ class Core {
     }
 
     this.initializeVt(cols, rows);
-    this.dispatchEvent('init', { cols, rows });
+    this.dispatchEvent('resize', { cols, rows });
   }
 
   resetVt(cols, rows, init = undefined) {
@@ -460,6 +482,12 @@ class Core {
     return {
       cursor: cursor,
       lines: lines
+    }
+  }
+
+  normalizeMarkers(markers) {
+    if (Array.isArray(markers)) {
+      return markers.map(m => typeof m === 'number' ? [m, ''] : m);
     }
   }
 

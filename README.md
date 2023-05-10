@@ -35,6 +35,7 @@ and the recordings yourself then read on, it's very simple.
 * [idle time optimization](#idletimelimit) to skip periods of inactivity,
 * configurable [font families](#fonts) and [line height](#terminallineheight)
 * [NPT-based or custom text poster](#poster),
+* [markers](#markers-1) for navigation or auto-pause,
 * [adjustable playback speed](#speed),
 * [looped playback](#loop), infinite or finite,
 * [starting playback at specific time](#startat),
@@ -460,6 +461,54 @@ Defaults to `"width"`.
 > `false` value. If you're upgrading from v2 to v3 and want to preserve the sizing
 > behaviour then include `fit: false` option.
 
+### `markers`
+
+Type: array
+
+Allows providing a list of timeline markers. See [Markers](#markers-1) for
+information on what they're useful for.
+
+Example of unlabeled markers:
+
+```javascript
+AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
+  markers: [5.0, 25.0, 66.6, 176.5]  // time in seconds
+});
+```
+
+Example of labeled markers:
+
+```javascript
+AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
+  markers: [
+    [5.0,   "Installation"],  // time in seconds + label
+    [25.0,  "Configuration"],
+    [66.6,  "Usage"],
+    [176.5, "Tips & Tricks"]
+  ]
+});
+```
+
+Markers set with this option override all [markers embedded in asciicast
+files](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md#m---marker).
+
+Defaults to markers found in the recording file.
+
+### `pauseOnMarkers`
+
+Type: boolean
+
+If `pauseOnMarkers` is set to `true`, the playback automatically pauses on every
+marker encountered and it can be resumed by either pressing the space bar key or
+clicking on the play button. The resumed playback continues until the next
+marker is encountered.
+
+This option can be useful in e.g. live demos: you can add markers to a
+recording, then play it back during presentation, and have the player stop
+wherever you want to explain terminal contents in more detail.
+
+Defaults to `false`.
+
 ### `terminalFontSize`
 
 Type: string
@@ -582,10 +631,17 @@ player.pause();
 
 The playback is paused immediately.
 
-### `seek(t)`
+### `seek(location)`
 
-Changes the playback location to time `t` given in seconds (e.g. `15`) or
-percentage (e.g `'50%'`).
+Changes the playback location to specified time or marker.
+
+`location` argument can be:
+
+- time in seconds, as number, e.g. `15`
+- position in percentage, as string, e.g `'50%'`
+- specific marker by its 0-based index, as `{ marker: i }` object, e.g. `{ marker: 3 }`
+- previous marker, as `{ marker: 'prev' }` object,
+- next marker, as `{ marker: 'next' }` object.
 
 This function returns a promise which is fulfilled when the location actually
 changes.
@@ -600,6 +656,8 @@ player.seek(15).then(() => {
 
 Adds event listener, binding handler's `this` to the player object.
 
+#### `play` event
+
 `play` event is dispatched when playback is _initiated_, either by clicking play
 button or calling `player.play()` method, but _not yet started_.
 
@@ -608,6 +666,8 @@ player.addEventListener('play', () => {
   console.log('play!');
 })
 ```
+
+#### `playing` event
 
 `playing` event is dispatched when playback actually starts or resumes from
 pause.
@@ -618,6 +678,8 @@ player.addEventListener('playing', () => {
 })
 ```
 
+#### `pause` event
+
 `pause` event is dispatched when playback is paused.
 
 ```javascript
@@ -625,6 +687,8 @@ player.addEventListener('pause', () => {
   console.log("paused!");
 })
 ```
+
+#### `ended` event
 
 `ended` event is dispatched when playback stops after reaching the end of
 the recording.
@@ -634,6 +698,8 @@ player.addEventListener('ended', () => {
   console.log("ended!");
 })
 ```
+
+#### `input` event
 
 `input` event is dispatched for every keyboard input that was recorded.
 
@@ -670,6 +736,27 @@ player.addEventListener('input', ({data}) => {
 
 Note: `input` events are dispatched only for asciicasts recorded with `--stdin`
 option, e.g. `asciinema rec --stdin demo.cast`.
+
+#### `marker` event
+
+`marker` event is dispatched for every [marker](#markers-1) encountered during
+playback.
+
+Callback's 1st argument is an object with `index`, `time` and `label` fields,
+which represent marker's index (0-based), time and label respectively.
+
+The following example shows how to implement looping over a section of a
+recording with combination of `marker` event and [`seek` method](#seeklocation):
+
+```javascript
+player.addEventListener('marker', ({ index, time, label }) => {
+  console.log(`marker! ${index} - ${time} - ${label}`);
+
+  if (index == 3) {
+    player.seek({ marker: 2 });
+  }
+})
+```
 
 ### `dispose()`
 
@@ -737,6 +824,19 @@ document.fonts.load("1em FiraCode Nerd Font").then(() => {
 }
 ```
 
+## Markers
+
+Markers are specific points in recording's timeline, which can be used for
+navigation within the recording or automation of the player.
+
+There are several ways of specifying markers for use in the player:
+
+- using [`markers` option](#markers) with `AsciinemaPlayer.create`,
+- embedding markers in the recording - see [asciinema recorder doc on
+  markers](https://github.com/asciinema/asciinema#markers).
+
+See also [`marker` event](#marker-event).
+
 ## Keyboard shortcuts
 
 The following keyboard shortcuts are currently available (when the player
@@ -746,6 +846,8 @@ element is focused):
 * <kbd>f</kbd> - toggle fullscreen mode
 * <kbd>←</kbd> / <kbd>→</kbd> - rewind by 5 seconds / fast-forward by 5 seconds
 * <kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>Shift</kbd> + <kbd>→</kbd> - rewind by 10% / fast-forward by 10%
+* <kbd>[</kbd> - rewind to the previous [marker](#markers-1)
+* <kbd>]</kbd> - fast-forward to the next [marker](#markers-1)
 * <kbd>0</kbd>, <kbd>1</kbd>, <kbd>2</kbd> ... <kbd>9</kbd> - jump to 0%, 10%, 20% ... 90%
 * <kbd>.</kbd> - step through a recording a frame at a time (when paused)
 

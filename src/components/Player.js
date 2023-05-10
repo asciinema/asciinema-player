@@ -1,4 +1,4 @@
-import { createMemo, Match, onCleanup, onMount, Switch } from 'solid-js';
+import { createMemo, createSignal, Match, onCleanup, onMount, Switch } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import { debounce } from "../util";
 import Terminal from './Terminal';
@@ -16,8 +16,6 @@ export default props => {
 
   const [state, setState] = createStore({
     coreState: 'stopped',
-    cols: props.cols,
-    rows: props.rows,
     lines: [],
     cursor: undefined,
     charW: props.charW,
@@ -39,8 +37,12 @@ export default props => {
     cursorHold: false
   });
 
-  const terminalCols = () => state.cols || 80;
-  const terminalRows = () => state.rows || 24;
+  const [size, setSize] = createSignal({ cols: props.cols, rows: props.rows });
+  const [duration, setDuration] = createSignal(undefined);
+  const [markers, setMarkers] = createStore([]);
+
+  const terminalCols = () => size().cols || 80;
+  const terminalRows = () => size().rows || 24;
 
   let frameRequestId;
   let userActivityTimeoutId;
@@ -64,15 +66,20 @@ export default props => {
     updateTime();
   }
 
-  function resize({ cols, rows }) {
-    if (rows < state.rows) {
-      setState('lines', state.lines.slice(0, rows));
+  function resize(size_) {
+    if (size_.rows < size().rows) {
+      setState('lines', state.lines.slice(0, size_.rows));
     }
 
-    setState({ cols, rows });
+    setSize(size_);
   }
 
-  core.addEventListener('init', resize);
+  core.addEventListener('resize', resize);
+
+  core.addEventListener('init', ({ duration, markers }) => {
+    setDuration(duration);
+    setMarkers(markers);
+  });
 
   core.addEventListener('play', () => {
     setState('showStartOverlay', false);
@@ -134,7 +141,10 @@ export default props => {
     logger.info('player mounted');
     logger.debug('font measurements', { charW: state.charW, charH: state.charH });
     setupResizeObserver();
-    const { isPausable, isSeekable, poster } = await core.init();
+    const { cols, rows, duration, markers, isPausable, isSeekable, poster } = await core.init();
+    setSize({ cols, rows });
+    setDuration(duration);
+    setMarkers(markers);
 
     setState({
       isPausable,
@@ -265,6 +275,10 @@ export default props => {
       core.seek('<<');
     } else if (e.key == 'ArrowRight') {
       core.seek('>>');
+    } else if (e.key == '[') {
+      core.seek({ marker: 'prev' });
+    } else if (e.key == ']') {
+      core.seek({ marker: 'next' });
     } else if (e.key.charCodeAt(0) >= 48 && e.key.charCodeAt(0) <= 57) {
       const pos = (e.key.charCodeAt(0) - 48) / 10;
       core.seek(`${pos * 100}%`);
@@ -366,7 +380,7 @@ export default props => {
     <div class="ap-wrapper" classList={{ 'ap-hud': state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
       <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => showControls(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
-        <ControlBar currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
+        <ControlBar duration={duration()} currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} markers={markers} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
         <Switch>
           <Match when={state.showStartOverlay}><StartOverlay onClick={() => core.play()} /></Match>
           <Match when={state.coreState == 'loading'}><LoaderOverlay /></Match>

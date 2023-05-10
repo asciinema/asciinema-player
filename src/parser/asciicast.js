@@ -73,6 +73,7 @@ function parseAsciicastV2(header, events) {
     rows: header.height,
     output: (new Stream(events)).filter(e => e[1] === 'o').map(e => [e[0], e[2]]),
     input: (new Stream(events)).filter(e => e[1] === 'i').map(e => [e[0], e[2]]),
+    markers: (new Stream(events)).filter(e => e[1] === 'm').map(e => [e[0], e[2]]),
     idleTimeLimit: header.idle_time_limit
   }
 }

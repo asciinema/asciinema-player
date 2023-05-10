@@ -2,18 +2,23 @@ import { unparseAsciicastV2 } from '../parser/asciicast';
 import Stream from '../stream';
 
 
-function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop }) {
+function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, markers: markers_, pauseOnMarkers }) {
   let cols;
   let rows;
   let outputs;
   let inputs;
+  let markers;
   let duration;
   let effectiveStartAt;
   let outputTimeoutId;
   let inputTimeoutId;
+  let markerTimeoutId;
   let nextOutputIndex = 0;
   let nextInputIndex = 0;
+  let nextMarkerIndex = 0;
   let lastOutputTime = 0;
+  let lastInputTime = 0;
+  let lastMarkerTime = 0;
   let startTime;
   let pauseElapsedTime;
   let playCount = 0;
@@ -24,10 +29,10 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     const recording = prepare(
       await parser(await doFetch(src), { encoding }),
       logger,
-      { idleTimeLimit, startAt, minFrameTime, inputOffset }
+      { idleTimeLimit, startAt, minFrameTime, inputOffset, markers_ }
     );
 
-    ({ output: outputs, input: inputs, cols, rows, duration, effectiveStartAt } = recording);
+    ({ cols, rows, output: outputs, input: inputs, markers, duration, effectiveStartAt } = recording);
 
     if (outputs.length === 0) {
       throw 'recording is missing output events';
@@ -37,7 +42,7 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
       dump(recording, dumpFilename);
     }
 
-    return { cols, rows, duration };
+    return { cols, rows, duration, markers };
   }
 
   function doFetch({ url, data, fetchOpts = {} }) {
@@ -124,7 +129,9 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
   }
 
   function runNextInput() {
-    onInput(inputs[nextInputIndex++][1]);
+    let input = inputs[nextInputIndex++];
+    lastInputTime = input[0];
+    onInput(input[1]);
     scheduleNextInput();
   }
 
@@ -133,18 +140,49 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     inputTimeoutId = null;
   }
 
+  function scheduleNextMarker() {
+    const nextMarker = markers[nextMarkerIndex];
+
+    if (nextMarker) {
+      markerTimeoutId = setTimeout(runNextMarker, delay(nextMarker[0]));
+    }
+  }
+
+  function runNextMarker() {
+    let marker = markers[nextMarkerIndex];
+    lastMarkerTime = marker[0];
+    onMarker(nextMarkerIndex, marker[0], marker[1]);
+    nextMarkerIndex++;
+
+    if (pauseOnMarkers) {
+      pause();
+      pauseElapsedTime = marker[0] * 1000;
+      setState('stopped', { reason: 'paused' });
+    } else {
+      scheduleNextMarker();
+    }
+  }
+
+  function cancelNextMarker() {
+    clearTimeout(markerTimeoutId);
+    markerTimeoutId = null;
+  }
+
   function onEnd() {
     cancelNextOutput();
     cancelNextInput();
+    cancelNextMarker();
     playCount++;
 
     if (loop === true || (typeof loop === 'number' && playCount < loop)) {
       nextOutputIndex = 0;
       nextInputIndex = 0;
+      nextMarkerIndex = 0;
       startTime = now();
       feed('\x1bc'); // reset terminal
       scheduleNextOutput();
       scheduleNextInput();
+      scheduleNextMarker();
     } else {
       pauseElapsedTime = duration * 1000;
       effectiveStartAt = null;
@@ -173,6 +211,7 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
 
     cancelNextOutput();
     cancelNextInput();
+    cancelNextMarker();
     pauseElapsedTime = now() - startTime;
 
     return true;
@@ -183,15 +222,16 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     pauseElapsedTime = null;
     scheduleNextOutput();
     scheduleNextInput();
+    scheduleNextMarker();
   }
 
   function seek(where) {
     const isPlaying = !!outputTimeoutId;
     pause();
 
-    if (typeof where === 'string') {
-      const currentTime = (pauseElapsedTime ?? 0) / 1000;
+    const currentTime = (pauseElapsedTime ?? 0) / 1000;
 
+    if (typeof where === 'string') {
       if (where === '<<') {
         where = currentTime - 5;
       } else if (where === '>>') {
@@ -203,6 +243,24 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
       } else if (where[where.length - 1] === '%') {
         where = (parseFloat(where.substring(0, where.length - 1)) / 100) * duration;
       }
+    } else if (typeof where === 'object') {
+      if (where.marker === 'prev') {
+        where = findMarkerTimeBefore(currentTime) ?? 0;
+
+        if (isPlaying && (currentTime - where) < 1) {
+          where = findMarkerTimeBefore(where) ?? 0;
+        }
+      } else if (where.marker === 'next') {
+        where = findMarkerTimeAfter(currentTime) ?? duration;
+      } else if (typeof where.marker === 'number') {
+        const marker = markers[where.marker];
+
+        if (marker === undefined) {
+          throw `invalid marker index: ${where.marker}`;
+        } else {
+          where = marker[0];
+        }
+      }
     }
 
     const targetTime = Math.min(Math.max(where, 0), duration);
@@ -210,7 +268,6 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     if (targetTime < lastOutputTime) {
       feed('\x1bc'); // reset terminal
       nextOutputIndex = 0;
-      nextInputIndex = 0;
       lastOutputTime = 0;
     }
 
@@ -222,10 +279,28 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
       output = outputs[++nextOutputIndex];
     }
 
+    if (targetTime < lastInputTime) {
+      nextInputIndex = 0;
+      lastInputTime = 0;
+    }
+
     let input = inputs[nextInputIndex];
 
     while (input && (input[0] < targetTime)) {
+      lastInputTime = input[0];
       input = inputs[++nextInputIndex];
+    }
+
+    if (targetTime < lastMarkerTime) {
+      nextMarkerIndex = 0;
+      lastMarkerTime = 0;
+    }
+
+    let marker = markers[nextMarkerIndex];
+
+    while (marker && (marker[0] < targetTime)) {
+      lastMarkerTime = marker[0];
+      marker = markers[++nextMarkerIndex];
     }
 
     pauseElapsedTime = targetTime * 1000;
@@ -238,20 +313,56 @@ function recording(src, { feed, onInput, now, setTimeout, setState, logger }, { 
     return true;
   }
 
+  function findMarkerTimeBefore(time) {
+    if (markers.length == 0) return;
+
+    let i = 0;
+    let marker = markers[i];
+    let lastMarkerTimeBefore;
+
+    while (marker && (marker[0] < time)) {
+      lastMarkerTimeBefore = marker[0];
+      marker = markers[++i];
+    }
+
+    return lastMarkerTimeBefore;
+  }
+
+  function findMarkerTimeAfter(time) {
+    if (markers.length == 0) return;
+
+    let i = markers.length - 1;
+    let marker = markers[i];
+    let firstMarkerTimeAfter;
+
+    while (marker && (marker[0] > time)) {
+      firstMarkerTimeAfter = marker[0];
+      marker = markers[--i];
+    }
+
+    return firstMarkerTimeAfter;
+  }
+
   function step() {
-    let nextOutput = outputs[nextOutputIndex];
+    let nextOutput = outputs[nextOutputIndex++];
+    if (nextOutput === undefined) return;
+    feed(nextOutput[1]);
+    const targetTime = nextOutput[0];
+    lastOutputTime = targetTime;
+    pauseElapsedTime = targetTime * 1000;
 
-    if (nextOutput !== undefined) {
-      feed(nextOutput[1]);
-      const targetTime = nextOutput[0];
-      lastOutputTime = targetTime;
-      pauseElapsedTime = targetTime * 1000;
-      nextOutputIndex++;
-      let input = inputs[nextInputIndex];
+    let input = inputs[nextInputIndex];
 
-      while (input && (input[0] < targetTime)) {
-        input = inputs[++nextInputIndex];
-      }
+    while (input && (input[0] < targetTime)) {
+      lastInputTime = input[0];
+      input = inputs[++nextInputIndex];
+    }
+
+    let marker = markers[nextMarkerIndex];
+
+    while (marker && (marker[0] < targetTime)) {
+      lastMarkerTime = marker[0];
+      marker = markers[++nextMarkerIndex];
     }
 
     effectiveStartAt = null;
@@ -328,9 +439,13 @@ function batcher(logger, minFrameTime = 1.0 / 60) {
   };
 }
 
-function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, inputOffset }) {
+function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, inputOffset, markers_ }) {
   idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
-  let { output, input = [] } = recording;
+  let { output, input = [], markers = [] } = recording;
+
+  if (markers_ !== undefined) {
+    markers = markers_;
+  }
 
   if (!(output instanceof Stream)) {
     output = new Stream(output);
@@ -340,11 +455,21 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
     input = new Stream(input);
   }
 
+  if (!(markers instanceof Stream)) {
+    markers = new Stream(markers);
+  }
+
   output = output
     .transform(batcher(logger, minFrameTime))
-    .map(e => ['o', e]);
+    .map(o => ['o', o]);
 
-  input = input.map(e => ['i', e]);
+  input = input.map(i => ['i', i]);
+
+  markers = markers.map(m =>
+    typeof m === 'number'
+    ? ['m', [m, '']]
+    : ['m', m]
+  );
 
   let prevT = 0;
   let shift = 0;
@@ -352,6 +477,7 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
 
   const compressed = output
     .multiplex(input, (a, b) => a[1][0] < b[1][0])
+    .multiplex(markers, (a, b) => a[1][0] < b[1][0])
     .map(e => {
       const delay = e[1][0] - prevT;
       const delta = delay - idleTimeLimit;
@@ -370,7 +496,8 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
 
   const streams = new Map([
     ['o', []],
-    ['i', []]
+    ['i', []],
+    ['m', []]
   ]);
 
   for (const e of compressed) {
@@ -379,6 +506,7 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
 
   output = streams.get('o');
   input = streams.get('i');
+  markers = streams.get('m');
 
   if (inputOffset !== undefined) {
     input = input.map(i => [i[0] + inputOffset, i[1]]);
@@ -386,7 +514,7 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
 
   const duration = output[output.length - 1][0];
 
-  return { ...recording, output, input, duration, effectiveStartAt };
+  return { ...recording, output, input, duration, markers, effectiveStartAt };
 }
 
 function dump(recording, filename) {

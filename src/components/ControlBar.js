@@ -1,4 +1,4 @@
-import { Match, Switch, createSignal, onCleanup } from "solid-js";
+import { Match, Switch, createMemo, createSignal, onCleanup } from "solid-js";
 import { throttle } from "../util";
 
 function formatTime(seconds) {
@@ -24,6 +24,26 @@ export default props => {
   const remainingTime = () => typeof props.remainingTime === 'number'
     ? '-' + formatTime(props.remainingTime)
     : currentTime();
+
+  const markers = createMemo(() =>
+    typeof props.duration === 'number'
+    ? props.markers.filter(m => m[0] < props.duration)
+    : []
+  );
+
+  const markerPosition = (m) => `${(m[0] / props.duration) * 100}%`;
+
+  const markerText = (m) => {
+    if (m[1] === '') {
+      return formatTime(m[0]);
+    } else {
+      return `${formatTime(m[0])} - ${m[1]}`;
+    }
+  };
+
+  const isPastMarker = (m) => typeof props.currentTime === 'number'
+    ? m[0] <= props.currentTime
+    : false;
 
   const gutterBarStyle = () => {
     return {
@@ -52,6 +72,12 @@ export default props => {
     props.onSeekClick(calcPosition(e));
   };
 
+  const seekToMarker = (index) => {
+    return e(() => {
+      props.onSeekClick({ marker: index });
+    });
+  };
+
   const onMove = (e) => {
     if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey) return;
 
@@ -63,6 +89,10 @@ export default props => {
   const onDocumentMouseUp = () => {
     setMouseDown(false);
   };
+
+  const stopPropagation = e((e) => {
+    e.stopPropagation();
+  });
 
   document.addEventListener('mouseup', onDocumentMouseUp);
 
@@ -95,6 +125,20 @@ export default props => {
         <span class="ap-time-remaining">{remainingTime()}</span>
       </span>
 
+      <Show when={typeof props.progress === 'number' || props.isSeekable}>
+        <span class="ap-progressbar">
+          <span class="ap-bar" onMouseDown={onClick} onMouseMove={onMove}>
+            <span class="ap-gutter">
+              <span class="ap-gutter-fill" style={gutterBarStyle()}>
+              </span>
+            </span>
+            <For each={markers()}>
+              {(m, i) => <span class="ap-marker-container" style={{ left: markerPosition(m) }} onClick={seekToMarker(i())} onMouseDown={stopPropagation}><span class="ap-marker" classList={{ 'ap-marker-past': isPastMarker(m) }}></span><span class="ap-marker-tooltip">{markerText(m)}</span></span>}
+            </For>
+          </span>
+        </span>
+      </Show>
+
       <span class="ap-fullscreen-button" onClick={e(props.onFullscreenClick)} title="Toggle fullscreen mode">
         <svg version="1.1" viewBox="0 0 12 12" class="ap-icon">
           <path d="M12,0 L7,0 L9,2 L7,4 L8,5 L10,3 L12,5 Z"></path>
@@ -105,17 +149,6 @@ export default props => {
           <path d="M5,7 L0,7 L2,9 L0,11 L1,12 L3,10 L5,12 Z"></path>
         </svg>
       </span>
-
-      <Show when={typeof props.progress === 'number' || props.isSeekable}>
-        <span class="ap-progressbar">
-          <span class="ap-bar" onMouseDown={onClick} onMouseMove={onMove}>
-            <span class="ap-gutter">
-              <span style={gutterBarStyle()}>
-              </span>
-            </span>
-          </span>
-        </span>
-      </Show>
     </div>
   );
 }
