@@ -49,6 +49,7 @@ function create(src, elem, opts = {}) {
     cols: opts.cols,
     rows: opts.rows,
     fit: opts.fit,
+    controls: opts.controls ?? 'auto',
     autoPlay: opts.autoPlay ?? opts.autoplay,
     terminalFontSize: opts.terminalFontSize,
     terminalFontFamily: opts.terminalFontFamily,

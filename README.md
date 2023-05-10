@@ -461,6 +461,20 @@ Defaults to `"width"`.
 > `false` value. If you're upgrading from v2 to v3 and want to preserve the sizing
 > behaviour then include `fit: false` option.
 
+### `controls`
+
+Type: boolean or "auto"
+
+Hide or show user controls, i.e. bottom control bar.
+
+Valid values:
+
+* `true` - always show controls
+* `false` - never show controls
+* `"auto"` - show controls on mouse movement, hide on lack of mouse movement
+
+Defaults to `"auto"`.
+
 ### `markers`
 
 Type: array

@@ -8,6 +8,7 @@ import LoaderOverlay from './LoaderOverlay';
 import OfflineOverlay from './OfflineOverlay';
 import StartOverlay from './StartOverlay';
 
+const CONTROL_BAR_HEIGHT = 32; // must match height of div.ap-control-bar in CSS
 
 export default props => {
   const logger = props.logger;
@@ -22,10 +23,8 @@ export default props => {
     charH: props.charH,
     bordersW: props.bordersW,
     bordersH: props.bordersH,
-    controlBarH: 32, // must match height of div.control-bar in CSS
     containerW: 0,
     containerH: 0,
-    showControls: false,
     showStartOverlay: !autoPlay,
     isPausable: true,
     isSeekable: true,
@@ -40,9 +39,19 @@ export default props => {
   const [size, setSize] = createSignal({ cols: props.cols, rows: props.rows });
   const [duration, setDuration] = createSignal(undefined);
   const [markers, setMarkers] = createStore([]);
+  const [userActive, setUserActive] = createSignal(false);
 
-  const terminalCols = () => size().cols || 80;
-  const terminalRows = () => size().rows || 24;
+  const terminalCols = () =>
+    size().cols || 80;
+
+  const terminalRows = () =>
+    size().rows || 24;
+
+  const controlBarHeight = () =>
+    props.controls === false ? 0 : CONTROL_BAR_HEIGHT;
+
+  const controlsVisible = () =>
+    props.controls === true || props.controls === 'auto' && userActive();
 
   let frameRequestId;
   let userActivityTimeoutId;
@@ -196,7 +205,7 @@ export default props => {
     let fit = props.fit ?? 'width';
 
     if (fit === 'both' || state.isFullscreen) {
-      const containerRatio = state.containerW / (state.containerH - state.controlBarH);
+      const containerRatio = state.containerW / (state.containerH - controlBarHeight());
       const terminalRatio = terminalW / terminalH;
 
       if (containerRatio > terminalRatio) {
@@ -214,10 +223,10 @@ export default props => {
       return {
         scale: scale,
         width: state.containerW,
-        height: terminalH * scale + state.controlBarH
+        height: terminalH * scale + controlBarHeight()
       };
     } else if (fit === 'height') {
-      const scale = (state.containerH - state.controlBarH) / terminalH;
+      const scale = (state.containerH - controlBarHeight()) / terminalH;
 
       return {
         scale: scale,
@@ -291,13 +300,13 @@ export default props => {
 
   const wrapperOnMouseMove = () => {
     if (state.isFullscreen) {
-      showControls(true);
+      onUserActive(true);
     }
   }
 
   const playerOnMouseLeave = () => {
     if (!state.isFullscreen) {
-      showControls(false);
+      onUserActive(false);
     }
   }
 
@@ -336,14 +345,14 @@ export default props => {
     setState('blink', true);
   }
 
-  const showControls = (show) => {
+  const onUserActive = (show) => {
     clearTimeout(userActivityTimeoutId);
 
     if (show) {
-      userActivityTimeoutId = setTimeout(() => showControls(false), 2000);
+      userActivityTimeoutId = setTimeout(() => onUserActive(false), 2000);
     }
 
-    setState('showControls', show);
+    setUserActive(show);
   }
 
   const playerStyle = () => {
@@ -377,10 +386,12 @@ export default props => {
   const terminalScale = () => terminalSize()?.scale;
 
   const el = (
-    <div class="ap-wrapper" classList={{ 'ap-hud': state.showControls }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
-      <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => showControls(true)} ref={playerRef}>
+    <div class="ap-wrapper" classList={{ 'ap-hud': controlsVisible() }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
+      <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => onUserActive(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
-        <ControlBar duration={duration()} currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} markers={markers} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
+        <Show when={props.controls !== false}>
+          <ControlBar duration={duration()} currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} markers={markers} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
+        </Show>
         <Switch>
           <Match when={state.showStartOverlay}><StartOverlay onClick={() => core.play()} /></Match>
           <Match when={state.coreState == 'loading'}><LoaderOverlay /></Match>
