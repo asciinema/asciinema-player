@@ -149,7 +149,7 @@ class Core {
     this.driverFn = driverFn;
     this.changedLines = new Set();
     this.cursor = undefined;
-    this.duration = null;
+    this.duration = undefined;
     this.cols = opts.cols;
     this.rows = opts.rows;
     this.speed = opts.speed ?? 1.0;
@@ -159,7 +159,7 @@ class Core {
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
     this.poster = opts.poster;
-    this.markers = opts.markers;
+    this.markers = this.normalizeMarkers(opts.markers);
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.actionQueue = Promise.resolve();
 
@@ -175,6 +175,7 @@ class Core {
       ['play', []],
       ['playing', []],
       ['reset', []],
+      ['resize', []],
       ['seeked', []],
       ['stopped', []],
       ['terminalUpdate', []],
@@ -220,19 +221,26 @@ class Core {
       this.driver = { play: this.driver };
     }
 
-    this.duration = this.driver.duration;
     this.cols = this.cols ?? this.driver.cols;
     this.rows = this.rows ?? this.driver.rows;
+    this.duration = this.driver.duration;
+    this.markers = this.normalizeMarkers(this.driver.markers) ?? this.markers;
 
     if (this.preload) {
       this.withState(state => state.preload());
     }
 
+    const poster = await this.renderPoster();
+
     const config = {
+      cols: this.cols,
+      rows: this.rows,
+      duration: this.duration,
+      markers: this.markers ?? [],
       isPausable: !!this.driver.pause,
       isSeekable: !!this.driver.seek,
-      poster: await this.renderPoster()
-    }
+      poster
+    };
 
     if (this.driver.init === undefined) {
       this.driver.init = () => { return {} };
@@ -391,10 +399,12 @@ class Core {
 
   async initializeDriver() {
     const meta = await this.driver.init();
-    this.duration = this.duration ?? meta.duration;
     this.cols = this.cols ?? meta.cols;
     this.rows = this.rows ?? meta.rows;
+    this.duration = this.duration ?? meta.duration;
+    this.markers = this.normalizeMarkers(meta.markers) ?? this.markers ?? [];
     this.ensureVt();
+    this.dispatchEvent('init', { duration: this.duration, markers: this.markers });
   }
 
   ensureVt() {
@@ -406,7 +416,7 @@ class Core {
     }
 
     this.initializeVt(cols, rows);
-    this.dispatchEvent('init', { cols, rows });
+    this.dispatchEvent('resize', { cols, rows });
   }
 
   resetVt(cols, rows, init = undefined) {
@@ -472,6 +482,12 @@ class Core {
     return {
       cursor: cursor,
       lines: lines
+    }
+  }
+
+  normalizeMarkers(markers) {
+    if (Array.isArray(markers)) {
+      return markers.map(m => typeof m === 'number' ? [m, ''] : m);
     }
   }
 

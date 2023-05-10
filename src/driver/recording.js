@@ -42,7 +42,7 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
       dump(recording, dumpFilename);
     }
 
-    return { cols, rows, duration };
+    return { cols, rows, duration, markers };
   }
 
   function doFetch({ url, data, fetchOpts = {} }) {
