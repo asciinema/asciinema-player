@@ -25,118 +25,120 @@ div.ap-player {
       font-family: Helvetica, Arial, sans-serif;
       font-weight: bold;
     }
+  }
+}
 
-    svg.ap-icon {
-      path {
-        fill: @active-controls;
-      }
+div.ap-control-bar {
+  svg.ap-icon {
+    path {
+      fill: @active-controls;
     }
+  }
 
-    .ap-playback-button {
-      display: block;
-      flex: 0 0 auto;
-      cursor: pointer;
+  span.ap-playback-button {
+    display: block;
+    flex: 0 0 auto;
+    cursor: pointer;
+    height: 12px;
+    width: 12px;
+    padding: 10px;
+
+    svg {
       height: 12px;
       width: 12px;
-      padding: 10px;
+    }
+  }
 
-      svg {
-        height: 12px;
-        width: 12px;
-      }
+  span.ap-timer {
+    display: block;
+    flex: 0 0 auto;
+    width: 50px;
+    height: 100%;
+    text-align: center;
+    font-size: 11px;
+    line-height: 34px;
+    cursor: default;
+
+    span {
+      display: inline-block;
+      font-size: inherit;
     }
 
-    .ap-timer {
-      display: block;
-      flex: 0 0 auto;
-      width: 50px;
-      height: 100%;
-      text-align: center;
-      font-size: 11px;
-      line-height: 35px;
-      cursor: default;
+    .ap-time-remaining {
+      display: none;
+    }
 
-      span {
-        display: inline-block;
-        font-size: inherit;
+    &:hover {
+      .ap-time-elapsed {
+        display: none;
       }
 
       .ap-time-remaining {
-        display: none;
-      }
-
-      &:hover {
-        .ap-time-elapsed {
-          display: none;
-        }
-
-        .ap-time-remaining {
-          display: inline;
-        }
-      }
-    }
-
-    .ap-progressbar {
-      display: block;
-      flex: 1 1 auto;
-      height: 100%;
-      padding: 0 10px;
-
-      .ap-bar {
-        display: block;
-        position: relative;
-        cursor: default;
-        height: 100%;
-        font-size: 0;
-
-        .ap-gutter {
-          display: block;
-          position: absolute;
-          top: 15px;
-          left: 0;
-          right: 0;
-          height: 3px;
-          background-color: #333;
-
-          .ap-gutter-fill {
-            display: inline-block;
-            height: 100%;
-            background-color: @active-controls;
-            border-radius: 3px;
-            z-index: 10;
-          }
-        }
-      }
-    }
-
-    &.ap-seekable {
-      .ap-progressbar {
-        .ap-bar {
-          cursor: pointer;
-        }
-      }
-    }
-
-    .ap-fullscreen-button {
-      display: block;
-      flex: 0 0 auto;
-      width: 14px;
-      height: 14px;
-      padding: 9px;
-      cursor: pointer;
-
-      svg {
-        width: 14px;
-        height: 14px;
-      }
-
-      svg:first-child {
         display: inline;
       }
+    }
+  }
 
-      svg:last-child {
-        display: none;
+  .ap-progressbar {
+    display: block;
+    flex: 1 1 auto;
+    height: 100%;
+    padding: 0 10px;
+
+    .ap-bar {
+      display: block;
+      position: relative;
+      cursor: default;
+      height: 100%;
+      font-size: 0;
+
+      .ap-gutter {
+        display: block;
+        position: absolute;
+        top: 15px;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-color: #333;
+
+        .ap-gutter-fill {
+          display: inline-block;
+          height: 100%;
+          background-color: @active-controls;
+          border-radius: 3px;
+          z-index: 10;
+        }
       }
+    }
+  }
+
+  &.ap-seekable {
+    .ap-progressbar {
+      .ap-bar {
+        cursor: pointer;
+      }
+    }
+  }
+
+  .ap-fullscreen-button {
+    display: block;
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    padding: 9px;
+    cursor: pointer;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    svg:first-child {
+      display: inline;
+    }
+
+    svg:last-child {
+      display: none;
     }
   }
 }
