@@ -161,7 +161,7 @@ class Core {
     this.poster = opts.poster;
     this.markers = this.normalizeMarkers(opts.markers);
     this.pauseOnMarkers = opts.pauseOnMarkers;
-    this.actionQueue = Promise.resolve();
+    this.commandQueue = Promise.resolve();
 
     this.eventHandlers = new Map([
       ['marker', []],
@@ -302,13 +302,13 @@ class Core {
   }
 
   withState(f) {
-    return this.enqueueAction(() => f(this.state));
+    return this.enqueueCommand(() => f(this.state));
   }
 
-  enqueueAction(f) {
-    this.actionQueue = this.actionQueue.then(f);
+  enqueueCommand(f) {
+    this.commandQueue = this.commandQueue.then(f);
 
-    return this.actionQueue;
+    return this.commandQueue;
   }
 
   getChangedLines() {
