@@ -446,7 +446,7 @@ at time specified by `startAt`.
 
 Type: string
 
-Controls the player's fitting (sizing) behaviour inside its container element.
+Selects fitting (sizing) behaviour with regards to player's container element.
 
 Possible values:
 
