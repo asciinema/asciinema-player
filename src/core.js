@@ -11,7 +11,7 @@ class State {
   }
 
   onEnter(data) {}
-  preload() {}
+  init() {}
   play() {}
   pause() {}
   togglePlay() {}
@@ -21,8 +21,14 @@ class State {
 }
 
 class UninitializedState extends State {
-  preload() {
-    return this.init();
+  async init() {
+    try {
+      await this.core.initializeDriver();
+      return this.core.setState('stopped');
+    } catch (e) {
+      this.core.setState('errored');
+      throw e;
+    }
   }
 
   async play() {
@@ -46,16 +52,6 @@ class UninitializedState extends State {
   }
 
   stop() {}
-
-  async init() {
-    try {
-      await this.core.initializeDriver();
-      return this.core.setState('stopped');
-    } catch (e) {
-      this.core.setState('errored');
-      throw e;
-    }
-  }
 }
 
 class StoppedState extends State {
@@ -158,7 +154,7 @@ class Core {
     this.idleTimeLimit = opts.idleTimeLimit;
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
-    this.poster = opts.poster;
+    this.poster = this.parsePoster(opts.poster);
     this.markers = this.normalizeMarkers(opts.markers);
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.commandQueue = Promise.resolve();
@@ -175,7 +171,6 @@ class Core {
       ['play', []],
       ['playing', []],
       ['reset', []],
-      ['resize', []],
       ['seeked', []],
       ['stopped', []],
       ['terminalUpdate', []],
@@ -204,6 +199,10 @@ class Core {
     const reset = this.resetVt.bind(this);
     const setState = this.setState.bind(this);
 
+    const posterTime = this.poster.type === 'npt'
+      ? this.poster.value
+      : undefined;
+
     this.driver = this.driverFn(
       { feed, onInput, onMarker, reset, now, setTimeout, setInterval, setState, logger: this.logger },
       {
@@ -212,6 +211,7 @@ class Core {
         idleTimeLimit: this.idleTimeLimit,
         startAt: this.startAt,
         loop: this.loop,
+        posterTime: posterTime,
         markers: this.markers,
         pauseOnMarkers: this.pauseOnMarkers
       }
@@ -221,22 +221,15 @@ class Core {
       this.driver = { play: this.driver };
     }
 
-    this.cols = this.cols ?? this.driver.cols;
-    this.rows = this.rows ?? this.driver.rows;
-    this.duration = this.driver.duration;
-    this.markers = this.normalizeMarkers(this.driver.markers) ?? this.markers;
-
-    if (this.preload) {
-      this.withState(state => state.preload());
+    if (this.preload || posterTime !== undefined) {
+      this.withState(state => state.init());
     }
 
-    const poster = await this.renderPoster();
+    const poster = this.poster.type === 'text'
+      ? this.renderPoster(this.poster.value)
+      : undefined;
 
     const config = {
-      cols: this.cols,
-      rows: this.rows,
-      duration: this.duration,
-      markers: this.markers ?? [],
       isPausable: !!this.driver.pause,
       isSeekable: !!this.driver.seek,
       poster
@@ -404,7 +397,18 @@ class Core {
     this.duration = this.duration ?? meta.duration;
     this.markers = this.normalizeMarkers(meta.markers) ?? this.markers ?? [];
     this.ensureVt();
-    this.dispatchEvent('init', { duration: this.duration, markers: this.markers });
+
+    const poster = meta.poster !== undefined
+      ? this.renderPoster(meta.poster)
+      : undefined;
+
+    this.dispatchEvent('init', {
+      cols: this.cols,
+      rows: this.rows,
+      duration: this.duration,
+      markers: this.markers,
+      poster
+    });
   }
 
   ensureVt() {
@@ -416,7 +420,6 @@ class Core {
     }
 
     this.initializeVt(cols, rows);
-    this.dispatchEvent('resize', { cols, rows });
   }
 
   resetVt(cols, rows, init = undefined) {
@@ -446,28 +449,25 @@ class Core {
     }
   }
 
-  async renderPoster() {
-    if (!this.poster) return;
+  parsePoster(poster) {
+    if (typeof poster !== 'string') return {};
 
-    this.ensureVt();
-
-    // obtain poster text
-
-    let poster = [];
-
-    if (this.poster.substring(0, 16) == "data:text/plain,") {
-      poster = [this.poster.substring(16)];
-    } else if (this.poster.substring(0, 4) == 'npt:' && typeof this.driver.getPoster === 'function') {
-      await this.withState(state => state.preload());
-      poster = this.driver.getPoster(this.parseNptPoster(this.poster));
+    if (poster.substring(0, 16) == "data:text/plain,") {
+      return { type: 'text', value: [poster.substring(16)] };
+    } else if (poster.substring(0, 4) == 'npt:') {
+      return { type: 'npt', value: parseNpt(poster.substring(4)) };
     }
 
-    // feed vt with poster text
+    return {};
+  }
 
+  renderPoster(poster) {
+    this.ensureVt();
+
+    // feed vt with poster text
     poster.forEach(text => this.vt.feed(text));
 
     // get cursor position and terminal lines
-
     const cursor = this.vt.get_cursor() ?? false;
     const lines = [];
 
@@ -476,7 +476,6 @@ class Core {
     }
 
     // clear terminal for next (post-poster) render
-
     this.doFeed('\x1bc'); // reset vt
 
     return {
@@ -489,10 +488,6 @@ class Core {
     if (Array.isArray(markers)) {
       return markers.map(m => typeof m === 'number' ? [m, ''] : m);
     }
-  }
-
-  parseNptPoster(poster) {
-    return parseNpt(poster.substring(4));
   }
 }
 

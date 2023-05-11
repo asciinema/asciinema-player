@@ -83,11 +83,20 @@ export default props => {
     setTerminalSize(size_);
   }
 
-  core.addEventListener('resize', resize);
+  function setPoster(poster) {
+    if (poster !== undefined && !autoPlay) {
+      setState({
+        lines: poster.lines,
+        cursor: poster.cursor
+      });
+    }
+  }
 
-  core.addEventListener('init', ({ duration, markers }) => {
+  core.addEventListener('init', ({ cols, rows, duration, poster, markers }) => {
+    resize({ cols, rows });
     setDuration(duration);
     setMarkers(markers);
+    setPoster(poster);
   });
 
   core.addEventListener('play', () => {
@@ -150,10 +159,7 @@ export default props => {
     logger.info('player mounted');
     logger.debug('font measurements', { charW: state.charW, charH: state.charH });
     setupResizeObserver();
-    const { cols, rows, duration, markers, isPausable, isSeekable, poster } = await core.init();
-    setTerminalSize({ cols, rows });
-    setDuration(duration);
-    setMarkers(markers);
+    const { isPausable, isSeekable, poster } = await core.init();
 
     setState({
       isPausable,
@@ -162,12 +168,7 @@ export default props => {
       containerH: wrapperRef.offsetHeight
     });
 
-    if (poster !== undefined && !autoPlay) {
-      setState({
-        lines: poster.lines,
-        cursor: poster.cursor
-      });
-    }
+    setPoster(poster);
 
     if (autoPlay) {
       core.play();

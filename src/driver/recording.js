@@ -2,7 +2,7 @@ import { unparseAsciicastV2 } from '../parser/asciicast';
 import Stream from '../stream';
 
 
-function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, markers: markers_, pauseOnMarkers }) {
+function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, posterTime, markers: markers_, pauseOnMarkers }) {
   let cols;
   let rows;
   let outputs;
@@ -42,7 +42,11 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
       dump(recording, dumpFilename);
     }
 
-    return { cols, rows, duration, markers };
+    const poster = posterTime !== undefined
+      ? getPoster(posterTime)
+      : undefined;
+
+    return { cols, rows, duration, poster, markers };
   }
 
   function doFetch({ url, data, fetchOpts = {} }) {
@@ -397,7 +401,6 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
     seek,
     step,
     stop: pause,
-    getPoster,
     getCurrentTime
   }
 }
