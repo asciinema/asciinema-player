@@ -5,7 +5,7 @@ function test(src, callbacks, opts) {
   if (src.kind == 'random') {
     return random(callbacks);
   } else if (src.kind == 'clock') {
-    return clock(callbacks, opts);
+    return clock(src, callbacks, opts);
   } else if (src.kind == 'benchmark') {
     return benchmark(src, callbacks, opts);
   }
@@ -34,7 +34,7 @@ function random({ feed, setTimeout }) {
   }
 }
 
-function clock({ feed }, { cols = 5, rows = 1 }) {
+function clock({ hourColor = 3, minuteColor = 4, separatorColor = 9 }, { feed }, { cols = 5, rows = 1 }) {
   const middleRow = Math.floor(rows / 2);
   const leftPad = Math.floor(cols / 2) - 2;
   const setupCursor = `\x1b[?25l\x1b[1m\x1b[${middleRow}B`;
@@ -48,10 +48,11 @@ function clock({ feed }, { cols = 5, rows = 1 }) {
 
     seqs.push('\r');
     for (let i = 0; i < leftPad; i++) { seqs.push(' ') }
-    seqs.push('\x1b[32m');
+    seqs.push(`\x1b[3${hourColor}m`);
     if (h < 10) { seqs.push('0') }
     seqs.push(`${h}`);
-    seqs.push('\x1b[39;5m:\x1b[25;35m')
+    seqs.push(`\x1b[3${separatorColor};5m:\x1b[25m`);
+    seqs.push(`\x1b[3${minuteColor}m`);
     if (m < 10) { seqs.push('0') }
     seqs.push(`${m}`);
 
