@@ -396,7 +396,7 @@ class Core {
     this.rows = this.rows ?? meta.rows;
     this.duration = this.duration ?? meta.duration;
     this.markers = this.normalizeMarkers(meta.markers) ?? this.markers ?? [];
-    this.ensureVt();
+    this.initializeVt(this.cols ?? 80, this.rows ?? 24);
 
     const poster = meta.poster !== undefined
       ? this.renderPoster(meta.poster)
@@ -409,17 +409,6 @@ class Core {
       markers: this.markers,
       poster
     });
-  }
-
-  ensureVt() {
-    const cols = this.cols ?? 80;
-    const rows = this.rows ?? 24;
-
-    if (this.vt !== undefined && this.vt.cols === cols && this.vt.rows === rows) {
-      return;
-    }
-
-    this.initializeVt(cols, rows);
   }
 
   resetVt(cols, rows, init = undefined) {
@@ -462,26 +451,21 @@ class Core {
   }
 
   renderPoster(poster) {
-    this.ensureVt();
+    const cols = this.cols ?? 80;
+    const rows = this.rows ?? 24;
 
-    // feed vt with poster text
-    poster.forEach(text => this.vt.feed(text));
+    this.logger.debug(`core: poster init (${cols}x${rows})`);
 
-    // get cursor position and terminal lines
-    const cursor = this.vt.get_cursor() ?? false;
+    const vt = this.wasm.create(cols, rows);
+    poster.forEach(text => vt.feed(text));
+    const cursor = vt.get_cursor() ?? false;
     const lines = [];
 
-    for (let i = 0; i < this.vt.rows; i++) {
-      lines.push({ id: i, segments: this.vt.get_line(i) });
+    for (let i = 0; i < rows; i++) {
+      lines.push({ id: i, segments: vt.get_line(i) });
     }
 
-    // clear terminal for next (post-poster) render
-    this.doFeed('\x1bc'); // reset vt
-
-    return {
-      cursor: cursor,
-      lines: lines
-    }
+    return { cursor, lines };
   }
 
   normalizeMarkers(markers) {
