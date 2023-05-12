@@ -115,8 +115,9 @@ function benchmark({ url, iterations = 10 }, { feed, now }) {
         for (const [_, text] of frames) {
           feed(text);
         }
+
         feed('\x1bc'); // reset terminal
-    }
+      }
 
       const endTime = now();
       const duration = (endTime - startTime) / 1000;
