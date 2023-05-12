@@ -392,11 +392,11 @@ class Core {
 
   async initializeDriver() {
     const meta = await this.driver.init();
-    this.cols = this.cols ?? meta.cols;
-    this.rows = this.rows ?? meta.rows;
+    this.cols = this.cols ?? meta.cols ?? 80;
+    this.rows = this.rows ?? meta.rows ?? 24;
     this.duration = this.duration ?? meta.duration;
     this.markers = this.normalizeMarkers(meta.markers) ?? this.markers ?? [];
-    this.initializeVt(this.cols ?? 80, this.rows ?? 24);
+    this.initializeVt(this.cols, this.rows);
 
     const poster = meta.poster !== undefined
       ? this.renderPoster(meta.poster)
