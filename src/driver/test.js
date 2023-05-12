@@ -40,7 +40,7 @@ function clock({ hourColor = 3, minuteColor = 4, separatorColor = 9 }, { feed },
   const setupCursor = `\x1b[?25l\x1b[1m\x1b[${middleRow}B`;
   let intervalId;
 
-  const currentTime = () => {
+  const getCurrentTime = () => {
     const d = new Date();
     const h = d.getHours();
     const m = d.getMinutes();
@@ -59,22 +59,22 @@ function clock({ hourColor = 3, minuteColor = 4, separatorColor = 9 }, { feed },
     return seqs;
   };
 
-  const render = () => {
-    currentTime().forEach(feed);
+  const updateTime = () => {
+    getCurrentTime().forEach(feed);
   };
 
   return {
     init: () => {
       const duration = 24 * 60;
-      const poster = [setupCursor].concat(currentTime());
+      const poster = [setupCursor].concat(getCurrentTime());
 
       return { cols, rows, duration, poster };
     },
 
     play: () => {
       feed(setupCursor);
-      render();
-      intervalId = setInterval(render, 1000);
+      updateTime();
+      intervalId = setInterval(updateTime, 1000);
 
       return true;
     },
