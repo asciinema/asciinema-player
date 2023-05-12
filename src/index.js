@@ -4,6 +4,7 @@ import Player from './components/Player';
 import Terminal from './components/Terminal';
 import DummyLogger from './logging';
 import { recording } from "./driver/recording";
+import clock from "./driver/clock";
 import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
 import { eventsource } from "./driver/eventsource";
@@ -12,10 +13,11 @@ import parseTypescript from "./parser/typescript";
 import parseTtyrec from "./parser/ttyrec";
 
 const drivers = new Map([
-  ['recording', recording],
-  ['websocket', websocket],
+  ['clock', clock],
   ['eventsource', eventsource],
-  ['test', test]
+  ['recording', recording],
+  ['test', test],
+  ['websocket', websocket],
 ]);
 
 const parsers = new Map([
@@ -88,6 +90,8 @@ function getDriver(src) {
   if (typeof src === 'string') {
     if (src.substring(0, 5) == 'ws://' || src.substring(0, 6) == 'wss://') {
       src = { driver: 'websocket', url: src };
+    } else if (src.substring(0, 6) == 'clock:') {
+      src = { driver: 'clock' };
     } else if (src.substring(0, 7) == 'test://') {
       src = { driver: 'test', kind: src.substring(7) };
     } else {
