@@ -1,7 +1,5 @@
 pre.ap-terminal {
   box-sizing: content-box;
-  -moz-box-sizing: content-box;
-  -webkit-box-sizing: content-box;
   overflow: hidden;
   padding: 0;
   margin: 0px;
@@ -35,24 +33,16 @@ pre.ap-terminal {
     }
   }
 
-  &.ap-cursor {
-    .ap-line {
-      .ap-cursor-a {
-        display: none;
-      }
-
-      .ap-cursor-b {
-        display: inline-block;
-      }
-    }
+  &.ap-cursor .ap-line .ap-cursor-a {
+    display: none;
   }
 
-  &.ap-blink {
-    .ap-line {
-      .ap-blink {
-        visibility: visible;
-      }
-    }
+  &.ap-cursor .ap-line .ap-cursor-b {
+    display: inline-block;
+  }
+
+  &.ap-blink .ap-line .ap-blink {
+    visibility: visible;
   }
 
   .ap-bright {
