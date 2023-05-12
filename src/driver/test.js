@@ -37,30 +37,41 @@ function random({ feed, setTimeout }) {
 function clock({ feed }, { cols = 5, rows = 1 }) {
   const middleRow = Math.floor(rows / 2);
   const leftPad = Math.floor(cols / 2) - 2;
+  const setupCursor = `\x1b[?25l\x1b[1m\x1b[${middleRow}B`;
   let intervalId;
 
-  const render = () => {
+  const currentTime = () => {
     const d = new Date();
     const h = d.getHours();
     const m = d.getMinutes();
+    const seqs = [];
 
-    feed('\r');
-    for (let i = 0; i < leftPad; i++) { feed(' ') }
-    feed('\x1b[32m');
-    if (h < 10) { feed('0') }
-    feed(`${h}`);
-    feed('\x1b[39;5m:\x1b[25;35m')
-    if (m < 10) { feed('0') }
-    feed(`${m}`);
+    seqs.push('\r');
+    for (let i = 0; i < leftPad; i++) { seqs.push(' ') }
+    seqs.push('\x1b[32m');
+    if (h < 10) { seqs.push('0') }
+    seqs.push(`${h}`);
+    seqs.push('\x1b[39;5m:\x1b[25;35m')
+    if (m < 10) { seqs.push('0') }
+    seqs.push(`${m}`);
+
+    return seqs;
+  };
+
+  const render = () => {
+    currentTime().forEach(feed);
   };
 
   return {
-    cols: cols,
-    rows: rows,
-    duration: 24 * 60,
+    init: () => {
+      const duration = 24 * 60;
+      const poster = [setupCursor].concat(currentTime());
+
+      return { cols, rows, duration, poster };
+    },
 
     play: () => {
-      feed(`\x1b[?25l\x1b[1m\x1b[${middleRow}B`);
+      feed(setupCursor);
       render();
       intervalId = setInterval(render, 1000);
 
