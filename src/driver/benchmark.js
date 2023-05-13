@@ -1,12 +1,6 @@
 import parseAsciicast from '../parser/asciicast';
 
 
-function test(src, callbacks, opts) {
-  if (src.kind == 'benchmark') {
-    return benchmark(src, callbacks, opts);
-  }
-}
-
 function benchmark({ url, iterations = 10 }, { feed, now }) {
   let frames;
   let byteCount = 0;
@@ -46,4 +40,4 @@ function benchmark({ url, iterations = 10 }, { feed, now }) {
   }
 }
 
-export { test };
+export default benchmark;
