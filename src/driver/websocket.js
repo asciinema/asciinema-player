@@ -98,4 +98,4 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
   }
 }
 
-export { websocket };
+export default websocket;

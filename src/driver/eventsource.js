@@ -78,4 +78,4 @@ function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, set
   }
 }
 
-export { eventsource };
+export default eventsource;

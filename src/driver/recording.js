@@ -528,4 +528,4 @@ function dump(recording, filename) {
   link.click();
 }
 
-export { recording };
+export default recording;
