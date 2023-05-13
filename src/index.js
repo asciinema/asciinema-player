@@ -5,6 +5,7 @@ import Terminal from './components/Terminal';
 import DummyLogger from './logging';
 import { recording } from "./driver/recording";
 import clock from "./driver/clock";
+import random from "./driver/random";
 import { test } from "./driver/test";
 import { websocket } from "./driver/websocket";
 import { eventsource } from "./driver/eventsource";
@@ -15,6 +16,7 @@ import parseTtyrec from "./parser/ttyrec";
 const drivers = new Map([
   ['clock', clock],
   ['eventsource', eventsource],
+  ['random', random],
   ['recording', recording],
   ['test', test],
   ['websocket', websocket],
@@ -92,6 +94,8 @@ function getDriver(src) {
       src = { driver: 'websocket', url: src };
     } else if (src.substring(0, 6) == 'clock:') {
       src = { driver: 'clock' };
+    } else if (src.substring(0, 7) == 'random:') {
+      src = { driver: 'random' };
     } else if (src.substring(0, 7) == 'test://') {
       src = { driver: 'test', kind: src.substring(7) };
     } else {
