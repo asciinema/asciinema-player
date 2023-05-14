@@ -298,7 +298,7 @@ Note that `output` in the above parser function is a generator (note `*` in
 fact `output` can be any iterable or iterator which is finite, which in practice
 means you can return an array or a finite generator, amongst others.
 
-All example parsers above parsed text (`response.text()`) however any binary
+All example parsers above parse text (`response.text()`) however any binary
 format can be parsed easily by using [binary data
 buffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer)
 with [typed array
