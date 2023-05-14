@@ -1,5 +1,3 @@
-_Note: This README applies to development branch. See the version for the latest stable release [here](https://github.com/asciinema/asciinema-player/blob/main/README.md)._
-
 # asciinema player
 
 [![Build status](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml/badge.svg)](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml)
