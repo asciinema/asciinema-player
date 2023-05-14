@@ -34,7 +34,7 @@ and the recordings yourself then read on, it's very simple.
 * [idle time optimization](#idletimelimit) to skip periods of inactivity,
 * [posters](#poster),
 * [markers](#markers-1) for navigation or auto-pause,
-* configurable [font families](#fonts) and [line height](#terminallineheight)
+* configurable [font families](#fonts) and [line height](#terminallineheight),
 * [automatic terminal scaling](#fit) to fit into container element in most efficient way,
 * full-screen mode,
 * [multiple color themes for standard 16 colors](#theme) + support for 256 color palette and 24-bit true color (ISO-8613-3),
