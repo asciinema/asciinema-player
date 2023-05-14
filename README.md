@@ -31,19 +31,19 @@ and the recordings yourself then read on, it's very simple.
 
 * ability to copy-paste terminal content - it's just text after all!
 * smooth, timing-accurate playback,
-* [automatic terminal scaling](#fit) to fit into container element in most efficient way,
 * [idle time optimization](#idletimelimit) to skip periods of inactivity,
-* configurable [font families](#fonts) and [line height](#terminallineheight)
-* [NPT-based or custom text poster](#poster),
+* [posters](#poster),
 * [markers](#markers-1) for navigation or auto-pause,
+* configurable [font families](#fonts) and [line height](#terminallineheight)
+* [automatic terminal scaling](#fit) to fit into container element in most efficient way,
+* full-screen mode,
+* [multiple color themes for standard 16 colors](#theme) + support for 256 color palette and 24-bit true color (ISO-8613-3),
 * [adjustable playback speed](#speed),
 * [looped playback](#loop), infinite or finite,
 * [starting playback at specific time](#startat),
 * [API for programmatic control](#api),
 * [keyboard shortcuts](#keyboard-shortcuts),
-* [multiple color themes for standard 16 colors](#theme) + support for 256 color palette and 24-bit true color (ISO-8613-3),
-* [support for other recording formats](#playing-other-recording-formats) like ttyrec, typescript,
-* full-screen mode.
+* [support for other recording formats](#playing-other-recording-formats) like ttyrec, typescript.
 
 ## Quick start
 
