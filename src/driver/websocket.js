@@ -25,6 +25,46 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
     buf = getBuffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime);
   }
 
+  function detectProtocol(event) {
+    if (typeof event.data === 'string') {
+      logger.info('websocket: activating text protocol handler');
+      socket.onmessage = handleTextMessage;
+      handleTextMessage(event);
+    } else {
+      logger.info('websocket: activating binary protocol handler');
+      socket.onmessage = handleBinaryMessage;
+      handleBinaryMessage(event);
+    }
+  }
+
+  function handleTextMessage(event) {
+    const e = JSON.parse(event.data);
+
+    if (Array.isArray(e)) {
+      buf.pushEvent(e);
+    } else if (e.cols !== undefined || e.width !== undefined) {
+      const cols = e.cols ?? e.width;
+      const rows = e.rows ?? e.height;
+      logger.debug(`websocket: vt reset (${cols}x${rows})`);
+      setState('playing');
+      initBuffer(e.time);
+      reset(cols, rows, e.init ?? undefined);
+      clock = new Clock();
+
+      if (typeof e.time === 'number') {
+        clock.setTime(e.time);
+      }
+    } else if (e.state === 'offline') {
+      logger.info('websocket: stream offline');
+      setState('offline');
+      clock = undefined;
+    }
+  }
+
+  function handleBinaryMessage(event) {
+    buf.pushText(utfDecoder.decode(event.data));
+  }
+
   function connect() {
     socket = new WebSocket(url);
     socket.binaryType = 'arraybuffer';
@@ -35,33 +75,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       successfulConnectionTimeout = setTimeout(() => { reconnectAttempt = 0; }, 1000);
     }
 
-    socket.onmessage = event => {
-      if (typeof event.data === 'string') {
-        const e = JSON.parse(event.data);
-
-        if (Array.isArray(e)) {
-          buf.pushEvent(e);
-        } else if (e.cols !== undefined || e.width !== undefined) {
-          const cols = e.cols ?? e.width;
-          const rows = e.rows ?? e.height;
-          logger.debug(`websocket: vt reset (${cols}x${rows})`);
-          setState('playing');
-          initBuffer(e.time);
-          reset(cols, rows, e.init ?? undefined);
-          clock = new Clock();
-
-          if (typeof e.time === 'number') {
-            clock.setTime(e.time);
-          }
-        } else if (e.state === 'offline') {
-          logger.info('websocket: stream offline');
-          setState('offline');
-          clock = undefined;
-        }
-      } else {
-        buf.pushText(utfDecoder.decode(event.data));
-      }
-    }
+    socket.onmessage = detectProtocol;
 
     socket.onclose = event => {
       if (stop || event.code === 1000 || event.code === 1005) {
