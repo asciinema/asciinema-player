@@ -82,7 +82,7 @@ function now() {
 
 function sleep(t) {
   return new Promise(resolve => {
-    setTimeout(resolve, t);
+    setTimeout(resolve, t * 1000);
   });
 }
 
