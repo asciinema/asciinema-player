@@ -45,6 +45,15 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
         }
       } else {
         logger.info('activating binary handler');
+        const text = utfDecoder.decode(arr.slice(0, 12));
+        const sizeMatch = text.match(/\x1b\[8;(\d+);(\d+)t/);
+
+        if (sizeMatch !== null) {
+          const cols = parseInt(sizeMatch[2], 10);
+          const rows = parseInt(sizeMatch[1], 10);
+          handleResetMessage(cols, rows, 0, undefined);
+        }
+
         socket.onmessage = handleBinaryMessage;
         handleBinaryMessage(event);
       }
