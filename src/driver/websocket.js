@@ -44,7 +44,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
           socket.close();
         }
       } else {
-        logger.info('activating binary handler');
+        logger.info('activating raw text handler');
         const text = utfDecoder.decode(arr.slice(0, 12));
         const sizeMatch = text.match(/\x1b\[8;(\d+);(\d+)t/);
 
@@ -54,8 +54,8 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
           handleResetMessage(cols, rows, 0, undefined);
         }
 
-        socket.onmessage = handleBinaryMessage;
-        handleBinaryMessage(event);
+        socket.onmessage = handleRawTextMessage;
+        handleRawTextMessage(event);
       }
     }
   }
@@ -98,7 +98,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
     }
   }
 
-  function handleBinaryMessage(event) {
+  function handleRawTextMessage(event) {
     buf.pushText(utfDecoder.decode(event.data));
   }
 
