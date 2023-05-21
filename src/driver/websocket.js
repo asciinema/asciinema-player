@@ -1,11 +1,13 @@
 import getBuffer from '../buffer';
 import Clock from '../clock';
+import { PrefixedLogger } from '../logging';
 
 function exponentialDelay(attempt) {
   return Math.min(500 * Math.pow(2, attempt), 5000);
 }
 
 function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, minFrameTime }, { feed, reset, setState, logger }) {
+  logger = new PrefixedLogger(logger, 'websocket: ');
   const utfDecoder = new TextDecoder();
   let socket;
   let buf;
@@ -27,7 +29,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
 
   function detectProtocol(event) {
     if (typeof event.data === 'string') {
-      logger.info('websocket: activating asciicast-compatible handler');
+      logger.info('activating asciicast-compatible handler');
       socket.onmessage = handleJsonMessage;
       handleJsonMessage(event);
     } else {
@@ -35,14 +37,14 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
 
       if (arr[0] == 0x41 && arr[1] == 0x4c && arr[2] == 0x69 && arr[3] == 0x53) { // 'ALiS'
         if (arr[4] == 1) {
-          logger.info('websocket: activating ALiS v1 handler');
+          logger.info('activating ALiS v1 handler');
           socket.onmessage = handleStreamMessage;
         } else {
-          logger.warn(`websocket: unsupported ALiS version (${arr[4]})`);
+          logger.warn(`unsupported ALiS version (${arr[4]})`);
           socket.close();
         }
       } else {
-        logger.info('websocket: activating binary handler');
+        logger.info('activating binary handler');
         socket.onmessage = handleBinaryMessage;
         handleBinaryMessage(event);
       }
@@ -92,7 +94,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
   }
 
   function handleResetMessage(cols, rows, time, init) {
-    logger.debug(`websocket: vt reset (${cols}x${rows} @${time})`);
+    logger.debug(`vt reset (${cols}x${rows} @${time})`);
     setState('playing');
     initBuffer(time);
     reset(cols, rows, init);
@@ -104,7 +106,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
   }
 
   function handleOfflineMessage() {
-    logger.info('websocket: stream offline');
+    logger.info('stream offline');
     setState('offline');
     clock = undefined;
   }
@@ -114,7 +116,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
     socket.binaryType = 'arraybuffer';
 
     socket.onopen = () => {
-      logger.info('websocket: opened');
+      logger.info('opened');
       initBuffer();
       successfulConnectionTimeout = setTimeout(() => { reconnectAttempt = 0; }, 1000);
     }
@@ -123,12 +125,12 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
 
     socket.onclose = event => {
       if (stop || event.code === 1000 || event.code === 1005) {
-        logger.info('websocket: closed');
+        logger.info('closed');
         setState('stopped', { reason: 'ended' });
       } else {
         clearTimeout(successfulConnectionTimeout);
         const delay = reconnectDelay(reconnectAttempt++);
-        logger.info(`websocket: unclean close, reconnecting in ${delay}...`);
+        logger.info(`unclean close, reconnecting in ${delay}...`);
         setState('loading');
         setTimeout(connect, delay);
       }
