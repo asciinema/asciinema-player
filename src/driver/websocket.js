@@ -27,42 +27,86 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
 
   function detectProtocol(event) {
     if (typeof event.data === 'string') {
-      logger.info('websocket: activating text protocol handler');
-      socket.onmessage = handleTextMessage;
-      handleTextMessage(event);
+      logger.info('websocket: activating asciicast-compatible handler');
+      socket.onmessage = handleJsonMessage;
+      handleJsonMessage(event);
     } else {
-      logger.info('websocket: activating binary protocol handler');
-      socket.onmessage = handleBinaryMessage;
-      handleBinaryMessage(event);
+      const arr = new Uint8Array(event.data);
+
+      if (arr[0] == 0x41 && arr[1] == 0x4c && arr[2] == 0x69 && arr[3] == 0x53) { // 'ALiS'
+        if (arr[4] == 1) {
+          logger.info('websocket: activating ALiS v1 handler');
+          socket.onmessage = handleStreamMessage;
+        } else {
+          logger.warn(`websocket: unsupported ALiS version (${arr[4]})`);
+          socket.close();
+        }
+      } else {
+        logger.info('websocket: activating binary handler');
+        socket.onmessage = handleBinaryMessage;
+        handleBinaryMessage(event);
+      }
     }
   }
 
-  function handleTextMessage(event) {
+  function handleJsonMessage(event) {
     const e = JSON.parse(event.data);
 
     if (Array.isArray(e)) {
       buf.pushEvent(e);
     } else if (e.cols !== undefined || e.width !== undefined) {
-      const cols = e.cols ?? e.width;
-      const rows = e.rows ?? e.height;
-      logger.debug(`websocket: vt reset (${cols}x${rows})`);
-      setState('playing');
-      initBuffer(e.time);
-      reset(cols, rows, e.init ?? undefined);
-      clock = new Clock();
-
-      if (typeof e.time === 'number') {
-        clock.setTime(e.time);
-      }
+      handleResetMessage(e.cols ?? e.width, e.rows ?? e.height, e.time, e.init ?? undefined);
     } else if (e.state === 'offline') {
-      logger.info('websocket: stream offline');
-      setState('offline');
-      clock = undefined;
+      handleOfflineMessage();
+    }
+  }
+
+  function handleStreamMessage(event) {
+    const buffer = event.data;
+    const array = new Uint8Array(buffer);
+    const type = array[0];
+
+    if (type === 0x01) { // reset
+      const view = new DataView(buffer);
+      const cols = view.getUint16(1, true);
+      const rows = view.getUint16(3, true);
+      const time = view.getFloat32(5, true);
+      const len = view.getUint32(9, true);
+      const init = len > 0 ? utfDecoder.decode(array.slice(13, 13 + len)) : undefined;
+      handleResetMessage(cols, rows, time, init);
+    } else if (type === 0x6f) { // 'o' - output
+      const view = new DataView(buffer);
+      const time = view.getFloat32(1, true);
+      const len = view.getUint32(5, true);
+      const text = utfDecoder.decode(array.slice(9, 9 + len));
+      buf.pushEvent([time, 'o', text]);
+    } else if (type === 0x04) { // offline (EOT)
+      handleOfflineMessage();
+    } else {
+      logger.debug(`unknown frame type: ${type}`);
     }
   }
 
   function handleBinaryMessage(event) {
     buf.pushText(utfDecoder.decode(event.data));
+  }
+
+  function handleResetMessage(cols, rows, time, init) {
+    logger.debug(`websocket: vt reset (${cols}x${rows} @${time})`);
+    setState('playing');
+    initBuffer(time);
+    reset(cols, rows, init);
+    clock = new Clock();
+
+    if (typeof time === 'number') {
+      clock.setTime(time);
+    }
+  }
+
+  function handleOfflineMessage() {
+    logger.info('websocket: stream offline');
+    setState('offline');
+    clock = undefined;
   }
 
   function connect() {
