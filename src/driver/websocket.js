@@ -1,5 +1,5 @@
 import getBuffer from '../buffer';
-import Clock from '../clock';
+import { Clock, NullClock } from '../clock';
 import { PrefixedLogger } from '../logging';
 
 function exponentialDelay(attempt) {
@@ -11,20 +11,14 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
   const utfDecoder = new TextDecoder();
   let socket;
   let buf;
-  let clock;
+  let clock = new NullClock();
   let reconnectAttempt = 0;
   let successfulConnectionTimeout;
   let stop = false;
 
-  function setTime(time) {
-    if (clock !== undefined) {
-      clock.setTime(time);
-    }
-  }
-
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
-    buf = getBuffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime);
+    buf = getBuffer(feed, (t) => clock.setTime(t), bufferTime, baseStreamTime, minFrameTime);
   }
 
   function detectProtocol(event) {
@@ -117,7 +111,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
   function handleOfflineMessage() {
     logger.info('stream offline');
     setState('offline');
-    clock = undefined;
+    clock = new NullClock();
   }
 
   function connect() {
@@ -157,13 +151,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       if (socket !== undefined) socket.close();
     },
 
-    getCurrentTime: () => {
-      if (clock === undefined) {
-        return undefined;
-      } else {
-        return clock.getTime();
-      }
-    }
+    getCurrentTime: () => clock.getTime()
   }
 }
 

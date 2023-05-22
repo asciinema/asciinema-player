@@ -13,4 +13,10 @@ class Clock {
   }
 }
 
-export default Clock;
+class NullClock {
+  constructor() {}
+  getTime(_speed) {}
+  setTime(_time) {}
+}
+
+export { Clock, NullClock };

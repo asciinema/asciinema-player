@@ -1,22 +1,16 @@
 import getBuffer from '../buffer';
-import Clock from '../clock';
+import { Clock, NullClock } from '../clock';
 import { PrefixedLogger } from '../logging';
 
 function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, setState, logger }) {
   logger = new PrefixedLogger(logger, 'eventsource: ');
   let es;
   let buf;
-  let clock;
-
-  function setTime(time) {
-    if (clock !== undefined) {
-      clock.setTime(time);
-    }
-  }
+  let clock = new NullClock();
 
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
-    buf = getBuffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime);
+    buf = getBuffer(feed, (t) => clock.setTime(t), bufferTime, baseStreamTime, minFrameTime);
   }
 
   return {
@@ -54,7 +48,7 @@ function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, set
         } else if (e.state === 'offline') {
           logger.info('stream offline');
           setState('offline');
-          clock = undefined;
+          clock = new NullClock();
         }
       });
 
@@ -70,13 +64,7 @@ function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, set
       if (es !== undefined) es.close();
     },
 
-    getCurrentTime: () => {
-      if (clock === undefined) {
-        return undefined;
-      } else {
-        return clock.getTime();
-      }
-    }
+    getCurrentTime: () => clock.getTime()
   }
 }
 
