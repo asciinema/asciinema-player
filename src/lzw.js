@@ -1,3 +1,5 @@
+const MAX_DICT_SIZE = 4096;
+
 export default class LzwDecompressor {
   constructor() {
     this.resetDictionary();
@@ -24,11 +26,17 @@ export default class LzwDecompressor {
 
       if (entry !== undefined) {
         result = result.concat(entry);
-        this.dictionary.set(this.dictionary.size, last_entry.concat([entry[0]]));
+
+        if (this.dictionary.size < MAX_DICT_SIZE) {
+            this.dictionary.set(this.dictionary.size, last_entry.concat([entry[0]]));
+        }
       } else if (k == this.dictionary.size) {
         entry = last_entry.concat([last_entry[0]])
         result = result.concat(entry);
-        this.dictionary.set(this.dictionary.size, entry);
+
+        if (this.dictionary.size < MAX_DICT_SIZE) {
+            this.dictionary.set(this.dictionary.size, entry);
+        }
       } else {
         throw `invalid code ${k} (dict size: ${this.dictionary.size})`;
       }
