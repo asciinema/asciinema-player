@@ -1,6 +1,7 @@
 import getBuffer from '../buffer';
 import { Clock, NullClock } from '../clock';
 import { PrefixedLogger } from '../logging';
+import LzwDecompressor from '../lzw';
 
 function exponentialDelay(attempt) {
   return Math.min(500 * Math.pow(2, attempt), 5000);
@@ -15,6 +16,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
   let reconnectAttempt = 0;
   let successfulConnectionTimeout;
   let stop = false;
+  let lzwDecompressor;
 
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
@@ -32,6 +34,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       if (arr[0] == 0x41 && arr[1] == 0x4c && arr[2] == 0x69 && arr[3] == 0x53) { // 'ALiS'
         if (arr[4] == 1) {
           logger.info('activating ALiS v1 handler');
+          lzwDecompressor = new LzwDecompressor();
           socket.onmessage = handleStreamMessage;
         } else {
           logger.warn(`unsupported ALiS version (${arr[4]})`);
@@ -77,13 +80,17 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       const rows = view.getUint16(3, true);
       const time = view.getFloat32(5, true);
       const len = view.getUint32(9, true);
-      const init = len > 0 ? utfDecoder.decode(array.slice(13, 13 + len)) : undefined;
+
+      const init = len > 0
+        ? utfDecoder.decode(lzwDecompressor.decompress(new DataView(buffer, 13, len)))
+        : undefined;
+
       handleResetMessage(cols, rows, time, init);
     } else if (type === 0x6f) { // 'o' - output
       const view = new DataView(buffer);
       const time = view.getFloat32(1, true);
       const len = view.getUint32(5, true);
-      const text = utfDecoder.decode(array.slice(9, 9 + len));
+      const text = utfDecoder.decode(lzwDecompressor.decompress(new DataView(buffer, 9, len)));
       buf.pushEvent([time, 'o', text]);
     } else if (type === 0x04) { // offline (EOT)
       handleOfflineMessage();
