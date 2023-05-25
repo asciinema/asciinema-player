@@ -7,7 +7,7 @@ function exponentialDelay(attempt) {
   return Math.min(500 * Math.pow(2, attempt), 5000);
 }
 
-function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, minFrameTime }, { feed, reset, setState, logger }) {
+function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, minFrameTime, inspector = {} }, { feed, reset, setState, logger }) {
   logger = new PrefixedLogger(logger, 'websocket: ');
   const utfDecoder = new TextDecoder();
   let socket;
@@ -144,6 +144,8 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       }
     }
   }
+
+  inspector.compressionStats = () => lzwDecompressor.stats();
 
   return {
     play: () => {
