@@ -13,49 +13,48 @@ export default class LzwDecompressor {
     }
   }
 
-  decompress(view) {
-    const k = view.getUint16(0, true);
-    let last_entry = this.dictionary.get(k);
-    let result = [last_entry];
-    let resultLength = last_entry.length;
-    let i = 2;
+  decompress(input) {
+    const code = input.getUint16(0, true);
+    let lastSeq = this.dictionary.get(code);
+    let seqs = [lastSeq];
+    let outputLength = lastSeq.length;
+    let inputOffset = 2;
 
-    while (i < view.byteLength) {
-      const k = view.getUint16(i, true);
-      let entry = this.dictionary.get(k);
+    while (inputOffset < input.byteLength) {
+      const code = input.getUint16(inputOffset, true);
+      let seq = this.dictionary.get(code);
 
-      if (entry !== undefined) {
-        result.push(entry);
-        resultLength += entry.length;
+      if (seq !== undefined) {
+        seqs.push(seq);
+        outputLength += seq.length;
 
         if (this.dictionary.size < MAX_DICT_SIZE) {
-            this.dictionary.set(this.dictionary.size, last_entry.concat([entry[0]]));
+            this.dictionary.set(this.dictionary.size, lastSeq.concat([seq[0]]));
         }
-      } else if (k == this.dictionary.size) {
-        entry = last_entry.concat([last_entry[0]])
-        result.push(entry);
-        resultLength += entry.length;
+      } else if (code == this.dictionary.size) {
+        seq = lastSeq.concat([lastSeq[0]])
+        seqs.push(seq);
+        outputLength += seq.length;
 
         if (this.dictionary.size < MAX_DICT_SIZE) {
-            this.dictionary.set(this.dictionary.size, entry);
+            this.dictionary.set(this.dictionary.size, seq);
         }
       } else {
-        throw `invalid code ${k} (dict size: ${this.dictionary.size})`;
+        throw `invalid code ${code} (dict size: ${this.dictionary.size})`;
       }
 
-      last_entry = entry;
-      i += 2;
+      lastSeq = seq;
+      inputOffset += 2;
     }
 
-    const buffer = new ArrayBuffer(resultLength);
-    const array = new Uint8Array(buffer);
-    let offset = 0;
+    const output = new Uint8Array(new ArrayBuffer(outputLength));
+    let outputOffset = 0;
 
-    for (const seq of result) {
-        array.set(seq, offset);
-        offset += seq.length;
+    for (const seq of seqs) {
+        output.set(seq, outputOffset);
+        outputOffset += seq.length;
     }
 
-    return array;
+    return output;
   }
 }
