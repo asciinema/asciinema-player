@@ -42,7 +42,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
         }
       } else {
         logger.info('activating raw text handler');
-        const text = utfDecoder.decode(arr.slice(0, 12));
+        const text = utfDecoder.decode(arr.subarray(0, 12));
         const sizeMatch = text.match(/\x1b\[8;(\d+);(\d+)t/);
 
         if (sizeMatch !== null) {

@@ -23,7 +23,7 @@ async function parse(response, { encoding }) {
     const text = textDecoder.decode(frame.data);
     output.push([time, text]);
     cursor += frame.len;
-    frame = parseFrame(array.slice(cursor));
+    frame = parseFrame(array.subarray(cursor));
   }
 
   return { cols, rows, output };
@@ -32,9 +32,9 @@ async function parse(response, { encoding }) {
 function parseFrame(array) {
   if (array.length < 13) return;
 
-  const time = parseTimestamp(array.slice(0, 8));
-  const len = parseNumber(array.slice(8, 12));
-  const data = array.slice(12, 12 + len);
+  const time = parseTimestamp(array.subarray(0, 8));
+  const len = parseNumber(array.subarray(8, 12));
+  const data = array.subarray(12, 12 + len);
 
   return { time, data, len: len + 12 };
 }
@@ -44,8 +44,8 @@ function parseNumber(array) {
 }
 
 function parseTimestamp(array) {
-  const sec = parseNumber(array.slice(0, 4));
-  const usec = parseNumber(array.slice(4, 8));
+  const sec = parseNumber(array.subarray(0, 4));
+  const usec = parseNumber(array.subarray(4, 8));
 
   return sec + (usec / 1000000);
 }
