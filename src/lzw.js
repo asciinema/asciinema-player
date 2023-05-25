@@ -30,6 +30,8 @@ export default class LzwDecompressor {
 
         if (this.dictionary.size < MAX_DICT_SIZE) {
             this.dictionary.set(this.dictionary.size, lastSeq.concat([seq[0]]));
+        } else {
+            this.resetDictionary();
         }
       } else if (code == this.dictionary.size) {
         seq = lastSeq.concat([lastSeq[0]])
@@ -38,6 +40,8 @@ export default class LzwDecompressor {
 
         if (this.dictionary.size < MAX_DICT_SIZE) {
             this.dictionary.set(this.dictionary.size, seq);
+        } else {
+            this.resetDictionary();
         }
       } else {
         throw `invalid code ${code} (dict size: ${this.dictionary.size})`;
