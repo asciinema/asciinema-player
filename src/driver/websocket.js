@@ -71,11 +71,10 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
 
   function handleStreamMessage(event) {
     const buffer = event.data;
-    const array = new Uint8Array(buffer);
-    const type = array[0];
+    const view = new DataView(buffer);
+    const type = view.getUint8(0);
 
     if (type === 0x01) { // reset
-      const view = new DataView(buffer);
       const cols = view.getUint16(1, true);
       const rows = view.getUint16(3, true);
       const time = view.getFloat32(5, true);
@@ -87,7 +86,6 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
 
       handleResetMessage(cols, rows, time, init);
     } else if (type === 0x6f) { // 'o' - output
-      const view = new DataView(buffer);
       const time = view.getFloat32(1, true);
       const len = view.getUint32(5, true);
       const text = utfDecoder.decode(lzwDecompressor.decompress(new DataView(buffer, 9, len)));
