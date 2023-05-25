@@ -63,8 +63,8 @@ export default class LzwDecompressor {
     let outputOffset = 0;
 
     for (const seq of seqs) {
-        output.set(seq, outputOffset);
-        outputOffset += seq.length;
+      output.set(seq, outputOffset);
+      outputOffset += seq.length;
     }
 
     return output;
