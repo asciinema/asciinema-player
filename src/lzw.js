@@ -26,10 +26,23 @@ export default class LzwDecompressor {
     let outputLength = 0;
     let seqs = [];
     let lastSeq = [];
+    let nextCodeHighHalf;
 
     while (inputOffset < input.byteLength) {
-      const code = input.getUint16(inputOffset, true);
-      inputOffset += 2;
+      let code;
+
+      // decode next 12-bit integer from Uint8Array input
+      if (nextCodeHighHalf === undefined) {
+        const byte1 = input[inputOffset];
+        const byte2 = input[inputOffset + 1];
+        code = (byte1 << 4) | (byte2 >> 4);
+        nextCodeHighHalf = byte2 & 15;
+        inputOffset += 2;
+      } else {
+        code = (nextCodeHighHalf << 8) | input[inputOffset];
+        nextCodeHighHalf = undefined;
+        inputOffset += 1;
+      }
 
       if (code === RESET_CODE) {
         this.resetDictionary();

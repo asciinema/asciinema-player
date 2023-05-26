@@ -81,14 +81,14 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       const len = view.getUint32(9, true);
 
       const init = len > 0
-        ? utfDecoder.decode(lzwDecompressor.decompress(new DataView(buffer, 13, len)))
+        ? utfDecoder.decode(lzwDecompressor.decompress(new Uint8Array(buffer, 13, len)))
         : undefined;
 
       handleResetMessage(cols, rows, time, init);
     } else if (type === 0x6f) { // 'o' - output
       const time = view.getFloat32(1, true);
       const len = view.getUint32(5, true);
-      const text = utfDecoder.decode(lzwDecompressor.decompress(new DataView(buffer, 9, len)));
+      const text = utfDecoder.decode(lzwDecompressor.decompress(new Uint8Array(buffer, 9, len)));
       buf.pushEvent([time, 'o', text]);
     } else if (type === 0x04) { // offline (EOT)
       handleOfflineMessage();
