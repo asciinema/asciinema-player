@@ -1,9 +1,9 @@
-const MAX_DICT_SIZE = 4096;
 const RESET_CODE = 256;
 const STATS_SIZE = 1024;
 
 export default class LzwDecompressor {
-  constructor() {
+  constructor(codeSize) {
+    this.maxDictSize = 1 << codeSize;
     this.resetDictionary();
     this.inputStats = new Array(STATS_SIZE);
     this.inputStats.fill(0);
@@ -58,7 +58,7 @@ export default class LzwDecompressor {
         seqs.push(seq);
         outputLength += seq.length;
 
-        if (this.nextCode < MAX_DICT_SIZE && lastSeq.length > 0) {
+        if (this.nextCode < this.maxDictSize && lastSeq.length > 0) {
           this.dictionary.set(this.nextCode, lastSeq.concat([seq[0]]));
           this.nextCode++;
         }
@@ -68,7 +68,7 @@ export default class LzwDecompressor {
           seqs.push(seq);
           outputLength += seq.length;
 
-          if (this.nextCode < MAX_DICT_SIZE) {
+          if (this.nextCode < this.maxDictSize) {
             this.dictionary.set(this.nextCode, seq);
             this.nextCode++;
           }

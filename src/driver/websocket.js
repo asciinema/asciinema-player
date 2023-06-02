@@ -16,7 +16,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
   let reconnectAttempt = 0;
   let successfulConnectionTimeout;
   let stop = false;
-  let lzwDecompressor;
+  let textDecoder;
 
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
@@ -34,7 +34,21 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       if (arr[0] == 0x41 && arr[1] == 0x4c && arr[2] == 0x69 && arr[3] == 0x53) { // 'ALiS'
         if (arr[4] == 1) {
           logger.info('activating ALiS v1 handler');
-          lzwDecompressor = new LzwDecompressor();
+          let decompressor;
+          const compressionAlgo = arr[5];
+
+          if (compressionAlgo == 0) {
+            logger.debug('text compression: none');
+          } else if (compressionAlgo == 1) {
+            const lzwCodeSize = arr[6];
+            logger.debug(`text compression: LZW (codeSize=${lzwCodeSize})`);
+            decompressor = new LzwDecompressor(lzwCodeSize);
+          } else if (compressionAlgo > 1) {
+            logger.error(`unsupported compression algorithm (${compressionAlgo})`);
+            socket.close();
+          }
+
+          textDecoder = getTextDecoder(utfDecoder, decompressor);
           socket.onmessage = handleStreamMessage;
         } else {
           logger.warn(`unsupported ALiS version (${arr[4]})`);
@@ -81,14 +95,14 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       const len = view.getUint32(9, true);
 
       const init = len > 0
-        ? utfDecoder.decode(lzwDecompressor.decompress(new Uint8Array(buffer, 13, len)))
+        ? textDecoder.decode(new Uint8Array(buffer, 13, len))
         : undefined;
 
       handleResetMessage(cols, rows, time, init);
     } else if (type === 0x6f) { // 'o' - output
       const time = view.getFloat32(1, true);
       const len = view.getUint32(5, true);
-      const text = utfDecoder.decode(lzwDecompressor.decompress(new Uint8Array(buffer, 9, len)));
+      const text = textDecoder.decode(new Uint8Array(buffer, 9, len));
       buf.pushEvent([time, 'o', text]);
     } else if (type === 0x04) { // offline (EOT)
       handleOfflineMessage();
@@ -159,6 +173,18 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
     },
 
     getCurrentTime: () => clock.getTime()
+  }
+}
+
+function getTextDecoder(utfDecoder, decompressor) {
+  if (decompressor === undefined) {
+    return utfDecoder;
+  } else {
+    return {
+      decode(array) {
+        utfDecoder.decode(decompressor.decompress(array));
+      }
+    }
   }
 }
 
