@@ -10,6 +10,8 @@ export default class LzwDecompressor {
     this.outputStats = new Array(STATS_SIZE);
     this.outputStats.fill(0);
     this.statsIndex = 0;
+    this.inputLen = 0;
+    this.outputLen = 0;
   }
 
   resetDictionary() {
@@ -89,6 +91,8 @@ export default class LzwDecompressor {
     this.inputStats[this.statsIndex] = input.byteLength;
     this.outputStats[this.statsIndex] = outputLength;
     this.statsIndex = (this.statsIndex + 1) % STATS_SIZE;
+    this.inputLen += input.byteLength;
+    this.outputLen += outputLength;
 
     return output;
   }
@@ -96,7 +100,8 @@ export default class LzwDecompressor {
   stats() {
     const compressed = this.inputStats.slice(this.statsIndex).concat(this.inputStats.slice(0, this.statsIndex));
     const decompressed = this.outputStats.slice(this.statsIndex).concat(this.outputStats.slice(0, this.statsIndex));
+    const totalRatio = this.inputLen / this.outputLen;
 
-    return { compressed, decompressed };
+    return { compressed, decompressed, totalRatio };
   }
 }
