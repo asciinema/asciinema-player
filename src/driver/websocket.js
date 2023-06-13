@@ -17,6 +17,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
   let successfulConnectionTimeout;
   let stop = false;
   let textDecoder;
+  let decompressor;
 
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
@@ -34,7 +35,6 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       if (arr[0] == 0x41 && arr[1] == 0x4c && arr[2] == 0x69 && arr[3] == 0x53) { // 'ALiS'
         if (arr[4] == 1) {
           logger.info('activating ALiS v1 handler');
-          let decompressor;
           const compressionAlgo = arr[5];
 
           if (compressionAlgo == 0) {
@@ -159,7 +159,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
     }
   }
 
-  inspector.compressionStats = () => lzwDecompressor.stats();
+  inspector.compressionStats = () => decompressor.stats();
 
   return {
     play: () => {
