@@ -116,7 +116,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
   }
 
   function handleResetMessage(cols, rows, time, init) {
-    logger.debug(`vt reset (${cols}x${rows} @${time})`);
+    logger.debug(`stream reset (${cols}x${rows} @${time})`);
     setState('playing');
     initBuffer(time);
     reset(cols, rows, init);
