@@ -1,7 +1,6 @@
 import getBuffer from '../buffer';
 import { Clock, NullClock } from '../clock';
 import { PrefixedLogger } from '../logging';
-import LzwDecompressor from '../lzw';
 
 function exponentialDelay(attempt) {
   return Math.min(500 * Math.pow(2, attempt), 5000);
@@ -16,8 +15,6 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
   let reconnectAttempt = 0;
   let successfulConnectionTimeout;
   let stop = false;
-  let textDecoder;
-  let decompressor;
 
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
@@ -39,16 +36,11 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
 
           if (compressionAlgo == 0) {
             logger.debug('text compression: none');
-          } else if (compressionAlgo == 1) {
-            const lzwCodeSize = arr[6];
-            logger.debug(`text compression: LZW (codeSize=${lzwCodeSize})`);
-            decompressor = new LzwDecompressor(lzwCodeSize);
           } else {
             logger.error(`unsupported compression algorithm (${compressionAlgo})`);
             socket.close();
           }
 
-          textDecoder = getTextDecoder(utfDecoder, decompressor);
           socket.onmessage = handleStreamMessage;
         } else {
           logger.warn(`unsupported ALiS version (${arr[4]})`);
@@ -95,14 +87,14 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       const len = view.getUint32(9, true);
 
       const init = len > 0
-        ? textDecoder.decode(new Uint8Array(buffer, 13, len))
+        ? utfDecoder.decode(new Uint8Array(buffer, 13, len))
         : undefined;
 
       handleResetMessage(cols, rows, time, init);
     } else if (type === 0x6f) { // 'o' - output
       const time = view.getFloat32(1, true);
       const len = view.getUint32(5, true);
-      const text = textDecoder.decode(new Uint8Array(buffer, 9, len));
+      const text = utfDecoder.decode(new Uint8Array(buffer, 9, len));
       buf.pushEvent([time, 'o', text]);
     } else if (type === 0x04) { // offline (EOT)
       handleOfflineMessage();
@@ -173,18 +165,6 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
     },
 
     getCurrentTime: () => clock.getTime()
-  }
-}
-
-function getTextDecoder(utfDecoder, decompressor) {
-  if (decompressor === undefined) {
-    return utfDecoder;
-  } else {
-    return {
-      decode(array) {
-        utfDecoder.decode(decompressor.decompress(array));
-      }
-    }
   }
 }
 
