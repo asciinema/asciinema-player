@@ -889,6 +889,10 @@ This produces:
 - `dist/bundle/asciinema-player.min.js` - minimized version of the above
 - `dist/bundle/asciinema-player.css` - stylesheet, to be linked directly from a website or included in a CSS bundle
 
+## Consulting
+
+I offer consulting services for asciinema project. See https://asciinema.org/consulting for more information.
+
 ## Contributing
 
 If you want to contribute to this project check out
