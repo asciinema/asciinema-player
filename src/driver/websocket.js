@@ -43,7 +43,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
             const lzwCodeSize = arr[6];
             logger.debug(`text compression: LZW (codeSize=${lzwCodeSize})`);
             decompressor = new LzwDecompressor(lzwCodeSize);
-          } else if (compressionAlgo > 1) {
+          } else {
             logger.error(`unsupported compression algorithm (${compressionAlgo})`);
             socket.close();
           }
