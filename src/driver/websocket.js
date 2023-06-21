@@ -48,18 +48,33 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
         }
       } else {
         logger.info('activating raw text handler');
-        const text = utfDecoder.decode(arr.subarray(0, 12));
-        const sizeMatch = text.match(/\x1b\[8;(\d+);(\d+)t/);
+        const text = utfDecoder.decode(arr);
+        const size = sizeFromResizeSeq(text) ?? sizeFromScriptStartMessage(text);
 
-        if (sizeMatch !== null) {
-          const cols = parseInt(sizeMatch[2], 10);
-          const rows = parseInt(sizeMatch[1], 10);
+        if (size !== undefined) {
+          const [cols, rows] = size;
           handleResetMessage(cols, rows, 0, undefined);
         }
 
         socket.onmessage = handleRawTextMessage;
         handleRawTextMessage(event);
       }
+    }
+  }
+
+  function sizeFromResizeSeq(text) {
+    const match = text.match(/\x1b\[8;(\d+);(\d+)t/);
+
+    if (match !== null) {
+      return [parseInt(match[2], 10), parseInt(match[1], 10)];
+    }
+  }
+
+  function sizeFromScriptStartMessage(text) {
+    const match = text.match(/\[.*COLUMNS="(\d{1,3})" LINES="(\d{1,3})".*\]/);
+
+    if (match !== null) {
+      return [parseInt(match[1], 10), parseInt(match[2], 10)];
     }
   }
 
