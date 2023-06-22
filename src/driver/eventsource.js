@@ -1,20 +1,16 @@
 import getBuffer from '../buffer';
-import Clock from '../clock';
+import { Clock, NullClock } from '../clock';
+import { PrefixedLogger } from '../logging';
 
 function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, setState, logger }) {
+  logger = new PrefixedLogger(logger, 'eventsource: ');
   let es;
   let buf;
-  let clock;
-
-  function setTime(time) {
-    if (clock !== undefined) {
-      clock.setTime(time);
-    }
-  }
+  let clock = new NullClock();
 
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
-    buf = getBuffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime);
+    buf = getBuffer(feed, (t) => clock.setTime(t), bufferTime, baseStreamTime, minFrameTime);
   }
 
   return {
@@ -22,12 +18,12 @@ function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, set
       es = new EventSource(url);
 
       es.addEventListener('open', () => {
-        logger.info('eventsource: opened');
+        logger.info('opened');
         initBuffer();
       });
 
       es.addEventListener('error', e => {
-        logger.info('eventsource: errored');
+        logger.info('errored');
         logger.debug({e});
         setState('loading');
       });
@@ -40,7 +36,7 @@ function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, set
         } else if (e.cols !== undefined || e.width !== undefined) {
           const cols = e.cols ?? e.width;
           const rows = e.rows ?? e.height;
-          logger.debug(`eventsource: vt reset (${cols}x${rows})`);
+          logger.debug(`vt reset (${cols}x${rows})`);
           setState('playing');
           initBuffer(e.time);
           reset(cols, rows, e.init ?? undefined);
@@ -50,14 +46,14 @@ function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, set
             clock.setTime(e.time);
           }
         } else if (e.state === 'offline') {
-          logger.info('eventsource: stream offline');
+          logger.info('stream offline');
           setState('offline');
-          clock = undefined;
+          clock = new NullClock();
         }
       });
 
       es.addEventListener('done', () => {
-        logger.info('eventsource: closed');
+        logger.info('closed');
         es.close();
         setState('stopped', { reason: 'ended' });
       });
@@ -68,13 +64,7 @@ function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, set
       if (es !== undefined) es.close();
     },
 
-    getCurrentTime: () => {
-      if (clock === undefined) {
-        return undefined;
-      } else {
-        return clock.getTime();
-      }
-    }
+    getCurrentTime: () => clock.getTime()
   }
 }
 

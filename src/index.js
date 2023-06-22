@@ -2,7 +2,7 @@ import { render } from 'solid-js/web';
 import Core from './core';
 import Player from './components/Player';
 import Terminal from './components/Terminal';
-import DummyLogger from './logging';
+import { DummyLogger } from './logging';
 import recording from "./driver/recording";
 import clock from "./driver/clock";
 import random from "./driver/random";

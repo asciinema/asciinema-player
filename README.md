@@ -92,7 +92,7 @@ inside an empty `<div>` element:
 Add `asciinema-player` to your `devDependencies`:
 
 ```bash
-npm install --save-dev asciinema-player@3.4.0
+npm install --save-dev asciinema-player@3.5.0
 ```
 
 Add empty `<div id="demo"></div>` element to your page to contain the player.
@@ -886,6 +886,10 @@ This produces:
 - `dist/bundle/asciinema-player.js` - standalone player script, to be linked directly from a website
 - `dist/bundle/asciinema-player.min.js` - minimized version of the above
 - `dist/bundle/asciinema-player.css` - stylesheet, to be linked directly from a website or included in a CSS bundle
+
+## Consulting
+
+I offer consulting services for asciinema project. See https://asciinema.org/consulting for more information.
 
 ## Contributing
 
