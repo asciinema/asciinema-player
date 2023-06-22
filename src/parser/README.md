@@ -253,32 +253,28 @@ Asciimation](https://www.asciimation.co.nz/):
 const LINES_PER_FRAME = 14;
 const FRAME_DELAY = 67;
 const COLUMNS = 67;
+const ROWS = LINES_PER_FRAME - 1;
 
 async function parseAsciimation(response) {
   const text = await response.text();
   const lines = text.split('\n');
+  const output = [];
+  let time = 0;
+  let prevFrameDuration = 0;
 
-  return {
-    cols: COLUMNS,
-    rows: LINES_PER_FRAME - 1,
+  output.push([0, '\x9b?25l']); // hide cursor
 
-    output: function*() {
-      let time = 0;
-      let prevFrameDuration = 0;
+  for (let i = 0; i + LINES_PER_FRAME - 1 < lines.length; i += LINES_PER_FRAME) {
+    time += prevFrameDuration;
+    prevFrameDuration = parseInt(lines[i], 10) * FRAME_DELAY;
+    const frame = lines.slice(i + 1, i + LINES_PER_FRAME).join('\r\n');
+    let text = '\x1b[H'; // move cursor home
+    text += '\x1b[J'; // clear screen
+    text += frame; // print current frame's lines
+    output.push([time / 1000, text]);
+  }
 
-      yield [0, '\x9b?25l']; // hide cursor
-
-      for (let i = 0; i + LINES_PER_FRAME - 1 < lines.length; i += LINES_PER_FRAME) {
-        time += prevFrameDuration;
-        prevFrameDuration = parseInt(lines[i], 10) * FRAME_DELAY;
-        const frame = lines.slice(i + 1, i + LINES_PER_FRAME).join('\r\n');
-        let text = '\x1b[H'; // move cursor home
-        text += '\x1b[J'; // clear screen
-        text += frame; // print current frame's lines
-        yield [time / 1000, text];
-      }
-    }()
-  };
+  return { cols: COLUMNS, rows: ROWS, output };
 }
 
 AsciinemaPlayer.create(
@@ -293,10 +289,9 @@ is defined by 14 lines. First of every 14 lines defines duration a frame should
 be displayed for (multiplied by a speed constant, by default `67` ms), while
 lines 2-14 define frame content - text to display.
 
-Note that `output` in the above parser function is a generator (note `*` in
-`function*`) that is immediately called (note `()` after `}` at the end). In
-fact `output` can be any iterable or iterator which is finite, which in practice
-means you can return an array or a finite generator, amongst others.
+Note: while `output` in the above parser function is an array, it may be any
+iterable or iterator which is finite, which in practice means you can return an
+array or a finite generator, amongst others.
 
 All example parsers above parse text (`response.text()`) however any binary
 format can be parsed easily by using [binary data
