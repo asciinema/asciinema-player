@@ -85,7 +85,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       buf.pushEvent(e);
     } else if (e.cols !== undefined || e.width !== undefined) {
       handleResetMessage(e.cols ?? e.width, e.rows ?? e.height, e.time, e.init ?? undefined);
-    } else if (e.state === 'offline') {
+    } else if (e.status === 'offline') {
       handleOfflineMessage();
     }
   }
