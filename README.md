@@ -141,7 +141,7 @@ AsciinemaPlayer.create('/demo.cast', document.getElementById('demo'), {
 
 See [Options](#options) for full list of available options.
 
-If you'd like to control the player programatically, you can use the functions
+If you'd like to control the player programmatically, you can use the functions
 exposed on the object returned from `create` function:
 
 ```javascript
@@ -244,7 +244,7 @@ AsciinemaPlayer.create(
 ### Customizing URL fetching
 
 If you'd like to fetch a recording from a URL, but you need to tweak how HTTP
-request is peformed (configure credentials, change HTTP method, etc), you can do
+request is performed (configure credentials, change HTTP method, etc), you can do
 so by using `{ url: "...", fetchOpts: { ... } }` object as the source argument.
 `fetchOpts` object is then passed to
 [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) (as its 2nd
