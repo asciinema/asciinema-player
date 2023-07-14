@@ -2,16 +2,25 @@ import { Match, Switch, createMemo, createSignal, onCleanup } from "solid-js";
 import { throttle } from "../util";
 
 function formatTime(seconds) {
-  seconds = Math.floor(seconds);
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  let time = '';
-  if (m < 10) { time += '0' }
-  time += `${m}:`;
-  if (s < 10) { time += '0' }
-  time += `${s}`;
+  let s = Math.floor(seconds);
+  const d = Math.floor(s / 86400);
+  s %= 86400;
+  const h = Math.floor(s / 3600);
+  s %= 3600;
+  const m = Math.floor(s / 60);
+  s %= 60;
 
-  return time;
+  if (d > 0) {
+    return `${zeroPad(d)}:${zeroPad(h)}:${zeroPad(m)}:${zeroPad(s)}`;
+  } else if (h > 0) {
+    return `${zeroPad(h)}:${zeroPad(m)}:${zeroPad(s)}`;
+  } else {
+    return `${zeroPad(m)}:${zeroPad(s)}`;
+  }
+}
+
+function zeroPad(n) {
+  return n < 10 ? `0${n}` : n.toString();
 }
 
 export default props => {
