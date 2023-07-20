@@ -19,7 +19,7 @@ export default props => {
   const cursorRow = () => props.cursor?.[1];
 
   return (
-    <pre class="ap-terminal" classList={{ 'ap-cursor': props.blink || props.cursorHold, 'ap-blink': props.blink }} style={terminalStyle()} ref={props.ref}>
+    <pre class="ap-terminal" classList={{ 'ap-cursor': props.blink || props.cursorHold, 'ap-blink': props.blink }} style={terminalStyle()} ref={props.ref} aria-live="polite" tabindex="0">
       <For each={props.lines}>
         {(line, i) => <Line segments={line.segments} cursor={i() === cursorRow() ? cursorCol() : null} height={`${lineHeight()}em`} />}
       </For>

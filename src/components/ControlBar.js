@@ -115,13 +115,13 @@ export default props => {
         <span class="ap-playback-button" onClick={e(props.onPlayClick)}>
           <Switch>
             <Match when={props.isPlaying}>
-              <svg version="1.1" viewBox="0 0 12 12" class="ap-icon">
+              <svg version="1.1" viewBox="0 0 12 12" class="ap-icon" aria-label="Pause" role="button" tabindex="0">
                 <path d="M1,0 L4,0 L4,12 L1,12 Z"></path>
                 <path d="M8,0 L11,0 L11,12 L8,12 Z"></path>
               </svg>
             </Match>
             <Match when={!props.isPlaying}>
-              <svg version="1.1" viewBox="0 0 12 12" class="ap-icon">
+              <svg version="1.1" viewBox="0 0 12 12" class="ap-icon" aria-label="Play" role="button" tabindex="0">
                 <path d="M1,0 L11,6 L1,12 Z"></path>
               </svg>
             </Match>
@@ -129,7 +129,7 @@ export default props => {
         </span>
       </Show>
 
-      <span class="ap-timer">
+      <span class="ap-timer" aria-readonly="true" role="textbox" tabindex="0">
         <span class="ap-time-elapsed">{currentTime()}</span>
         <span class="ap-time-remaining">{remainingTime()}</span>
       </span>
@@ -148,7 +148,7 @@ export default props => {
         </span>
       </Show>
 
-      <span class="ap-fullscreen-button" onClick={e(props.onFullscreenClick)} title="Toggle fullscreen mode">
+      <span class="ap-fullscreen-button" onClick={e(props.onFullscreenClick)} title="Toggle fullscreen mode" aria-label="Toggle Fullscreen" role="button" tabindex="0">
         <svg version="1.1" viewBox="0 0 12 12" class="ap-icon">
           <path d="M12,0 L7,0 L9,2 L7,4 L8,5 L10,3 L12,5 Z"></path>
           <path d="M0,12 L0,7 L2,9 L4,7 L5,8 L3,10 L5,12 Z"></path>
