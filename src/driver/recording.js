@@ -308,20 +308,9 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
   }
 
   function getPoster(time) {
-    const posterTime = time * 1000;
-    const poster = [];
-    let nextEventIndex = 0;
-    let event = events[0];
-
-    while (event && (event[0] * 1000 < posterTime)) {
-      if (event[1] === 'o') {
-        poster.push(event[2]);
-      }
-
-      event = events[++nextEventIndex];
-    }
-
-    return poster;
+    return events
+      .filter(e => e[0] < time && e[1] === 'o')
+      .map(e => e[2]);
   }
 
   function getCurrentTime() {
