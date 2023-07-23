@@ -189,7 +189,7 @@ class Core {
 
     const feed = this.feed.bind(this);
     const onInput = data => { this.dispatchEvent('input', { data }) };
-    const onMarker = (index, time, label) => { this.dispatchEvent('marker', { index, time, label }) };
+    const onMarker = ({ index, time, label }) => { this.dispatchEvent('marker', { index, time, label }) };
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);

@@ -6,7 +6,7 @@ async function parse(response, { encoding }) {
   const baseTime = firstFrame.time;
   const firstFrameText = textDecoder.decode(firstFrame.data);
   const sizeMatch = firstFrameText.match(/\x1b\[8;(\d+);(\d+)t/);
-  const output = [];
+  const events = [];
   let cols = 80;
   let rows = 24;
 
@@ -21,12 +21,12 @@ async function parse(response, { encoding }) {
   while (frame !== undefined) {
     const time = frame.time - baseTime;
     const text = textDecoder.decode(frame.data);
-    output.push([time, text]);
+    events.push([time, 'o', text]);
     cursor += frame.len;
     frame = parseFrame(array.subarray(cursor));
   }
 
-  return { cols, rows, output };
+  return { cols, rows, events };
 }
 
 function parseFrame(array) {
