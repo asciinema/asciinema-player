@@ -131,6 +131,8 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
       feed(data);
     } else if (type === 'i') {
       onInput(data);
+    } else if (type === 's') {
+      logger.debug(`terminal resize: ${data}`);
     } else if (type === 'm') {
       onMarker(data);
 
