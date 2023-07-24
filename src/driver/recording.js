@@ -463,7 +463,14 @@ function markerWrapper() {
 
 function dump(recording, filename) {
   const link = document.createElement('a');
-  const asciicast = unparseAsciicastV2(recording);
+
+  const events = recording.events.map(e =>
+    e[1] === 'm'
+    ? [e[0], e[1], e[2].label]
+    : e
+  );
+
+  const asciicast = unparseAsciicastV2({ ...recording, events });
   link.href = URL.createObjectURL(new Blob([asciicast], { type: 'text/plain' }));
   link.download = filename;
   link.click();
