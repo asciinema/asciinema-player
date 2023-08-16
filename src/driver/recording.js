@@ -3,6 +3,8 @@ import Stream from '../stream';
 
 
 function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, posterTime, markers: markers_, pauseOnMarkers }) {
+  let cols;
+  let rows;
   let events;
   let markers;
   let duration;
@@ -23,8 +25,7 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
       { idleTimeLimit, startAt, minFrameTime, inputOffset, markers_ }
     );
 
-    ({ events, duration, effectiveStartAt } = recording);
-    const { cols, rows } = recording;
+    ({ cols, rows, events, duration, effectiveStartAt } = recording);
 
     if (events.length === 0) {
       throw 'recording is missing events';
@@ -108,7 +109,7 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
     do {
       lastEventTime = event[0];
       nextEventIndex++;
-      const stop = executeEvent(event[0], event[1], event[2]);
+      const stop = executeEvent(event);
 
       if (stop) {
         return;
@@ -126,13 +127,13 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
     eventTimeoutId = null;
   }
 
-  function executeEvent(time, type, data) {
+  function executeEvent(event) {
+    const [time, type, data] = event;
+
     if (type === 'o') {
       feed(data);
     } else if (type === 'i') {
       onInput(data);
-    } else if (type === 's') {
-      logger.debug(`terminal resize: ${data}`);
     } else if (type === 'm') {
       onMarker(data);
 
@@ -156,6 +157,7 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
       nextEventIndex = 0;
       startTime = now();
       feed('\x1bc'); // reset terminal
+      feed(`\x1b[8;${rows};${cols};t`); // resize terminal to initial size
       scheduleNextEvent();
     } else {
       pauseElapsedTime = duration * 1000;
@@ -237,6 +239,7 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
 
     if (targetTime < lastEventTime) {
       feed('\x1bc'); // reset terminal
+      feed(`\x1b[8;${rows};${cols};t`); // resize terminal to initial size
       nextEventIndex = 0;
       lastEventTime = 0;
     }
@@ -245,7 +248,7 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
 
     while (event && (event[0] <= targetTime)) {
       if (event[1] === 'o') {
-        executeEvent(event[0], 'o', event[2]);
+        executeEvent(event);
       }
 
       lastEventTime = event[0];
@@ -398,6 +401,7 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
   const limiterOutput = { offset: 0 };
 
   events = events
+    .map(convertResizeEvent)
     .transform(batcher(logger, minFrameTime))
     .map(timeLimiter(idleTimeLimit, startAt, limiterOutput))
     .map(markerWrapper())
@@ -424,6 +428,15 @@ function buildEvents({ output = [], input = [], markers = [] }) {
   const m = new Stream(markers).map(normalizeMarker);
 
   return o.multiplex(i, (a, b) => a[0] < b[0]).multiplex(m, (a, b) => a[0] < b[0]);
+}
+
+function convertResizeEvent(e) {
+  if (e[1] === 'r') {
+    const [cols, rows] = e[2].split('x');
+    return [e[0], 'o', `\x1b[8;${rows};${cols};t`];
+  } else {
+    return e;
+  }
 }
 
 function normalizeMarker(m) {
