@@ -127,6 +127,8 @@ export default props => {
     setState({ coreState: 'errored', showStartOverlay: false });
   });
 
+  core.addEventListener('resize', resize);
+
   core.addEventListener('reset', size => {
     resize(size);
     updateTerminal();

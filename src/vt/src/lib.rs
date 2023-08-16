@@ -22,12 +22,17 @@ pub fn create(w: usize, h: usize) -> VtWrapper {
 
 #[wasm_bindgen]
 impl VtWrapper {
-    pub fn feed(&mut self, s: &str) -> Vec<usize> {
-        self.vt.feed_str(s)
+    pub fn feed(&mut self, s: &str) -> JsValue {
+        let changes = self.vt.feed_str(s);
+        serde_wasm_bindgen::to_value(&changes).unwrap()
     }
 
     pub fn inspect(&self) -> String {
         format!("{:?}", self.vt)
+    }
+
+    pub fn get_size(&self) -> Vec<usize> {
+        vec![self.vt.cols, self.vt.rows]
     }
 
     pub fn get_line(&self, l: usize) -> JsValue {

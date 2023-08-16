@@ -168,6 +168,7 @@ class Core {
       ['play', []],
       ['playing', []],
       ['reset', []],
+      ['resize', []],
       ['seeked', []],
       ['stopped', []],
       ['terminalUpdate', []],
@@ -378,9 +379,15 @@ class Core {
   }
 
   doFeed(data) {
-    const affectedLines = this.vt.feed(data);
+    const [affectedLines, resized] = this.vt.feed(data);
     affectedLines.forEach(i => this.changedLines.add(i));
     this.cursor = undefined;
+
+    if (resized) {
+      const [cols, rows] = this.vt.get_size();
+      this.logger.debug(`core: vt resize (${cols}x${rows})`);
+      this.dispatchEvent('resize', { cols, rows });
+    }
   }
 
   now() { return performance.now() * this.speed }
