@@ -309,9 +309,12 @@ class Core {
   getChangedLines() {
     if (this.changedLines.size > 0) {
       const lines = new Map();
+      const rows = this.vt.rows;
 
       for (const i of this.changedLines) {
-        lines.set(i, {id: i, segments: this.vt.get_line(i)});
+        if (i < rows) {
+          lines.set(i, {id: i, segments: this.vt.get_line(i)});
+        }
       }
 
       this.changedLines.clear();
@@ -385,6 +388,8 @@ class Core {
 
     if (resized) {
       const [cols, rows] = this.vt.get_size();
+      this.vt.cols = cols;
+      this.vt.rows = rows;
       this.logger.debug(`core: vt resize (${cols}x${rows})`);
       this.dispatchEvent('resize', { cols, rows });
     }
