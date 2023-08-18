@@ -5,20 +5,13 @@ import Stream from '../stream';
 function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, posterTime, markers: markers_, pauseOnMarkers }) {
   let cols;
   let rows;
-  let outputs;
-  let inputs;
+  let events;
   let markers;
   let duration;
   let effectiveStartAt;
-  let outputTimeoutId;
-  let inputTimeoutId;
-  let markerTimeoutId;
-  let nextOutputIndex = 0;
-  let nextInputIndex = 0;
-  let nextMarkerIndex = 0;
-  let lastOutputTime = 0;
-  let lastInputTime = 0;
-  let lastMarkerTime = 0;
+  let eventTimeoutId;
+  let nextEventIndex = 0;
+  let lastEventTime = 0;
   let startTime;
   let pauseElapsedTime;
   let playCount = 0;
@@ -32,10 +25,10 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
       { idleTimeLimit, startAt, minFrameTime, inputOffset, markers_ }
     );
 
-    ({ cols, rows, output: outputs, input: inputs, markers, duration, effectiveStartAt } = recording);
+    ({ cols, rows, events, duration, effectiveStartAt } = recording);
 
-    if (outputs.length === 0) {
-      throw 'recording is missing output events';
+    if (events.length === 0) {
+      throw 'recording is missing events';
     }
 
     if (dumpFilename !== undefined) {
@@ -45,6 +38,10 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
     const poster = posterTime !== undefined
       ? getPoster(posterTime)
       : undefined;
+
+    markers = events
+      .filter(e => e[1] === 'm')
+      .map(e => [e[0], e[2].label]);
 
     return { cols, rows, duration, poster, markers };
   }
@@ -95,98 +92,73 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
     return delay;
   }
 
-  function scheduleNextOutput() {
-    const nextOutput = outputs[nextOutputIndex];
+  function scheduleNextEvent() {
+    const nextEvent = events[nextEventIndex];
 
-    if (nextOutput) {
-      outputTimeoutId = setTimeout(runNextOutput, delay(nextOutput[0]));
+    if (nextEvent) {
+      eventTimeoutId = setTimeout(runNextEvent, delay(nextEvent[0]));
     } else {
       onEnd();
     }
   }
 
-  function runNextOutput() {
-    let output = outputs[nextOutputIndex];
+  function runNextEvent() {
+    let event = events[nextEventIndex];
     let elapsedWallTime;
 
     do {
-      feed(output[1]);
-      lastOutputTime = output[0];
-      output = outputs[++nextOutputIndex];
+      lastEventTime = event[0];
+      nextEventIndex++;
+      const stop = executeEvent(event);
+
+      if (stop) {
+        return;
+      }
+
+      event = events[nextEventIndex];
       elapsedWallTime = now() - startTime;
-    } while (output && (elapsedWallTime > output[0] * 1000));
+    } while (event && (elapsedWallTime > event[0] * 1000));
 
-    scheduleNextOutput();
+    scheduleNextEvent();
   }
 
-  function cancelNextOutput() {
-    clearTimeout(outputTimeoutId);
-    outputTimeoutId = null;
+  function cancelNextEvent() {
+    clearTimeout(eventTimeoutId);
+    eventTimeoutId = null;
   }
 
-  function scheduleNextInput() {
-    const nextInput = inputs[nextInputIndex];
+  function executeEvent(event) {
+    const [time, type, data] = event;
 
-    if (nextInput) {
-      inputTimeoutId = setTimeout(runNextInput, delay(nextInput[0]));
+    if (type === 'o') {
+      feed(data);
+    } else if (type === 'i') {
+      onInput(data);
+    } else if (type === 'm') {
+      onMarker(data);
+
+      if (pauseOnMarkers) {
+        pause();
+        pauseElapsedTime = time * 1000;
+        setState('stopped', { reason: 'paused' });
+
+        return true;
+      }
     }
-  }
 
-  function runNextInput() {
-    let input = inputs[nextInputIndex++];
-    lastInputTime = input[0];
-    onInput(input[1]);
-    scheduleNextInput();
-  }
-
-  function cancelNextInput() {
-    clearTimeout(inputTimeoutId);
-    inputTimeoutId = null;
-  }
-
-  function scheduleNextMarker() {
-    const nextMarker = markers[nextMarkerIndex];
-
-    if (nextMarker) {
-      markerTimeoutId = setTimeout(runNextMarker, delay(nextMarker[0]));
-    }
-  }
-
-  function runNextMarker() {
-    let marker = markers[nextMarkerIndex];
-    lastMarkerTime = marker[0];
-    onMarker(nextMarkerIndex, marker[0], marker[1]);
-    nextMarkerIndex++;
-
-    if (pauseOnMarkers) {
-      pause();
-      pauseElapsedTime = marker[0] * 1000;
-      setState('stopped', { reason: 'paused' });
-    } else {
-      scheduleNextMarker();
-    }
-  }
-
-  function cancelNextMarker() {
-    clearTimeout(markerTimeoutId);
-    markerTimeoutId = null;
+    return false;
   }
 
   function onEnd() {
-    cancelNextOutput();
-    cancelNextInput();
-    cancelNextMarker();
+    cancelNextEvent();
     playCount++;
 
     if (loop === true || (typeof loop === 'number' && playCount < loop)) {
-      nextOutputIndex = 0;
-      nextInputIndex = 0;
-      nextMarkerIndex = 0;
+      nextEventIndex = 0;
       startTime = now();
       feed('\x1bc'); // reset terminal
-      scheduleNextOutput();
-      scheduleNextInput();
-      scheduleNextMarker();
+      feed(`\x1b[8;${rows};${cols};t`); // resize terminal to initial size
+      scheduleNextEvent();
     } else {
       pauseElapsedTime = duration * 1000;
       effectiveStartAt = null;
@@ -195,9 +167,9 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
   }
 
   function play() {
-    if (outputTimeoutId) return true;
+    if (eventTimeoutId) return true;
 
-    if (outputs[nextOutputIndex] === undefined) { // ended
+    if (events[nextEventIndex] === undefined) { // ended
       effectiveStartAt = 0;
     }
 
@@ -211,11 +183,9 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
   }
 
   function pause() {
-    if (!outputTimeoutId) return true;
+    if (!eventTimeoutId) return true;
 
-    cancelNextOutput();
-    cancelNextInput();
-    cancelNextMarker();
+    cancelNextEvent();
     pauseElapsedTime = now() - startTime;
 
     return true;
@@ -224,13 +194,11 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
   function resume() {
     startTime = now() - pauseElapsedTime;
     pauseElapsedTime = null;
-    scheduleNextOutput();
-    scheduleNextInput();
-    scheduleNextMarker();
+    scheduleNextEvent();
   }
 
   function seek(where) {
-    const isPlaying = !!outputTimeoutId;
+    const isPlaying = !!eventTimeoutId;
     pause();
 
     const currentTime = (pauseElapsedTime ?? 0) / 1000;
@@ -269,42 +237,22 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
 
     const targetTime = Math.min(Math.max(where, 0), duration);
 
-    if (targetTime < lastOutputTime) {
+    if (targetTime < lastEventTime) {
       feed('\x1bc'); // reset terminal
-      nextOutputIndex = 0;
-      lastOutputTime = 0;
+      feed(`\x1b[8;${rows};${cols};t`); // resize terminal to initial size
+      nextEventIndex = 0;
+      lastEventTime = 0;
     }
 
-    let output = outputs[nextOutputIndex];
+    let event = events[nextEventIndex];
 
-    while (output && (output[0] < targetTime)) {
-      feed(output[1]);
-      lastOutputTime = output[0];
-      output = outputs[++nextOutputIndex];
-    }
+    while (event && (event[0] <= targetTime)) {
+      if (event[1] === 'o') {
+        executeEvent(event);
+      }
 
-    if (targetTime < lastInputTime) {
-      nextInputIndex = 0;
-      lastInputTime = 0;
-    }
-
-    let input = inputs[nextInputIndex];
-
-    while (input && (input[0] < targetTime)) {
-      lastInputTime = input[0];
-      input = inputs[++nextInputIndex];
-    }
-
-    if (targetTime < lastMarkerTime) {
-      nextMarkerIndex = 0;
-      lastMarkerTime = 0;
-    }
-
-    let marker = markers[nextMarkerIndex];
-
-    while (marker && (marker[0] < targetTime)) {
-      lastMarkerTime = marker[0];
-      marker = markers[++nextMarkerIndex];
+      lastEventTime = event[0];
+      event = events[++nextEventIndex];
     }
 
     pauseElapsedTime = targetTime * 1000;
@@ -348,46 +296,30 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
   }
 
   function step() {
-    let nextOutput = outputs[nextOutputIndex++];
-    if (nextOutput === undefined) return;
-    feed(nextOutput[1]);
-    const targetTime = nextOutput[0];
-    lastOutputTime = targetTime;
+    let nextEvent = events[nextEventIndex++];
+
+    while (nextEvent !== undefined && nextEvent[1] !== 'o') {
+      nextEvent = events[nextEventIndex++];
+    }
+
+    if (nextEvent === undefined) return;
+
+    feed(nextEvent[2]);
+
+    const targetTime = nextEvent[0];
+    lastEventTime = targetTime;
     pauseElapsedTime = targetTime * 1000;
-
-    let input = inputs[nextInputIndex];
-
-    while (input && (input[0] < targetTime)) {
-      lastInputTime = input[0];
-      input = inputs[++nextInputIndex];
-    }
-
-    let marker = markers[nextMarkerIndex];
-
-    while (marker && (marker[0] < targetTime)) {
-      lastMarkerTime = marker[0];
-      marker = markers[++nextMarkerIndex];
-    }
-
     effectiveStartAt = null;
   }
 
   function getPoster(time) {
-    const posterTime = time * 1000;
-    const poster = [];
-    let nextOutputIndex = 0;
-    let output = outputs[0];
-
-    while (output && (output[0] * 1000 < posterTime)) {
-      poster.push(output[1]);
-      output = outputs[++nextOutputIndex];
-    }
-
-    return poster;
+    return events
+      .filter(e => e[0] < time && e[1] === 'o')
+      .map(e => e[2]);
   }
 
   function getCurrentTime() {
-    if (outputTimeoutId) {
+    if (eventTimeoutId) {
       return (now() - startTime) / 1000;
     } else {
       return (pauseElapsedTime ?? 0) / 1000;
@@ -406,33 +338,37 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
 }
 
 function batcher(logger, minFrameTime = 1.0 / 60) {
-  let prevOutput;
+  let prevEvent;
 
   return emit => {
     let ic = 0;
     let oc = 0;
 
     return {
-      step: output => {
+      step: event => {
         ic++;
 
-        if (prevOutput === undefined) {
-          prevOutput = output;
+        if (prevEvent === undefined) {
+          prevEvent = event;
           return;
         }
 
-        if (output[0] - prevOutput[0] < minFrameTime) {
-          prevOutput[1] += output[1];
+        if (event[1] === prevEvent[1] && event[0] - prevEvent[0] < minFrameTime) {
+          if (event[1] === 'm' && event[2] !== '') {
+            prevEvent[2] = event[2];
+          } else {
+            prevEvent[2] += event[2];
+          }
         } else {
-          emit(prevOutput);
-          prevOutput = output;
+          emit(prevEvent);
+          prevEvent = event;
           oc++;
         }
       },
 
       flush: () => {
-        if (prevOutput !== undefined) {
-          emit(prevOutput);
+        if (prevEvent !== undefined) {
+          emit(prevEvent);
           oc++;
         }
 
@@ -443,86 +379,113 @@ function batcher(logger, minFrameTime = 1.0 / 60) {
 }
 
 function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, inputOffset, markers_ }) {
-  idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
-  let { output, input = [], markers = [] } = recording;
+  let { events } = recording;
+
+  if (events === undefined) {
+    events = buildEvents(recording);
+  }
+
+  if (!(events instanceof Stream)) {
+    events = new Stream(events);
+  }
 
   if (markers_ !== undefined) {
-    markers = markers_;
+    markers_ = (new Stream(markers_)).map(normalizeMarker);
+
+    events = events
+      .filter(e => e[1] !== 'm')
+      .multiplex(markers_, (a, b) => a[0] < b[0]);
   }
 
-  if (!(output instanceof Stream)) {
-    output = new Stream(output);
-  }
+  idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
+  const limiterOutput = { offset: 0 };
 
-  if (!(input instanceof Stream)) {
-    input = new Stream(input);
-  }
-
-  if (!(markers instanceof Stream)) {
-    markers = new Stream(markers);
-  }
-
-  output = output
+  events = events
+    .map(convertResizeEvent)
     .transform(batcher(logger, minFrameTime))
-    .map(o => ['o', o]);
-
-  input = input.map(i => ['i', i]);
-
-  markers = markers.map(m =>
-    typeof m === 'number'
-    ? ['m', [m, '']]
-    : ['m', m]
-  );
-
-  let prevT = 0;
-  let shift = 0;
-  let effectiveStartAt = startAt;
-
-  const compressed = output
-    .multiplex(input, (a, b) => a[1][0] < b[1][0])
-    .multiplex(markers, (a, b) => a[1][0] < b[1][0])
-    .map(e => {
-      const delay = e[1][0] - prevT;
-      const delta = delay - idleTimeLimit;
-      prevT = e[1][0];
-
-      if (delta > 0) {
-        shift += delta;
-
-        if (e[1][0] < startAt) {
-          effectiveStartAt -= delta;
-        }
-      }
-
-      return [e[0], [e[1][0] - shift, e[1][1]]];
-    });
-
-  const streams = new Map([
-    ['o', []],
-    ['i', []],
-    ['m', []]
-  ]);
-
-  for (const e of compressed) {
-    streams.get(e[0]).push(e[1]);
-  }
-
-  output = streams.get('o');
-  input = streams.get('i');
-  markers = streams.get('m');
+    .map(timeLimiter(idleTimeLimit, startAt, limiterOutput))
+    .map(markerWrapper())
+    .toArray();
 
   if (inputOffset !== undefined) {
-    input = input.map(i => [i[0] + inputOffset, i[1]]);
+    events = events.map(e => e[1] === 'i'
+      ? [e[0] + inputOffset, e[1], e[2]]
+      : e
+    );
+
+    events.sort((a, b) => a[0] - b[0]);
   }
 
-  const duration = output[output.length - 1][0];
+  const duration = events[events.length - 1][0];
+  const effectiveStartAt = startAt - limiterOutput.offset;
 
-  return { ...recording, output, input, duration, markers, effectiveStartAt };
+  return { ...recording, events, duration, effectiveStartAt };
+}
+
+function buildEvents({ output = [], input = [], markers = [] }) {
+  const o = (new Stream(output)).map(e => [e[0], 'o', e[1]]);
+  const i = new Stream(input).map(e => [e[0], 'i', e[1]]);
+  const m = new Stream(markers).map(normalizeMarker);
+
+  return o.multiplex(i, (a, b) => a[0] < b[0]).multiplex(m, (a, b) => a[0] < b[0]);
+}
+
+function convertResizeEvent(e) {
+  if (e[1] === 'r') {
+    const [cols, rows] = e[2].split('x');
+    return [e[0], 'o', `\x1b[8;${rows};${cols};t`];
+  } else {
+    return e;
+  }
+}
+
+function normalizeMarker(m) {
+  return typeof m === 'number' ? [m, 'm', ''] : [m[0], 'm', m[1]];
+}
+
+function timeLimiter(idleTimeLimit, startAt, output) {
+  let prevT = 0;
+  let shift = 0;
+
+  return function(e) {
+    const delay = e[0] - prevT;
+    const delta = delay - idleTimeLimit;
+    prevT = e[0];
+
+    if (delta > 0) {
+      shift += delta;
+
+      if (e[0] < startAt) {
+        output.offset += delta;
+      }
+    }
+
+    return [e[0] - shift, e[1], e[2]];
+  }
+}
+
+function markerWrapper() {
+  let i = 0;
+
+  return function(e) {
+    if (e[1] === 'm') {
+      return [e[0], e[1], { index: i++, time: e[0], label: e[2] }];
+    } else {
+      return e;
+    }
+  }
 }
 
 function dump(recording, filename) {
   const link = document.createElement('a');
-  const asciicast = unparseAsciicastV2(recording);
+
+  const events = recording.events.map(e =>
+    e[1] === 'm'
+    ? [e[0], e[1], e[2].label]
+    : e
+  );
+
+  const asciicast = unparseAsciicastV2({ ...recording, events });
   link.href = URL.createObjectURL(new Blob([asciicast], { type: 'text/plain' }));
   link.download = filename;
   link.click();

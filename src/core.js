@@ -168,6 +168,7 @@ class Core {
       ['play', []],
       ['playing', []],
       ['reset', []],
+      ['resize', []],
       ['seeked', []],
       ['stopped', []],
       ['terminalUpdate', []],
@@ -189,7 +190,7 @@ class Core {
 
     const feed = this.feed.bind(this);
     const onInput = data => { this.dispatchEvent('input', { data }) };
-    const onMarker = (index, time, label) => { this.dispatchEvent('marker', { index, time, label }) };
+    const onMarker = ({ index, time, label }) => { this.dispatchEvent('marker', { index, time, label }) };
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
@@ -308,9 +309,12 @@ class Core {
   getChangedLines() {
     if (this.changedLines.size > 0) {
       const lines = new Map();
+      const rows = this.vt.rows;
 
       for (const i of this.changedLines) {
-        lines.set(i, {id: i, segments: this.vt.get_line(i)});
+        if (i < rows) {
+          lines.set(i, {id: i, segments: this.vt.get_line(i)});
+        }
       }
 
       this.changedLines.clear();
@@ -378,9 +382,17 @@ class Core {
   }
 
   doFeed(data) {
-    const affectedLines = this.vt.feed(data);
+    const [affectedLines, resized] = this.vt.feed(data);
     affectedLines.forEach(i => this.changedLines.add(i));
     this.cursor = undefined;
+
+    if (resized) {
+      const [cols, rows] = this.vt.get_size();
+      this.vt.cols = cols;
+      this.vt.rows = rows;
+      this.logger.debug(`core: vt resize (${cols}x${rows})`);
+      this.dispatchEvent('resize', { cols, rows });
+    }
   }
 
   now() { return performance.now() * this.speed }

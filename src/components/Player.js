@@ -1,4 +1,4 @@
-import { createMemo, createSignal, Match, onCleanup, onMount, Switch } from 'solid-js';
+import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import { debounce } from "../util";
 import Terminal from './Terminal';
@@ -127,6 +127,8 @@ export default props => {
     setState({ coreState: 'errored', showStartOverlay: false });
   });
 
+  core.addEventListener('resize', resize);
+
   core.addEventListener('reset', size => {
     resize(size);
     updateTerminal();
@@ -186,8 +188,10 @@ export default props => {
     const changedLines = core.getChangedLines();
 
     if (changedLines) {
-      changedLines.forEach((line, i) => {
-        setState('lines', i, reconcile(line));
+      batch(() => {
+        changedLines.forEach((line, i) => {
+          setState('lines', i, reconcile(line));
+        });
       });
     }
 

@@ -32,8 +32,7 @@ async function parse(responses, { encoding }) {
     stdin = { array, cursor: dataOffset };
   }
 
-  const output = [];
-  const input = [];
+  const events = [];
   let time = 0;
 
   for (const entry of timing) {
@@ -43,13 +42,13 @@ async function parse(responses, { encoding }) {
       const count = parseInt(entry[2], 10);
       const bytes = stdout.array.subarray(stdout.cursor, stdout.cursor + count);
       const text = textDecoder.decode(bytes);
-      output.push([time, text]);
+      events.push([time, 'o', text]);
       stdout.cursor += count;
     } else if (entry[0] === 'I') {
       const count = parseInt(entry[2], 10);
       const bytes = stdin.array.subarray(stdin.cursor, stdin.cursor + count);
       const text = textDecoder.decode(bytes);
-      input.push([time, text]);
+      events.push([time, 'i', text]);
       stdin.cursor += count;
     } else if (entry[0] === 'H' && entry[2] === 'COLUMNS') {
       cols = parseInt(entry[3], 10);
@@ -61,7 +60,7 @@ async function parse(responses, { encoding }) {
   cols = cols ?? 80;
   rows = rows ?? 24;
 
-  return { cols, rows, output, input };
+  return { cols, rows, events };
 }
 
 export default parse;
