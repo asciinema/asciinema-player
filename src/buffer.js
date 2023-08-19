@@ -60,8 +60,12 @@ function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 
 
   return {
     pushEvent(event) {
-      if (event[1] != 'o') return;
-      queue.push(event);
+      if (event[1] === 'o') {
+        queue.push(event);
+      } else if (event[1] === 'r') {
+        const [cols, rows] = event[2].split('x');
+        queue.push([event[0], 'o', `\x1b[8;${rows};${cols};t`]);
+      }
     },
 
     pushText(text) {

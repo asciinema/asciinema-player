@@ -111,6 +111,11 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       const len = view.getUint32(5, true);
       const text = utfDecoder.decode(new Uint8Array(buffer, 9, len));
       buf.pushEvent([time, 'o', text]);
+    } else if (type === 0x72) { // 'r' - resize
+      const time = view.getFloat32(1, true);
+      const cols = view.getUint16(5, true);
+      const rows = view.getUint16(7, true);
+      buf.pushEvent([time, 'r', `${cols}x${rows}`]);
     } else if (type === 0x04) { // offline (EOT)
       handleOfflineMessage();
     } else {
