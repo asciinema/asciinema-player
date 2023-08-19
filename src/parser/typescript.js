@@ -50,6 +50,10 @@ async function parse(responses, { encoding }) {
       const text = textDecoder.decode(bytes);
       events.push([time, 'i', text]);
       stdin.cursor += count;
+    } else if (entry[0] === 'S' && entry[2] === 'SIGWINCH') {
+      const cols = parseInt(entry[4].slice(5), 10);
+      const rows = parseInt(entry[3].slice(5), 10);
+      events.push([time, 'r', `${cols}x${rows}`]);
     } else if (entry[0] === 'H' && entry[2] === 'COLUMNS') {
       cols = parseInt(entry[3], 10);
     } else if (entry[0] === 'H' && entry[2] === 'LINES') {
