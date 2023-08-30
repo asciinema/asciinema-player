@@ -391,11 +391,12 @@ Terminal color theme.
 One of:
 
 * `"asciinema"`
+* `"dracula"`
 * `"monokai"`
-* `"tango"`
+* `"nord"`
 * `"solarized-dark"`
 * `"solarized-light"`
-* `"nord"`
+* `"tango"`
 
 Defaults to `"asciinema"`.
 
