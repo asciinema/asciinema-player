@@ -395,14 +395,6 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
     events = new Stream(events);
   }
 
-  if (markers_ !== undefined) {
-    markers_ = (new Stream(markers_)).map(normalizeMarker);
-
-    events = events
-      .filter(e => e[1] !== 'm')
-      .multiplex(markers_, (a, b) => a[0] < b[0]);
-  }
-
   idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
   const limiterOutput = { offset: 0 };
 
@@ -410,8 +402,18 @@ function prepare(recording, logger, { startAt = 0, idleTimeLimit, minFrameTime, 
     .map(convertResizeEvent)
     .transform(batcher(logger, minFrameTime))
     .map(timeLimiter(idleTimeLimit, startAt, limiterOutput))
-    .map(markerWrapper())
-    .toArray();
+    .map(markerWrapper());
+
+  if (markers_ !== undefined) {
+    markers_ = (new Stream(markers_)).map(normalizeMarker);
+
+    events = events
+      .filter(e => e[1] !== 'm')
+      .multiplex(markers_, (a, b) => a[0] < b[0])
+      .map(markerWrapper());
+  }
+
+  events = events.toArray();
 
   if (inputOffset !== undefined) {
     events = events.map(e => e[1] === 'i'
