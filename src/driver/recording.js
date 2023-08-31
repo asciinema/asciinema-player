@@ -2,7 +2,7 @@ import { unparseAsciicastV2 } from '../parser/asciicast';
 import Stream from '../stream';
 
 
-function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, posterTime, markers: markers_, pauseOnMarkers }) {
+function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, posterTime, markers: markers_, pauseOnMarkers, cols: initialCols, rows: initialRows }) {
   let cols;
   let rows;
   let events;
@@ -26,6 +26,8 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
     );
 
     ({ cols, rows, events, duration, effectiveStartAt } = recording);
+    initialCols = initialCols ?? cols;
+    initialRows = initialRows ?? rows;
 
     if (events.length === 0) {
       throw 'recording is missing events';
@@ -157,7 +159,7 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
       nextEventIndex = 0;
       startTime = now();
       feed('\x1bc'); // reset terminal
-      feed(`\x1b[8;${rows};${cols};t`); // resize terminal to initial size
+      resizeTerminalToInitialSize();
       scheduleNextEvent();
     } else {
       pauseElapsedTime = duration * 1000;
@@ -239,7 +241,7 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
 
     if (targetTime < lastEventTime) {
       feed('\x1bc'); // reset terminal
-      feed(`\x1b[8;${rows};${cols};t`); // resize terminal to initial size
+      resizeTerminalToInitialSize();
       nextEventIndex = 0;
       lastEventTime = 0;
     }
@@ -324,6 +326,10 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
     } else {
       return (pauseElapsedTime ?? 0) / 1000;
     }
+  }
+
+  function resizeTerminalToInitialSize() {
+    feed(`\x1b[8;${initialRows};${initialCols};t`);
   }
 
   return {
