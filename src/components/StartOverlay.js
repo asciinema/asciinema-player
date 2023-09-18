@@ -6,15 +6,15 @@ export default props => {
       <div class="ap-play-button">
         <div>
           <span>
-            <svg version="1.1" viewBox="0 0 866.0254037844387 866.0254037844387" class="ap-icon">
+            <svg version="1.1" viewBox="0 0 1000.0 1000.0" class="ap-icon">
               <defs>
                 <mask id="small-triangle-mask">
                   <rect width="100%" height="100%" fill="white"></rect>
-                  <polygon points="508.01270189221935 433.01270189221935, 208.0127018922194 259.8076211353316, 208.01270189221927 606.217782649107" fill="black"></polygon>
+                  <polygon points="700.0 500.0, 400.00000000000006 326.7949192431122, 399.9999999999999 673.2050807568877" fill="black"></polygon>
                 </mask>
               </defs>
-              <polygon points="808.0127018922194 433.01270189221935, 58.01270189221947 -1.1368683772161603e-13, 58.01270189221913 866.0254037844386" mask="url(#small-triangle-mask)" fill="white" class="ap-play-btn-fill"></polygon>
-              <polyline points="481.2177826491071 333.0127018922194, 134.80762113533166 533.0127018922194" stroke="white" stroke-width="90" class="ap-play-btn-stroke"></polyline>
+              <polygon points="1000.0 500.0, 250.0000000000001 66.98729810778059, 249.99999999999977 933.0127018922192" mask="url(#small-triangle-mask)" fill="white" class="ap-play-btn-fill"></polygon>
+              <polyline points="673.2050807568878 400.0, 326.7949192431123 600.0" stroke="white" stroke-width="90" class="ap-play-btn-stroke"></polyline>
             </svg>
           </span>
         </div>
