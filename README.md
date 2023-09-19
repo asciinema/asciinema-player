@@ -888,6 +888,12 @@ This produces:
 - `dist/bundle/asciinema-player.min.js` - minimized version of the above
 - `dist/bundle/asciinema-player.css` - stylesheet, to be linked directly from a website or included in a CSS bundle
 
+## Sponsors
+
+asciinema is sponsored by:
+
+- [Brightbox](https://www.brightbox.com/)
+
 ## Consulting
 
 I offer consulting services for asciinema project. See https://asciinema.org/consulting for more information.
