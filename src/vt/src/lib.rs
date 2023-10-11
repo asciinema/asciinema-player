@@ -18,7 +18,7 @@ pub struct VtWrapper {
 pub fn create(w: usize, h: usize) -> VtWrapper {
     utils::set_panic_hook();
     let mut vt = Vt::new(w, h);
-    vt.resizable = true;
+    vt.resizable(true);
 
     VtWrapper { vt }
 }
@@ -35,7 +35,9 @@ impl VtWrapper {
     }
 
     pub fn get_size(&self) -> Vec<usize> {
-        vec![self.vt.cols, self.vt.rows]
+        let (cols, rows) = self.vt.size();
+
+        vec![cols, rows]
     }
 
     pub fn get_line(&self, l: usize) -> JsValue {
@@ -44,7 +46,9 @@ impl VtWrapper {
     }
 
     pub fn get_cursor(&self) -> JsValue {
-        let cursor = self.vt.cursor();
+        let (col, row, visible) = self.vt.cursor();
+        let cursor = if visible { Some((col, row)) } else { None };
+
         serde_wasm_bindgen::to_value(&cursor).unwrap()
     }
 }

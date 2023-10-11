@@ -4,8 +4,8 @@ version = 3
 
 [[package]]
 name = "avt"
-version = "0.8.0"
-source = "git+https://github.com/asciinema/avt?tag=v0.8.0#aaec6a11896551296d2f49078f432756e8a0529d"
+version = "0.8.2"
+source = "git+https://github.com/asciinema/avt?tag=v0.8.2#e0f424801e9b9ae87977131d87d947c87a004e9b"
 dependencies = [
  "rgb",
  "serde",
