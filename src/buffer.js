@@ -1,8 +1,8 @@
 import Queue from "./queue";
 
-function getBuffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime) {
+function getBuffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime, idleTimeLimit) {
   if (bufferTime > 0) {
-    return buffer(feed, setTime, bufferTime, baseStreamTime ?? 0.0, minFrameTime);
+    return buffer(feed, setTime, bufferTime, baseStreamTime ?? 0.0, minFrameTime, idleTimeLimit);
   } else {
     return nullBuffer(feed);
   }
@@ -24,9 +24,10 @@ function nullBuffer(feed) {
   }
 }
 
-function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 60) {
+function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 60, idleTimeLimit=Infinity) {
   const queue = new Queue();
   const startWallTime = now();
+  let fastForward = 0;
   let stop = false;
   let prevElapsedStreamTime = -minFrameTime;
 
@@ -44,8 +45,11 @@ function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 
         }
 
         const elapsedWallTime = (now() - startWallTime) / 1000;
-        const delay = elapsedStreamTime - elapsedWallTime;
-
+        let delay = elapsedStreamTime - (elapsedWallTime + fastForward);
+        if (delay > idleTimeLimit) {
+          fastForward += delay - idleTimeLimit;
+          delay = idleTimeLimit;
+        }
         if (delay > 0) {
           await sleep(delay);
           if (stop) return;
