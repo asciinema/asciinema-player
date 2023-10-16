@@ -15,10 +15,14 @@ pub struct VtWrapper {
 }
 
 #[wasm_bindgen]
-pub fn create(w: usize, h: usize) -> VtWrapper {
+pub fn create(cols: usize, rows: usize, resizable: bool, scrollback_limit: usize) -> VtWrapper {
     utils::set_panic_hook();
-    let mut vt = Vt::new(w, h);
-    vt.resizable(true);
+
+    let vt = Vt::builder()
+        .size(cols, rows)
+        .resizable(resizable)
+        .scrollback_limit(scrollback_limit)
+        .build();
 
     VtWrapper { vt }
 }
@@ -46,8 +50,7 @@ impl VtWrapper {
     }
 
     pub fn get_cursor(&self) -> JsValue {
-        let (col, row, visible) = self.vt.cursor();
-        let cursor = if visible { Some((col, row)) } else { None };
+        let cursor: Option<(usize, usize)> = self.vt.cursor().into();
 
         serde_wasm_bindgen::to_value(&cursor).unwrap()
     }

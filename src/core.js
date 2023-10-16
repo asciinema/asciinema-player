@@ -434,7 +434,7 @@ class Core {
   initializeVt(cols, rows) {
     this.logger.debug(`core: vt init (${cols}x${rows})`);
 
-    this.vt = this.wasm.create(cols, rows);
+    this.vt = this.wasm.create(cols, rows, true, 100);
     this.vt.cols = cols;
     this.vt.rows = rows;
 
@@ -463,7 +463,7 @@ class Core {
 
     this.logger.debug(`core: poster init (${cols}x${rows})`);
 
-    const vt = this.wasm.create(cols, rows);
+    const vt = this.wasm.create(cols, rows, false, 0);
     poster.forEach(text => vt.feed(text));
     const cursor = vt.get_cursor() ?? false;
     const lines = [];
