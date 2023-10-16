@@ -2,17 +2,21 @@ import parseAsciicast from '../parser/asciicast';
 
 
 function benchmark({ url, iterations = 10 }, { feed, now }) {
-  let frames;
+  let data;
   let byteCount = 0;
 
   return {
     async init() {
       const recording = await parseAsciicast(await fetch(url));
-      const { cols, rows } = recording;
-      frames = Array.from(recording.output);
-      const duration = frames[frames.length - 1][0];
+      const { cols, rows, events } = recording;
 
-      for (const [_, text] of frames) {
+      data = Array.from(events)
+        .filter(([_time, type, _text]) => type === 'o')
+        .map(([time, _type, text]) => [time, text]);
+
+      const duration = data[data.length - 1][0];
+
+      for (const [_, text] of data) {
         byteCount += new Blob([text]).size;
       }
 
@@ -23,7 +27,7 @@ function benchmark({ url, iterations = 10 }, { feed, now }) {
       const startTime = now();
 
       for (let i = 0; i < iterations; i++) {
-        for (const [_, text] of frames) {
+        for (const [_, text] of data) {
           feed(text);
         }
 
