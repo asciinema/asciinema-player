@@ -25,6 +25,9 @@ function className(attrs, extraClass) {
   if (bgClass) {
     cls += ' ' + bgClass;
   }
+  if(attrs.get('found') === true){
+    cls += ' found';
+  }
 
   if (attrs.has('bold')) {
     cls += ' ap-bright';

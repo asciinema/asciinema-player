@@ -42,12 +42,12 @@ export default props => {
 
   const markerPosition = (m) => `${(m[0] / props.duration) * 100}%`;
 
-  const markerText = (m) => {
-    if (m[1] === '') {
+  const markerTime = (m) => {
       return formatTime(m[0]);
-    } else {
-      return `${formatTime(m[0])} - ${m[1]}`;
-    }
+  };
+
+  const markerText = (m) => {
+    return m[1];
   };
 
   const isPastMarker = (m) => typeof props.currentTime === 'number'
@@ -142,7 +142,7 @@ export default props => {
               </span>
             </span>
             <For each={markers()}>
-              {(m, i) => <span class="ap-marker-container" style={{ left: markerPosition(m) }} onClick={seekToMarker(i())} onMouseDown={stopPropagation}><span class="ap-marker" classList={{ 'ap-marker-past': isPastMarker(m) }}></span><span class="ap-marker-tooltip">{markerText(m)}</span></span>}
+              {(m, i) => <span class="ap-marker-container" style={{ left: markerPosition(m) }} onClick={seekToMarker(i())} onMouseDown={stopPropagation}><span class="ap-marker" classList={{ 'ap-marker-past': isPastMarker(m) }}></span><span class="ap-marker-tooltip"><span class="ap-marker-tooltip-text" style="font-size:12px" innerHTML={markerText(m)}></span><div class="ap-marker-tooltip-time-container"><span class="ap-marker-tooltip-time" style="font-size:12px">{markerTime(m)}</span></div></span></span>}
             </For>
           </span>
         </span>

@@ -21,7 +21,7 @@ export default props => {
   return (
     <pre class="ap-terminal" classList={{ 'ap-cursor': props.blink || props.cursorHold, 'ap-blink': props.blink }} style={terminalStyle()} ref={props.ref} aria-live="polite" tabindex="0">
       <For each={props.lines}>
-        {(line, i) => <Line segments={line.segments} cursor={i() === cursorRow() ? cursorCol() : null} height={`${lineHeight()}em`} />}
+        {(line, i) => <Line searchTerm={props.searchTerm} segments={line.segments} cursor={i() === cursorRow() ? cursorCol() : null} height={`${lineHeight()}em`} />}
       </For>
     </pre>
   );

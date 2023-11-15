@@ -42,7 +42,8 @@ function create(src, elem, opts = {}) {
     poster: opts.poster,
     markers: opts.markers,
     pauseOnMarkers: opts.pauseOnMarkers,
-    idleTimeLimit: opts.idleTimeLimit
+    idleTimeLimit: opts.idleTimeLimit,
+    searchTerm: opts.searchTerm
   });
 
   const metrics = measureTerminal(opts.terminalFontFamily, opts.terminalLineHeight);

@@ -2,7 +2,7 @@ import { unparseAsciicastV2 } from '../parser/asciicast';
 import Stream from '../stream';
 
 
-function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, posterTime, markers: markers_, pauseOnMarkers, cols: initialCols, rows: initialRows }) {
+function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, logger }, { idleTimeLimit, startAt, loop, posterTime, markers: markers_, pauseOnMarkers, cols: initialCols, rows: initialRows, searchTerm }) {
   let cols;
   let rows;
   let events;

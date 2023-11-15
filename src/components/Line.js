@@ -2,8 +2,9 @@ import Segment from './Segment';
 
 export default props => {
   const segments = () => {
+    let finalResult = [];
     if (typeof props.cursor === 'number') {
-      const segs = [];
+      let segs = [];
       let len = 0;
       let i = 0;
 
@@ -42,10 +43,47 @@ export default props => {
         }
       }
 
-      return segs;
+      finalResult = segs;
     } else {
-      return props.segments;
+      finalResult = props.segments;
     }
+
+    let fullWord = "";
+    let searchTerm = props.searchTerm;
+    if(!searchTerm || searchTerm.trim() === ''){
+      return finalResult;
+    }
+    for (const seg of finalResult) {
+      fullWord+=seg[0];
+    }
+    let resultIndexes = [];
+    let resultIndex = fullWord.indexOf(searchTerm);
+    while(resultIndex !== -1){
+      resultIndexes.push(resultIndex);
+      if(resultIndex !== -1) {
+        resultIndex = fullWord.indexOf(searchTerm, resultIndex+1);
+      }
+      else{
+        break;
+      }
+    }
+    if(resultIndexes.length > 0){
+      let newSegs = [];
+      for (let j = 0; j < finalResult.length; j++) {
+        let seg = finalResult[j];
+        for (const resultIndexElement of resultIndexes) {
+          if(j>= resultIndexElement && j< resultIndexElement + searchTerm.length) {
+            seg = [seg[0], seg[1], (seg[2] ?? '') +' search-text-result'];
+            break;
+          }
+        }
+
+        newSegs.push(seg);
+      }
+      finalResult = newSegs;
+    }
+
+    return finalResult;
   }
 
   return (
