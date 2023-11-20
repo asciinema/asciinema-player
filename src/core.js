@@ -156,6 +156,7 @@ class Core {
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.commandQueue = Promise.resolve();
     this.searchTerm = opts.searchTerm;
+    this.onSearchClick = opts.onSearchClick;
 
     this.eventHandlers = new Map([
       ['marker', []],

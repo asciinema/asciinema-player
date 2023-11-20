@@ -147,7 +147,13 @@ export default props => {
           </span>
         </span>
       </Show>
-
+      <span class="ap-search-button" onClick={e(props.onSearchClick)}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M5.146 4.58173C5.146 4.18615 5.58362 3.94723 5.91638 4.16115L10.0671 6.82947C10.3732 7.02629 10.3732 7.47383 10.0671 7.67065L5.91638 10.339C5.58362 10.5529 5.146 10.314 5.146 9.91839V4.58173Z" stroke="white"/>
+          <path d="M7.22217 13.4444C10.6586 13.4444 13.4443 10.6586 13.4443 7.22223C13.4443 3.78582 10.6586 1.00006 7.22217 1.00006C3.78576 1.00006 1 3.78582 1 7.22223C1 10.6586 3.78576 13.4444 7.22217 13.4444Z" stroke="white" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M15 14.9999L11.6167 11.6166" stroke="white" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
       <span class="ap-fullscreen-button" onClick={e(props.onFullscreenClick)} title="Toggle fullscreen mode" aria-label="Toggle Fullscreen" role="button" tabindex="0">
         <svg version="1.1" viewBox="0 0 12 12" class="ap-icon">
           <path d="M12,0 L7,0 L9,2 L7,4 L8,5 L10,3 L12,5 Z"></path>

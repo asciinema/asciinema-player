@@ -43,7 +43,8 @@ function create(src, elem, opts = {}) {
     markers: opts.markers,
     pauseOnMarkers: opts.pauseOnMarkers,
     idleTimeLimit: opts.idleTimeLimit,
-    searchTerm: opts.searchTerm
+    searchTerm: opts.searchTerm,
+    onSearchClick: opts.onSearchClick
   });
 
   const metrics = measureTerminal(opts.terminalFontFamily, opts.terminalLineHeight);
