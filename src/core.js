@@ -318,8 +318,10 @@ class Core {
         if (i < rows) {
           let line = this.vt.get_line(i);
           const segments = [];
-          for (const lineElement of line[0][0]) {
-              segments.push([lineElement, line[0][1]]);
+          for (const lineWrapper of line) {
+            for (const lineElement of lineWrapper[0]) {
+              segments.push([lineElement, lineWrapper[1]]);
+            }
           }
           lines.set(i, {id: i, segments: segments});
         }
