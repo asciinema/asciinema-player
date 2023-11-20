@@ -61,6 +61,7 @@ function create(src, elem, opts = {}) {
     terminalFontFamily: opts.terminalFontFamily,
     terminalLineHeight: opts.terminalLineHeight,
     theme: opts.theme,
+    externalWrapper: opts.externalWrapper,
     ...metrics
   };
 

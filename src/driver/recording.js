@@ -199,6 +199,9 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
     scheduleNextEvent();
   }
 
+  function setMarkers(localMarkers){
+    markers = localMarkers;
+  }
   function seek(where) {
     const isPlaying = !!eventTimeoutId;
     pause();
@@ -219,13 +222,21 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
       }
     } else if (typeof where === 'object') {
       if (where.marker === 'prev') {
-        where = findMarkerTimeBefore(currentTime) ?? 0;
-
+        where = findMarkerTimeBefore(currentTime) ?? -1;
+        if(where === -1){
+          return;
+        }
         if (isPlaying && (currentTime - where) < 1) {
-          where = findMarkerTimeBefore(where) ?? 0;
+          where = findMarkerTimeBefore(where) ?? -1;
+          if(where === -1) {
+            return
+          }
         }
       } else if (where.marker === 'next') {
-        where = findMarkerTimeAfter(currentTime) ?? duration;
+        where = findMarkerTimeAfter(currentTime) ?? -1;
+        if(where === -1){
+          return;
+        }
       } else if (typeof where.marker === 'number') {
         const marker = markers[where.marker];
 
@@ -339,7 +350,8 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
     seek,
     step,
     stop: pause,
-    getCurrentTime
+    getCurrentTime,
+    setMarkers
   }
 }
 

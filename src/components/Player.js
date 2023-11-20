@@ -14,6 +14,7 @@ export default props => {
   const logger = props.logger;
   const core = props.core;
   const autoPlay = props.autoPlay;
+  const externalWrapper = props.externalWrapper;
 
   const [state, setState] = createStore({
     coreState: 'stopped',
@@ -98,6 +99,16 @@ export default props => {
     setMarkers(markers);
     setPoster(poster);
   });
+
+  if(externalWrapper) {
+    externalWrapper.addEventListener('updateMarkers', ({markers}) => {
+      setMarkers(markers);
+      setState('lines', []);
+      core.markers = markers;
+      core.driver.setMarkers(markers);
+      //core.initializeDriver();
+    });
+  }
 
   core.addEventListener('play', () => {
     setState('showStartOverlay', false);
@@ -266,9 +277,11 @@ export default props => {
 
     if (e.shiftKey) {
       if (e.key == 'ArrowLeft') {
-        core.seek('<<<');
+        //core.seek('<<<');
+        core.seek({ marker: 'prev' });
       } else if (e.key == 'ArrowRight') {
-        core.seek('>>>');
+        //core.seek('>>>');
+        core.seek({ marker: 'next' });
       } else {
         return;
       }
@@ -286,9 +299,11 @@ export default props => {
     } else if (e.key == 'f') {
       toggleFullscreen();
     } else if (e.key == 'ArrowLeft') {
-      core.seek('<<');
+      //core.seek('<<');
+      core.seek({ marker: 'prev' });
     } else if (e.key == 'ArrowRight') {
-      core.seek('>>');
+      //core.seek('>>');
+      core.seek({ marker: 'next' });
     } else if (e.key == '[') {
       core.seek({ marker: 'prev' });
     } else if (e.key == ']') {
@@ -396,6 +411,53 @@ export default props => {
       <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => onUserActive(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} searchTerm={core.getSearchTerm()}/>
         <Show when={props.controls !== false}>
+          <div id="search-container" className="search-container" style="display: none;">
+            <div className="inner-search-container">
+            <span className="search-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M7.33333 12.6667C10.2789 12.6667 12.6667 10.2789 12.6667 7.33333C12.6667 4.38781 10.2789 2 7.33333 2C4.38781 2 2 4.38781 2 7.33333C2 10.2789 4.38781 12.6667 7.33333 12.6667Z" stroke="#4F4F4F" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M14.0001 14L11.1001 11.1" stroke="#4F4F4F" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+              <input className="search-text" onKeyUp="event.stopPropagation();" onKeyPress="event.stopPropagation()" onKeyDown = "event.stopPropagation();if (event.keyCode == 13) search(this.value)"    />
+              <span className="search-separator"></span>
+              <span id="previousArrow" className="arrow arrow-enabled" onClick="previousMarker()">
+              <span className="enabled-arrow">
+                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="12" viewBox="0 0 8 12" fill="none">
+                  <path d="M7 0.5L1 6L7 11.5" stroke="#000850" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span className="disabled-arrow">
+                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="12" viewBox="0 0 8 12" fill="none">
+                  <path d="M7 0.5L1 6L7 11.5" stroke="#B7B7B7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </span>
+              <span id="nextArrow" className="arrow" onClick="nextMarker()">
+              <span className="enabled-arrow">
+                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="12" viewBox="0 0 8 12" fill="none">
+                  <path d="M1 11.5L7 6L1 0.5" stroke="#000850" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span className="disabled-arrow">
+                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="12" viewBox="0 0 8 12" fill="none">
+                  <path d="M1 11.5L7 6L1 0.5" stroke="#B7B7B7" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+              </span>
+            </span>
+              <span className="clear-search" style="position: relative;width: 16px;height: 16px;" onClick="clearSearch()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M8 16C12.4183 16 16 12.4183 16 8C16 3.58172 12.4183 0 8 0C3.58172 0 0 3.58172 0 8C0 12.4183 3.58172 16 8 16Z" fill="#B7B7B7"/>
+              </svg>
+              <span className="" style="position: absolute;left: 4px;top: -2px;width: 7px;height: 7px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <path d="M7.35355 0.646447L7 1L7 1L7.35355 0.646447ZM7.35355 1.35355L7 1V1L7.35355 1.35355ZM6.64645 0.646447L7 1L7 1L6.64645 0.646447ZM4 3.29289L3.64645 3.64645L4 4L4.35355 3.64645L4 3.29289ZM1.35355 0.646447L1.70711 0.292893V0.292893L1.35355 0.646447ZM0.646447 0.646447L1 1L1 1L0.646447 0.646447ZM0.646447 1.35355L0.292893 1.70711H0.292893L0.646447 1.35355ZM3.29289 4L3.64645 4.35355L4 4L3.64645 3.64645L3.29289 4ZM0.646447 6.64645L1 7L1 7L0.646447 6.64645ZM0.646447 7.35355L1 7L1 7L0.646447 7.35355ZM1.35355 7.35355L1 7H1L1.35355 7.35355ZM4 4.70711L4.35355 4.35355L4 4L3.64645 4.35355L4 4.70711ZM6.64645 7.35355L7 7L7 7L6.64645 7.35355ZM7.35355 7.35355L7 7L7 7L7.35355 7.35355ZM7.35355 6.64645L7 7L7 7L7.35355 6.64645ZM4.70711 4L4.35355 3.64645L4 4L4.35355 4.35355L4.70711 4ZM7 1V1L7.70711 1.70711C8.09763 1.31658 8.09763 0.683417 7.70711 0.292893L7 1ZM7 1H7L7.70711 0.292893C7.31658 -0.0976312 6.68342 -0.0976312 6.29289 0.292893L7 1ZM4.35355 3.64645L7 1L6.29289 0.292893L3.64645 2.93934L4.35355 3.64645ZM1 1L3.64645 3.64645L4.35355 2.93934L1.70711 0.292893L1 1ZM1 1V1L1.70711 0.292893C1.31658 -0.097631 0.683418 -0.0976311 0.292893 0.292893L1 1ZM1 1H1L0.292893 0.292893C-0.0976311 0.683418 -0.097631 1.31658 0.292893 1.70711L1 1ZM3.64645 3.64645L1 1L0.292893 1.70711L2.93934 4.35355L3.64645 3.64645ZM1 7L3.64645 4.35355L2.93934 3.64645L0.292893 6.29289L1 7ZM1 7V7L0.292893 6.29289C-0.0976312 6.68342 -0.0976312 7.31658 0.292893 7.70711L1 7ZM1 7H1L0.292893 7.70711C0.683417 8.09763 1.31658 8.09763 1.70711 7.70711L1 7ZM3.64645 4.35355L1 7L1.70711 7.70711L4.35355 5.06066L3.64645 4.35355ZM7 7L4.35355 4.35355L3.64645 5.06066L6.29289 7.70711L7 7ZM7 7H7L6.29289 7.70711C6.68342 8.09763 7.31658 8.09763 7.70711 7.70711L7 7ZM7 7V7L7.70711 7.70711C8.09763 7.31658 8.09763 6.68342 7.70711 6.29289L7 7ZM4.35355 4.35355L7 7L7.70711 6.29289L5.06066 3.64645L4.35355 4.35355ZM7 1L4.35355 3.64645L5.06066 4.35355L7.70711 1.70711L7 1Z" fill="white"/>
+                  </svg>
+              </span>
+            </span>
+            </div>
+
+          </div>
           <ControlBar duration={duration()} currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} markers={markers} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef}  onSearchClick={core.onSearchClick} />
         </Show>
         <Switch>
