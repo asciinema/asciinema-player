@@ -57,11 +57,11 @@ export default props => {
       fullWord+=seg[0];
     }
     let resultIndexes = [];
-    let resultIndex = fullWord.indexOf(searchTerm);
+    let resultIndex = fullWord.toLowerCase().indexOf(searchTerm.toLowerCase());
     while(resultIndex !== -1){
       resultIndexes.push(resultIndex);
       if(resultIndex !== -1) {
-        resultIndex = fullWord.indexOf(searchTerm, resultIndex+1);
+        resultIndex = fullWord.toLowerCase().indexOf(searchTerm.toLowerCase(), resultIndex+1);
       }
       else{
         break;
