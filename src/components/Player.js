@@ -301,9 +301,15 @@ export default props => {
     } else if (e.key == 'ArrowLeft') {
       //core.seek('<<');
       core.seek({ marker: 'prev' });
+      if (typeof updateArrowButtonsMode !== 'undefined') {
+        updateArrowButtonsMode(core.getCurrentTime())
+      }
     } else if (e.key == 'ArrowRight') {
       //core.seek('>>');
       core.seek({ marker: 'next' });
+      if (typeof updateArrowButtonsMode !== 'undefined') {
+        updateArrowButtonsMode(core.getCurrentTime())
+      }
     } else if (e.key == '[') {
       core.seek({ marker: 'prev' });
     } else if (e.key == ']') {
@@ -419,7 +425,7 @@ export default props => {
                 <path d="M14.0001 14L11.1001 11.1" stroke="#4F4F4F" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </span>
-              <input className="search-text" onKeyUp="event.stopPropagation();" onKeyPress="event.stopPropagation()" onKeyDown = "event.stopPropagation();if (event.keyCode == 13) search(this.value)"    />
+              <input className="search-text" onKeyUp="event.stopPropagation(); onSearchTextKeyUp(event, this)" onKeyPress="event.stopPropagation()" onKeyDown = "event.stopPropagation();"    />
               <span className="search-separator"></span>
               <span id="previousArrow" className="arrow arrow-enabled" onClick="previousMarker()">
               <span className="enabled-arrow">
