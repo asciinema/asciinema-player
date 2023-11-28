@@ -106,7 +106,6 @@ export default props => {
       setState('lines', []);
       core.markers = markers;
       core.driver.setMarkers(markers);
-      //core.initializeDriver();
     });
   }
 
@@ -277,10 +276,8 @@ export default props => {
 
     if (e.shiftKey) {
       if (e.key == 'ArrowLeft') {
-        //core.seek('<<<');
         core.seek({ marker: 'prev' });
       } else if (e.key == 'ArrowRight') {
-        //core.seek('>>>');
         core.seek({ marker: 'next' });
       } else {
         return;
@@ -299,13 +296,11 @@ export default props => {
     } else if (e.key == 'f') {
       toggleFullscreen();
     } else if (e.key == 'ArrowLeft') {
-      //core.seek('<<');
       core.seek({ marker: 'prev' });
       if (typeof updateArrowButtonsMode !== 'undefined') {
         updateArrowButtonsMode(core.getCurrentTime())
       }
     } else if (e.key == 'ArrowRight') {
-      //core.seek('>>');
       core.seek({ marker: 'next' });
       if (typeof updateArrowButtonsMode !== 'undefined') {
         updateArrowButtonsMode(core.getCurrentTime())

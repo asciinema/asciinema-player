@@ -49,7 +49,7 @@ export default props => {
     }
 
     let fullWord = "";
-    let searchTerm = window.searchTerm//props.searchTerm;
+    let searchTerm = window.searchTerm;
     if(!searchTerm || searchTerm.trim() === ''){
       return finalResult;
     }
