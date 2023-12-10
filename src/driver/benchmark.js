@@ -1,7 +1,7 @@
 import parseAsciicast from '../parser/asciicast';
 
 
-function benchmark({ url, iterations = 10 }, { feed, now }) {
+function benchmark({ url, iterations = 10 }, { feed, setState, now }) {
   let data;
   let byteCount = 0;
 
@@ -38,8 +38,10 @@ function benchmark({ url, iterations = 10 }, { feed, now }) {
       const duration = (endTime - startTime) / 1000;
       const throughput = (byteCount * iterations) / duration;
       const throughputMbs = (byteCount / (1024 * 1024) * iterations) / duration;
-
       console.info('benchmark: result', { byteCount, iterations, duration, throughput, throughputMbs });
+      setTimeout(() => { setState('stopped', { reason: 'ended' }); }, 0);
+
+      return true;
     }
   }
 }
