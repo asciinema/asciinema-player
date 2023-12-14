@@ -295,7 +295,10 @@ export default props => {
       updateTime();
     } else if (e.key == 'f') {
       toggleFullscreen();
-    } else if (e.key == 'ArrowLeft') {
+    }
+    //we changed the behaviour of the keyboard
+    // arrows to move to the next and previous marker instead
+    else if (e.key == 'ArrowLeft') {
       core.seek({ marker: 'prev' });
       if (typeof updateArrowButtonsMode !== 'undefined') {
         updateArrowButtonsMode(core.getCurrentTime())
@@ -407,6 +410,10 @@ export default props => {
   const terminalScale = () =>
     terminalElementSize()?.scale;
 
+  /*
+      The code was modified to contain the search container.
+      It was necessary in this project because full screen issues
+   */
   const el = (
     <div class="ap-wrapper" classList={{ 'ap-hud': controlsVisible() }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
       <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => onUserActive(true)} ref={playerRef}>

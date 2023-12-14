@@ -48,6 +48,11 @@ export default props => {
       finalResult = props.segments;
     }
 
+    /*
+        After processing the segments. We concatenate all segments together
+        and search for the searchTerm the user typed.
+        If we find a phrase we mark it with the class search-text-result
+     */
     let fullWord = "";
     let searchTerm = window.searchTerm;
     if(!searchTerm || searchTerm.trim() === ''){

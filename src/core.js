@@ -314,6 +314,10 @@ class Core {
       const lines = new Map();
       const rows = this.vt.rows;
 
+      /*
+        We purposely split each character to a separate segment.
+        So we would be able to control it through the search
+       */
       for (const i of this.changedLines) {
         if (i < rows) {
           let line = this.vt.get_line(i);

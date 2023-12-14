@@ -42,6 +42,10 @@ export default props => {
 
   const markerPosition = (m) => `${(m[0] / props.duration) * 100}%`;
 
+  /*
+    Marker text was split to marker time and marker text.
+    To fit Cyolos tooltip design
+   */
   const markerTime = (m) => {
       return formatTime(m[0]);
   };
