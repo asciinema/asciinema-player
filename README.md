@@ -25,11 +25,6 @@ You can see the player in action on [asciinema.org](https://asciinema.org).
 If you don't want to depend on asciinema.org and you prefer to host the player
 and the recordings yourself then read on, it's very simple.
 
-Shout-out to our Platinum [sponsors](https://github.com/sponsors/ku1ik), whose
-financial support helps keep the project alive:
-
-[<img src="./.github/sponsor-logos/dashcam/logo-on-light.png" width="200" />](https://dashcam.io?utm_source=asciinemagithub)
-
 ## Features
 
 * ability to copy-paste terminal content - it's just text after all!
@@ -897,7 +892,6 @@ This produces:
 
 asciinema is sponsored by:
 
-- [**Dashcam**](https://dashcam.io?utm_source=asciinemagithub)
 - [Brightbox](https://www.brightbox.com/)
 
 ## Consulting
