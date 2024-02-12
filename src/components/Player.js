@@ -273,6 +273,7 @@ export default props => {
         return;
       }
 
+      e.stopPropagation();
       e.preventDefault();
 
       return;
@@ -300,6 +301,7 @@ export default props => {
       return;
     }
 
+    e.stopPropagation();
     e.preventDefault();
   }
 
