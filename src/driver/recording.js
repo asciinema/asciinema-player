@@ -45,7 +45,7 @@ function recording(src, { feed, onInput, onMarker, now, setTimeout, setState, lo
       .filter(e => e[1] === 'm')
       .map(e => [e[0], e[2].label]);
 
-    return { cols, rows, duration, poster, markers };
+    return { cols, rows, duration, theme: recording.theme, poster, markers };
   }
 
   function doFetch({ url, data, fetchOpts = {} }) {

@@ -414,6 +414,7 @@ class Core {
       rows: this.rows,
       duration: this.duration,
       markers: this.markers,
+      theme: meta.theme,
       poster
     });
   }

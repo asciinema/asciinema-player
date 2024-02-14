@@ -71,8 +71,25 @@ function parseAsciicastV2(header, events) {
   return {
     cols: header.width,
     rows: header.height,
+    theme: parseTheme(header.theme),
     events,
     idleTimeLimit: header.idle_time_limit
+  }
+}
+
+function parseTheme(theme) {
+  const colorRegex = /^#[0-9A-Fa-f]{6}$/;
+  const paletteRegex = /^(#[0-9A-Fa-f]{6}:){7,}#[0-9A-Fa-f]{6}$/;
+  const fg = theme?.fg;
+  const bg = theme?.bg;
+  const palette = theme?.palette;
+
+  if (colorRegex.test(fg) && colorRegex.test(bg) && paletteRegex.test(palette)) {
+    return {
+      foreground: fg,
+      background: bg,
+      palette: palette.split(':')
+    }
   }
 }
 

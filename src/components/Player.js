@@ -40,6 +40,7 @@ export default props => {
   const [duration, setDuration] = createSignal(undefined);
   const [markers, setMarkers] = createStore([]);
   const [userActive, setUserActive] = createSignal(false);
+  const [originalTheme, setOriginalTheme] = createSignal(undefined);
 
   const terminalCols = () =>
     terminalSize().cols || 80;
@@ -92,9 +93,10 @@ export default props => {
     }
   }
 
-  core.addEventListener('init', ({ cols, rows, duration, poster, markers }) => {
+  core.addEventListener('init', ({ cols, rows, duration, theme, poster, markers }) => {
     resize({ cols, rows });
     setDuration(duration);
+    setOriginalTheme(theme);
     setMarkers(markers);
     setPoster(poster);
   });
@@ -382,6 +384,17 @@ export default props => {
     if (size.width !== undefined) {
       style['width'] = `${size.width}px`;
       style['height'] = `${size.height}px`;
+    }
+
+    const theme = originalTheme();
+
+    if (theme !== undefined && (props.theme === undefined || props.theme === null)) {
+      style['--term-color-foreground'] = theme.foreground;
+      style['--term-color-background'] = theme.background;
+
+      theme.palette.forEach((color, i) => {
+        style[`--term-color-${i}`] = color;
+      });
     }
 
     return style;
