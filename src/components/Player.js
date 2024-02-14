@@ -401,7 +401,7 @@ export default props => {
   }
 
   const playerClass = () =>
-    `ap-player asciinema-theme-${props.theme ?? 'asciinema'}`;
+    `ap-player asciinema-player-theme-${props.theme ?? 'asciinema'}`;
 
   const terminalScale = () =>
     terminalElementSize()?.scale;
