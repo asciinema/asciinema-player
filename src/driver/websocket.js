@@ -81,22 +81,41 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
     }
   }
 
+  const THEME_LEN = 54;  // (2 + 16) * 3
+
   function handleStreamMessage(event) {
     const buffer = event.data;
     const view = new DataView(buffer);
     const type = view.getUint8(0);
+    let offset = 1;
 
     if (type === 0x01) { // reset
-      const cols = view.getUint16(1, true);
-      const rows = view.getUint16(3, true);
-      const time = view.getFloat32(5, true);
-      const len = view.getUint32(9, true);
+      const cols = view.getUint16(offset, true);
+      offset += 2;
+      const rows = view.getUint16(offset, true);
+      offset += 2;
+      const time = view.getFloat32(offset, true);
+      offset += 4;
+      const themeFormat = view.getUint8(offset);
+      offset += 1;
+      let theme;
 
-      const init = len > 0
-        ? utfDecoder.decode(new Uint8Array(buffer, 13, len))
-        : undefined;
+      if (themeFormat === 1) {
+        theme = parseTheme(new Uint8Array(buffer, offset, THEME_LEN));
+        offset += THEME_LEN;
+      }
 
-      handleResetMessage(cols, rows, time, init);
+      const initLen = view.getUint32(offset, true);
+      offset += 4;
+
+      let init;
+
+      if (initLen > 0) {
+        init = utfDecoder.decode(new Uint8Array(buffer, offset, initLen));
+        offset += initLen;
+      }
+
+      handleResetMessage(cols, rows, time, init, theme);
     } else if (type === 0x6f) { // 'o' - output
       const time = view.getFloat32(1, true);
       const len = view.getUint32(5, true);
@@ -114,15 +133,35 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
     }
   }
 
+  function parseTheme(arr) {
+    const foreground = hexColor(arr[0], arr[1], arr[2]);
+    const background = hexColor(arr[3], arr[4], arr[5]);
+    const palette = [];
+
+    for (let i = 0; i < 16; i++) {
+      palette.push(hexColor(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]));
+    }
+
+    return { foreground, background, palette };
+  }
+
+  function hexColor(r, g, b) {
+    return `#${byteToHex(r)}${byteToHex(g)}${byteToHex(b)}`;
+  }
+
+  function byteToHex(value) {
+    return value.toString(16).padStart(2, '0');
+  }
+
   function handleRawTextMessage(event) {
     buf.pushText(utfDecoder.decode(event.data));
   }
 
-  function handleResetMessage(cols, rows, time, init) {
+  function handleResetMessage(cols, rows, time, init, theme) {
     logger.debug(`stream reset (${cols}x${rows} @${time})`);
     setState('playing');
     initBuffer(time);
-    reset(cols, rows, init);
+    reset(cols, rows, init, theme);
     clock = new Clock();
 
     if (typeof time === 'number') {

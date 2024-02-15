@@ -419,7 +419,7 @@ class Core {
     });
   }
 
-  resetVt(cols, rows, init = undefined) {
+  resetVt(cols, rows, init = undefined, theme = undefined) {
     this.cols = cols;
     this.rows = rows;
     this.cursor = undefined;
@@ -429,7 +429,7 @@ class Core {
       this.doFeed(init);
     }
 
-    this.dispatchEvent('reset', { cols, rows });
+    this.dispatchEvent('reset', { cols, rows, theme });
   }
 
   initializeVt(cols, rows) {

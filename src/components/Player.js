@@ -131,8 +131,9 @@ export default props => {
 
   core.addEventListener('resize', resize);
 
-  core.addEventListener('reset', size => {
-    resize(size);
+  core.addEventListener('reset', ({ cols, rows, theme }) => {
+    resize({ cols, rows });
+    setOriginalTheme(theme);
     updateTerminal();
   });
 
