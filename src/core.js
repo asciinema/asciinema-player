@@ -55,12 +55,12 @@ class UninitializedState extends State {
 }
 
 class StoppedState extends State {
-  onEnter(data) {
-    this.core.dispatchEvent('stopped');
+  onEnter({ reason, message }) {
+    this.core.dispatchEvent('stopped', { message });
 
-    if (data.reason === 'paused') {
+    if (reason === 'paused') {
       this.core.dispatchEvent('pause');
-    } else if (data.reason === 'ended') {
+    } else if (reason === 'ended') {
       this.core.dispatchEvent('ended');
     }
   }

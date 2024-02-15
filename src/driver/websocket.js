@@ -190,7 +190,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
     socket.onclose = event => {
       if (stop || event.code === 1000 || event.code === 1005) {
         logger.info('closed');
-        setState('stopped', { reason: 'ended' });
+        setState('stopped', { reason: 'ended', message: 'Stream ended' });
       } else {
         clearTimeout(successfulConnectionTimeout);
         const delay = reconnectDelay(reconnectAttempt++);

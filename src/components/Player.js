@@ -5,7 +5,7 @@ import Terminal from './Terminal';
 import ControlBar from './ControlBar';
 import ErrorOverlay from './ErrorOverlay';
 import LoaderOverlay from './LoaderOverlay';
-import OfflineOverlay from './OfflineOverlay';
+import InfoOverlay from './InfoOverlay';
 import StartOverlay from './StartOverlay';
 
 const CONTROL_BAR_HEIGHT = 32; // must match height of div.ap-control-bar in CSS
@@ -16,7 +16,6 @@ export default props => {
   const autoPlay = props.autoPlay;
 
   const [state, setState] = createStore({
-    coreState: 'stopped',
     lines: [],
     cursor: undefined,
     charW: props.charW,
@@ -25,7 +24,6 @@ export default props => {
     bordersH: props.bordersH,
     containerW: 0,
     containerH: 0,
-    showStartOverlay: !autoPlay,
     isPausable: true,
     isSeekable: true,
     isFullscreen: false,
@@ -36,6 +34,9 @@ export default props => {
     cursorHold: false
   });
 
+  const [isPlaying, setIsPlaying] = createSignal(false);
+  const [overlay, setOverlay] = createSignal(!autoPlay ? 'start' : null);
+  const [infoMessage, setInfoMessage] = createSignal(null);
   const [terminalSize, setTerminalSize] = createSignal({ cols: props.cols, rows: props.rows });
   const [duration, setDuration] = createSignal(undefined);
   const [markers, setMarkers] = createStore([]);
@@ -102,31 +103,40 @@ export default props => {
   });
 
   core.addEventListener('play', () => {
-    setState('showStartOverlay', false);
+    setOverlay(null);
   });
 
   core.addEventListener('playing', () => {
-    setState('coreState', 'playing');
+    setIsPlaying(true);
+    setOverlay(null);
     onPlaying();
   });
 
-  core.addEventListener('stopped', () => {
-    setState('coreState', 'stopped');
+  core.addEventListener('stopped', ({ message }) => {
+    setIsPlaying(false);
     onStopped();
+
+    if (message !== undefined) {
+      setInfoMessage(message);
+      setOverlay('info');
+    }
   });
 
   core.addEventListener('loading', () => {
-    setState('coreState', 'loading');
+    setIsPlaying(false);
     onStopped();
+    setOverlay('loader');
   });
 
   core.addEventListener('offline', () => {
-    setState('coreState', 'offline');
+    setIsPlaying(false);
     onStopped();
+    setInfoMessage('Stream offline');
+    setOverlay('info');
   });
 
   core.addEventListener('errored', () => {
-    setState({ coreState: 'errored', showStartOverlay: false });
+    setOverlay('error');
   });
 
   core.addEventListener('resize', resize);
@@ -412,13 +422,13 @@ export default props => {
       <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => onUserActive(true)} ref={playerRef}>
         <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
         <Show when={props.controls !== false}>
-          <ControlBar duration={duration()} currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} markers={markers} isPlaying={state.coreState == 'playing'} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
+          <ControlBar duration={duration()} currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} markers={markers} isPlaying={isPlaying()} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
         </Show>
         <Switch>
-          <Match when={state.showStartOverlay}><StartOverlay onClick={() => core.play()} /></Match>
-          <Match when={state.coreState == 'loading'}><LoaderOverlay /></Match>
-          <Match when={state.coreState == 'offline'}><OfflineOverlay fontFamily={props.terminalFontFamily} /></Match>
-          <Match when={state.coreState == 'errored'}><ErrorOverlay /></Match>
+          <Match when={overlay() == 'start'}><StartOverlay onClick={() => core.play()} /></Match>
+          <Match when={overlay() == 'loader'}><LoaderOverlay /></Match>
+          <Match when={overlay() == 'info'}><InfoOverlay message={infoMessage()} fontFamily={props.terminalFontFamily} /></Match>
+          <Match when={overlay() == 'error'}><ErrorOverlay /></Match>
         </Switch>
       </div>
     </div>
