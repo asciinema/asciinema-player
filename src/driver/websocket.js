@@ -32,15 +32,6 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
       if (arr[0] == 0x41 && arr[1] == 0x4c && arr[2] == 0x69 && arr[3] == 0x53) { // 'ALiS'
         if (arr[4] == 1) {
           logger.info('activating ALiS v1 handler');
-          const compressionAlgo = arr[5];
-
-          if (compressionAlgo == 0) {
-            logger.debug('text compression: none');
-          } else {
-            logger.error(`unsupported compression algorithm (${compressionAlgo})`);
-            socket.close();
-          }
-
           socket.onmessage = handleStreamMessage;
         } else {
           logger.warn(`unsupported ALiS version (${arr[4]})`);
