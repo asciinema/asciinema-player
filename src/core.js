@@ -403,6 +403,15 @@ class Core {
     this.rows = this.rows ?? meta.rows ?? 24;
     this.duration = this.duration ?? meta.duration;
     this.markers = this.normalizeMarkers(meta.markers) ?? this.markers ?? [];
+
+    if (this.cols === 0) {
+      this.cols = 80;
+    }
+
+    if (this.rows === 0) {
+      this.rows = 24;
+    }
+
     this.initializeVt(this.cols, this.rows);
 
     const poster = meta.poster !== undefined
