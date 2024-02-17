@@ -2,7 +2,7 @@ import getBuffer from '../buffer';
 import { Clock, NullClock } from '../clock';
 import { PrefixedLogger } from '../logging';
 
-function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, setState, logger }) {
+function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, setState, logger }, { idleTimeLimit }) {
   logger = new PrefixedLogger(logger, 'eventsource: ');
   let es;
   let buf;
@@ -10,7 +10,7 @@ function eventsource({ url, bufferTime = 0.1, minFrameTime }, { feed, reset, set
 
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
-    buf = getBuffer(feed, (t) => clock.setTime(t), bufferTime, baseStreamTime, minFrameTime);
+    buf = getBuffer(feed, (t) => clock.setTime(t), bufferTime, baseStreamTime, minFrameTime,idleTimeLimit);
   }
 
   return {
