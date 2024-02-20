@@ -30,6 +30,10 @@ function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 
   let stop = false;
   let prevElapsedStreamTime = -minFrameTime;
 
+  function elapsedWallTime() {
+    return (now() - startWallTime) / 1000;
+  }
+
   setTimeout(async () => {
     while (!stop) {
       const events = await queue.popAll();
@@ -43,8 +47,7 @@ function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 
           continue;
         }
 
-        const elapsedWallTime = (now() - startWallTime) / 1000;
-        const delay = elapsedStreamTime - elapsedWallTime;
+        const delay = elapsedStreamTime - elapsedWallTime();
 
         if (delay > 0) {
           await sleep(delay);
@@ -69,8 +72,7 @@ function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 
     },
 
     pushText(text) {
-      const time = (now() - startWallTime) / 1000;
-      queue.push([time, "o", text]);
+      queue.push([elapsedWallTime(), "o", text]);
     },
 
     stop() {
