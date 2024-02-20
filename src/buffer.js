@@ -11,7 +11,7 @@ function getBuffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime) {
 function nullBuffer(feed) {
   return {
     pushEvent(event) {
-      if (event[1] === 'o') {
+      if (event[1] === "o") {
         feed(event[2]);
       }
     },
@@ -20,8 +20,8 @@ function nullBuffer(feed) {
       feed(text);
     },
 
-    stop() {}
-  }
+    stop() {},
+  };
 }
 
 function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 60) {
@@ -60,32 +60,32 @@ function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 
 
   return {
     pushEvent(event) {
-      if (event[1] === 'o') {
+      if (event[1] === "o") {
         queue.push(event);
-      } else if (event[1] === 'r') {
-        const [cols, rows] = event[2].split('x');
-        queue.push([event[0], 'o', `\x1b[8;${rows};${cols};t`]);
+      } else if (event[1] === "r") {
+        const [cols, rows] = event[2].split("x");
+        queue.push([event[0], "o", `\x1b[8;${rows};${cols};t`]);
       }
     },
 
     pushText(text) {
       const time = (now() - startWallTime) / 1000;
-      queue.push([time, 'o', text]);
+      queue.push([time, "o", text]);
     },
 
     stop() {
       stop = true;
       queue.push(undefined);
-    }
-  }
+    },
+  };
 }
 
 function now() {
-  return (new Date()).getTime();
+  return new Date().getTime();
 }
 
 function sleep(t) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     setTimeout(resolve, t * 1000);
   });
 }
