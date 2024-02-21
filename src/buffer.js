@@ -25,13 +25,14 @@ function nullBuffer(feed) {
 }
 
 function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 60) {
+  let startWallTime = performance.now() - baseStreamTime * 1000;
   const queue = new Queue();
-  const startWallTime = now();
   let stop = false;
+  minFrameTime = minFrameTime * 1000;
   let prevElapsedStreamTime = -minFrameTime;
 
   function elapsedWallTime() {
-    return (now() - startWallTime) / 1000;
+    return performance.now() - startWallTime;
   }
 
   setTimeout(async () => {
@@ -40,7 +41,7 @@ function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 
       if (stop) return;
 
       for (const event of events) {
-        const elapsedStreamTime = event[0] - baseStreamTime + bufferTime;
+        const elapsedStreamTime = (event[0] + bufferTime) * 1000;
 
         if (elapsedStreamTime - prevElapsedStreamTime < minFrameTime) {
           feed(event[2]);
@@ -82,13 +83,9 @@ function buffer(feed, setTime, bufferTime, baseStreamTime, minFrameTime = 1.0 / 
   };
 }
 
-function now() {
-  return new Date().getTime();
-}
-
 function sleep(t) {
   return new Promise((resolve) => {
-    setTimeout(resolve, t * 1000);
+    setTimeout(resolve, t);
   });
 }
 
