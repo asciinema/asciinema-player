@@ -21,7 +21,7 @@ class Queue {
     } else {
       const thiz = this;
 
-      return new Promise(resolve => {
+      return new Promise((resolve) => {
         thiz.onPush = resolve;
       });
     }

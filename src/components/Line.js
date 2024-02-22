@@ -1,15 +1,15 @@
-import Segment from './Segment';
+import Segment from "./Segment";
 
-export default props => {
+export default (props) => {
   const segments = () => {
-    if (typeof props.cursor === 'number') {
+    if (typeof props.cursor === "number") {
       const segs = [];
       let len = 0;
       let i = 0;
 
       while (i < props.segments.length && len + props.segments[i][0].length - 1 < props.cursor) {
         const seg = props.segments[i];
-        segs.push(seg)
+        segs.push(seg);
         len += seg[0].length;
         i++;
       }
@@ -18,7 +18,7 @@ export default props => {
         const seg = props.segments[i];
         const cursorAttrsA = seg[1];
         const cursorAttrsB = new Map(cursorAttrsA);
-        cursorAttrsB.set('inverse', !cursorAttrsB.get('inverse'));
+        cursorAttrsB.set("inverse", !cursorAttrsB.get("inverse"));
 
         const pos = props.cursor - len;
 
@@ -26,8 +26,8 @@ export default props => {
           segs.push([seg[0].substring(0, pos), seg[1]]);
         }
 
-        segs.push([seg[0][pos], cursorAttrsA, ' ap-cursor-a']);
-        segs.push([seg[0][pos], cursorAttrsB, ' ap-cursor-b']);
+        segs.push([seg[0][pos], cursorAttrsA, " ap-cursor-a"]);
+        segs.push([seg[0][pos], cursorAttrsB, " ap-cursor-b"]);
 
         if (pos < seg[0].length - 1) {
           segs.push([seg[0].substring(pos + 1), seg[1]]);
@@ -46,9 +46,13 @@ export default props => {
     } else {
       return props.segments;
     }
-  }
+  };
 
   return (
-    <span class="ap-line" style={{height: props.height}} role="paragraph"><Index each={segments()}>{s => <Segment text={s()[0]} attrs={s()[1]} extraClass={s()[2]} />}</Index></span>
+    <span class="ap-line" style={{ height: props.height }} role="paragraph">
+      <Index each={segments()}>
+        {(s) => <Segment text={s()[0]} attrs={s()[1]} extraClass={s()[2]} />}
+      </Index>
+    </span>
   );
-}
+};

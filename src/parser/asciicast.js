@@ -1,5 +1,4 @@
-import Stream from '../stream';
-
+import Stream from "../stream";
 
 async function parse(data) {
   let header;
@@ -15,13 +14,13 @@ async function parse(data) {
     } else {
       header = JSON.parse(text);
     }
-  } else if (typeof data === 'object' && typeof data.version === 'number') {
+  } else if (typeof data === "object" && typeof data.version === "number") {
     header = data;
   } else if (Array.isArray(data)) {
     header = data[0];
     events = data.slice(1, data.length);
   } else {
-    throw 'invalid data';
+    throw "invalid data";
   }
 
   if (header.version === 1) {
@@ -34,7 +33,7 @@ async function parse(data) {
 }
 
 function parseJsonl(jsonl) {
-  const lines = jsonl.split('\n');
+  const lines = jsonl.split("\n");
   let header;
 
   try {
@@ -45,7 +44,7 @@ function parseJsonl(jsonl) {
 
   const events = new Stream(lines)
     .drop(1)
-    .filter(l => l[0] === '[')
+    .filter((l) => l[0] === "[")
     .map(JSON.parse)
     .toArray();
 
@@ -55,16 +54,16 @@ function parseJsonl(jsonl) {
 function parseAsciicastV1(data) {
   let time = 0;
 
-  const events = new Stream(data.stdout).map(e => {
+  const events = new Stream(data.stdout).map((e) => {
     time += e[0];
-    return [time, 'o', e[1]];
+    return [time, "o", e[1]];
   });
 
   return {
     cols: data.width,
     rows: data.height,
-    events
-  }
+    events,
+  };
 }
 
 function parseAsciicastV2(header, events) {
@@ -73,8 +72,8 @@ function parseAsciicastV2(header, events) {
     rows: header.height,
     theme: parseTheme(header.theme),
     events,
-    idleTimeLimit: header.idle_time_limit
-  }
+    idleTimeLimit: header.idle_time_limit,
+  };
 }
 
 function parseTheme(theme) {
@@ -88,8 +87,8 @@ function parseTheme(theme) {
     return {
       foreground: fg,
       background: bg,
-      palette: palette.split(':')
-    }
+      palette: palette.split(":"),
+    };
   }
 }
 
@@ -98,11 +97,9 @@ function unparseAsciicastV2(recording) {
     version: 2,
     width: recording.cols,
     height: recording.rows,
-  })
+  });
 
-  const events = recording.events
-    .map(JSON.stringify)
-    .join('\n');
+  const events = recording.events.map(JSON.stringify).join("\n");
 
   return `${header}\n${events}\n`;
 }

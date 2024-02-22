@@ -1,16 +1,16 @@
-import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch } from 'solid-js';
-import { createStore, reconcile } from 'solid-js/store';
+import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 import { debounce } from "../util";
-import Terminal from './Terminal';
-import ControlBar from './ControlBar';
-import ErrorOverlay from './ErrorOverlay';
-import LoaderOverlay from './LoaderOverlay';
-import InfoOverlay from './InfoOverlay';
-import StartOverlay from './StartOverlay';
+import Terminal from "./Terminal";
+import ControlBar from "./ControlBar";
+import ErrorOverlay from "./ErrorOverlay";
+import LoaderOverlay from "./LoaderOverlay";
+import InfoOverlay from "./InfoOverlay";
+import StartOverlay from "./StartOverlay";
 
 const CONTROL_BAR_HEIGHT = 32; // must match height of div.ap-control-bar in CSS
 
-export default props => {
+export default (props) => {
   const logger = props.logger;
   const core = props.core;
   const autoPlay = props.autoPlay;
@@ -31,29 +31,23 @@ export default props => {
     remainingTime: null,
     progress: null,
     blink: true,
-    cursorHold: false
+    cursorHold: false,
   });
 
   const [isPlaying, setIsPlaying] = createSignal(false);
-  const [overlay, setOverlay] = createSignal(!autoPlay ? 'start' : null);
+  const [overlay, setOverlay] = createSignal(!autoPlay ? "start" : null);
   const [infoMessage, setInfoMessage] = createSignal(null);
   const [terminalSize, setTerminalSize] = createSignal({ cols: props.cols, rows: props.rows });
   const [duration, setDuration] = createSignal(undefined);
   const [markers, setMarkers] = createStore([]);
   const [userActive, setUserActive] = createSignal(false);
   const [originalTheme, setOriginalTheme] = createSignal(undefined);
-
-  const terminalCols = () =>
-    terminalSize().cols || 80;
-
-  const terminalRows = () =>
-    terminalSize().rows || 24;
-
-  const controlBarHeight = () =>
-    props.controls === false ? 0 : CONTROL_BAR_HEIGHT;
+  const terminalCols = () => terminalSize().cols || 80;
+  const terminalRows = () => terminalSize().rows || 24;
+  const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
 
   const controlsVisible = () =>
-    props.controls === true || props.controls === 'auto' && userActive();
+    props.controls === true || (props.controls === "auto" && userActive());
 
   let frameRequestId;
   let userActivityTimeoutId;
@@ -79,7 +73,7 @@ export default props => {
 
   function resize(size_) {
     if (size_.rows < terminalSize().rows) {
-      setState('lines', state.lines.slice(0, size_.rows));
+      setState("lines", state.lines.slice(0, size_.rows));
     }
 
     setTerminalSize(size_);
@@ -89,12 +83,12 @@ export default props => {
     if (poster !== undefined && !autoPlay) {
       setState({
         lines: poster.lines,
-        cursor: poster.cursor
+        cursor: poster.cursor,
       });
     }
   }
 
-  core.addEventListener('init', ({ cols, rows, duration, theme, poster, markers }) => {
+  core.addEventListener("init", ({ cols, rows, duration, theme, poster, markers }) => {
     resize({ cols, rows });
     setDuration(duration);
     setOriginalTheme(theme);
@@ -102,77 +96,79 @@ export default props => {
     setPoster(poster);
   });
 
-  core.addEventListener('play', () => {
+  core.addEventListener("play", () => {
     setOverlay(null);
   });
 
-  core.addEventListener('playing', () => {
+  core.addEventListener("playing", () => {
     setIsPlaying(true);
     setOverlay(null);
     onPlaying();
   });
 
-  core.addEventListener('stopped', ({ message }) => {
+  core.addEventListener("stopped", ({ message }) => {
     setIsPlaying(false);
     onStopped();
 
     if (message !== undefined) {
       setInfoMessage(message);
-      setOverlay('info');
+      setOverlay("info");
     }
   });
 
-  core.addEventListener('loading', () => {
+  core.addEventListener("loading", () => {
     setIsPlaying(false);
     onStopped();
-    setOverlay('loader');
+    setOverlay("loader");
   });
 
-  core.addEventListener('offline', () => {
+  core.addEventListener("offline", () => {
     setIsPlaying(false);
     onStopped();
-    setInfoMessage('Stream offline');
-    setOverlay('info');
+    setInfoMessage("Stream offline");
+    setOverlay("info");
   });
 
-  core.addEventListener('errored', () => {
-    setOverlay('error');
+  core.addEventListener("errored", () => {
+    setOverlay("error");
   });
 
-  core.addEventListener('resize', resize);
+  core.addEventListener("resize", resize);
 
-  core.addEventListener('reset', ({ cols, rows, theme }) => {
+  core.addEventListener("reset", ({ cols, rows, theme }) => {
     resize({ cols, rows });
     setOriginalTheme(theme);
     updateTerminal();
   });
 
-  core.addEventListener('seeked', () => {
+  core.addEventListener("seeked", () => {
     updateTime();
   });
 
-  core.addEventListener('terminalUpdate', () => {
+  core.addEventListener("terminalUpdate", () => {
     if (frameRequestId === undefined) {
       frameRequestId = requestAnimationFrame(updateTerminal);
     }
   });
 
   const setupResizeObserver = () => {
-    resizeObserver = new ResizeObserver(debounce(_entries => {
-      setState({
-        containerW: wrapperRef.offsetWidth,
-        containerH: wrapperRef.offsetHeight
-      });
+    resizeObserver = new ResizeObserver(
+      debounce((_entries) => {
+        setState({
+          containerW: wrapperRef.offsetWidth,
+          containerH: wrapperRef.offsetHeight,
+        });
 
-      wrapperRef.dispatchEvent(new CustomEvent('resize', { detail: { el: playerRef } }));
-    }, 10));
+        wrapperRef.dispatchEvent(new CustomEvent("resize", { detail: { el: playerRef } }));
+      }, 10),
+    );
 
     resizeObserver.observe(wrapperRef);
-  }
+  };
 
   onMount(async () => {
-    logger.info('player mounted');
-    logger.debug('font measurements', { charW: state.charW, charH: state.charH });
+    logger.info("player mounted");
+    logger.debug("font measurements", { charW: state.charW, charH: state.charH });
     setupResizeObserver();
     const { isPausable, isSeekable, poster } = await core.init();
 
@@ -180,7 +176,7 @@ export default props => {
       isPausable,
       isSeekable,
       containerW: wrapperRef.offsetWidth,
-      containerH: wrapperRef.offsetHeight
+      containerH: wrapperRef.offsetHeight,
     });
 
     setPoster(poster);
@@ -191,7 +187,7 @@ export default props => {
   });
 
   onCleanup(() => {
-    core.stop()
+    core.stop();
     stopBlinking();
     stopTimeUpdates();
     resizeObserver.disconnect();
@@ -203,53 +199,53 @@ export default props => {
     if (changedLines) {
       batch(() => {
         changedLines.forEach((line, i) => {
-          setState('lines', i, reconcile(line));
+          setState("lines", i, reconcile(line));
         });
       });
     }
 
-    setState('cursor', reconcile(core.getCursor()));
-    setState('cursorHold', true);
+    setState("cursor", reconcile(core.getCursor()));
+    setState("cursorHold", true);
 
     frameRequestId = undefined;
-  }
+  };
 
   const terminalElementSize = createMemo(() => {
     logger.debug(`containerW = ${state.containerW}`);
 
-    const terminalW = (state.charW * terminalCols()) + state.bordersW;
-    const terminalH = (state.charH * terminalRows()) + state.bordersH;
+    const terminalW = state.charW * terminalCols() + state.bordersW;
+    const terminalH = state.charH * terminalRows() + state.bordersH;
 
-    let fit = props.fit ?? 'width';
+    let fit = props.fit ?? "width";
 
-    if (fit === 'both' || state.isFullscreen) {
+    if (fit === "both" || state.isFullscreen) {
       const containerRatio = state.containerW / (state.containerH - controlBarHeight());
       const terminalRatio = terminalW / terminalH;
 
       if (containerRatio > terminalRatio) {
-        fit = 'height';
+        fit = "height";
       } else {
-        fit = 'width';
+        fit = "width";
       }
     }
 
-    if (fit === false || fit === 'none') {
+    if (fit === false || fit === "none") {
       return {};
-    } else if (fit === 'width') {
+    } else if (fit === "width") {
       const scale = state.containerW / terminalW;
 
       return {
         scale: scale,
         width: state.containerW,
-        height: terminalH * scale + controlBarHeight()
+        height: terminalH * scale + controlBarHeight(),
       };
-    } else if (fit === 'height') {
+    } else if (fit === "height") {
       const scale = (state.containerH - controlBarHeight()) / terminalH;
 
       return {
         scale: scale,
         width: terminalW * scale,
-        height: state.containerH
+        height: state.containerH,
       };
     } else {
       throw `unsupported fit mode: ${fit}`;
@@ -257,20 +253,18 @@ export default props => {
   });
 
   const onFullscreenChange = () => {
-    setState('isFullscreen', document.fullscreenElement ?? document.webkitFullscreenElement);
-  }
+    setState("isFullscreen", document.fullscreenElement ?? document.webkitFullscreenElement);
+  };
 
   const toggleFullscreen = () => {
     if (state.isFullscreen) {
-      (document.exitFullscreen ??
-       document.webkitExitFullscreen ??
-       (() => {})).apply(document);
+      (document.exitFullscreen ?? document.webkitExitFullscreen ?? (() => {})).apply(document);
     } else {
-      (wrapperRef.requestFullscreen ??
-       wrapperRef.webkitRequestFullscreen ??
-       (() => {})).apply(wrapperRef);
+      (wrapperRef.requestFullscreen ?? wrapperRef.webkitRequestFullscreen ?? (() => {})).apply(
+        wrapperRef,
+      );
     }
-  }
+  };
 
   const onKeyPress = (e) => {
     if (e.altKey || e.metaKey || e.ctrlKey) {
@@ -278,10 +272,10 @@ export default props => {
     }
 
     if (e.shiftKey) {
-      if (e.key == 'ArrowLeft') {
-        core.seek('<<<');
-      } else if (e.key == 'ArrowRight') {
-        core.seek('>>>');
+      if (e.key == "ArrowLeft") {
+        core.seek("<<<");
+      } else if (e.key == "ArrowRight") {
+        core.seek(">>>");
       } else {
         return;
       }
@@ -292,21 +286,21 @@ export default props => {
       return;
     }
 
-    if (e.key == ' ') {
+    if (e.key == " ") {
       core.togglePlay();
-    } else if (e.key == '.') {
+    } else if (e.key == ".") {
       core.step();
       updateTime();
-    } else if (e.key == 'f') {
+    } else if (e.key == "f") {
       toggleFullscreen();
-    } else if (e.key == 'ArrowLeft') {
-      core.seek('<<');
-    } else if (e.key == 'ArrowRight') {
-      core.seek('>>');
-    } else if (e.key == '[') {
-      core.seek({ marker: 'prev' });
-    } else if (e.key == ']') {
-      core.seek({ marker: 'next' });
+    } else if (e.key == "ArrowLeft") {
+      core.seek("<<");
+    } else if (e.key == "ArrowRight") {
+      core.seek(">>");
+    } else if (e.key == "[") {
+      core.seek({ marker: "prev" });
+    } else if (e.key == "]") {
+      core.seek({ marker: "next" });
     } else if (e.key.charCodeAt(0) >= 48 && e.key.charCodeAt(0) <= 57) {
       const pos = (e.key.charCodeAt(0) - 48) / 10;
       core.seek(`${pos * 100}%`);
@@ -316,27 +310,27 @@ export default props => {
 
     e.stopPropagation();
     e.preventDefault();
-  }
+  };
 
   const wrapperOnMouseMove = () => {
     if (state.isFullscreen) {
       onUserActive(true);
     }
-  }
+  };
 
   const playerOnMouseLeave = () => {
     if (!state.isFullscreen) {
       onUserActive(false);
     }
-  }
+  };
 
   const startTimeUpdates = () => {
     timeUpdateIntervalId = setInterval(updateTime, 100);
-  }
+  };
 
   const stopTimeUpdates = () => {
     clearInterval(timeUpdateIntervalId);
-  }
+  };
 
   const updateTime = () => {
     const currentTime = core.getCurrentTime();
@@ -344,11 +338,11 @@ export default props => {
     const progress = core.getProgress();
 
     setState({ currentTime, remainingTime, progress });
-  }
+  };
 
   const startBlinking = () => {
     blinkIntervalId = setInterval(() => {
-      setState(state => {
+      setState((state) => {
         const changes = { blink: !state.blink };
 
         if (changes.blink) {
@@ -358,12 +352,12 @@ export default props => {
         return changes;
       });
     }, 500);
-  }
+  };
 
   const stopBlinking = () => {
     clearInterval(blinkIntervalId);
-    setState('blink', true);
-  }
+    setState("blink", true);
+  };
 
   const onUserActive = (show) => {
     clearTimeout(userActivityTimeoutId);
@@ -373,35 +367,35 @@ export default props => {
     }
 
     setUserActive(show);
-  }
+  };
 
   const playerStyle = () => {
     const style = {};
 
-    if ((props.fit === false || props.fit === 'none') && props.terminalFontSize !== undefined) {
-      if (props.terminalFontSize === 'small') {
-        style['font-size'] = '12px';
-      } else if (props.terminalFontSize === 'medium') {
-        style['font-size'] = '18px';
-      } else if (props.terminalFontSize === 'big') {
-        style['font-size'] = '24px';
+    if ((props.fit === false || props.fit === "none") && props.terminalFontSize !== undefined) {
+      if (props.terminalFontSize === "small") {
+        style["font-size"] = "12px";
+      } else if (props.terminalFontSize === "medium") {
+        style["font-size"] = "18px";
+      } else if (props.terminalFontSize === "big") {
+        style["font-size"] = "24px";
       } else {
-        style['font-size'] = props.terminalFontSize;
+        style["font-size"] = props.terminalFontSize;
       }
     }
 
     const size = terminalElementSize();
 
     if (size.width !== undefined) {
-      style['width'] = `${size.width}px`;
-      style['height'] = `${size.height}px`;
+      style["width"] = `${size.width}px`;
+      style["height"] = `${size.height}px`;
     }
 
     const theme = originalTheme();
 
     if (theme !== undefined && (props.theme === undefined || props.theme === null)) {
-      style['--term-color-foreground'] = theme.foreground;
-      style['--term-color-background'] = theme.background;
+      style["--term-color-foreground"] = theme.foreground;
+      style["--term-color-background"] = theme.background;
 
       theme.palette.forEach((color, i) => {
         style[`--term-color-${i}`] = color;
@@ -409,30 +403,75 @@ export default props => {
     }
 
     return style;
-  }
+  };
 
-  const playerClass = () =>
-    `ap-player asciinema-player-theme-${props.theme ?? 'asciinema'}`;
-
-  const terminalScale = () =>
-    terminalElementSize()?.scale;
+  const playerClass = () => `ap-player asciinema-player-theme-${props.theme ?? "asciinema"}`;
+  const terminalScale = () => terminalElementSize()?.scale;
 
   const el = (
-    <div class="ap-wrapper" classList={{ 'ap-hud': controlsVisible() }} tabIndex="-1" onKeyPress={onKeyPress} onKeyDown={onKeyPress} onMouseMove={wrapperOnMouseMove} onFullscreenChange={onFullscreenChange} onWebkitFullscreenChange={onFullscreenChange} ref={wrapperRef}>
-      <div class={playerClass()} style={playerStyle()} onMouseLeave={playerOnMouseLeave} onMouseMove={() => onUserActive(true)} ref={playerRef}>
-        <Terminal cols={terminalCols()} rows={terminalRows()} scale={terminalScale()} blink={state.blink} lines={state.lines} cursor={state.cursor} cursorHold={state.cursorHold} fontFamily={props.terminalFontFamily} lineHeight={props.terminalLineHeight} ref={terminalRef} />
+    <div
+      class="ap-wrapper"
+      classList={{ "ap-hud": controlsVisible() }}
+      tabIndex="-1"
+      onKeyPress={onKeyPress}
+      onKeyDown={onKeyPress}
+      onMouseMove={wrapperOnMouseMove}
+      onFullscreenChange={onFullscreenChange}
+      onWebkitFullscreenChange={onFullscreenChange}
+      ref={wrapperRef}
+    >
+      <div
+        class={playerClass()}
+        style={playerStyle()}
+        onMouseLeave={playerOnMouseLeave}
+        onMouseMove={() => onUserActive(true)}
+        ref={playerRef}
+      >
+        <Terminal
+          cols={terminalCols()}
+          rows={terminalRows()}
+          scale={terminalScale()}
+          blink={state.blink}
+          lines={state.lines}
+          cursor={state.cursor}
+          cursorHold={state.cursorHold}
+          fontFamily={props.terminalFontFamily}
+          lineHeight={props.terminalLineHeight}
+          ref={terminalRef}
+        />
         <Show when={props.controls !== false}>
-          <ControlBar duration={duration()} currentTime={state.currentTime} remainingTime={state.remainingTime} progress={state.progress} markers={markers} isPlaying={isPlaying()} isPausable={state.isPausable} isSeekable={state.isSeekable} onPlayClick={() => core.togglePlay()} onFullscreenClick={toggleFullscreen} onSeekClick={pos => core.seek(pos)} ref={controlBarRef} />
+          <ControlBar
+            duration={duration()}
+            currentTime={state.currentTime}
+            remainingTime={state.remainingTime}
+            progress={state.progress}
+            markers={markers}
+            isPlaying={isPlaying()}
+            isPausable={state.isPausable}
+            isSeekable={state.isSeekable}
+            onPlayClick={() => core.togglePlay()}
+            onFullscreenClick={toggleFullscreen}
+            onSeekClick={(pos) => core.seek(pos)}
+            ref={controlBarRef}
+          />
         </Show>
         <Switch>
-          <Match when={overlay() == 'start'}><StartOverlay onClick={() => core.play()} /></Match>
-          <Match when={overlay() == 'loader'}><LoaderOverlay /></Match>
-          <Match when={overlay() == 'info'}><InfoOverlay message={infoMessage()} fontFamily={props.terminalFontFamily} /></Match>
-          <Match when={overlay() == 'error'}><ErrorOverlay /></Match>
+          <Match when={overlay() == "start"}>
+            <StartOverlay onClick={() => core.play()} />
+          </Match>
+          <Match when={overlay() == "loader"}>
+            <LoaderOverlay />
+          </Match>
+          <Match when={overlay() == "info"}>
+            <InfoOverlay message={infoMessage()} fontFamily={props.terminalFontFamily} />
+          </Match>
+          <Match when={overlay() == "error"}>
+            <ErrorOverlay />
+          </Match>
         </Switch>
       </div>
     </div>
   );
 
   return el;
-}
+};

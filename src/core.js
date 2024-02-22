@@ -1,8 +1,7 @@
 import loadVt from "./vt/Cargo.toml";
 import { parseNpt } from "./util";
-import { Clock, NullClock } from './clock';
+import { Clock, NullClock } from "./clock";
 const vt = loadVt(); // trigger async loading of wasm
-
 
 class State {
   constructor(core) {
@@ -15,24 +14,28 @@ class State {
   play() {}
   pause() {}
   togglePlay() {}
-  seek(where) { return false; }
+  seek(where) {
+    return false;
+  }
   step() {}
-  stop() { this.driver.stop(); }
+  stop() {
+    this.driver.stop();
+  }
 }
 
 class UninitializedState extends State {
   async init() {
     try {
       await this.core.initializeDriver();
-      return this.core.setState('stopped');
+      return this.core.setState("stopped");
     } catch (e) {
-      this.core.setState('errored');
+      this.core.setState("errored");
       throw e;
     }
   }
 
   async play() {
-    this.core.dispatchEvent('play');
+    this.core.dispatchEvent("play");
     const stoppedState = await this.init();
     return await stoppedState.doPlay();
   }
@@ -56,17 +59,17 @@ class UninitializedState extends State {
 
 class StoppedState extends State {
   onEnter({ reason, message }) {
-    this.core.dispatchEvent('stopped', { message });
+    this.core.dispatchEvent("stopped", { message });
 
-    if (reason === 'paused') {
-      this.core.dispatchEvent('pause');
-    } else if (reason === 'ended') {
-      this.core.dispatchEvent('ended');
+    if (reason === "paused") {
+      this.core.dispatchEvent("pause");
+    } else if (reason === "ended") {
+      this.core.dispatchEvent("ended");
     }
   }
 
   play() {
-    this.core.dispatchEvent('play');
+    this.core.dispatchEvent("play");
     return this.doPlay();
   }
 
@@ -74,9 +77,9 @@ class StoppedState extends State {
     const stop = await this.driver.play();
 
     if (stop === true) {
-      this.core.setState('playing');
-    } else if (typeof stop === 'function') {
-      this.core.setState('playing');
+      this.core.setState("playing");
+    } else if (typeof stop === "function") {
+      this.core.setState("playing");
       this.driver.stop = stop;
     }
   }
@@ -96,12 +99,12 @@ class StoppedState extends State {
 
 class PlayingState extends State {
   onEnter() {
-    this.core.dispatchEvent('playing');
+    this.core.dispatchEvent("playing");
   }
 
   pause() {
     if (this.driver.pause() === true) {
-      this.core.setState('stopped', { reason: 'paused' })
+      this.core.setState("stopped", { reason: "paused" });
     }
   }
 
@@ -116,19 +119,19 @@ class PlayingState extends State {
 
 class LoadingState extends State {
   onEnter() {
-    this.core.dispatchEvent('loading');
+    this.core.dispatchEvent("loading");
   }
 }
 
 class OfflineState extends State {
   onEnter() {
-    this.core.dispatchEvent('offline');
+    this.core.dispatchEvent("offline");
   }
 }
 
 class ErroredState extends State {
   onEnter() {
-    this.core.dispatchEvent('errored');
+    this.core.dispatchEvent("errored");
   }
 }
 
@@ -138,7 +141,7 @@ class Core {
   constructor(driverFn, opts) {
     this.logger = opts.logger;
     this.state = new UninitializedState(this);
-    this.stateName = 'uninitialized';
+    this.stateName = "uninitialized";
     this.driver = null;
     this.driverFn = driverFn;
     this.changedLines = new Set();
@@ -157,21 +160,21 @@ class Core {
     this.commandQueue = Promise.resolve();
 
     this.eventHandlers = new Map([
-      ['marker', []],
-      ['ended', []],
-      ['errored', []],
-      ['init', []],
-      ['input', []],
-      ['loading', []],
-      ['offline', []],
-      ['pause', []],
-      ['play', []],
-      ['playing', []],
-      ['reset', []],
-      ['resize', []],
-      ['seeked', []],
-      ['stopped', []],
-      ['terminalUpdate', []],
+      ["marker", []],
+      ["ended", []],
+      ["errored", []],
+      ["init", []],
+      ["input", []],
+      ["loading", []],
+      ["offline", []],
+      ["pause", []],
+      ["play", []],
+      ["playing", []],
+      ["reset", []],
+      ["resize", []],
+      ["seeked", []],
+      ["stopped", []],
+      ["terminalUpdate", []],
     ]);
   }
 
@@ -189,20 +192,35 @@ class Core {
     this.wasm = await vt;
 
     const feed = this.feed.bind(this);
-    const onInput = data => { this.dispatchEvent('input', { data }) };
-    const onMarker = ({ index, time, label }) => { this.dispatchEvent('marker', { index, time, label }) };
+
+    const onInput = (data) => {
+      this.dispatchEvent("input", { data });
+    };
+
+    const onMarker = ({ index, time, label }) => {
+      this.dispatchEvent("marker", { index, time, label });
+    };
+
     const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
     const reset = this.resetVt.bind(this);
     const setState = this.setState.bind(this);
 
-    const posterTime = this.poster.type === 'npt'
-      ? this.poster.value
-      : undefined;
+    const posterTime = this.poster.type === "npt" ? this.poster.value : undefined;
 
     this.driver = this.driverFn(
-      { feed, onInput, onMarker, reset, now, setTimeout, setInterval, setState, logger: this.logger },
+      {
+        feed,
+        onInput,
+        onMarker,
+        reset,
+        now,
+        setTimeout,
+        setInterval,
+        setState,
+        logger: this.logger,
+      },
       {
         cols: this.cols,
         rows: this.rows,
@@ -211,30 +229,30 @@ class Core {
         loop: this.loop,
         posterTime: posterTime,
         markers: this.markers,
-        pauseOnMarkers: this.pauseOnMarkers
-      }
+        pauseOnMarkers: this.pauseOnMarkers,
+      },
     );
 
-    if (typeof this.driver === 'function') {
+    if (typeof this.driver === "function") {
       this.driver = { play: this.driver };
     }
 
     if (this.preload || posterTime !== undefined) {
-      this.withState(state => state.init());
+      this.withState((state) => state.init());
     }
 
-    const poster = this.poster.type === 'text'
-      ? this.renderPoster(this.poster.value)
-      : undefined;
+    const poster = this.poster.type === "text" ? this.renderPoster(this.poster.value) : undefined;
 
     const config = {
       isPausable: !!this.driver.pause,
       isSeekable: !!this.driver.seek,
-      poster
+      poster,
     };
 
     if (this.driver.init === undefined) {
-      this.driver.init = () => { return {} };
+      this.driver.init = () => {
+        return {};
+      };
     }
 
     if (this.driver.pause === undefined) {
@@ -242,7 +260,7 @@ class Core {
     }
 
     if (this.driver.seek === undefined) {
-      this.driver.seek = where => false;
+      this.driver.seek = (where) => false;
     }
 
     if (this.driver.step === undefined) {
@@ -269,31 +287,31 @@ class Core {
   }
 
   play() {
-    return this.withState(state => state.play());
+    return this.withState((state) => state.play());
   }
 
   pause() {
-    return this.withState(state => state.pause());
+    return this.withState((state) => state.pause());
   }
 
   togglePlay() {
-    return this.withState(state => state.togglePlay());
+    return this.withState((state) => state.togglePlay());
   }
 
   seek(where) {
-    return this.withState(async state => {
+    return this.withState(async (state) => {
       if (await state.seek(where)) {
-        this.dispatchEvent('seeked');
+        this.dispatchEvent("seeked");
       }
     });
   }
 
   step() {
-    return this.withState(state => state.step());
+    return this.withState((state) => state.step());
   }
 
   stop() {
-    return this.withState(state => state.stop());
+    return this.withState((state) => state.stop());
   }
 
   withState(f) {
@@ -313,7 +331,7 @@ class Core {
 
       for (const i of this.changedLines) {
         if (i < rows) {
-          lines.set(i, {id: i, segments: this.vt.get_line(i)});
+          lines.set(i, { id: i, segments: this.vt.get_line(i) });
         }
       }
 
@@ -336,13 +354,13 @@ class Core {
   }
 
   getRemainingTime() {
-    if (typeof this.duration === 'number') {
+    if (typeof this.duration === "number") {
       return this.duration - Math.min(this.getCurrentTime(), this.duration);
     }
   }
 
   getProgress() {
-    if (typeof this.duration === 'number') {
+    if (typeof this.duration === "number") {
       return Math.min(this.getCurrentTime(), this.duration) / this.duration;
     }
   }
@@ -357,15 +375,15 @@ class Core {
     if (this.stateName === newState) return this.state;
     this.stateName = newState;
 
-    if (newState === 'playing') {
+    if (newState === "playing") {
       this.state = new PlayingState(this);
-    } else if (newState === 'stopped') {
+    } else if (newState === "stopped") {
       this.state = new StoppedState(this);
-    } else if (newState === 'loading') {
+    } else if (newState === "loading") {
       this.state = new LoadingState(this);
-    } else if (newState === 'offline') {
+    } else if (newState === "offline") {
       this.state = new OfflineState(this);
-    } else if (newState === 'errored') {
+    } else if (newState === "errored") {
       this.state = new ErroredState(this);
     } else {
       throw `invalid state: ${newState}`;
@@ -378,12 +396,12 @@ class Core {
 
   feed(data) {
     this.doFeed(data);
-    this.dispatchEvent('terminalUpdate');
+    this.dispatchEvent("terminalUpdate");
   }
 
   doFeed(data) {
     const [affectedLines, resized] = this.vt.feed(data);
-    affectedLines.forEach(i => this.changedLines.add(i));
+    affectedLines.forEach((i) => this.changedLines.add(i));
     this.cursor = undefined;
 
     if (resized) {
@@ -391,11 +409,13 @@ class Core {
       this.vt.cols = cols;
       this.vt.rows = rows;
       this.logger.debug(`core: vt resize (${cols}x${rows})`);
-      this.dispatchEvent('resize', { cols, rows });
+      this.dispatchEvent("resize", { cols, rows });
     }
   }
 
-  now() { return performance.now() * this.speed }
+  now() {
+    return performance.now() * this.speed;
+  }
 
   async initializeDriver() {
     const meta = await this.driver.init();
@@ -414,17 +434,15 @@ class Core {
 
     this.initializeVt(this.cols, this.rows);
 
-    const poster = meta.poster !== undefined
-      ? this.renderPoster(meta.poster)
-      : undefined;
+    const poster = meta.poster !== undefined ? this.renderPoster(meta.poster) : undefined;
 
-    this.dispatchEvent('init', {
+    this.dispatchEvent("init", {
       cols: this.cols,
       rows: this.rows,
       duration: this.duration,
       markers: this.markers,
       theme: meta.theme,
-      poster
+      poster,
     });
   }
 
@@ -434,11 +452,11 @@ class Core {
     this.cursor = undefined;
     this.initializeVt(cols, rows);
 
-    if (init !== undefined && init !== '') {
+    if (init !== undefined && init !== "") {
       this.doFeed(init);
     }
 
-    this.dispatchEvent('reset', { cols, rows, theme });
+    this.dispatchEvent("reset", { cols, rows, theme });
   }
 
   initializeVt(cols, rows) {
@@ -456,12 +474,12 @@ class Core {
   }
 
   parsePoster(poster) {
-    if (typeof poster !== 'string') return {};
+    if (typeof poster !== "string") return {};
 
     if (poster.substring(0, 16) == "data:text/plain,") {
-      return { type: 'text', value: [poster.substring(16)] };
-    } else if (poster.substring(0, 4) == 'npt:') {
-      return { type: 'npt', value: parseNpt(poster.substring(4)) };
+      return { type: "text", value: [poster.substring(16)] };
+    } else if (poster.substring(0, 4) == "npt:") {
+      return { type: "npt", value: parseNpt(poster.substring(4)) };
     }
 
     return {};
@@ -474,7 +492,7 @@ class Core {
     this.logger.debug(`core: poster init (${cols}x${rows})`);
 
     const vt = this.wasm.create(cols, rows, false, 0);
-    poster.forEach(text => vt.feed(text));
+    poster.forEach((text) => vt.feed(text));
     const cursor = vt.get_cursor() ?? false;
     const lines = [];
 
@@ -487,7 +505,7 @@ class Core {
 
   normalizeMarkers(markers) {
     if (Array.isArray(markers)) {
-      return markers.map(m => typeof m === 'number' ? [m, ''] : m);
+      return markers.map((m) => (typeof m === "number" ? [m, ""] : m));
     }
   }
 }

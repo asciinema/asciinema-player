@@ -21,7 +21,7 @@ async function parse(response, { encoding }) {
   while (frame !== undefined) {
     const time = frame.time - baseTime;
     const text = textDecoder.decode(frame.data);
-    events.push([time, 'o', text]);
+    events.push([time, "o", text]);
     cursor += frame.len;
     frame = parseFrame(array.subarray(cursor));
   }
@@ -40,14 +40,14 @@ function parseFrame(array) {
 }
 
 function parseNumber(array) {
-  return array[0] + array[1] * 256 + array[2] * 256 * 256 + array[3] * 256 * 256 * 256; 
+  return array[0] + array[1] * 256 + array[2] * 256 * 256 + array[3] * 256 * 256 * 256;
 }
 
 function parseTimestamp(array) {
   const sec = parseNumber(array.subarray(0, 4));
   const usec = parseNumber(array.subarray(4, 8));
 
-  return sec + (usec / 1000000);
+  return sec + usec / 1000000;
 }
 
 export default parse;

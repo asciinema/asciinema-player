@@ -1,13 +1,16 @@
-import getBuffer from '../buffer';
-import { Clock, NullClock } from '../clock';
-import { PrefixedLogger } from '../logging';
+import getBuffer from "../buffer";
+import { Clock, NullClock } from "../clock";
+import { PrefixedLogger } from "../logging";
 
 function exponentialDelay(attempt) {
   return Math.min(500 * Math.pow(2, attempt), 5000);
 }
 
-function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFrameTime }, { feed, reset, setState, logger }) {
-  logger = new PrefixedLogger(logger, 'websocket: ');
+function websocket(
+  { url, bufferTime, reconnectDelay = exponentialDelay, minFrameTime },
+  { feed, reset, setState, logger },
+) {
+  logger = new PrefixedLogger(logger, "websocket: ");
   const utfDecoder = new TextDecoder();
   let socket;
   let buf;
@@ -18,28 +21,37 @@ function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFram
 
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
-    buf = getBuffer(bufferTime, feed, (t) => clock.setTime(t), baseStreamTime, minFrameTime, logger);
+
+    buf = getBuffer(
+      bufferTime,
+      feed,
+      (t) => clock.setTime(t),
+      baseStreamTime,
+      minFrameTime,
+      logger,
+    );
   }
 
   function detectProtocol(event) {
-    if (typeof event.data === 'string') {
-      logger.info('activating asciicast-compatible handler');
+    if (typeof event.data === "string") {
+      logger.info("activating asciicast-compatible handler");
       initBuffer();
       socket.onmessage = handleJsonMessage;
       handleJsonMessage(event);
     } else {
       const arr = new Uint8Array(event.data);
 
-      if (arr[0] == 0x41 && arr[1] == 0x4c && arr[2] == 0x69 && arr[3] == 0x53) { // 'ALiS'
+      if (arr[0] == 0x41 && arr[1] == 0x4c && arr[2] == 0x69 && arr[3] == 0x53) {
+        // 'ALiS'
         if (arr[4] == 1) {
-          logger.info('activating ALiS v1 handler');
+          logger.info("activating ALiS v1 handler");
           socket.onmessage = handleStreamMessage;
         } else {
           logger.warn(`unsupported ALiS version (${arr[4]})`);
           socket.close();
         }
       } else {
-        logger.info('activating raw text handler');
+        logger.info("activating raw text handler");
         initBuffer();
         const text = utfDecoder.decode(arr);
         const size = sizeFromResizeSeq(text) ?? sizeFromScriptStartMessage(text);
@@ -78,12 +90,12 @@ function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFram
       buf.pushEvent(e);
     } else if (e.cols !== undefined || e.width !== undefined) {
       handleResetMessage(e.cols ?? e.width, e.rows ?? e.height, e.time, e.init ?? undefined);
-    } else if (e.status === 'offline') {
+    } else if (e.status === "offline") {
       handleOfflineMessage();
     }
   }
 
-  const THEME_LEN = 54;  // (2 + 16) * 3
+  const THEME_LEN = 54; // (2 + 16) * 3
 
   function handleStreamMessage(event) {
     const buffer = event.data;
@@ -91,7 +103,8 @@ function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFram
     const type = view.getUint8(0);
     let offset = 1;
 
-    if (type === 0x01) { // reset
+    if (type === 0x01) {
+      // reset
       const cols = view.getUint16(offset, true);
       offset += 2;
       const rows = view.getUint16(offset, true);
@@ -118,17 +131,20 @@ function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFram
       }
 
       handleResetMessage(cols, rows, time, init, theme);
-    } else if (type === 0x6f) { // 'o' - output
+    } else if (type === 0x6f) {
+      // 'o' - output
       const time = view.getFloat32(1, true);
       const len = view.getUint32(5, true);
       const text = utfDecoder.decode(new Uint8Array(buffer, 9, len));
-      buf.pushEvent([time, 'o', text]);
-    } else if (type === 0x72) { // 'r' - resize
+      buf.pushEvent([time, "o", text]);
+    } else if (type === 0x72) {
+      // 'r' - resize
       const time = view.getFloat32(1, true);
       const cols = view.getUint16(5, true);
       const rows = view.getUint16(7, true);
-      buf.pushEvent([time, 'r', `${cols}x${rows}`]);
-    } else if (type === 0x04) { // offline (EOT)
+      buf.pushEvent([time, "r", `${cols}x${rows}`]);
+    } else if (type === 0x04) {
+      // offline (EOT)
       handleOfflineMessage();
     } else {
       logger.debug(`unknown frame type: ${type}`);
@@ -152,7 +168,7 @@ function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFram
   }
 
   function byteToHex(value) {
-    return value.toString(16).padStart(2, '0');
+    return value.toString(16).padStart(2, "0");
   }
 
   function handleRawTextMessage(event) {
@@ -161,45 +177,48 @@ function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFram
 
   function handleResetMessage(cols, rows, time, init, theme) {
     logger.debug(`stream reset (${cols}x${rows} @${time})`);
-    setState('playing');
+    setState("playing");
     initBuffer(time);
     reset(cols, rows, init, theme);
     clock = new Clock();
 
-    if (typeof time === 'number') {
+    if (typeof time === "number") {
       clock.setTime(time);
     }
   }
 
   function handleOfflineMessage() {
-    logger.info('stream offline');
-    setState('offline');
+    logger.info("stream offline");
+    setState("offline");
     clock = new NullClock();
   }
 
   function connect() {
     socket = new WebSocket(url);
-    socket.binaryType = 'arraybuffer';
+    socket.binaryType = "arraybuffer";
 
     socket.onopen = () => {
-      logger.info('opened');
-      successfulConnectionTimeout = setTimeout(() => { reconnectAttempt = 0; }, 1000);
-    }
+      logger.info("opened");
+
+      successfulConnectionTimeout = setTimeout(() => {
+        reconnectAttempt = 0;
+      }, 1000);
+    };
 
     socket.onmessage = detectProtocol;
 
-    socket.onclose = event => {
+    socket.onclose = (event) => {
       if (stop || event.code === 1000 || event.code === 1005) {
-        logger.info('closed');
-        setState('stopped', { reason: 'ended', message: 'Stream ended' });
+        logger.info("closed");
+        setState("stopped", { reason: "ended", message: "Stream ended" });
       } else {
         clearTimeout(successfulConnectionTimeout);
         const delay = reconnectDelay(reconnectAttempt++);
         logger.info(`unclean close, reconnecting in ${delay}...`);
-        setState('loading');
+        setState("loading");
         setTimeout(connect, delay);
       }
-    }
+    };
   }
 
   return {
@@ -213,8 +232,8 @@ function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFram
       if (socket !== undefined) socket.close();
     },
 
-    getCurrentTime: () => clock.getTime()
-  }
+    getCurrentTime: () => clock.getTime(),
+  };
 }
 
 export default websocket;

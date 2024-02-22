@@ -3,7 +3,7 @@
 
 class Stream {
   constructor(input, xfs) {
-    this.input = typeof input.next === 'function' ? input : input[Symbol.iterator]();
+    this.input = typeof input.next === "function" ? input : input[Symbol.iterator]();
     this.xfs = xfs ?? [];
   }
 
@@ -33,7 +33,7 @@ class Stream {
 
   multiplex(other, comparator) {
     return new Stream(
-      new Multiplexer(this[Symbol.iterator](), other[Symbol.iterator](), comparator)
+      new Multiplexer(this[Symbol.iterator](), other[Symbol.iterator](), comparator),
     );
   }
 
@@ -45,7 +45,7 @@ class Stream {
     let v = 0;
     let values = [];
     let flushed = false;
-    const xf = compose(this.xfs, val => values.push(val));
+    const xf = compose(this.xfs, (val) => values.push(val));
 
     return {
       next: () => {
@@ -74,55 +74,61 @@ class Stream {
         } else {
           return { done: true };
         }
-      }
-    }
+      },
+    };
   }
 }
 
 function Map(f) {
-  return emit => {
-    return input => {
+  return (emit) => {
+    return (input) => {
       emit(f(input));
-    }
-  }
+    };
+  };
 }
 
 function FlatMap(f) {
-  return emit => {
-    return input => {
+  return (emit) => {
+    return (input) => {
       f(input).forEach(emit);
-    }
-  }
+    };
+  };
 }
 
 function Filter(f) {
-  return emit => {
-    return input => {
-      if (f(input)) { emit(input) }
-    }
-  }
+  return (emit) => {
+    return (input) => {
+      if (f(input)) {
+        emit(input);
+      }
+    };
+  };
 }
 
 function Take(n) {
   let c = 0;
 
-  return emit => {
-    return input => {
-      if (c < n) { emit(input) }
+  return (emit) => {
+    return (input) => {
+      if (c < n) {
+        emit(input);
+      }
       c += 1;
-    }
-  }
+    };
+  };
 }
 
 function Drop(n) {
   let c = 0;
 
-  return emit => {
-    return input => {
+  return (emit) => {
+    return (input) => {
       c += 1;
-      if (c > n) { emit(input) }
-    }
-  }
+      if (c > n) {
+        emit(input);
+      }
+    };
+  };
 }
 
 function compose(xfs, push) {
@@ -134,13 +140,13 @@ function compose(xfs, push) {
       flush: () => {
         xf.flush();
         next.flush();
-      }
-    }
+      },
+    };
   }, toXf(push));
 }
 
 function toXf(xf) {
-  if (typeof xf === 'function') {
+  if (typeof xf === "function") {
     return { step: xf, flush: () => {} };
   } else {
     return xf;
@@ -199,8 +205,8 @@ class Multiplexer {
           rightItem = undefined;
           return { done: false, value: value };
         }
-      }
-    }
+      },
+    };
   }
 }
 
