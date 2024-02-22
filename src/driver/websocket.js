@@ -6,7 +6,7 @@ function exponentialDelay(attempt) {
   return Math.min(500 * Math.pow(2, attempt), 5000);
 }
 
-function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, minFrameTime }, { feed, reset, setState, logger }) {
+function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFrameTime }, { feed, reset, setState, logger }) {
   logger = new PrefixedLogger(logger, 'websocket: ');
   const utfDecoder = new TextDecoder();
   let socket;
@@ -18,7 +18,7 @@ function websocket({ url, bufferTime = 0.1, reconnectDelay = exponentialDelay, m
 
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
-    buf = getBuffer(feed, (t) => clock.setTime(t), bufferTime, baseStreamTime, minFrameTime);
+    buf = getBuffer(bufferTime, feed, (t) => clock.setTime(t), baseStreamTime, minFrameTime, logger);
   }
 
   function detectProtocol(event) {
