@@ -24,6 +24,7 @@ function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFram
   function detectProtocol(event) {
     if (typeof event.data === 'string') {
       logger.info('activating asciicast-compatible handler');
+      initBuffer();
       socket.onmessage = handleJsonMessage;
       handleJsonMessage(event);
     } else {
@@ -39,6 +40,7 @@ function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFram
         }
       } else {
         logger.info('activating raw text handler');
+        initBuffer();
         const text = utfDecoder.decode(arr);
         const size = sizeFromResizeSeq(text) ?? sizeFromScriptStartMessage(text);
 
@@ -181,7 +183,6 @@ function websocket({ url, bufferTime, reconnectDelay = exponentialDelay, minFram
 
     socket.onopen = () => {
       logger.info('opened');
-      initBuffer();
       successfulConnectionTimeout = setTimeout(() => { reconnectAttempt = 0; }, 1000);
     }
 
