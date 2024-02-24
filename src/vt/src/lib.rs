@@ -1,8 +1,10 @@
 mod utils;
-
+use avt::Vt;
+use std::ops::RangeInclusive;
 use wasm_bindgen::prelude::*;
 
-use avt::Vt;
+const BOX_DRAWING_RANGE: RangeInclusive<char> = '\u{2500}'..='\u{257f}';
+const BRAILLE_PATTERNS_RANGE: RangeInclusive<char> = '\u{2800}'..='\u{28ff}';
 
 #[wasm_bindgen]
 pub struct VtWrapper {
@@ -40,7 +42,12 @@ impl VtWrapper {
     }
 
     pub fn get_line(&self, l: usize) -> JsValue {
-        let line: Vec<_> = self.vt.line(l).segments().collect();
+        let line: Vec<_> = self
+            .vt
+            .line(l)
+            .group(|c| BOX_DRAWING_RANGE.contains(c) || BRAILLE_PATTERNS_RANGE.contains(c))
+            .collect();
+
         serde_wasm_bindgen::to_value(&line).unwrap()
     }
 

@@ -32,6 +32,7 @@ export default (props) => {
             segments={line.segments}
             cursor={i() === cursorRow() ? cursorCol() : null}
             height={`${lineHeight()}em`}
+            terminalCols={props.cols}
           />
         )}
       </For>

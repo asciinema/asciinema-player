@@ -7,30 +7,41 @@ export default (props) => {
       let len = 0;
       let i = 0;
 
-      while (i < props.segments.length && len + props.segments[i][0].length - 1 < props.cursor) {
+      while (i < props.segments.length && len + props.segments[i].text.length - 1 < props.cursor) {
         const seg = props.segments[i];
         segs.push(seg);
-        len += seg[0].length;
+        len += seg.text.length;
         i++;
       }
 
       if (i < props.segments.length) {
         const seg = props.segments[i];
-        const cursorAttrsA = seg[1];
-        const cursorAttrsB = new Map(cursorAttrsA);
-        cursorAttrsB.set("inverse", !cursorAttrsB.get("inverse"));
+        const inversedPen = new Map(seg.pen);
+        inversedPen.set("inverse", !inversedPen.get("inverse"));
 
         const pos = props.cursor - len;
 
         if (pos > 0) {
-          segs.push([seg[0].substring(0, pos), seg[1]]);
+          segs.push({ ...seg, text: seg.text.substring(0, pos) });
         }
 
-        segs.push([seg[0][pos], cursorAttrsA, " ap-cursor-a"]);
-        segs.push([seg[0][pos], cursorAttrsB, " ap-cursor-b"]);
+        segs.push({
+          ...seg,
+          text: seg.text[pos],
+          offset: seg.offset + pos,
+          extraClass: "ap-cursor-a",
+        });
 
-        if (pos < seg[0].length - 1) {
-          segs.push([seg[0].substring(pos + 1), seg[1]]);
+        segs.push({
+          ...seg,
+          text: seg.text[pos],
+          offset: seg.offset + pos,
+          extraClass: "ap-cursor-b",
+          pen: inversedPen,
+        });
+
+        if (pos < seg.text.length - 1) {
+          segs.push({ ...seg, text: seg.text.substring(pos + 1), offset: seg.offset + pos + 1 });
         }
 
         i++;
@@ -51,7 +62,7 @@ export default (props) => {
   return (
     <span class="ap-line" style={{ height: props.height }} role="paragraph">
       <Index each={segments()}>
-        {(s) => <Segment text={s()[0]} attrs={s()[1]} extraClass={s()[2]} />}
+        {(s) => <Segment terminalCols={props.terminalCols} {...s()} />}
       </Index>
     </span>
   );

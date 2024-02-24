@@ -1,6 +1,9 @@
 export default (props) => {
   return (
-    <span class={className(props.attrs, props.extraClass)} style={style(props.attrs)}>
+    <span
+      class={className(props.pen, props.extraClass)}
+      style={style(props.pen, props.offset, props.terminalCols)}
+    >
       {props.text}
     </span>
   );
@@ -59,11 +62,13 @@ function colorClass(color, intense, prefix) {
   }
 }
 
-function style(attrs) {
+function style(attrs, offset, terminalCols) {
   const fg = attrs.get("inverse") ? attrs.get("bg") : attrs.get("fg");
   const bg = attrs.get("inverse") ? attrs.get("fg") : attrs.get("bg");
 
-  let style = {};
+  let style = {
+    left: `${(100 * offset) / terminalCols}%`,
+  };
 
   if (typeof fg === "string") {
     style["color"] = fg;
