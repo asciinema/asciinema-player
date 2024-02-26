@@ -29,8 +29,9 @@ pre.ap-terminal {
       background-color: var(--bg);
     }
 
-    .ap-blink {
-      color: transparent;
+    .ap-inverse {
+      color: var(--bg);
+      background-color: var(--fg);
     }
   }
 
@@ -38,10 +39,15 @@ pre.ap-terminal {
     color: var(--bg);
     background-color: var(--fg);
     border-radius: 0.05em;
+
+    &.ap-inverse {
+      color: var(--fg);
+      background-color: var(--bg);
+    }
   }
 
-  &.ap-blink .ap-line .ap-blink {
-    color: var(--fg);
+  &:not(.ap-blink) .ap-line .ap-blink {
+    color: transparent;
   }
 
   .ap-bright {

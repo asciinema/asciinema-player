@@ -10,12 +10,8 @@ export default (props) => {
 };
 
 function className(attrs, extraClass) {
-  const fg = attrs.get("inverse") ? (attrs.has("bg") ? attrs.get("bg") : "bg") : attrs.get("fg");
-
-  const bg = attrs.get("inverse") ? (attrs.has("fg") ? attrs.get("fg") : "fg") : attrs.get("bg");
-
-  const fgClass = colorClass(fg, attrs.get("bold"), "fg-");
-  const bgClass = colorClass(bg, attrs.get("blink"), "bg-");
+  const fgClass = colorClass(attrs.get("fg"), attrs.get("bold"), "fg-");
+  const bgClass = colorClass(attrs.get("bg"), attrs.get("blink"), "bg-");
 
   let cls = extraClass ?? "";
 
@@ -47,24 +43,26 @@ function className(attrs, extraClass) {
     cls += " ap-blink";
   }
 
+  if (attrs.get("inverse")) {
+    cls += " ap-inverse";
+  }
+
   return cls;
 }
 
 function colorClass(color, intense, prefix) {
-  if (typeof color === "number") {
+  if (color !== undefined) {
     if (intense && color < 8) {
       color += 8;
     }
 
     return `${prefix}${color}`;
-  } else if (color == "fg" || color == "bg") {
-    return `${prefix}${color}`;
   }
 }
 
 function style(attrs, offset, terminalCols) {
-  const fg = attrs.get("inverse") ? attrs.get("bg") : attrs.get("fg");
-  const bg = attrs.get("inverse") ? attrs.get("fg") : attrs.get("bg");
+  const fg = attrs.get("fg");
+  const bg = attrs.get("bg");
 
   let style = {
     left: `${(100 * offset) / terminalCols}%`,
