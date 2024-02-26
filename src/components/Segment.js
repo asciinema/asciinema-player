@@ -51,7 +51,7 @@ function className(attrs, extraClass) {
 }
 
 function colorClass(color, intense, prefix) {
-  if (color !== undefined) {
+  if (typeof color === "number") {
     if (intense && color < 8) {
       color += 8;
     }
