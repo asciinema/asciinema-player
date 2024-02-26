@@ -16,9 +16,6 @@ export default (props) => {
 
       if (i < props.segments.length) {
         const seg = props.segments[i];
-        const inversedPen = new Map(seg.pen);
-        inversedPen.set("inverse", !inversedPen.get("inverse"));
-
         const pos = props.cursor - len;
 
         if (pos > 0) {
@@ -29,15 +26,7 @@ export default (props) => {
           ...seg,
           text: seg.text[pos],
           offset: seg.offset + pos,
-          extraClass: "ap-cursor-a",
-        });
-
-        segs.push({
-          ...seg,
-          text: seg.text[pos],
-          offset: seg.offset + pos,
-          extraClass: "ap-cursor-b",
-          pen: inversedPen,
+          extraClass: "ap-cursor",
         });
 
         if (pos < seg.text.length - 1) {

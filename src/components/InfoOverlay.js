@@ -4,10 +4,8 @@ export default (props) => {
   };
 
   return (
-    <div class="ap-overlay ap-overlay-info bg-default">
-      <span class="fg-default" style={style()}>
-        {props.message}
-      </span>
+    <div class="ap-overlay ap-overlay-info">
+      <span style={style()}>{props.message}</span>
     </div>
   );
 };

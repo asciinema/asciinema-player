@@ -71,11 +71,11 @@ function style(attrs, offset, terminalCols) {
   };
 
   if (typeof fg === "string") {
-    style["color"] = fg;
+    style["--fg"] = fg;
   }
 
   if (typeof bg === "string") {
-    style["background-color"] = bg;
+    style["--bg"] = bg;
   }
 
   return style;

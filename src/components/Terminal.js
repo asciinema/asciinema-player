@@ -20,7 +20,7 @@ export default (props) => {
   return (
     <pre
       class="ap-terminal"
-      classList={{ "ap-cursor": props.blink || props.cursorHold, "ap-blink": props.blink }}
+      classList={{ "ap-cursor-on": props.blink || props.cursorHold, "ap-blink": props.blink }}
       style={terminalStyle()}
       ref={props.ref}
       aria-live="polite"

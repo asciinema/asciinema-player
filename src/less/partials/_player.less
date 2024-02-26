@@ -90,43 +90,41 @@ div.ap-wrapper {
   --term-color-14: var(--term-color-6);
   --term-color-15: var(--term-color-7);
 
-  .fg-default { color: var(--term-color-foreground) }
-  .fg-bg { color: var(--term-color-background) }
-  .bg-default { background-color: var(--term-color-background) }
-  .bg-fg { background-color: var(--term-color-foreground) }
+  .fg-bg { --fg: var(--term-color-background); }
+  .bg-fg { --bg: var(--term-color-foreground); }
 
-  .fg-0 { color: var(--term-color-0) };
-  .bg-0 { background-color: var(--term-color-0) }
-  .fg-1 { color: var(--term-color-1) }
-  .bg-1 { background-color: var(--term-color-1) }
-  .fg-2 { color: var(--term-color-2) }
-  .bg-2 { background-color: var(--term-color-2) }
-  .fg-3 { color: var(--term-color-3) }
-  .bg-3 { background-color: var(--term-color-3) }
-  .fg-4 { color: var(--term-color-4) }
-  .bg-4 { background-color: var(--term-color-4) }
-  .fg-5 { color: var(--term-color-5) }
-  .bg-5 { background-color: var(--term-color-5) }
-  .fg-6 { color: var(--term-color-6) }
-  .bg-6 { background-color: var(--term-color-6) }
-  .fg-7 { color: var(--term-color-7) }
-  .bg-7 { background-color: var(--term-color-7) }
-  .fg-8 { color: var(--term-color-8) }
-  .bg-8 { background-color: var(--term-color-8) }
-  .fg-9 { color: var(--term-color-9) }
-  .bg-9 { background-color: var(--term-color-9) }
-  .fg-10 { color: var(--term-color-10) }
-  .bg-10 { background-color: var(--term-color-10) }
-  .fg-11 { color: var(--term-color-11) }
-  .bg-11 { background-color: var(--term-color-11) }
-  .fg-12 { color: var(--term-color-12) }
-  .bg-12 { background-color: var(--term-color-12) }
-  .fg-13 { color: var(--term-color-13) }
-  .bg-13 { background-color: var(--term-color-13) }
-  .fg-14 { color: var(--term-color-14) }
-  .bg-14 { background-color: var(--term-color-14) }
-  .fg-15 { color: var(--term-color-15) }
-  .bg-15 { background-color: var(--term-color-15) }
+  .fg-0 { --fg: var(--term-color-0); }
+  .bg-0 { --bg: var(--term-color-0); }
+  .fg-1 { --fg: var(--term-color-1); }
+  .bg-1 { --bg: var(--term-color-1); }
+  .fg-2 { --fg: var(--term-color-2); }
+  .bg-2 { --bg: var(--term-color-2); }
+  .fg-3 { --fg: var(--term-color-3); }
+  .bg-3 { --bg: var(--term-color-3); }
+  .fg-4 { --fg: var(--term-color-4); }
+  .bg-4 { --bg: var(--term-color-4); }
+  .fg-5 { --fg: var(--term-color-5); }
+  .bg-5 { --bg: var(--term-color-5); }
+  .fg-6 { --fg: var(--term-color-6); }
+  .bg-6 { --bg: var(--term-color-6); }
+  .fg-7 { --fg: var(--term-color-7); }
+  .bg-7 { --bg: var(--term-color-7); }
+  .fg-8 { --fg: var(--term-color-8); }
+  .bg-8 { --bg: var(--term-color-8); }
+  .fg-9 { --fg: var(--term-color-9); }
+  .bg-9 { --bg: var(--term-color-9); }
+  .fg-10 { --fg: var(--term-color-10); }
+  .bg-10 { --bg: var(--term-color-10); }
+  .fg-11 { --fg: var(--term-color-11); }
+  .bg-11 { --bg: var(--term-color-11); }
+  .fg-12 { --fg: var(--term-color-12); }
+  .bg-12 { --bg: var(--term-color-12); }
+  .fg-13 { --fg: var(--term-color-13); }
+  .bg-13 { --bg: var(--term-color-13); }
+  .fg-14 { --fg: var(--term-color-14); }
+  .bg-14 { --bg: var(--term-color-14); }
+  .fg-15 { --fg: var(--term-color-15); }
+  .bg-15 { --bg: var(--term-color-15); }
 
   .fg-8, .fg-9, .fg-10, .fg-11, .fg-12, .fg-13, .fg-14, .fg-15 {
     font-weight: bold;
