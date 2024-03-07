@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use wasm_bindgen::prelude::*;
 
 const BOX_DRAWING_RANGE: RangeInclusive<char> = '\u{2500}'..='\u{257f}';
-const BLOCK_ELEMENTS_RANGE: RangeInclusive<char> = '\u{2580}'..='\u{2595}';
+const BLOCK_ELEMENTS_RANGE: RangeInclusive<char> = '\u{2580}'..='\u{259f}';
 const BRAILLE_PATTERNS_RANGE: RangeInclusive<char> = '\u{2800}'..='\u{28ff}';
 const POWERLINE_TRIANGLES_RANGE: RangeInclusive<char> = '\u{e0b0}'..='\u{e0b3}';
 

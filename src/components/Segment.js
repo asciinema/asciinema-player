@@ -3,7 +3,7 @@ export default (props) => {
     if (props.text.length == 1) {
       const cp = props.text.codePointAt(0);
 
-      if ((cp >= 0x2580 && cp <= 0x2595) || cp == 0xe0b0 || cp == 0xe0b2) {
+      if ((cp >= 0x2580 && cp <= 0x259f) || cp == 0xe0b0 || cp == 0xe0b2) {
         return cp;
       }
     }
