@@ -11,6 +11,7 @@ export default (props) => {
       "font-size": `${(props.scale || 1.0) * 100}%`,
       "font-family": props.fontFamily,
       "line-height": `${lineHeight()}em`,
+      "--term-line-height": lineHeight(),
     };
   });
 

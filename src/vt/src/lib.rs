@@ -4,7 +4,9 @@ use std::ops::RangeInclusive;
 use wasm_bindgen::prelude::*;
 
 const BOX_DRAWING_RANGE: RangeInclusive<char> = '\u{2500}'..='\u{257f}';
+const BLOCK_ELEMENTS_RANGE: RangeInclusive<char> = '\u{2580}'..='\u{2595}';
 const BRAILLE_PATTERNS_RANGE: RangeInclusive<char> = '\u{2800}'..='\u{28ff}';
+const POWERLINE_TRIANGLES_RANGE: RangeInclusive<char> = '\u{e0b0}'..='\u{e0b3}';
 
 #[wasm_bindgen]
 pub struct VtWrapper {
@@ -45,7 +47,13 @@ impl VtWrapper {
         let line: Vec<_> = self
             .vt
             .line(l)
-            .group(|c| BOX_DRAWING_RANGE.contains(c) || BRAILLE_PATTERNS_RANGE.contains(c))
+            .group(|c, w| {
+                w > 1
+                    || BOX_DRAWING_RANGE.contains(c)
+                    || BRAILLE_PATTERNS_RANGE.contains(c)
+                    || BLOCK_ELEMENTS_RANGE.contains(c)
+                    || POWERLINE_TRIANGLES_RANGE.contains(c)
+            })
             .collect();
 
         serde_wasm_bindgen::to_value(&line).unwrap()

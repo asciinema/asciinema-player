@@ -1,19 +1,35 @@
 export default (props) => {
+  const codePoint = () => {
+    if (props.text.length == 1) {
+      const cp = props.text.codePointAt(0);
+
+      if ((cp >= 0x2580 && cp <= 0x2595) || cp == 0xe0b0 || cp == 0xe0b2) {
+        return cp;
+      }
+    }
+  };
+
+  const text = () => (codePoint() ? " " : props.text);
+
   return (
     <span
-      class={className(props.pen, props.extraClass)}
-      style={style(props.pen, props.offset, props.terminalCols)}
+      class={className(props.pen, codePoint(), props.extraClass)}
+      style={style(props.pen, props.offset, text().length, props.charWidth, props.terminalCols)}
     >
-      {props.text}
+      {text()}
     </span>
   );
 };
 
-function className(attrs, extraClass) {
+function className(attrs, codePoint, extraClass) {
   const fgClass = colorClass(attrs.get("fg"), attrs.get("bold"), "fg-");
   const bgClass = colorClass(attrs.get("bg"), attrs.get("blink"), "bg-");
 
   let cls = extraClass ?? "";
+
+  if (codePoint !== undefined) {
+    cls += ` cp-${codePoint.toString(16)}`;
+  }
 
   if (fgClass) {
     cls += " " + fgClass;
@@ -60,12 +76,13 @@ function colorClass(color, intense, prefix) {
   }
 }
 
-function style(attrs, offset, terminalCols) {
+function style(attrs, offset, textLen, charWidth, terminalCols) {
   const fg = attrs.get("fg");
   const bg = attrs.get("bg");
 
   let style = {
     left: `${(100 * offset) / terminalCols}%`,
+    width: `${textLen * charWidth + 0.01}ch`,
   };
 
   if (typeof fg === "string") {
