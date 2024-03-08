@@ -72,11 +72,13 @@ export default (props) => {
   }
 
   function resize(size_) {
-    if (size_.rows < terminalSize().rows) {
-      setState("lines", state.lines.slice(0, size_.rows));
-    }
+    batch(() => {
+      if (size_.rows < terminalSize().rows) {
+        setState("lines", state.lines.slice(0, size_.rows));
+      }
 
-    setTerminalSize(size_);
+      setTerminalSize(size_);
+    });
   }
 
   function setPoster(poster) {
@@ -89,11 +91,13 @@ export default (props) => {
   }
 
   core.addEventListener("init", ({ cols, rows, duration, theme, poster, markers }) => {
-    resize({ cols, rows });
-    setDuration(duration);
-    setOriginalTheme(theme);
-    setMarkers(markers);
-    setPoster(poster);
+    batch(() => {
+      resize({ cols, rows });
+      setDuration(duration);
+      setOriginalTheme(theme);
+      setMarkers(markers);
+      setPoster(poster);
+    });
   });
 
   core.addEventListener("play", () => {
@@ -101,32 +105,40 @@ export default (props) => {
   });
 
   core.addEventListener("playing", () => {
-    setIsPlaying(true);
-    setOverlay(null);
-    onPlaying();
+    batch(() => {
+      setIsPlaying(true);
+      setOverlay(null);
+      onPlaying();
+    });
   });
 
   core.addEventListener("stopped", ({ message }) => {
-    setIsPlaying(false);
-    onStopped();
+    batch(() => {
+      setIsPlaying(false);
+      onStopped();
 
-    if (message !== undefined) {
-      setInfoMessage(message);
-      setOverlay("info");
-    }
+      if (message !== undefined) {
+        setInfoMessage(message);
+        setOverlay("info");
+      }
+    });
   });
 
   core.addEventListener("loading", () => {
-    setIsPlaying(false);
-    onStopped();
-    setOverlay("loader");
+    batch(() => {
+      setIsPlaying(false);
+      onStopped();
+      setOverlay("loader");
+    });
   });
 
   core.addEventListener("offline", () => {
-    setIsPlaying(false);
-    onStopped();
-    setInfoMessage("Stream offline");
-    setOverlay("info");
+    batch(() => {
+      setIsPlaying(false);
+      onStopped();
+      setInfoMessage("Stream offline");
+      setOverlay("info");
+    });
   });
 
   core.addEventListener("errored", () => {
@@ -136,9 +148,11 @@ export default (props) => {
   core.addEventListener("resize", resize);
 
   core.addEventListener("reset", ({ cols, rows, theme }) => {
-    resize({ cols, rows });
-    setOriginalTheme(theme);
-    updateTerminal();
+    batch(() => {
+      resize({ cols, rows });
+      setOriginalTheme(theme);
+      updateTerminal();
+    });
   });
 
   core.addEventListener("seeked", () => {
@@ -172,14 +186,16 @@ export default (props) => {
     setupResizeObserver();
     const { isPausable, isSeekable, poster } = await core.init();
 
-    setState({
-      isPausable,
-      isSeekable,
-      containerW: wrapperRef.offsetWidth,
-      containerH: wrapperRef.offsetHeight,
-    });
+    batch(() => {
+      setState({
+        isPausable,
+        isSeekable,
+        containerW: wrapperRef.offsetWidth,
+        containerH: wrapperRef.offsetHeight,
+      });
 
-    setPoster(poster);
+      setPoster(poster);
+    });
 
     if (autoPlay) {
       core.play();
@@ -196,16 +212,16 @@ export default (props) => {
   const updateTerminal = () => {
     const changedLines = core.getChangedLines();
 
-    if (changedLines) {
-      batch(() => {
+    batch(() => {
+      if (changedLines) {
         changedLines.forEach((line, i) => {
           setState("lines", i, reconcile(line));
         });
-      });
-    }
+      }
 
-    setState("cursor", reconcile(core.getCursor()));
-    setState("cursorHold", true);
+      setState("cursor", reconcile(core.getCursor()));
+      setState("cursorHold", true);
+    });
 
     frameRequestId = undefined;
   };
