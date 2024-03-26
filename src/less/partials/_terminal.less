@@ -15,16 +15,19 @@ pre.ap-terminal {
   background-color: var(--term-color-background);
   border-color: var(--term-color-background);
   outline: none;
+  line-height: var(--term-line-height);
 
   .terminal-font;
 
   .ap-line {
     display: block;
     width: 100%;
+    height: var(--term-line-height);
     position: relative;
 
     span {
       position: absolute;
+      left: calc(100% * var(--offset) / var(--term-cols));
       color: var(--fg);
       background-color: var(--bg);
     }

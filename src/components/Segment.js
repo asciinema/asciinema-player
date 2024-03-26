@@ -1,5 +1,7 @@
+import { createMemo } from "solid-js";
+
 export default (props) => {
-  const codePoint = () => {
+  const codePoint = createMemo(() => {
     if (props.text.length == 1) {
       const cp = props.text.codePointAt(0);
 
@@ -7,21 +9,24 @@ export default (props) => {
         return cp;
       }
     }
-  };
+  });
 
-  const text = () => (codePoint() ? " " : props.text);
+  const text = createMemo(() => (codePoint() ? " " : props.text));
+
+  const style = createMemo(() =>
+    buildStyle(props.pen, props.offset, text().length, props.charWidth),
+  );
+
+  const className = createMemo(() => buildClassName(props.pen, codePoint(), props.extraClass));
 
   return (
-    <span
-      class={className(props.pen, codePoint(), props.extraClass)}
-      style={style(props.pen, props.offset, text().length, props.charWidth, props.terminalCols)}
-    >
+    <span class={className()} style={style()}>
       {text()}
     </span>
   );
 };
 
-function className(attrs, codePoint, extraClass) {
+function buildClassName(attrs, codePoint, extraClass) {
   const fgClass = colorClass(attrs.get("fg"), attrs.get("bold"), "fg-");
   const bgClass = colorClass(attrs.get("bg"), attrs.get("blink"), "bg-");
 
@@ -76,12 +81,12 @@ function colorClass(color, intense, prefix) {
   }
 }
 
-function style(attrs, offset, textLen, charWidth, terminalCols) {
+function buildStyle(attrs, offset, textLen, charWidth) {
   const fg = attrs.get("fg");
   const bg = attrs.get("bg");
 
   let style = {
-    left: `${(100 * offset) / terminalCols}%`,
+    "--offset": offset,
     width: `${textLen * charWidth + 0.01}ch`,
   };
 

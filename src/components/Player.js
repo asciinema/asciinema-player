@@ -47,8 +47,8 @@ export default (props) => {
   const [markers, setMarkers] = createStore([]);
   const [userActive, setUserActive] = createSignal(false);
   const [originalTheme, setOriginalTheme] = createSignal(undefined);
-  const terminalCols = () => terminalSize().cols || 80;
-  const terminalRows = () => terminalSize().rows || 24;
+  const terminalCols = createMemo(() => terminalSize().cols || 80);
+  const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
 
   const controlsVisible = () =>

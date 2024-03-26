@@ -49,10 +49,8 @@ export default (props) => {
   };
 
   return (
-    <span class="ap-line" style={{ height: props.height }} role="paragraph">
-      <Index each={segments()}>
-        {(s) => <Segment terminalCols={props.terminalCols} {...s()} />}
-      </Index>
+    <span class="ap-line" role="paragraph">
+      <Index each={segments()}>{(s) => <Segment {...s()} />}</Index>
     </span>
   );
 };
