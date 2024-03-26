@@ -37,7 +37,12 @@ export default (props) => {
   const [isPlaying, setIsPlaying] = createSignal(false);
   const [overlay, setOverlay] = createSignal(!autoPlay ? "start" : null);
   const [infoMessage, setInfoMessage] = createSignal(null);
-  const [terminalSize, setTerminalSize] = createSignal({ cols: props.cols, rows: props.rows });
+
+  const [terminalSize, setTerminalSize] = createSignal(
+    { cols: props.cols, rows: props.rows },
+    { equals: (newVal, oldVal) => newVal.cols === oldVal.cols && newVal.rows === oldVal.rows },
+  );
+
   const [duration, setDuration] = createSignal(undefined);
   const [markers, setMarkers] = createStore([]);
   const [userActive, setUserActive] = createSignal(false);
