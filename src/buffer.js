@@ -24,6 +24,9 @@ function nullBuffer(feed) {
     pushEvent(event) {
       if (event[1] === "o") {
         feed(event[2]);
+      } else if (event[1] === "r") {
+        const [cols, rows] = event[2].split("x");
+        feed(`\x1b[8;${rows};${cols};t`);
       }
     },
 
