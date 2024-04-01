@@ -390,6 +390,19 @@ export default (props) => {
     setUserActive(show);
   };
 
+  const theme = createMemo(() => {
+    const name = props.theme || "auto/asciinema";
+
+    if (name.slice(0, 5) === "auto/") {
+      return {
+        name: name.slice(5),
+        colors: originalTheme(),
+      };
+    } else {
+      return { name };
+    }
+  });
+
   const playerStyle = () => {
     const style = {};
 
@@ -412,13 +425,13 @@ export default (props) => {
       style["height"] = `${size.height}px`;
     }
 
-    const theme = originalTheme();
+    const themeColors = theme().colors;
 
-    if (theme !== undefined && (props.theme === undefined || props.theme === null)) {
-      style["--term-color-foreground"] = theme.foreground;
-      style["--term-color-background"] = theme.background;
+    if (themeColors !== undefined) {
+      style["--term-color-foreground"] = themeColors.foreground;
+      style["--term-color-background"] = themeColors.background;
 
-      theme.palette.forEach((color, i) => {
+      themeColors.palette.forEach((color, i) => {
         style[`--term-color-${i}`] = color;
       });
     }
@@ -426,7 +439,7 @@ export default (props) => {
     return style;
   };
 
-  const playerClass = () => `ap-player asciinema-player-theme-${props.theme ?? "asciinema"}`;
+  const playerClass = () => `ap-player asciinema-player-theme-${theme().name}`;
   const terminalScale = () => terminalElementSize()?.scale;
 
   const el = (
