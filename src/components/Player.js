@@ -232,8 +232,6 @@ export default (props) => {
   };
 
   const terminalElementSize = createMemo(() => {
-    logger.debug(`containerW = ${state.containerW}`);
-
     const terminalW = state.charW * terminalCols() + state.bordersW;
     const terminalH = state.charH * terminalRows() + state.bordersH;
 
