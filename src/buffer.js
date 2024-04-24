@@ -127,20 +127,22 @@ function adaptiveBufferTimeProvider(logger) {
   return (latency) => {
     latencies.push(latency);
 
-    if (latencies.length > LATENCY_WINDOW_SIZE) {
-      latencies = latencies.slice(-LATENCY_WINDOW_SIZE);
-      const avgLatency = avg(latencies);
+    if (latencies.length < LATENCY_WINDOW_SIZE) {
+      return bufferTime;
+    };
 
-      if (bufferLevel < MAX_BUFFER_LEVEL && avgLatency > bufferTime) {
-        bufferTime = calcBufferTime((bufferLevel += 1));
-        logger.debug(`latency increased, raising bufferTime to ${bufferTime} ms`);
-      } else if (
-        (bufferLevel == 1 && avgLatency < calcBufferTime(bufferLevel - 1)) ||
-        (bufferLevel > 1 && avgLatency < calcBufferTime(bufferLevel - 2))
-      ) {
-        bufferTime = calcBufferTime((bufferLevel -= 1));
-        logger.debug(`latency decreased, lowering bufferTime to ${bufferTime} ms`);
-      }
+    latencies = latencies.slice(-LATENCY_WINDOW_SIZE);
+    const avgLatency = avg(latencies);
+
+    if (bufferLevel < MAX_BUFFER_LEVEL && avgLatency > bufferTime) {
+      bufferTime = calcBufferTime((bufferLevel += 1));
+      logger.debug(`latency increased, raising bufferTime to ${bufferTime} ms`);
+    } else if (
+      (bufferLevel == 1 && avgLatency < calcBufferTime(bufferLevel - 1)) ||
+      (bufferLevel > 1 && avgLatency < calcBufferTime(bufferLevel - 2))
+    ) {
+      bufferTime = calcBufferTime((bufferLevel -= 1));
+      logger.debug(`latency decreased, lowering bufferTime to ${bufferTime} ms`);
     }
 
     return bufferTime;
