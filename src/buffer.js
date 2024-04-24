@@ -10,9 +10,12 @@ function getBuffer(bufferTime, feed, setTime, baseStreamTime, minFrameTime, logg
     if (typeof bufferTime === "number") {
       logger.debug(`using fixed time buffer (${bufferTime} ms)`);
       getBufferTime = (_latency) => bufferTime;
+    } else if (typeof bufferTime === "function") {
+      logger.debug("using custom dynamic buffer");
+      getBufferTime = bufferTime({ logger });
     } else {
       logger.debug("using adaptive buffer");
-      getBufferTime = adaptiveBufferTimeProvider(logger);
+      getBufferTime = adaptiveBufferTimeProvider({ logger });
     }
 
     return buffer(getBufferTime, feed, setTime, logger, baseStreamTime ?? 0.0, minFrameTime);
@@ -119,7 +122,7 @@ const INITIAL_BUFFER_TIME = 10;
 const MAX_BUFFER_LEVEL = 12;
 const LATENCY_WINDOW_SIZE = 10;
 
-function adaptiveBufferTimeProvider(logger) {
+function adaptiveBufferTimeProvider({ logger }) {
   let bufferTime = INITIAL_BUFFER_TIME;
   let bufferLevel = 0;
   let latencies = [];
