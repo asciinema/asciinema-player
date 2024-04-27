@@ -117,15 +117,20 @@ function sleep(t) {
   });
 }
 
-const BUFFER_TIME_MULTIPLIER = 1.5;
-const INITIAL_BUFFER_TIME = 10;
-const MAX_BUFFER_LEVEL = 12;
-const LATENCY_WINDOW_SIZE = 10;
+const MIN_BUFFER_TIME = 25;
+const MAX_BUFFER_LEVEL = 100;
+const BUFFER_TIME_MULTIPLIER = 50;
+const LATENCY_WINDOW_SIZE = 20;
+const SMOOTHING_FACTOR = 0.2;
+const MIN_IMPROVEMENT_DURATION = 1000;
 
 function adaptiveBufferTimeProvider({ logger }) {
-  let bufferTime = INITIAL_BUFFER_TIME;
   let bufferLevel = 0;
+  let bufferTime = calcBufferTime(bufferLevel);
   let latencies = [];
+  let maxJitter = 0;
+  let jitterRange = 0;
+  let improvementTs = null;
 
   return (latency) => {
     latencies.push(latency);
@@ -135,29 +140,55 @@ function adaptiveBufferTimeProvider({ logger }) {
     };
 
     latencies = latencies.slice(-LATENCY_WINDOW_SIZE);
-    const avgLatency = avg(latencies);
+    const currentMinJitter = min(latencies);
+    const currentMaxJitter = max(latencies);
+    const currentJitterRange = currentMaxJitter - currentMinJitter;
+    maxJitter = currentMaxJitter * SMOOTHING_FACTOR + maxJitter * (1 - SMOOTHING_FACTOR);
+    jitterRange = currentJitterRange * SMOOTHING_FACTOR + jitterRange * (1 - SMOOTHING_FACTOR);
+    const minBufferTime = maxJitter + jitterRange;
 
-    if (bufferLevel < MAX_BUFFER_LEVEL && avgLatency > bufferTime) {
-      bufferTime = calcBufferTime((bufferLevel += 1));
-      logger.debug(`latency increased, raising bufferTime to ${bufferTime} ms`);
-    } else if (
-      (bufferLevel == 1 && avgLatency < calcBufferTime(bufferLevel - 1)) ||
-      (bufferLevel > 1 && avgLatency < calcBufferTime(bufferLevel - 2))
-    ) {
-      bufferTime = calcBufferTime((bufferLevel -= 1));
-      logger.debug(`latency decreased, lowering bufferTime to ${bufferTime} ms`);
+    if (latency > bufferTime) {
+      logger.debug('buffer underrun', { latency, maxJitter, jitterRange, bufferTime });
     }
+
+    if (bufferLevel < MAX_BUFFER_LEVEL && minBufferTime > bufferTime) {
+        bufferTime = calcBufferTime((bufferLevel += 1));
+        logger.debug(`jitter increased, raising bufferTime`, { latency, maxJitter, jitterRange, bufferTime });
+    } else if (
+      (bufferLevel > 1 && minBufferTime < calcBufferTime(bufferLevel - 2)) ||
+      (bufferLevel == 1 && minBufferTime < calcBufferTime(bufferLevel - 1))
+    ) {
+      if (improvementTs === null) {
+        improvementTs = performance.now();
+      } else if (performance.now() - improvementTs > MIN_IMPROVEMENT_DURATION) {
+        improvementTs = performance.now();
+        bufferTime = calcBufferTime((bufferLevel -= 1));
+        logger.debug(`jitter decreased, lowering bufferTime`, { latency, maxJitter, jitterRange, bufferTime });
+      }
+
+      return bufferTime;
+    }
+
+    improvementTs = null;
 
     return bufferTime;
   };
 }
 
-function avg(numbers) {
-  return numbers.reduce((prev, cur) => prev + cur, 0) / numbers.length;
+function min(numbers) {
+  return numbers.reduce((prev, cur) => cur < prev ? cur : prev);
+}
+
+function max(numbers) {
+  return numbers.reduce((prev, cur) => cur > prev ? cur : prev);
 }
 
 function calcBufferTime(level) {
-  return INITIAL_BUFFER_TIME * BUFFER_TIME_MULTIPLIER ** level;
+  if (level === 0) {
+    return MIN_BUFFER_TIME;
+  } else {
+    return BUFFER_TIME_MULTIPLIER * level;
+  }
 }
 
 export default getBuffer;
