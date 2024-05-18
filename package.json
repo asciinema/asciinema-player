@@ -13,6 +13,7 @@
   "files": [
     "dist"
   ],
+  "type": "module",
   "scripts": {
     "build": "rollup -c --environment production",
     "bundle": "rollup -c rollup.config.bundle.mjs --environment production && lessc src/less/asciinema-player.less >dist/bundle/asciinema-player.css",
