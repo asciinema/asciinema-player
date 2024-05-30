@@ -18,6 +18,7 @@ function websocket(
   let reconnectAttempt = 0;
   let successfulConnectionTimeout;
   let stop = false;
+  let wasOnline = false;
 
   function initBuffer(baseStreamTime) {
     if (buf !== undefined) buf.stop();
@@ -181,6 +182,7 @@ function websocket(
     initBuffer(time);
     reset(cols, rows, init, theme);
     clock = new Clock();
+    wasOnline = true;
 
     if (typeof time === "number") {
       clock.setTime(time);
@@ -189,7 +191,13 @@ function websocket(
 
   function handleOfflineMessage() {
     logger.info("stream offline");
-    setState("offline", { message: "Stream offline" });
+
+    if (wasOnline) {
+      setState("offline", { message: "Stream ended" });
+    } else {
+      setState("offline", { message: "Stream offline" });
+    }
+
     clock = new NullClock();
   }
 
@@ -219,6 +227,8 @@ function websocket(
         setTimeout(connect, delay);
       }
     };
+
+    wasOnline = false;
   }
 
   return {
