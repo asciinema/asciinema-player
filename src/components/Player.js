@@ -117,15 +117,10 @@ export default (props) => {
     });
   });
 
-  core.addEventListener("stopped", ({ message }) => {
+  core.addEventListener("idle", () => {
     batch(() => {
       setIsPlaying(false);
       onStopped();
-
-      if (message !== undefined) {
-        setInfoMessage(message);
-        setOverlay("info");
-      }
     });
   });
 
@@ -137,12 +132,27 @@ export default (props) => {
     });
   });
 
-  core.addEventListener("offline", () => {
+  core.addEventListener("offline", ({ message }) => {
     batch(() => {
       setIsPlaying(false);
       onStopped();
-      setInfoMessage("Stream offline");
-      setOverlay("info");
+
+      if (message !== undefined) {
+        setInfoMessage(message);
+        setOverlay("info");
+      }
+    });
+  });
+
+  core.addEventListener("ended", ({ message }) => {
+    batch(() => {
+      setIsPlaying(false);
+      onStopped();
+
+      if (message !== undefined) {
+        setInfoMessage(message);
+        setOverlay("info");
+      }
     });
   });
 

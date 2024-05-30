@@ -189,7 +189,7 @@ function websocket(
 
   function handleOfflineMessage() {
     logger.info("stream offline");
-    setState("offline");
+    setState("offline", { message: "Stream offline" });
     clock = new NullClock();
   }
 
@@ -210,7 +210,7 @@ function websocket(
     socket.onclose = (event) => {
       if (stop || event.code === 1000 || event.code === 1005) {
         logger.info("closed");
-        setState("stopped", { reason: "ended", message: "Stream ended" });
+        setState("ended", { message: "Stream ended" });
       } else {
         clearTimeout(successfulConnectionTimeout);
         const delay = reconnectDelay(reconnectAttempt++);

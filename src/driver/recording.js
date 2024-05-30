@@ -151,7 +151,7 @@ function recording(
       if (pauseOnMarkers) {
         pause();
         pauseElapsedTime = time * 1000;
-        setState("stopped", { reason: "paused" });
+        setState("idle", { reason: "paused" });
 
         return true;
       }
@@ -172,18 +172,13 @@ function recording(
       scheduleNextEvent();
     } else {
       pauseElapsedTime = duration * 1000;
-      effectiveStartAt = null;
-      setState("stopped", { reason: "ended" });
+      setState("ended");
     }
   }
 
   function play() {
-    if (eventTimeoutId) return true;
-
-    if (events[nextEventIndex] === undefined) {
-      // ended
-      effectiveStartAt = 0;
-    }
+    if (eventTimeoutId) throw "already playing";
+    if (events[nextEventIndex] === undefined) throw "already ended";
 
     if (effectiveStartAt !== null) {
       seek(effectiveStartAt);
@@ -324,6 +319,16 @@ function recording(
     effectiveStartAt = null;
   }
 
+  function restart() {
+    if (eventTimeoutId) throw "still playing";
+    if (events[nextEventIndex] !== undefined) throw "not ended";
+
+    seek(0);
+    resume();
+
+    return true;
+  }
+
   function getPoster(time) {
     return events.filter((e) => e[0] < time && e[1] === "o").map((e) => e[2]);
   }
@@ -346,6 +351,7 @@ function recording(
     pause,
     seek,
     step,
+    restart,
     stop: pause,
     getCurrentTime,
   };

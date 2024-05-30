@@ -14,10 +14,13 @@ class State {
   play() {}
   pause() {}
   togglePlay() {}
+
   seek(where) {
     return false;
   }
+
   step() {}
+
   stop() {
     this.driver.stop();
   }
@@ -27,7 +30,7 @@ class UninitializedState extends State {
   async init() {
     try {
       await this.core.initializeDriver();
-      return this.core.setState("stopped");
+      return this.core.setState("idle");
     } catch (e) {
       this.core.setState("errored");
       throw e;
@@ -36,41 +39,39 @@ class UninitializedState extends State {
 
   async play() {
     this.core.dispatchEvent("play");
-    const stoppedState = await this.init();
-    return await stoppedState.doPlay();
+    const idleState = await this.init();
+    await idleState.doPlay();
   }
 
-  togglePlay() {
-    return this.play();
+  async togglePlay() {
+    await this.play();
   }
 
   async seek(where) {
-    const stoppedState = await this.init();
-    return await stoppedState.seek(where);
+    const idleState = await this.init();
+    return await idleState.seek(where);
   }
 
   async step() {
-    const stoppedState = await this.init();
-    return await stoppedState.step();
+    const idleState = await this.init();
+    await idleState.step();
   }
 
   stop() {}
 }
 
-class StoppedState extends State {
+class Idle extends State {
   onEnter({ reason, message }) {
-    this.core.dispatchEvent("stopped", { message });
+    this.core.dispatchEvent("idle", { message });
 
     if (reason === "paused") {
       this.core.dispatchEvent("pause");
-    } else if (reason === "ended") {
-      this.core.dispatchEvent("ended");
     }
   }
 
-  play() {
+  async play() {
     this.core.dispatchEvent("play");
-    return this.doPlay();
+    await this.doPlay();
   }
 
   async doPlay() {
@@ -84,8 +85,8 @@ class StoppedState extends State {
     }
   }
 
-  togglePlay() {
-    return this.play();
+  async togglePlay() {
+    await this.play();
   }
 
   seek(where) {
@@ -104,12 +105,12 @@ class PlayingState extends State {
 
   pause() {
     if (this.driver.pause() === true) {
-      this.core.setState("stopped", { reason: "paused" });
+      this.core.setState("idle", { reason: "paused" });
     }
   }
 
   togglePlay() {
-    return this.pause();
+    this.pause();
   }
 
   seek(where) {
@@ -126,6 +127,33 @@ class LoadingState extends State {
 class OfflineState extends State {
   onEnter() {
     this.core.dispatchEvent("offline");
+  }
+}
+
+class EndedState extends State {
+  onEnter({ message }) {
+    this.core.dispatchEvent("ended", { message });
+  }
+
+  async play() {
+    this.core.dispatchEvent("play");
+
+    if (await this.driver.restart()) {
+      this.core.setState('playing');
+    }
+  }
+
+  async togglePlay() {
+    await this.play();
+  }
+
+  seek(where) {
+    if (this.driver.seek(where) === true) {
+      this.core.setState('idle');
+      return true;
+    }
+
+    return false;
   }
 }
 
@@ -160,12 +188,13 @@ class Core {
     this.commandQueue = Promise.resolve();
 
     this.eventHandlers = new Map([
-      ["marker", []],
       ["ended", []],
       ["errored", []],
+      ["idle", []],
       ["init", []],
       ["input", []],
       ["loading", []],
+      ["marker", []],
       ["offline", []],
       ["pause", []],
       ["play", []],
@@ -173,7 +202,6 @@ class Core {
       ["reset", []],
       ["resize", []],
       ["seeked", []],
-      ["stopped", []],
       ["terminalUpdate", []],
     ]);
   }
@@ -269,6 +297,10 @@ class Core {
 
     if (this.driver.stop === undefined) {
       this.driver.stop = () => {};
+    }
+
+    if (this.driver.restart === undefined) {
+      this.driver.restart = () => {};
     }
 
     if (this.driver.getCurrentTime === undefined) {
@@ -377,10 +409,12 @@ class Core {
 
     if (newState === "playing") {
       this.state = new PlayingState(this);
-    } else if (newState === "stopped") {
-      this.state = new StoppedState(this);
+    } else if (newState === "idle") {
+      this.state = new Idle(this);
     } else if (newState === "loading") {
       this.state = new LoadingState(this);
+    } else if (newState === "ended") {
+      this.state = new EndedState(this);
     } else if (newState === "offline") {
       this.state = new OfflineState(this);
     } else if (newState === "errored") {

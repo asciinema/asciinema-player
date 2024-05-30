@@ -55,7 +55,7 @@ function eventsource({ url, bufferTime, minFrameTime }, { feed, reset, setState,
           }
         } else if (e.state === "offline") {
           logger.info("stream offline");
-          setState("offline");
+          setState("offline", { message: "Stream offline" });
           clock = new NullClock();
         }
       });
@@ -63,7 +63,7 @@ function eventsource({ url, bufferTime, minFrameTime }, { feed, reset, setState,
       es.addEventListener("done", () => {
         logger.info("closed");
         es.close();
-        setState("stopped", { reason: "ended" });
+        setState("ended", { message: "Stream ended" });
       });
     },
 
