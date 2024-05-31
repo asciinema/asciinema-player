@@ -2,29 +2,37 @@
   description = "asciinema player";
 
   inputs = {
-    nixpkgs.url = github:nixos/nixpkgs/nixpkgs-unstable;
-    flake-utils.url = github:numtide/flake-utils;
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem
-      (system:
-        let pkgs = nixpkgs.legacyPackages.${system}; in
-        {
-          devShells.default = pkgs.mkShell {
-            nativeBuildInputs = [
-              pkgs.rustup
-              pkgs.nodejs_18
-              pkgs.python3
-            ];
+  outputs =
+    {
+      self,
+      nixpkgs,
+      rust-overlay,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs { inherit system overlays; };
+      in
+      {
+        devShells.default = pkgs.mkShell {
+          nativeBuildInputs = with pkgs; [
+            nodejs_18
+            (rust-bin.stable."1.78.0".default.override { targets = [ "wasm32-unknown-unknown" ]; })
+            python3
+          ];
 
-            RUSTUP_TOOLCHAIN = "1.77";
-
-            shellHook = ''
-              alias build='npm run build && npm run bundle'
-              alias serve='cd public && python -m http.server 5000'
-            '';
-          };
-        }
-      );
+          shellHook = ''
+            alias build='npm run build && npm run bundle'
+            alias serve='cd public && python -m http.server 5000'
+          '';
+        };
+      }
+    );
 }
