@@ -55,8 +55,8 @@ Notable Features
 Building asciinema player from source requires:
 
 - [Node.js](https://nodejs.org/) and [npm](https://www.npmjs.com/),
-- [Rust](https://www.rust-lang.org/) compiler (1.70 or later) and [Cargo
-package manager](https://doc.rust-lang.org/cargo/).
+- [Rust](https://www.rust-lang.org/) compiler (1.77 or later) and [Cargo package
+  manager](https://doc.rust-lang.org/cargo/).
 
 To build the project run:
 

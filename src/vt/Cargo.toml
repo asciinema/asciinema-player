@@ -14,7 +14,7 @@ crate-type = ["cdylib", "rlib"]
 avt = "0.10.2"
 getrandom = { version = "0.2", features = ["js"] }
 rand = "^0.8"
-serde-wasm-bindgen = "0.4.5"
+serde-wasm-bindgen = "0.6.5"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
@@ -29,7 +29,7 @@ features = [
 ]
 
 [dependencies.wasm-bindgen]
-version = "0.2.84"
+version = "0.2.92"
 features = ["serde-serialize"]
 
 

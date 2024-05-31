@@ -18,6 +18,8 @@
               pkgs.python3
             ];
 
+            RUSTUP_TOOLCHAIN = "1.77";
+
             shellHook = ''
               alias build='npm run build && npm run bundle'
               alias serve='cd public && python -m http.server 5000'
