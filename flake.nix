@@ -25,6 +25,7 @@
           nativeBuildInputs = with pkgs; [
             nodejs_18
             (rust-bin.stable."1.78.0".default.override { targets = [ "wasm32-unknown-unknown" ]; })
+            binaryen
             python3
           ];
 
