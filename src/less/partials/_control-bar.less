@@ -1,4 +1,5 @@
 @active-controls: #bbb;
+@monospace: Consolas, Menlo, 'Bitstream Vera Sans Mono', monospace;
 
 div.ap-player {
   div.ap-control-bar {
@@ -50,24 +51,20 @@ div.ap-control-bar {
   }
 
   span.ap-timer {
-    display: block;
+    display: flex;
     flex: 0 0 auto;
     min-width: 50px;
     margin: 0 10px;
     height: 100%;
     text-align: center;
-    font-size: 14px;
+    font-size: 13px;
     line-height: 100%;
     cursor: default;
 
     span {
       font-size: inherit;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      padding-bottom: 0.075em;
-      box-sizing: border-box;
+      margin: auto;
+      font-family: @monospace;
     }
 
     .ap-time-remaining {
@@ -206,13 +203,14 @@ span.ap-marker-container span.ap-marker-tooltip {
   visibility: hidden;
   background-color: #333;
   color: @active-controls;
+  font-family: @monospace;
   text-align: center;
-  padding: 0.1em 0.6em 0.1em 0.6em;
+  padding: 0 0.5em;
   border-radius: 4px;
   position: absolute;
   z-index: 1;
   white-space: nowrap; /* Prevents the text from wrapping and makes sure the tooltip width adapts to the text length */
-  font-size: 14px;
+  font-size: 13px;
   line-height: 2em;
   bottom: 100%;
   left: 50%;
