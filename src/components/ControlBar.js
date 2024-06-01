@@ -56,9 +56,7 @@ export default (props) => {
 
   const gutterBarStyle = () => {
     return {
-      width: "100%",
       transform: `scaleX(${props.progress || 0}`,
-      "transform-origin": "left center",
     };
   };
 
@@ -151,9 +149,8 @@ export default (props) => {
       <Show when={typeof props.progress === "number" || props.isSeekable}>
         <span class="ap-progressbar">
           <span class="ap-bar" onMouseDown={onClick} onMouseMove={onMove}>
-            <span class="ap-gutter">
-              <span class="ap-gutter-fill" style={gutterBarStyle()}></span>
-            </span>
+            <span class="ap-gutter ap-gutter-empty"></span>
+            <span class="ap-gutter ap-gutter-full" style={gutterBarStyle()}></span>
             <For each={markers()}>
               {(m, i) => (
                 <span

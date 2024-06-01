@@ -1,4 +1,3 @@
-@active-controls: #bbb;
 @monospace: Consolas, Menlo, 'Bitstream Vera Sans Mono', monospace;
 
 div.ap-player {
@@ -8,8 +7,7 @@ div.ap-player {
     display: flex;
     justify-content: space-between;
     align-items: stretch;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 10%, rgba(0,0,0,1) 100%);
-    color: @active-controls;
+    color: var(--term-color-foreground);
     box-sizing: content-box;
     line-height: 1;
     position: absolute;
@@ -18,6 +16,7 @@ div.ap-player {
     opacity: 0;
     transition: opacity 0.15s linear;
     user-select: none;
+    border-top: 2px solid color-mix(in oklab, black 33%, var(--term-color-background));
     z-index: 30;
 
     * {
@@ -32,7 +31,7 @@ div.ap-player {
 div.ap-control-bar {
   svg.ap-icon {
     path {
-      fill: @active-controls;
+      fill: var(--term-color-foreground);
     }
   }
 
@@ -102,15 +101,17 @@ div.ap-control-bar {
         left: 0;
         right: 0;
         height: 3px;
-        background-color: #333;
+      }
 
-        .ap-gutter-fill {
-          display: inline-block;
-          height: 100%;
-          background-color: @active-controls;
-          border-radius: 3px;
-          z-index: 10;
-        }
+      .ap-gutter-empty {
+        background-color: color-mix(in oklab, var(--term-color-foreground) 10%, var(--term-color-background));
+      }
+
+      .ap-gutter-full {
+        width: 100%;
+        transform-origin: left center;
+        background-color: var(--term-color-foreground);
+        border-radius: 3px;
       }
     }
   }
@@ -171,7 +172,6 @@ span.ap-progressbar span.ap-marker-container {
   width: 21px;
   position: absolute;
   margin-left: -10px;
-  z-index: 9;
 }
 
 span.ap-marker-container span.ap-marker {
@@ -180,19 +180,19 @@ span.ap-marker-container span.ap-marker {
   bottom: 12px;
   left: 7px;
   right: 7px;
-  background-color: #555;
+  background-color: color-mix(in oklab, var(--term-color-foreground) 33%, var(--term-color-background));
   position: absolute;
   transition: top 0.1s, bottom 0.1s, left 0.1s, right 0.1s, background-color 0.1s;
   border-radius: 50%;
 }
 
 span.ap-marker-container span.ap-marker.ap-marker-past {
-  background-color: @active-controls;
+  background-color: var(--term-color-foreground);
 }
 
 span.ap-marker-container span.ap-marker:hover,
 span.ap-marker-container:hover span.ap-marker {
-  background-color: @active-controls;
+  background-color: var(--term-color-foreground);
   top: 11px;
   bottom: 10px;
   left: 5px;
@@ -201,8 +201,8 @@ span.ap-marker-container:hover span.ap-marker {
 
 span.ap-marker-container span.ap-marker-tooltip {
   visibility: hidden;
-  background-color: #333;
-  color: @active-controls;
+  background-color: var(--term-color-foreground);
+  color: var(--term-color-background);
   font-family: @monospace;
   text-align: center;
   padding: 0 0.5em;
