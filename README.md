@@ -86,6 +86,7 @@ sponsor](https://docs.asciinema.org/donations/#corporate-sponsorship).
 asciinema is sponsored by:
 
 - [Brightbox](https://www.brightbox.com/)
+- [DataDog](https://datadoghq.com/)
 
 ## Consulting
 
