@@ -125,8 +125,8 @@ class LoadingState extends State {
 }
 
 class OfflineState extends State {
-  onEnter() {
-    this.core.dispatchEvent("offline");
+  onEnter({ message }) {
+    this.core.dispatchEvent("offline", { message });
   }
 }
 
