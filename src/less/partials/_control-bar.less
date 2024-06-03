@@ -18,13 +18,6 @@ div.ap-player {
     user-select: none;
     border-top: 2px solid color-mix(in oklab, black 33%, var(--term-color-background));
     z-index: 30;
-
-    * {
-      box-sizing: inherit;
-      font-size: 0;
-      font-family: Helvetica, Arial, sans-serif;
-      font-weight: bold;
-    }
   }
 }
 
@@ -36,7 +29,7 @@ div.ap-control-bar {
   }
 
   span.ap-playback-button {
-    display: block;
+    display: flex;
     flex: 0 0 auto;
     cursor: pointer;
     height: 12px;
@@ -131,18 +124,25 @@ div.ap-control-bar {
     height: 14px;
     padding: 9px;
     cursor: pointer;
+    position: relative;
 
     svg {
       width: 14px;
       height: 14px;
     }
 
-    svg:first-child {
+    svg.ap-icon-fullscreen-on {
       display: inline;
     }
 
-    svg:last-child {
+    svg.ap-icon-fullscreen-off {
       display: none;
+    }
+
+    .ap-tooltip {
+      right: 5px;
+      left: initial;
+      transform: none;
     }
   }
 }
@@ -154,11 +154,11 @@ div.ap-wrapper {
 
   &:fullscreen {
     .ap-fullscreen-button {
-      svg:first-child {
+      svg.ap-icon-fullscreen-on {
         display: none;
       }
 
-      svg:last-child {
+      svg.ap-icon-fullscreen-off {
         display: inline;
       }
     }
@@ -197,26 +197,4 @@ span.ap-marker-container:hover span.ap-marker {
   bottom: 10px;
   left: 5px;
   right: 5px;
-}
-
-span.ap-marker-container span.ap-marker-tooltip {
-  visibility: hidden;
-  background-color: var(--term-color-foreground);
-  color: var(--term-color-background);
-  font-family: @monospace;
-  text-align: center;
-  padding: 0 0.5em;
-  border-radius: 4px;
-  position: absolute;
-  z-index: 1;
-  white-space: nowrap; /* Prevents the text from wrapping and makes sure the tooltip width adapts to the text length */
-  font-size: 13px;
-  line-height: 2em;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-span.ap-marker-container:hover span.ap-marker-tooltip {
-  visibility: visible;
 }

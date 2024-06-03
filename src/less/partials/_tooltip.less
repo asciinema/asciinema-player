@@ -1,0 +1,22 @@
+.ap-tooltip-container span.ap-tooltip {
+  visibility: hidden;
+  background-color: var(--term-color-foreground);
+  color: var(--term-color-background);
+  font-family: @monospace;
+  font-weight: bold;
+  text-align: center;
+  padding: 0 0.5em;
+  border-radius: 4px;
+  position: absolute;
+  z-index: 1;
+  white-space: nowrap; /* Prevents the text from wrapping and makes sure the tooltip width adapts to the text length */
+  font-size: 13px;
+  line-height: 2em;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.ap-tooltip-container:hover span.ap-tooltip {
+  visibility: visible;
+}

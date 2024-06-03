@@ -154,13 +154,13 @@ export default (props) => {
             <For each={markers()}>
               {(m, i) => (
                 <span
-                  class="ap-marker-container"
+                  class="ap-marker-container ap-tooltip-container"
                   style={{ left: markerPosition(m) }}
                   onClick={seekToMarker(i())}
                   onMouseDown={stopPropagation}
                 >
                   <span class="ap-marker" classList={{ "ap-marker-past": isPastMarker(m) }}></span>
-                  <span class="ap-marker-tooltip">{markerText(m)}</span>
+                  <span class="ap-tooltip">{markerText(m)}</span>
                 </span>
               )}
             </For>
@@ -169,21 +169,21 @@ export default (props) => {
       </Show>
 
       <span
-        class="ap-fullscreen-button"
+        class="ap-fullscreen-button ap-tooltip-container"
         onClick={e(props.onFullscreenClick)}
-        title="Toggle fullscreen mode"
-        aria-label="Toggle Fullscreen"
+        aria-label="Toggle fullscreen mode"
         role="button"
         tabindex="0"
       >
-        <svg version="1.1" viewBox="0 0 12 12" class="ap-icon">
+        <svg version="1.1" viewBox="0 0 12 12" class="ap-icon ap-icon-fullscreen-on">
           <path d="M12,0 L7,0 L9,2 L7,4 L8,5 L10,3 L12,5 Z"></path>
           <path d="M0,12 L0,7 L2,9 L4,7 L5,8 L3,10 L5,12 Z"></path>
         </svg>
-        <svg version="1.1" viewBox="0 0 12 12" class="ap-icon">
+        <svg version="1.1" viewBox="0 0 12 12" class="ap-icon ap-icon-fullscreen-off">
           <path d="M7,5 L7,0 L9,2 L11,0 L12,1 L10,3 L12,5 Z"></path>
           <path d="M5,7 L0,7 L2,9 L0,11 L1,12 L3,10 L5,12 Z"></path>
         </svg>
+        <span class="ap-tooltip">Fullscreen (f)</span>
       </span>
     </div>
   );
