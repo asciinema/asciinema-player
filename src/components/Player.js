@@ -295,23 +295,8 @@ export default (props) => {
     }
   };
 
-  const onKeyPress = (e) => {
+  const onKeyDown = (e) => {
     if (e.altKey || e.metaKey || e.ctrlKey) {
-      return;
-    }
-
-    if (e.shiftKey) {
-      if (e.key == "ArrowLeft") {
-        core.seek("<<<");
-      } else if (e.key == "ArrowRight") {
-        core.seek(">>>");
-      } else {
-        return;
-      }
-
-      e.stopPropagation();
-      e.preventDefault();
-
       return;
     }
 
@@ -322,10 +307,6 @@ export default (props) => {
       updateTime();
     } else if (e.key == "f") {
       toggleFullscreen();
-    } else if (e.key == "ArrowLeft") {
-      core.seek("<<");
-    } else if (e.key == "ArrowRight") {
-      core.seek(">>");
     } else if (e.key == "[") {
       core.seek({ marker: "prev" });
     } else if (e.key == "]") {
@@ -333,6 +314,18 @@ export default (props) => {
     } else if (e.key.charCodeAt(0) >= 48 && e.key.charCodeAt(0) <= 57) {
       const pos = (e.key.charCodeAt(0) - 48) / 10;
       core.seek(`${pos * 100}%`);
+    } else if (e.key == "ArrowLeft") {
+      if (e.shiftKey) {
+        core.seek("<<<");
+      } else {
+        core.seek("<<");
+      }
+    } else if (e.key == "ArrowRight") {
+      if (e.shiftKey) {
+        core.seek(">>>");
+      } else {
+        core.seek(">>");
+      }
     } else {
       return;
     }
@@ -455,8 +448,7 @@ export default (props) => {
       class="ap-wrapper"
       classList={{ "ap-hud": controlsVisible() }}
       tabIndex="-1"
-      onKeyPress={onKeyPress}
-      onKeyDown={onKeyPress}
+      onKeyDown={onKeyDown}
       onMouseMove={wrapperOnMouseMove}
       onFullscreenChange={onFullscreenChange}
       onWebkitFullscreenChange={onFullscreenChange}
