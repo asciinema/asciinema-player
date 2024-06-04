@@ -72,7 +72,8 @@ export default (props) => {
   const [mouseDown, setMouseDown] = createSignal(false);
   const throttledSeek = throttle(props.onSeekClick, 50);
 
-  const onClick = (e) => {
+  const onMouseDown = (e) => {
+    if (e._marker) return;
     if (e.altKey || e.shiftKey || e.metaKey || e.ctrlKey || e.button !== 0) return;
 
     setMouseDown(true);
@@ -96,10 +97,6 @@ export default (props) => {
   const onDocumentMouseUp = () => {
     setMouseDown(false);
   };
-
-  const stopPropagation = e((e) => {
-    e.stopPropagation();
-  });
 
   document.addEventListener("mouseup", onDocumentMouseUp);
 
@@ -148,7 +145,7 @@ export default (props) => {
 
       <Show when={typeof props.progress === "number" || props.isSeekable}>
         <span class="ap-progressbar">
-          <span class="ap-bar" onMouseDown={onClick} onMouseMove={onMove}>
+          <span class="ap-bar" onMouseDown={onMouseDown} onMouseMove={onMove}>
             <span class="ap-gutter ap-gutter-empty"></span>
             <span class="ap-gutter ap-gutter-full" style={gutterBarStyle()}></span>
             <For each={markers()}>
@@ -157,7 +154,9 @@ export default (props) => {
                   class="ap-marker-container ap-tooltip-container"
                   style={{ left: markerPosition(m) }}
                   onClick={seekToMarker(i())}
-                  onMouseDown={stopPropagation}
+                  onMouseDown={(e) => {
+                    e._marker = true;
+                  }}
                 >
                   <span class="ap-marker" classList={{ "ap-marker-past": isPastMarker(m) }}></span>
                   <span class="ap-tooltip">{markerText(m)}</span>
