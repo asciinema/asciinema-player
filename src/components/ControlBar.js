@@ -107,7 +107,7 @@ export default (props) => {
   return (
     <div class="ap-control-bar" classList={{ "ap-seekable": props.isSeekable }} ref={props.ref}>
       <Show when={props.isPausable}>
-        <span class="ap-playback-button" onClick={e(props.onPlayClick)}>
+        <span class="ap-playback-button" onClick={e(props.onPlayClick)} tabindex="0">
           <Switch>
             <Match when={props.isPlaying}>
               <svg
@@ -116,7 +116,6 @@ export default (props) => {
                 class="ap-icon"
                 aria-label="Pause"
                 role="button"
-                tabindex="0"
               >
                 <path d="M1,0 L4,0 L4,12 L1,12 Z"></path>
                 <path d="M8,0 L11,0 L11,12 L8,12 Z"></path>
@@ -129,7 +128,6 @@ export default (props) => {
                 class="ap-icon"
                 aria-label="Play"
                 role="button"
-                tabindex="0"
               >
                 <path d="M1,0 L11,6 L1,12 Z"></path>
               </svg>
