@@ -32,7 +32,7 @@ overview.
 You can see the player in action in [asciinema
 documentation](https://docs.asciinema.org/manual/player/).
 
-Notable Features
+Notable features:
 
 * ability to copy-paste terminal content - it's just text after all!
 * smooth, timing-accurate playback,
