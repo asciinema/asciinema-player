@@ -7,6 +7,7 @@ import ErrorOverlay from "./ErrorOverlay";
 import LoaderOverlay from "./LoaderOverlay";
 import InfoOverlay from "./InfoOverlay";
 import StartOverlay from "./StartOverlay";
+import HelpOverlay from "./HelpOverlay";
 
 const CONTROL_BAR_HEIGHT = 32; // must match height of div.ap-control-bar in CSS
 
@@ -46,6 +47,7 @@ export default (props) => {
   const [duration, setDuration] = createSignal(undefined);
   const [markers, setMarkers] = createStore([]);
   const [userActive, setUserActive] = createSignal(false);
+  const [isHelpVisible, setIsHelpVisible] = createSignal(false);
   const [originalTheme, setOriginalTheme] = createSignal(undefined);
   const terminalCols = createMemo(() => terminalSize().cols || 80);
   const terminalRows = createMemo(() => terminalSize().rows || 24);
@@ -314,6 +316,13 @@ export default (props) => {
     } else if (e.key.charCodeAt(0) >= 48 && e.key.charCodeAt(0) <= 57) {
       const pos = (e.key.charCodeAt(0) - 48) / 10;
       core.seek(`${pos * 100}%`);
+    } else if (e.key == "?") {
+      if (isHelpVisible()) {
+        setIsHelpVisible(false);
+      } else {
+        core.pause();
+        setIsHelpVisible(true);
+      }
     } else if (e.key == "ArrowLeft") {
       if (e.shiftKey) {
         core.seek("<<<");
@@ -326,6 +335,8 @@ export default (props) => {
       } else {
         core.seek(">>");
       }
+    } else if (e.key == "Escape") {
+      setIsHelpVisible(false);
     } else {
       return;
     }
@@ -503,6 +514,12 @@ export default (props) => {
             <ErrorOverlay />
           </Match>
         </Switch>
+        <Show when={isHelpVisible()}>
+          <HelpOverlay
+            fontFamily={props.terminalFontFamily}
+            onClose={() => setIsHelpVisible(false)}
+          />
+        </Show>
       </div>
     </div>
   );

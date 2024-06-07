@@ -75,6 +75,50 @@
     }
   }
 
+  .ap-overlay-help {
+    background-color: rgba(0,0,0,0.8);
+    container-type: inline-size;
+
+    > div {
+      .terminal-font;
+      max-width: 85%;
+      max-height: 85%;
+      font-size: 18px;
+      color: var(--term-color-foreground);
+      background-color: var(--term-color-background);
+      border-radius: 6px;
+      box-sizing: border-box;
+      margin-bottom: 32px;
+
+      div  {
+        padding: calc(min(4cqw, 40px));
+        font-size: calc(min(1.9cqw, 18px));
+
+        p {
+          font-weight: bold;
+          margin: 0 0 2em 0;
+        }
+
+        ul {
+          list-style: none;
+          padding: 0;
+
+          li {
+            margin: 0 0 0.75em 0;
+          }
+        }
+
+        kbd {
+          color: var(--term-color-background);
+          background-color: var(--term-color-foreground);
+          padding: 0.2em 0.5em;
+          border-radius: 0.2em;
+          font-size: 0.85em;
+        }
+      }
+    }
+  }
+
   .ap-overlay-error {
     span {
       font-size: 8em;
