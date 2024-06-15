@@ -62,7 +62,6 @@ To build the project run:
 
     git clone https://github.com/asciinema/asciinema-player
     cd asciinema-player
-    git submodule update --init
     rustup target add wasm32-unknown-unknown
     npm install
     npm run build
