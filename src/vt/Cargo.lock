@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "avt"
-version = "0.10.2"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f453ce6fa1e0820846a95d8b16eb09eeb96e138f31f336b03af5b3fcaa291cc"
+checksum = "0cb3c38905502a1f46c37ae2d3373c36a3aaf3cd9f7fde871984ef870f039bd6"
 dependencies = [
  "rgb",
  "serde",
@@ -226,9 +226,9 @@ checksum = "84a22b9f218b40614adcb3f4ff08b703773ad44fa9423e4e0d346d5db86e4ebc"
 
 [[package]]
 name = "unicode-width"
-version = "0.1.11"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e51733f11c9c4f72aa0c160008246859e340b00807569a0da0e7a1079b27ba85"
+checksum = "0336d538f7abc86d282a4189614dfaa90810dfc2c6f6427eaf88e16311dd225d"
 
 [[package]]
 name = "vt-js"
