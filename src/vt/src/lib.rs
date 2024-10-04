@@ -30,6 +30,7 @@ pub fn create(cols: usize, rows: usize, resizable: bool, scrollback_limit: usize
 impl VtWrapper {
     pub fn feed(&mut self, s: &str) -> JsValue {
         let changes = self.vt.feed_str(s);
+        let changes = (changes.lines, changes.resized);
         serde_wasm_bindgen::to_value(&changes).unwrap()
     }
 
