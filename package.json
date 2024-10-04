@@ -12,7 +12,8 @@
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
-    "./dist/bundle/asciinema-player.css": "./dist/bundle/asciinema-player.css"
+    "./dist/bundle/asciinema-player.css": "./dist/bundle/asciinema-player.css",
+    "./dist/bundle/asciinema-player.min.js": "./dist/bundle/asciinema-player.min.js"
   },
   "files": [
     "dist"
