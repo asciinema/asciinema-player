@@ -1,6 +1,6 @@
 import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
-import { debounce } from "../util";
+import { debounce, printablekeypress } from "../util";
 import Terminal from "./Terminal";
 import ControlBar from "./ControlBar";
 import ErrorOverlay from "./ErrorOverlay";
@@ -8,6 +8,7 @@ import LoaderOverlay from "./LoaderOverlay";
 import InfoOverlay from "./InfoOverlay";
 import StartOverlay from "./StartOverlay";
 import HelpOverlay from "./HelpOverlay";
+import KeystrokesOverlay from "./KeystrokesOverlay";
 
 const CONTROL_BAR_HEIGHT = 32; // must match height of div.ap-control-bar in CSS
 
@@ -33,6 +34,7 @@ export default (props) => {
     progress: null,
     blink: true,
     cursorHold: false,
+    keystroke: null,
   });
 
   const [isPlaying, setIsPlaying] = createSignal(false);
@@ -52,6 +54,7 @@ export default (props) => {
   const terminalCols = createMemo(() => terminalSize().cols || 80);
   const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
+  const [keystroke, setKeystroke] = createSignal("");
 
   const controlsVisible = () =>
     props.controls === true || (props.controls === "auto" && userActive());
@@ -177,6 +180,10 @@ export default (props) => {
   core.addEventListener("errored", () => {
     setOverlay("error");
   });
+
+  core.addEventListener("input", ({data}) => {
+    setState("keystroke", printablekeypress(data));
+  })
 
   core.addEventListener("resize", resize);
 
@@ -528,6 +535,9 @@ export default (props) => {
             onSeekClick={seek}
             ref={controlBarRef}
           />
+        </Show>
+        <Show when={state.keystroke != ""}>
+          <KeystrokesOverlay keystroke={state.keystroke} />
         </Show>
         <Switch>
           <Match when={overlay() == "start"}>
