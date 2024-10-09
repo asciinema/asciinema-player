@@ -35,6 +35,7 @@ export default (props) => {
     blink: true,
     cursorHold: false,
     keystroke: null,
+    hideKeystroke: false,
   });
 
   const [isPlaying, setIsPlaying] = createSignal(false);
@@ -55,6 +56,7 @@ export default (props) => {
   const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
   const [keystroke, setKeystroke] = createSignal("");
+  const [isKeystrokeVisible, setisKeystrokeVisible] = createSignal(false);
 
   const controlsVisible = () =>
     props.controls === true || (props.controls === "auto" && userActive());
@@ -119,6 +121,7 @@ export default (props) => {
       setOriginalTheme(theme);
       setMarkers(markers);
       setPoster(poster);
+      setisKeystrokeVisible(false);
     });
   });
 
@@ -146,6 +149,7 @@ export default (props) => {
       setIsPlaying(false);
       onStopped();
       setOverlay("loader");
+      setisKeystrokeVisible(false);
     });
   });
 
@@ -167,6 +171,7 @@ export default (props) => {
     batch(() => {
       setIsPlaying(false);
       onStopped();
+      setisKeystrokeVisible(false);
 
       if (message !== undefined) {
         setInfoMessage(message);
@@ -181,8 +186,18 @@ export default (props) => {
     setOverlay("error");
   });
 
-  core.addEventListener("input", ({data}) => {
-    setState("keystroke", printablekeypress(data));
+  core.addEventListener("input", ({ data }) => {
+    if (state.hideKeystroke) {
+      return;
+    }
+    var pressed_key = printablekeypress(data);
+    if (pressed_key == "") {
+      setisKeystrokeVisible(false);
+    }
+    else {
+      setisKeystrokeVisible(true);
+      setState("keystroke", printablekeypress(data));
+    }
   })
 
   core.addEventListener("resize", resize);
@@ -305,9 +320,9 @@ export default (props) => {
 
   const toggleFullscreen = () => {
     if (state.isFullscreen) {
-      (document.exitFullscreen ?? document.webkitExitFullscreen ?? (() => {})).apply(document);
+      (document.exitFullscreen ?? document.webkitExitFullscreen ?? (() => { })).apply(document);
     } else {
-      (wrapperRef.requestFullscreen ?? wrapperRef.webkitRequestFullscreen ?? (() => {})).apply(
+      (wrapperRef.requestFullscreen ?? wrapperRef.webkitRequestFullscreen ?? (() => { })).apply(
         wrapperRef,
       );
     }
@@ -319,6 +334,15 @@ export default (props) => {
     } else {
       core.pause();
       setIsHelpVisible(true);
+    }
+  };
+
+  const toggleKeystroke = () => {
+    if (state.hideKeystroke) {
+      setState("hideKeystroke", false);
+    } else {
+      setisKeystrokeVisible(false);
+      setState("hideKeystroke", true);
     }
   };
 
@@ -346,6 +370,8 @@ export default (props) => {
       core.seek(`${pos * 100}%`);
     } else if (e.key == "?") {
       toggleHelp();
+    } else if (e.key == "k") {
+      toggleKeystroke();
     } else if (e.key == "ArrowLeft") {
       if (e.shiftKey) {
         core.seek("<<<");
@@ -536,8 +562,11 @@ export default (props) => {
             ref={controlBarRef}
           />
         </Show>
-        <Show when={state.keystroke != ""}>
-          <KeystrokesOverlay keystroke={state.keystroke} />
+        <Show when={isKeystrokeVisible()}>
+          <KeystrokesOverlay
+            fontFamily={props.terminalFontFamily}
+            keystroke={state.keystroke}
+          />
         </Show>
         <Switch>
           <Match when={overlay() == "start"}>

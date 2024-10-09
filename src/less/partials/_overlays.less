@@ -75,6 +75,38 @@
     }
   }
 
+  .ap-overlay-keystrokes {
+    position: absolute;
+    top: 3em;
+    height: 20px;
+    font-size: 18px;
+    text-align: center;
+    padding: 0.5em;
+    opacity: 0.8;
+
+    > div {
+      .terminal-font;
+      max-width: 25%;
+      max-height: 25%;
+      font-size: 18px;
+      color: var(--term-color-foreground);
+      background-color: var(--term-color-background);
+      border-radius: 6px;
+      box-sizing: border-box;
+      margin-bottom: 32px;
+        kbd {
+          color: var(--term-color-background);
+          background-color: var(--term-color-foreground);
+          padding: 0.2em 0.5em;
+          border-radius: 0.2em;
+          font-family: inherit;
+          font-size: 0.85em;
+          border: none;
+          margin: 0;
+        }
+    }
+  }
+
   .ap-overlay-help {
     background-color: rgba(0,0,0,0.8);
     container-type: inline-size;

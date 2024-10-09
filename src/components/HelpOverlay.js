@@ -53,7 +53,9 @@ export default (props) => {
             <li>
               <kbd>f</kbd> - toggle fullscreen mode
             </li>
-
+            <li>
+              <kbd>k</kbd> - toggle keystroke popup
+            </li>
             <li>
               <kbd>?</kbd> - toggle this help popup
             </li>

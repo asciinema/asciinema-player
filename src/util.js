@@ -116,11 +116,12 @@ function printablekeypress(key_press) {
     '"\\u001by"' : "A-y",
     '"\\u001bz"' : "A-z",
   }
+
   if (rep in unicode_seq){
     return unicode_seq[rep];
   }
   else if (rep.startsWith('"\\')) {
-    return " ";
+    return "";
   }
   return rep.slice(1,-1);
 }
