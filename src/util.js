@@ -55,7 +55,7 @@ function printablekeypress(key_press, logger) {
     '"\\u001b[5~"': "PgUp",
     '"\\u001b[6~"': "PgDn",
     '"\\u001b[57422u"': "PgDn",
-    '"\\u001b[57362u"': "Pau",
+    '"\\u001b[57362u"': "Pgup",
     '"\\u001bOP"': "F1",
     '"\\u001bOQ"': "F2",
     '"\\u001bOR"': "F3",
