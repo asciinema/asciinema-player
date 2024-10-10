@@ -186,6 +186,7 @@ class Core {
     this.markers = this.normalizeMarkers(opts.markers);
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.commandQueue = Promise.resolve();
+    this.hideKeystroke = opts.hideKeystroke ?? false;
 
     this.eventHandlers = new Map([
       ["ended", []],
