@@ -561,7 +561,6 @@ export default (props) => {
           <KeystrokesOverlay
             fontFamily={props.terminalFontFamily}
             keystroke={keyStroke()}
-            isKeystrokeFading={isKeystrokeFading()}
             hideKeyStroke={hideKeyStroke}
             logger={props.logger}
           />

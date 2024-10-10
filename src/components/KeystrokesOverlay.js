@@ -1,4 +1,4 @@
-import { batch, createSignal } from "solid-js";
+import { createSignal } from "solid-js";
 
 const [isFading, setisFading] = createSignal(false);
 
@@ -93,7 +93,7 @@ function formatKeyCode(data, logger) {
   if (rep in unicode_seq) {
     return unicode_seq[rep];
   } else if (rep.startsWith('"\\')) {
-    logger.info("- ", rep, data);
+    logger.debug("- ", rep, data);
     return "";
   }
   return rep.slice(1, -1);
