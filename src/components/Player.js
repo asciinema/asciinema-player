@@ -191,15 +191,14 @@ export default (props) => {
     if (state.hideKeystroke) {
       return;
     }
-    var pressed_key = printablekeypress(data);
+    var pressed_key = printablekeypress(data, logger);
     if (pressed_key === "") {
       setisKeystrokeVisible(false);
-    }
-    else {
+    } else {
       setisKeystrokeVisible(true);
-      setState("keystroke", printablekeypress(data));
+      setState("keystroke", pressed_key);
     }
-  })
+  });
 
   core.addEventListener("resize", resize);
 
@@ -564,10 +563,7 @@ export default (props) => {
           />
         </Show>
         <Show when={isKeystrokeVisible()}>
-          <KeystrokesOverlay
-            fontFamily={props.terminalFontFamily}
-            keystroke={state.keystroke}
-          />
+          <KeystrokesOverlay fontFamily={props.terminalFontFamily} keystroke={state.keystroke} />
         </Show>
         <Switch>
           <Match when={overlay() == "start"}>
