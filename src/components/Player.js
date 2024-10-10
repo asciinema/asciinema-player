@@ -55,7 +55,6 @@ export default (props) => {
   const terminalCols = createMemo(() => terminalSize().cols || 80);
   const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
-  const [keystroke, setKeystroke] = createSignal("");
   const [isKeystrokeVisible, setisKeystrokeVisible] = createSignal(false);
 
   const controlsVisible = () =>
@@ -193,7 +192,7 @@ export default (props) => {
       return;
     }
     var pressed_key = printablekeypress(data);
-    if (pressed_key == "") {
+    if (pressed_key === "") {
       setisKeystrokeVisible(false);
     }
     else {
