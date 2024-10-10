@@ -88,7 +88,7 @@
       .terminal-font;
       max-width: 25%;
       max-height: 25%;
-      font-size: 18px;
+      font-size: inherit;
         kbd {
           color: var(--term-color-background);
           background-color: var(--term-color-foreground);
@@ -99,6 +99,19 @@
           border: none;
           margin: 0;
         }
+    }
+  }
+
+  .ap-overlay-keystrokes.fading {
+    animation: hide 3s forwards;
+  }
+
+  @keyframes hide {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
     }
   }
 
