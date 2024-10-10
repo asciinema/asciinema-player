@@ -1,6 +1,6 @@
 import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
-import { debounce, printablekeypress } from "../util";
+import { debounce } from "../util";
 import Terminal from "./Terminal";
 import ControlBar from "./ControlBar";
 import ErrorOverlay from "./ErrorOverlay";
@@ -34,7 +34,6 @@ export default (props) => {
     progress: null,
     blink: true,
     cursorHold: false,
-    keystroke: null,
     hideKeystroke: props.hideKeystroke,
   });
 
@@ -56,7 +55,7 @@ export default (props) => {
   const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
   const [isKeystrokeVisible, setisKeystrokeVisible] = createSignal(false);
-  const [isKeystrokeFading, setisKeyStrokeFading] = createSignal(false);
+  const [keyStroke, setKeyStroke] = createSignal(null);
   const controlsVisible = () =>
     props.controls === true || (props.controls === "auto" && userActive());
 
@@ -190,18 +189,8 @@ export default (props) => {
     if (state.hideKeystroke) {
       return;
     }
-    setisKeyStrokeFading(false);
-    setTimeout(function() {
-      setisKeyStrokeFading(true);
-    }, 10);
-
-    var pressed_key = printablekeypress(data, logger);
-    if (pressed_key === "") {
-      setisKeystrokeVisible(false);
-    } else {
-      setisKeystrokeVisible(true);
-      setState("keystroke", pressed_key);
-    }
+    setisKeystrokeVisible(true);
+    setKeyStroke({ ms: Date.now(), value: data });
   });
 
   core.addEventListener("resize", resize);
@@ -571,8 +560,10 @@ export default (props) => {
         <Show when={isKeystrokeVisible()}>
           <KeystrokesOverlay
             fontFamily={props.terminalFontFamily}
-            keystroke={state.keystroke}
+            keystroke={keyStroke()}
             isKeystrokeFading={isKeystrokeFading()}
+            hideKeyStroke={hideKeyStroke}
+            logger={props.logger}
           />
         </Show>
         <Switch>
