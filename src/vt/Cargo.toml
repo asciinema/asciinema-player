@@ -11,9 +11,10 @@ crate-type = ["cdylib", "rlib"]
 # default = ["console_error_panic_hook"]
 
 [dependencies]
-avt = "0.13.0"
+avt = "0.14.0"
 getrandom = { version = "0.2", features = ["js"] }
 rand = "^0.8"
+serde = { version = "1.0.130", features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by

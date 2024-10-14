@@ -14,7 +14,7 @@ export default (props) => {
   const text = createMemo(() => (codePoint() ? " " : props.text));
 
   const style = createMemo(() =>
-    buildStyle(props.pen, props.offset, text().length, props.charWidth),
+    buildStyle(props.pen, props.offset, props.width),
   );
 
   const className = createMemo(() => buildClassName(props.pen, codePoint(), props.extraClass));
@@ -81,13 +81,13 @@ function colorClass(color, intense, prefix) {
   }
 }
 
-function buildStyle(attrs, offset, textLen, charWidth) {
+function buildStyle(attrs, offset, width) {
   const fg = attrs.get("fg");
   const bg = attrs.get("bg");
 
   let style = {
     "--offset": offset,
-    width: `${textLen * charWidth + 0.01}ch`,
+    width: `${width + 0.01}ch`,
   };
 
   if (typeof fg === "string") {
