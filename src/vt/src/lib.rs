@@ -1,5 +1,4 @@
 mod utils;
-use avt::Vt;
 use serde::{
     ser::{SerializeMap, Serializer},
     Serialize,
@@ -13,25 +12,25 @@ const BRAILLE_PATTERNS_RANGE: RangeInclusive<char> = '\u{2800}'..='\u{28ff}';
 const POWERLINE_TRIANGLES_RANGE: RangeInclusive<char> = '\u{e0b0}'..='\u{e0b3}';
 
 #[wasm_bindgen]
-pub struct VtWrapper {
-    vt: Vt,
+pub struct Vt {
+    vt: avt::Vt,
 }
 
 #[wasm_bindgen]
-pub fn create(cols: usize, rows: usize, resizable: bool, scrollback_limit: usize) -> VtWrapper {
+pub fn create(cols: usize, rows: usize, resizable: bool, scrollback_limit: usize) -> Vt {
     utils::set_panic_hook();
 
-    let vt = Vt::builder()
+    let vt = avt::Vt::builder()
         .size(cols, rows)
         .resizable(resizable)
         .scrollback_limit(scrollback_limit)
         .build();
 
-    VtWrapper { vt }
+    Vt { vt }
 }
 
 #[wasm_bindgen]
-impl VtWrapper {
+impl Vt {
     pub fn feed(&mut self, s: &str) -> JsValue {
         let changes = self.vt.feed_str(s);
         let changes = (changes.lines, changes.resized);
