@@ -363,7 +363,7 @@ class Core {
 
       for (const i of this.changedLines) {
         if (i < rows) {
-          lines.set(i, { id: i, segments: this.vt.get_line(i) });
+          lines.set(i, { id: i, segments: this.vt.getLine(i) });
         }
       }
 
@@ -375,7 +375,7 @@ class Core {
 
   getCursor() {
     if (this.cursor === undefined && this.vt) {
-      this.cursor = this.vt.get_cursor() ?? false;
+      this.cursor = this.vt.getCursor() ?? false;
     }
 
     return this.cursor;
@@ -439,7 +439,7 @@ class Core {
     this.cursor = undefined;
 
     if (resized) {
-      const [cols, rows] = this.vt.get_size();
+      const [cols, rows] = this.vt.getSize();
       this.vt.cols = cols;
       this.vt.rows = rows;
       this.logger.debug(`core: vt resize (${cols}x${rows})`);
@@ -527,11 +527,11 @@ class Core {
 
     const vt = this.wasm.create(cols, rows, false, 0);
     poster.forEach((text) => vt.feed(text));
-    const cursor = vt.get_cursor() ?? false;
+    const cursor = vt.getCursor() ?? false;
     const lines = [];
 
     for (let i = 0; i < rows; i++) {
-      lines.push({ id: i, segments: vt.get_line(i) });
+      lines.push({ id: i, segments: vt.getLine(i) });
     }
 
     return { cursor, lines };

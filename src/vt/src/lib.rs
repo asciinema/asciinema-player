@@ -42,12 +42,14 @@ impl VtWrapper {
         format!("{:?}", self.vt)
     }
 
+    #[wasm_bindgen(js_name = getSize)]
     pub fn get_size(&self) -> Vec<usize> {
         let (cols, rows) = self.vt.size();
 
         vec![cols, rows]
     }
 
+    #[wasm_bindgen(js_name = getLine)]
     pub fn get_line(&self, n: usize) -> JsValue {
         let chunks = self.vt.line(n).chunks(|c1: &avt::Cell, c2: &avt::Cell| {
             c1.pen() != c2.pen() || is_special_char(c1) || is_special_char(c2)
@@ -73,6 +75,7 @@ impl VtWrapper {
         serde_wasm_bindgen::to_value(&segments).unwrap()
     }
 
+    #[wasm_bindgen(js_name = getCursor)]
     pub fn get_cursor(&self) -> JsValue {
         let cursor: Option<(usize, usize)> = self.vt.cursor().into();
 
