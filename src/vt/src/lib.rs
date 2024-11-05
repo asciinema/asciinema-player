@@ -193,7 +193,7 @@ impl Serialize for Color {
 
         match self.0 {
             Color::Indexed(c) => serializer.serialize_u8(c),
-            Color::RGB(c) => serializer.serialize_str(&format!("rgb({},{},{})", c.r, c.g, c.b)),
+            Color::RGB(c) => serializer.serialize_str(&format!("#{:02x}{:02x}{:02x}", c.r, c.g, c.b)),
         }
     }
 }
