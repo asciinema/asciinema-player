@@ -24,6 +24,7 @@
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [
             nodejs_18
+            typescript-language-server
             (rust-bin.stable."1.78.0".default.override { targets = [ "wasm32-unknown-unknown" ]; })
             binaryen
             python3
