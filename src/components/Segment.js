@@ -28,7 +28,7 @@ export default (props) => {
 
 function buildClassName(attrs, codePoint, extraClass) {
   const fgClass = colorClass(attrs.get("fg"), attrs.get("bold"), "fg-");
-  const bgClass = colorClass(attrs.get("bg"), attrs.get("blink"), "bg-");
+  const bgClass = colorClass(attrs.get("bg"), false, "bg-");
 
   let cls = extraClass ?? "";
 
