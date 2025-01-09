@@ -3,7 +3,7 @@ import Stream from "../stream";
 
 function recording(
   src,
-  { feed, onInput, onMarker, now, setTimeout, setState, logger },
+  { feed, resize, onInput, onMarker, now, setTimeout, setState, logger },
   {
     idleTimeLimit,
     startAt,
@@ -145,6 +145,9 @@ function recording(
       feed(data);
     } else if (type === "i") {
       onInput(data);
+    } else if (type === "r") {
+      const [cols, rows] = data.split("x");
+      resize(cols, rows);
     } else if (type === "m") {
       onMarker(data);
 
@@ -342,7 +345,7 @@ function recording(
   }
 
   function resizeTerminalToInitialSize() {
-    feed(`\x1b[8;${initialRows};${initialCols};t`);
+    resize(initialCols, initialRows);
   }
 
   return {
@@ -373,12 +376,8 @@ function batcher(logger, minFrameTime = 1.0 / 60) {
           return;
         }
 
-        if (event[1] === prevEvent[1] && event[0] - prevEvent[0] < minFrameTime) {
-          if (event[1] === "m" && event[2] !== "") {
-            prevEvent[2] = event[2];
-          } else {
-            prevEvent[2] += event[2];
-          }
+        if (event[1] === "o" && prevEvent[1] === "o" && event[0] - prevEvent[0] < minFrameTime) {
+          prevEvent[2] += event[2];
         } else {
           emit(prevEvent);
           prevEvent = event;
@@ -405,10 +404,6 @@ function prepare(
 ) {
   let { events } = recording;
 
-  if (events === undefined) {
-    events = buildEvents(recording);
-  }
-
   if (!(events instanceof Stream)) {
     events = new Stream(events);
   }
@@ -417,7 +412,6 @@ function prepare(
   const limiterOutput = { offset: 0 };
 
   events = events
-    .map(convertResizeEvent)
     .transform(batcher(logger, minFrameTime))
     .map(timeLimiter(idleTimeLimit, startAt, limiterOutput))
     .map(markerWrapper());
@@ -442,23 +436,6 @@ function prepare(
   const effectiveStartAt = startAt - limiterOutput.offset;
 
   return { ...recording, events, duration, effectiveStartAt };
-}
-
-function buildEvents({ output = [], input = [], markers = [] }) {
-  const o = new Stream(output).map((e) => [e[0], "o", e[1]]);
-  const i = new Stream(input).map((e) => [e[0], "i", e[1]]);
-  const m = new Stream(markers).map(normalizeMarker);
-
-  return o.multiplex(i, (a, b) => a[0] < b[0]).multiplex(m, (a, b) => a[0] < b[0]);
-}
-
-function convertResizeEvent(e) {
-  if (e[1] === "r") {
-    const [cols, rows] = e[2].split("x");
-    return [e[0], "o", `\x1b[8;${rows};${cols};t`];
-  } else {
-    return e;
-  }
 }
 
 function normalizeMarker(m) {

@@ -8,7 +8,7 @@ function exponentialDelay(attempt) {
 
 function websocket(
   { url, bufferTime, reconnectDelay = exponentialDelay, minFrameTime },
-  { feed, reset, setState, logger },
+  { feed, reset, resize, setState, logger },
 ) {
   logger = new PrefixedLogger(logger, "websocket: ");
   const utfDecoder = new TextDecoder();
@@ -26,6 +26,7 @@ function websocket(
     buf = getBuffer(
       bufferTime,
       feed,
+      resize,
       (t) => clock.setTime(t),
       baseStreamTime,
       minFrameTime,

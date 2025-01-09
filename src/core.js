@@ -233,6 +233,7 @@ class Core {
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
     const reset = this.resetVt.bind(this);
+    const resize = this.resizeVt.bind(this);
     const setState = this.setState.bind(this);
 
     const posterTime = this.poster.type === "npt" ? this.poster.value : undefined;
@@ -243,6 +244,7 @@ class Core {
         onInput,
         onMarker,
         reset,
+        resize,
         now,
         setTimeout,
         setInterval,
@@ -434,17 +436,9 @@ class Core {
   }
 
   doFeed(data) {
-    const [affectedLines, resized] = this.vt.feed(data);
+    const affectedLines = this.vt.feed(data);
     affectedLines.forEach((i) => this.changedLines.add(i));
     this.cursor = undefined;
-
-    if (resized) {
-      const [cols, rows] = this.vt.getSize();
-      this.vt.cols = cols;
-      this.vt.rows = rows;
-      this.logger.debug(`core: vt resize (${cols}x${rows})`);
-      this.dispatchEvent("resize", { cols, rows });
-    }
   }
 
   now() {
@@ -491,6 +485,18 @@ class Core {
     }
 
     this.dispatchEvent("reset", { cols, rows, theme });
+  }
+
+  resizeVt(cols, rows) {
+    if (cols === this.vt.cols && rows === this.vt.rows) return;
+
+    const affectedLines = this.vt.resize(cols, rows);
+    affectedLines.forEach((i) => this.changedLines.add(i));
+    this.cursor = undefined;
+    this.vt.cols = cols;
+    this.vt.rows = rows;
+    this.logger.debug(`core: vt resize (${cols}x${rows})`);
+    this.dispatchEvent("resize", { cols, rows });
   }
 
   initializeVt(cols, rows) {

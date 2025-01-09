@@ -17,12 +17,11 @@ pub struct Vt {
 }
 
 #[wasm_bindgen]
-pub fn create(cols: usize, rows: usize, resizable: bool, scrollback_limit: usize) -> Vt {
+pub fn create(cols: usize, rows: usize, scrollback_limit: usize) -> Vt {
     utils::set_panic_hook();
 
     let vt = avt::Vt::builder()
         .size(cols, rows)
-        .resizable(resizable)
         .scrollback_limit(scrollback_limit)
         .build();
 
@@ -33,8 +32,12 @@ pub fn create(cols: usize, rows: usize, resizable: bool, scrollback_limit: usize
 impl Vt {
     pub fn feed(&mut self, s: &str) -> JsValue {
         let changes = self.vt.feed_str(s);
-        let changes = (changes.lines, changes.resized);
-        serde_wasm_bindgen::to_value(&changes).unwrap()
+        serde_wasm_bindgen::to_value(&changes.lines).unwrap()
+    }
+
+    pub fn resize(&mut self, cols: usize, rows: usize) -> JsValue {
+        let changes = self.vt.resize(cols, rows);
+        serde_wasm_bindgen::to_value(&changes.lines).unwrap()
     }
 
     pub fn inspect(&self) -> String {

@@ -1,9 +1,11 @@
 import Queue from "./queue";
 
-function getBuffer(bufferTime, feed, setTime, baseStreamTime, minFrameTime, logger) {
+function getBuffer(bufferTime, feed, resize, setTime, baseStreamTime, minFrameTime, logger) {
+  const execute = executeEvent(feed, resize);
+
   if (bufferTime === 0) {
     logger.debug("using no buffer");
-    return nullBuffer(feed);
+    return nullBuffer(execute);
   } else {
     bufferTime = bufferTime ?? {};
     let getBufferTime;
@@ -19,30 +21,36 @@ function getBuffer(bufferTime, feed, setTime, baseStreamTime, minFrameTime, logg
       getBufferTime = adaptiveBufferTimeProvider({ logger }, bufferTime);
     }
 
-    return buffer(getBufferTime, feed, setTime, logger, baseStreamTime ?? 0.0, minFrameTime);
+    return buffer(getBufferTime, execute, setTime, logger, baseStreamTime ?? 0.0, minFrameTime);
   }
 }
 
-function nullBuffer(feed) {
+function nullBuffer(execute) {
   return {
     pushEvent(event) {
-      if (event[1] === "o") {
-        feed(event[2]);
-      } else if (event[1] === "r") {
-        const [cols, rows] = event[2].split("x");
-        feed(`\x1b[8;${rows};${cols};t`);
-      }
+      execute(event[1], event[2]);
     },
 
     pushText(text) {
-      feed(text);
+      execute("o", text);
     },
 
     stop() {},
   };
 }
 
-function buffer(getBufferTime, feed, setTime, logger, baseStreamTime, minFrameTime = 1.0 / 60) {
+function executeEvent(feed, resize) {
+  return function(code, data) {
+    if (code === "o") {
+      feed(data);
+    } else if (code === "r") {
+      const [cols, rows] = data.split("x");
+      resize(cols, rows);
+    }
+  }
+}
+
+function buffer(getBufferTime, execute, setTime, logger, baseStreamTime, minFrameTime = 1.0 / 60) {
   let epoch = performance.now() - baseStreamTime * 1000;
   let bufferTime = getBufferTime(0);
   const queue = new Queue();
@@ -63,7 +71,7 @@ function buffer(getBufferTime, feed, setTime, logger, baseStreamTime, minFrameTi
         const elapsedStreamTime = event[0] * 1000 + bufferTime;
 
         if (elapsedStreamTime - prevElapsedStreamTime < minFrameTime) {
-          feed(event[2]);
+          execute(event[1], event[2]);
           continue;
         }
 
@@ -75,7 +83,7 @@ function buffer(getBufferTime, feed, setTime, logger, baseStreamTime, minFrameTi
         }
 
         setTime(event[0]);
-        feed(event[2]);
+        execute(event[1], event[2]);
         prevElapsedStreamTime = elapsedStreamTime;
       }
     }
@@ -92,13 +100,7 @@ function buffer(getBufferTime, feed, setTime, logger, baseStreamTime, minFrameTi
       }
 
       bufferTime = getBufferTime(latency);
-
-      if (event[1] === "o") {
-        queue.push(event);
-      } else if (event[1] === "r") {
-        const [cols, rows] = event[2].split("x");
-        queue.push([event[0], "o", `\x1b[8;${rows};${cols};t`]);
-      }
+      queue.push(event);
     },
 
     pushText(text) {
