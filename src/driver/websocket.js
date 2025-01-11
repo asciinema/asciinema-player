@@ -97,8 +97,6 @@ function websocket(
     }
   }
 
-  const THEME_LEN = 54; // (2 + 16) * 3
-
   function handleStreamMessage(event) {
     const buffer = event.data;
     const view = new DataView(buffer);
@@ -117,9 +115,18 @@ function websocket(
       offset += 1;
       let theme;
 
-      if (themeFormat === 1) {
-        theme = parseTheme(new Uint8Array(buffer, offset, THEME_LEN));
-        offset += THEME_LEN;
+      if (themeFormat === 8) {
+        const len = (2 + 8) * 3;
+        theme = parseTheme(new Uint8Array(buffer, offset, len));
+        offset += len;
+      } else if (themeFormat === 16) {
+        const len = (2 + 16) * 3;
+        theme = parseTheme(new Uint8Array(buffer, offset, len));
+        offset += len;
+      } else if (themeFormat !== 0) {
+        logger.warn(`unsupported theme format (${themeFormat})`);
+        socket.close();
+        return;
       }
 
       const initLen = view.getUint32(offset, true);
@@ -154,12 +161,13 @@ function websocket(
   }
 
   function parseTheme(arr) {
+    const colorCount = arr.length / 3;
     const foreground = hexColor(arr[0], arr[1], arr[2]);
     const background = hexColor(arr[3], arr[4], arr[5]);
     const palette = [];
 
-    for (let i = 0; i < 16; i++) {
-      palette.push(hexColor(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]));
+    for (let i = 2; i < colorCount; i++) {
+      palette.push(hexColor(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]));
     }
 
     return { foreground, background, palette };
