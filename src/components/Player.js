@@ -8,6 +8,7 @@ import LoaderOverlay from "./LoaderOverlay";
 import InfoOverlay from "./InfoOverlay";
 import StartOverlay from "./StartOverlay";
 import HelpOverlay from "./HelpOverlay";
+import KeystrokesOverlay from "./KeystrokesOverlay";
 
 const CONTROL_BAR_HEIGHT = 32; // must match height of div.ap-control-bar in CSS
 
@@ -33,6 +34,7 @@ export default (props) => {
     progress: null,
     blink: true,
     cursorHold: false,
+    hideKeystroke: props.hideKeystroke,
   });
 
   const [isPlaying, setIsPlaying] = createSignal(false);
@@ -52,7 +54,8 @@ export default (props) => {
   const terminalCols = createMemo(() => terminalSize().cols || 80);
   const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
-
+  const [isKeystrokeVisible, setisKeystrokeVisible] = createSignal(false);
+  const [keyStroke, setKeyStroke] = createSignal(null);
   const controlsVisible = () =>
     props.controls === true || (props.controls === "auto" && userActive());
 
@@ -97,18 +100,23 @@ export default (props) => {
     }
   }
 
-  core.addEventListener("init", ({ cols, rows, duration, theme, poster, markers }) => {
-    batch(() => {
-      resize({ cols, rows });
-      setDuration(duration);
-      setOriginalTheme(theme);
-      setMarkers(markers);
-      setPoster(poster);
-    });
-  });
+  core.addEventListener(
+    "init",
+    ({ cols, rows, duration, theme, poster, markers, hideKeystroke }) => {
+      batch(() => {
+        resize({ cols, rows });
+        setDuration(duration);
+        setOriginalTheme(theme);
+        setMarkers(markers);
+        setPoster(poster);
+        setisKeystrokeVisible(!hideKeystroke);
+      });
+    },
+  );
 
   core.addEventListener("play", () => {
     setOverlay(null);
+    setisKeystrokeVisible(false);
   });
 
   core.addEventListener("playing", () => {
@@ -131,6 +139,7 @@ export default (props) => {
       setIsPlaying(false);
       onStopped();
       setOverlay("loader");
+      setisKeystrokeVisible(false);
     });
   });
 
@@ -150,6 +159,7 @@ export default (props) => {
     batch(() => {
       setIsPlaying(false);
       onStopped();
+      setisKeystrokeVisible(false);
 
       if (message !== undefined) {
         setInfoMessage(message);
@@ -160,6 +170,14 @@ export default (props) => {
 
   core.addEventListener("errored", () => {
     setOverlay("error");
+  });
+
+  core.addEventListener("input", ({ data }) => {
+    if (state.hideKeystroke) {
+      return;
+    }
+    setisKeystrokeVisible(true);
+    setKeyStroke({ ms: Date.now(), value: data });
   });
 
   core.addEventListener("resize", resize);
@@ -174,6 +192,7 @@ export default (props) => {
 
   core.addEventListener("seeked", () => {
     updateTime();
+    setisKeystrokeVisible(false);
   });
 
   core.addEventListener("terminalUpdate", () => {
@@ -226,6 +245,9 @@ export default (props) => {
     resizeObserver.disconnect();
   });
 
+  const hideKeyStroke = () => {
+    setisKeystrokeVisible(false);
+  };
   const updateTerminal = () => {
     const changedLines = core.getChangedLines();
 
@@ -322,6 +344,13 @@ export default (props) => {
       } else {
         core.pause();
         setIsHelpVisible(true);
+      }
+    } else if (e.key == "k") {
+      if (state.hideKeystroke) {
+        setState("hideKeystroke", false);
+      } else {
+        setisKeystrokeVisible(false);
+        setState("hideKeystroke", true);
       }
     } else if (e.key == "ArrowLeft") {
       if (e.shiftKey) {
@@ -498,6 +527,14 @@ export default (props) => {
             onFullscreenClick={toggleFullscreen}
             onSeekClick={(pos) => core.seek(pos)}
             ref={controlBarRef}
+          />
+        </Show>
+        <Show when={isKeystrokeVisible()}>
+          <KeystrokesOverlay
+            fontFamily={props.terminalFontFamily}
+            keystroke={keyStroke()}
+            hideKeyStroke={hideKeyStroke}
+            logger={props.logger}
           />
         </Show>
         <Switch>

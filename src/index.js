@@ -43,6 +43,7 @@ function create(src, elem, opts = {}) {
     markers: opts.markers,
     pauseOnMarkers: opts.pauseOnMarkers,
     idleTimeLimit: opts.idleTimeLimit,
+    hideKeystroke: opts.hideKeystroke,
   });
 
   const metrics = measureTerminal(opts.terminalFontFamily, opts.terminalLineHeight);
@@ -59,6 +60,7 @@ function create(src, elem, opts = {}) {
     terminalFontFamily: opts.terminalFontFamily,
     terminalLineHeight: opts.terminalLineHeight,
     theme: opts.theme,
+    hideKeystroke: opts.hideKeystroke ?? false,
     ...metrics,
   };
 
