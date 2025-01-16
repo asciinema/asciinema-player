@@ -93,8 +93,6 @@ function websocket(
       buf.pushEvent(e);
     } else if (e.cols !== undefined || e.width !== undefined) {
       handleResetMessage(e.cols ?? e.width, e.rows ?? e.height, e.time, e.init ?? undefined);
-    } else if (e.status === "offline") {
-      handleOfflineMessage();
     }
   }
 
@@ -168,7 +166,8 @@ function websocket(
       buf.pushEvent([time, "m", text]);
     } else if (type === 0x04) {
       // offline (EOT)
-      handleOfflineMessage();
+      const time = view.getFloat32(1, true);
+      buf.pushEvent([time, "x", handleOfflineMessage]);
     } else {
       logger.debug(`unknown event type: ${type}`);
     }
