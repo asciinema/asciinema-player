@@ -11,7 +11,8 @@ function websocket(
   { feed, reset, resize, setState, logger },
 ) {
   logger = new PrefixedLogger(logger, "websocket: ");
-  const utfDecoder = new TextDecoder();
+  const outputDecoder = new TextDecoder();
+  const inputDecoder = new TextDecoder();
   let socket;
   let buf;
   let clock = new NullClock();
@@ -55,7 +56,7 @@ function websocket(
       } else {
         logger.info("activating raw text handler");
         initBuffer();
-        const text = utfDecoder.decode(arr);
+        const text = outputDecoder.decode(arr);
         const size = sizeFromResizeSeq(text) ?? sizeFromScriptStartMessage(text);
 
         if (size !== undefined) {
@@ -135,7 +136,7 @@ function websocket(
       let init;
 
       if (initLen > 0) {
-        init = utfDecoder.decode(new Uint8Array(buffer, offset, initLen));
+        init = outputDecoder.decode(new Uint8Array(buffer, offset, initLen));
         offset += initLen;
       }
 
@@ -144,19 +145,32 @@ function websocket(
       // 'o' - output
       const time = view.getFloat32(1, true);
       const len = view.getUint32(5, true);
-      const text = utfDecoder.decode(new Uint8Array(buffer, 9, len));
+      const text = outputDecoder.decode(new Uint8Array(buffer, 9, len));
       buf.pushEvent([time, "o", text]);
+    } else if (type === 0x69) {
+      // 'i' - input
+      const time = view.getFloat32(1, true);
+      const len = view.getUint32(5, true);
+      const text = inputDecoder.decode(new Uint8Array(buffer, 9, len));
+      buf.pushEvent([time, "i", text]);
     } else if (type === 0x72) {
       // 'r' - resize
       const time = view.getFloat32(1, true);
       const cols = view.getUint16(5, true);
       const rows = view.getUint16(7, true);
       buf.pushEvent([time, "r", `${cols}x${rows}`]);
+    } else if (type === 0x6d) {
+      // 'm' - marker
+      const time = view.getFloat32(1, true);
+      const len = view.getUint32(5, true);
+      const decoder = new TextDecoder();
+      const text = decoder.decode(new Uint8Array(buffer, 9, len));
+      buf.pushEvent([time, "m", text]);
     } else if (type === 0x04) {
       // offline (EOT)
       handleOfflineMessage();
     } else {
-      logger.debug(`unknown frame type: ${type}`);
+      logger.debug(`unknown event type: ${type}`);
     }
   }
 
@@ -182,7 +196,7 @@ function websocket(
   }
 
   function handleRawTextMessage(event) {
-    buf.pushText(utfDecoder.decode(event.data));
+    buf.pushText(outputDecoder.decode(event.data));
   }
 
   function handleResetMessage(cols, rows, time, init, theme) {
