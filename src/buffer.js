@@ -106,7 +106,7 @@ function buffer(getBufferTime, execute, setTime, logger, baseStreamTime, minFram
     },
 
     pushText(text) {
-      queue.push([elapsedWallTime(), "o", text]);
+      queue.push([elapsedWallTime() / 1000, "o", text]);
     },
 
     stop() {
