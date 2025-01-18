@@ -105,6 +105,7 @@ function websocket(
   function getAlisHandler() {
     const outputDecoder = new TextDecoder();
     const inputDecoder = new TextDecoder();
+    let firstMessage = true;
 
     return function(event) {
       const buffer = event.data;
@@ -112,74 +113,82 @@ function websocket(
       const type = view.getUint8(0);
       let offset = 1;
 
-      if (type === 0x01) {
-        // reset
-        const cols = view.getUint16(offset, true);
-        offset += 2;
-        const rows = view.getUint16(offset, true);
-        offset += 2;
-        const time = view.getFloat32(offset, true);
-        offset += 4;
-        const themeFormat = view.getUint8(offset);
-        offset += 1;
-        let theme;
-
-        if (themeFormat === 8) {
-          const len = (2 + 8) * 3;
-          theme = parseTheme(new Uint8Array(buffer, offset, len));
-          offset += len;
-        } else if (themeFormat === 16) {
-          const len = (2 + 16) * 3;
-          theme = parseTheme(new Uint8Array(buffer, offset, len));
-          offset += len;
-        } else if (themeFormat !== 0) {
-          logger.warn(`unsupported theme format (${themeFormat})`);
-          socket.close();
-          return;
+      if (!firstMessage) {
+        if (type === 0x6f) {
+          // 'o' - output
+          const time = view.getFloat32(1, true);
+          const len = view.getUint32(5, true);
+          const text = outputDecoder.decode(new Uint8Array(buffer, 9, len));
+          buf.pushEvent([time, "o", text]);
+        } else if (type === 0x69) {
+          // 'i' - input
+          const time = view.getFloat32(1, true);
+          const len = view.getUint32(5, true);
+          const text = inputDecoder.decode(new Uint8Array(buffer, 9, len));
+          buf.pushEvent([time, "i", text]);
+        } else if (type === 0x72) {
+          // 'r' - resize
+          const time = view.getFloat32(1, true);
+          const cols = view.getUint16(5, true);
+          const rows = view.getUint16(7, true);
+          buf.pushEvent([time, "r", `${cols}x${rows}`]);
+        } else if (type === 0x6d) {
+          // 'm' - marker
+          const time = view.getFloat32(1, true);
+          const len = view.getUint32(5, true);
+          const decoder = new TextDecoder();
+          const text = decoder.decode(new Uint8Array(buffer, 9, len));
+          buf.pushEvent([time, "m", text]);
+        } else if (type === 0x04) {
+          // offline (EOT)
+          const time = view.getFloat32(1, true);
+          buf.pushEvent([time, "x", handleOfflineMessage]);
+        } else {
+          logger.debug(`unknown event type: ${type}`);
         }
-
-        const initLen = view.getUint32(offset, true);
-        offset += 4;
-
-        let init;
-
-        if (initLen > 0) {
-          init = outputDecoder.decode(new Uint8Array(buffer, offset, initLen));
-          offset += initLen;
-        }
-
-        handleResetMessage(cols, rows, time, init, theme);
-      } else if (type === 0x6f) {
-        // 'o' - output
-        const time = view.getFloat32(1, true);
-        const len = view.getUint32(5, true);
-        const text = outputDecoder.decode(new Uint8Array(buffer, 9, len));
-        buf.pushEvent([time, "o", text]);
-      } else if (type === 0x69) {
-        // 'i' - input
-        const time = view.getFloat32(1, true);
-        const len = view.getUint32(5, true);
-        const text = inputDecoder.decode(new Uint8Array(buffer, 9, len));
-        buf.pushEvent([time, "i", text]);
-      } else if (type === 0x72) {
-        // 'r' - resize
-        const time = view.getFloat32(1, true);
-        const cols = view.getUint16(5, true);
-        const rows = view.getUint16(7, true);
-        buf.pushEvent([time, "r", `${cols}x${rows}`]);
-      } else if (type === 0x6d) {
-        // 'm' - marker
-        const time = view.getFloat32(1, true);
-        const len = view.getUint32(5, true);
-        const decoder = new TextDecoder();
-        const text = decoder.decode(new Uint8Array(buffer, 9, len));
-        buf.pushEvent([time, "m", text]);
-      } else if (type === 0x04) {
-        // offline (EOT)
-        const time = view.getFloat32(1, true);
-        buf.pushEvent([time, "x", handleOfflineMessage]);
       } else {
-        logger.debug(`unknown event type: ${type}`);
+        firstMessage = false;
+
+        if (type === 0x01) {
+          // 0x01 - reset
+          const cols = view.getUint16(offset, true);
+          offset += 2;
+          const rows = view.getUint16(offset, true);
+          offset += 2;
+          const time = view.getFloat32(offset, true);
+          offset += 4;
+          const themeFormat = view.getUint8(offset);
+          offset += 1;
+          let theme;
+
+          if (themeFormat === 8) {
+            const len = (2 + 8) * 3;
+            theme = parseTheme(new Uint8Array(buffer, offset, len));
+            offset += len;
+          } else if (themeFormat === 16) {
+            const len = (2 + 16) * 3;
+            theme = parseTheme(new Uint8Array(buffer, offset, len));
+            offset += len;
+          } else if (themeFormat !== 0) {
+            logger.warn(`unsupported theme format (${themeFormat})`);
+            socket.close();
+            return;
+          }
+
+          const initLen = view.getUint32(offset, true);
+          offset += 4;
+
+          let init;
+
+          if (initLen > 0) {
+            init = outputDecoder.decode(new Uint8Array(buffer, offset, initLen));
+            offset += initLen;
+          }
+
+          handleResetMessage(cols, rows, time, init, theme);
+        } else {
+          throw "reset expected";
+        }
       }
     };
   }
@@ -188,12 +197,12 @@ function websocket(
     let firstMessage = true;
 
     return function(event) {
-      if (firstMessage) {
+      if (!firstMessage) {
+        buf.pushEvent(JSON.parse(event.data));
+      } else {
         firstMessage = false;
         const header = JSON.parse(event.data);
         handleResetMessage(header.width, header.height, 0.0);
-      } else {
-        buf.pushEvent(JSON.parse(event.data));
       }
     }
   }
@@ -207,12 +216,8 @@ function websocket(
 
       if (firstMessage) {
         firstMessage = false;
-        const size = sizeFromResizeSeq(text) ?? sizeFromScriptStartMessage(text);
-
-        if (size !== undefined) {
-          const [cols, rows] = size;
-          handleResetMessage(cols, rows, 0.0);
-        }
+        const [cols, rows] = sizeFromResizeSeq(text) ?? sizeFromScriptStartMessage(text) ?? [80, 24];
+        handleResetMessage(cols, rows, 0.0);
       }
 
       buf.pushText(text);
