@@ -46,8 +46,6 @@ function executeEvent(feed, resize) {
     } else if (code === "r") {
       const [cols, rows] = data.split("x");
       resize(cols, rows);
-    } else if (code === "x" && typeof data === "function") {
-      data();
     }
   }
 }

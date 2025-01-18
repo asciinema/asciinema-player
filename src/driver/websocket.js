@@ -1,4 +1,7 @@
 import getBuffer from "../buffer";
+import { alisHandler } from "./websocket/alis";
+import { jsonHandler } from "./websocket/json";
+import { rawHandler } from "./websocket/raw";
 import { Clock, NullClock } from "../clock";
 import { PrefixedLogger } from "../logging";
 
@@ -19,45 +22,6 @@ function websocket(
   let stop = false;
   let wasOnline = false;
 
-  function initBuffer(baseStreamTime) {
-    if (buf !== undefined) buf.stop();
-
-    buf = getBuffer(
-      bufferTime,
-      feed,
-      resize,
-      (t) => clock.setTime(t),
-      baseStreamTime,
-      minFrameTime,
-      logger,
-    );
-  }
-
-  function handleResetMessage(cols, rows, time, init, theme) {
-    logger.debug(`stream reset (${cols}x${rows} @${time})`);
-    setState("playing");
-    initBuffer(time);
-    reset(cols, rows, init, theme);
-    clock = new Clock();
-    wasOnline = true;
-
-    if (typeof time === "number") {
-      clock.setTime(time);
-    }
-  }
-
-  function handleOfflineMessage() {
-    logger.info("stream offline");
-
-    if (wasOnline) {
-      setState("offline", { message: "Stream ended" });
-    } else {
-      setState("offline", { message: "Stream offline" });
-    }
-
-    clock = new NullClock();
-  }
-
   function connect() {
     socket = new WebSocket(url, ["v1.alis", "v2.asciicast", "raw"]);
     socket.binaryType = "arraybuffer";
@@ -68,14 +32,12 @@ function websocket(
       logger.info("opened");
       logger.info(`activating ${proto} protocol handler`);
 
-      initBuffer();
-
       if (proto === "v1.alis") {
-        socket.onmessage = getAlisHandler();
+        socket.onmessage = onMessage(alisHandler);
       } else if (proto === "v2.asciicast") {
-        socket.onmessage = getJsonHandler();
+        socket.onmessage = onMessage(jsonHandler);
       } else if (proto === "raw") {
-        socket.onmessage = getRawHandler();
+        socket.onmessage = onMessage(rawHandler);
       }
 
       successfulConnectionTimeout = setTimeout(() => {
@@ -84,6 +46,8 @@ function websocket(
     };
 
     socket.onclose = (event) => {
+      stopBuffer();
+
       if (stop || event.code === 1000 || event.code === 1005) {
         logger.info("closed");
         setState("ended", { message: "Stream ended" });
@@ -102,126 +66,81 @@ function websocket(
     wasOnline = false;
   }
 
-  function getAlisHandler() {
-    const outputDecoder = new TextDecoder();
-    const inputDecoder = new TextDecoder();
-    let firstMessage = true;
+  function onMessage(handler) {
+    const initialHandler = handler;
 
-    return function(event) {
-      const buffer = event.data;
-      const view = new DataView(buffer);
-      const type = view.getUint8(0);
-      let offset = 1;
+    return function (event) {
+      const result = handler(event.data);
 
-      if (!firstMessage) {
-        if (type === 0x6f) {
-          // 'o' - output
-          const time = view.getFloat32(1, true);
-          const len = view.getUint32(5, true);
-          const text = outputDecoder.decode(new Uint8Array(buffer, 9, len));
-          buf.pushEvent([time, "o", text]);
-        } else if (type === 0x69) {
-          // 'i' - input
-          const time = view.getFloat32(1, true);
-          const len = view.getUint32(5, true);
-          const text = inputDecoder.decode(new Uint8Array(buffer, 9, len));
-          buf.pushEvent([time, "i", text]);
-        } else if (type === 0x72) {
-          // 'r' - resize
-          const time = view.getFloat32(1, true);
-          const cols = view.getUint16(5, true);
-          const rows = view.getUint16(7, true);
-          buf.pushEvent([time, "r", `${cols}x${rows}`]);
-        } else if (type === 0x6d) {
-          // 'm' - marker
-          const time = view.getFloat32(1, true);
-          const len = view.getUint32(5, true);
-          const decoder = new TextDecoder();
-          const text = decoder.decode(new Uint8Array(buffer, 9, len));
-          buf.pushEvent([time, "m", text]);
-        } else if (type === 0x04) {
-          // offline (EOT)
-          const time = view.getFloat32(1, true);
-          buf.pushEvent([time, "x", handleOfflineMessage]);
-        } else {
-          logger.debug(`unknown event type: ${type}`);
+      if (buf) {
+        if (Array.isArray(result)) {
+          buf.pushEvent(result);
+        } else if (typeof result === "string") {
+          buf.pushText(result);
+        } else if (result === false) {
+          stopBuffer();
+          handleOfflineMessage();
+          handler = initialHandler;
+        } else if (result !== undefined) {
+          throw `unexpected value from protocol handler: ${result}`;
         }
       } else {
-        firstMessage = false;
-
-        if (type === 0x01) {
-          // 0x01 - reset
-          const cols = view.getUint16(offset, true);
-          offset += 2;
-          const rows = view.getUint16(offset, true);
-          offset += 2;
-          const time = view.getFloat32(offset, true);
-          offset += 4;
-          const themeFormat = view.getUint8(offset);
-          offset += 1;
-          let theme;
-
-          if (themeFormat === 8) {
-            const len = (2 + 8) * 3;
-            theme = parseTheme(new Uint8Array(buffer, offset, len));
-            offset += len;
-          } else if (themeFormat === 16) {
-            const len = (2 + 16) * 3;
-            theme = parseTheme(new Uint8Array(buffer, offset, len));
-            offset += len;
-          } else if (themeFormat !== 0) {
-            logger.warn(`unsupported theme format (${themeFormat})`);
-            socket.close();
-            return;
-          }
-
-          const initLen = view.getUint32(offset, true);
-          offset += 4;
-
-          let init;
-
-          if (initLen > 0) {
-            init = outputDecoder.decode(new Uint8Array(buffer, offset, initLen));
-            offset += initLen;
-          }
-
-          handleResetMessage(cols, rows, time, init, theme);
-        } else {
-          throw "reset expected";
+        if (typeof result === "object" && !Array.isArray(result)) {
+          const { cols, rows, time, init, theme } = result.meta;
+          initStream(cols, rows, time, init, theme);
+          handler = result.handler;
+        } else if (result === false) {
+          handleOfflineMessage();
+          handler = initialHandler;
+        } else if (result !== undefined) {
+          throw `unexpected value from protocol handler: ${result}`;
         }
       }
     };
   }
 
-  function getJsonHandler() {
-    let firstMessage = true;
+  function initStream(cols, rows, time, init, theme) {
+    logger.debug(`stream init (${cols}x${rows} @${time})`);
+    setState("playing");
+    initBuffer(time);
+    reset(cols, rows, init, theme);
+    clock = new Clock();
+    wasOnline = true;
 
-    return function(event) {
-      if (!firstMessage) {
-        buf.pushEvent(JSON.parse(event.data));
-      } else {
-        firstMessage = false;
-        const header = JSON.parse(event.data);
-        handleResetMessage(header.width, header.height, 0.0);
-      }
+    if (typeof time === "number") {
+      clock.setTime(time);
     }
   }
 
-  function getRawHandler() {
-    const outputDecoder = new TextDecoder();
-    let firstMessage = true;
+  function initBuffer(baseStreamTime) {
+    stopBuffer();
 
-    return function(event) {
-      const text = outputDecoder.decode(event.data, { stream: true });
+    buf = getBuffer(
+      bufferTime,
+      feed,
+      resize,
+      (t) => clock.setTime(t),
+      baseStreamTime,
+      minFrameTime,
+      logger,
+    );
+  }
 
-      if (firstMessage) {
-        firstMessage = false;
-        const [cols, rows] = sizeFromResizeSeq(text) ?? sizeFromScriptStartMessage(text) ?? [80, 24];
-        handleResetMessage(cols, rows, 0.0);
-      }
+  function handleOfflineMessage() {
+    logger.info("stream offline");
 
-      buf.pushText(text);
-    };
+    if (wasOnline) {
+      setState("offline", { message: "Stream ended" });
+    } else {
+      setState("offline", { message: "Stream offline" });
+    }
+
+    clock = new NullClock();
+  }
+
+  function stopBuffer() {
+    if (buf) buf.stop();
+    buf = null;
   }
 
   return {
@@ -231,49 +150,12 @@ function websocket(
 
     stop: () => {
       stop = true;
-      if (buf !== undefined) buf.stop();
+      stopBuffer();
       if (socket !== undefined) socket.close();
     },
 
     getCurrentTime: () => clock.getTime(),
   };
-}
-
-function parseTheme(arr) {
-  const colorCount = arr.length / 3;
-  const foreground = hexColor(arr[0], arr[1], arr[2]);
-  const background = hexColor(arr[3], arr[4], arr[5]);
-  const palette = [];
-
-  for (let i = 2; i < colorCount; i++) {
-    palette.push(hexColor(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]));
-  }
-
-  return { foreground, background, palette };
-}
-
-function hexColor(r, g, b) {
-  return `#${byteToHex(r)}${byteToHex(g)}${byteToHex(b)}`;
-}
-
-function byteToHex(value) {
-  return value.toString(16).padStart(2, "0");
-}
-
-function sizeFromResizeSeq(text) {
-  const match = text.match(/\x1b\[8;(\d+);(\d+)t/);
-
-  if (match !== null) {
-    return [parseInt(match[2], 10), parseInt(match[1], 10)];
-  }
-}
-
-function sizeFromScriptStartMessage(text) {
-  const match = text.match(/\[.*COLUMNS="(\d{1,3})" LINES="(\d{1,3})".*\]/);
-
-  if (match !== null) {
-    return [parseInt(match[1], 10), parseInt(match[2], 10)];
-  }
 }
 
 export default websocket;
