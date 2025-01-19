@@ -73,7 +73,7 @@ function alisHandler(buffer) {
         const cols = view.getUint16(5, true);
         const rows = view.getUint16(7, true);
 
-        return [time, "r", `${cols}x${rows}`];
+        return [time, "r", { cols, rows }];
       } else if (type === 0x6d) {
         // 'm' - marker
         const time = view.getFloat32(1, true);

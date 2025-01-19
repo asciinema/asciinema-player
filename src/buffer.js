@@ -44,8 +44,7 @@ function executeEvent(feed, resize) {
     if (code === "o") {
       feed(data);
     } else if (code === "r") {
-      const [cols, rows] = data.split("x");
-      resize(cols, rows);
+      resize(data.cols, data.rows);
     }
   }
 }
