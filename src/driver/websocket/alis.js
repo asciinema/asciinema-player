@@ -1,94 +1,115 @@
-function alisHandler(buffer) {
+function alisHandler(logger) {
   const outputDecoder = new TextDecoder();
   const inputDecoder = new TextDecoder();
-  const arr = new Uint8Array(buffer);
+  let handler = parseMagicString;
 
-  if (!(arr[0] == 0x41 && arr[1] == 0x4c && arr[2] == 0x69 && arr[3] == 0x53 && arr[4] === 1)) {
-    // not 'ALiS\x01'
-    throw "not an ALiS v1 live stream";
+  function parseMagicString(buffer) {
+    const text = (new TextDecoder()).decode(buffer);
+
+    if (text === "ALiS\x01") {
+      handler = parseInitFrame;
+    } else {
+      throw "not an ALiS v1 live stream";
+    }
   }
 
-  const view = new DataView(buffer);
-  let offset = 5;
-  const cols = view.getUint16(offset, true);
-  offset += 2;
-  const rows = view.getUint16(offset, true);
-  offset += 2;
-  const time = view.getFloat32(offset, true);
-  offset += 4;
-  const themeFormat = view.getUint8(offset);
-  offset += 1;
-  let theme;
+  function parseInitFrame(buffer) {
+    const view = new DataView(buffer);
+    const type = view.getUint8(0);
 
-  if (themeFormat === 8) {
-    const len = (2 + 8) * 3;
-    theme = parseTheme(new Uint8Array(buffer, offset, len));
-    offset += len;
-  } else if (themeFormat === 16) {
-    const len = (2 + 16) * 3;
-    theme = parseTheme(new Uint8Array(buffer, offset, len));
-    offset += len;
-  } else if (themeFormat !== 0) {
-    logger.warn(`unsupported theme format (${themeFormat})`);
-    socket.close();
-    return;
-  }
+    if (type !== 0x01) throw `expected init (0x01) frame, got ${type}`;
 
-  const initLen = view.getUint32(offset, true);
-  offset += 4;
+    let offset = 1;
+    const cols = view.getUint16(offset, true);
+    offset += 2;
+    const rows = view.getUint16(offset, true);
+    offset += 2;
+    const time = view.getFloat32(offset, true);
+    offset += 4;
+    const themeFormat = view.getUint8(offset);
+    offset += 1;
+    let theme;
 
-  let init;
+    if (themeFormat === 8) {
+      const len = (2 + 8) * 3;
+      theme = parseTheme(new Uint8Array(buffer, offset, len));
+      offset += len;
+    } else if (themeFormat === 16) {
+      const len = (2 + 16) * 3;
+      theme = parseTheme(new Uint8Array(buffer, offset, len));
+      offset += len;
+    } else if (themeFormat !== 0) {
+      logger.warn(`alis: unsupported theme format (${themeFormat})`);
+      socket.close();
+      return;
+    }
 
-  if (initLen > 0) {
-    init = outputDecoder.decode(new Uint8Array(buffer, offset, initLen));
-    offset += initLen;
-  }
+    const initLen = view.getUint32(offset, true);
+    offset += 4;
 
-  const meta = { cols, rows, time, init, theme };
+    let init;
 
-  return {
-    meta,
+    if (initLen > 0) {
+      init = outputDecoder.decode(new Uint8Array(buffer, offset, initLen));
+      offset += initLen;
+    }
 
-    handler: function(buffer) {
-      const view = new DataView(buffer);
-      const type = view.getUint8(0);
+    handler = parseEventFrame;
 
-      if (type === 0x6f) {
-        // 'o' - output
-        const time = view.getFloat32(1, true);
-        const len = view.getUint32(5, true);
-        const text = outputDecoder.decode(new Uint8Array(buffer, 9, len));
-
-        return [time, "o", text];
-      } else if (type === 0x69) {
-        // 'i' - input
-        const time = view.getFloat32(1, true);
-        const len = view.getUint32(5, true);
-        const text = inputDecoder.decode(new Uint8Array(buffer, 9, len));
-
-        return [time, "i", text];
-      } else if (type === 0x72) {
-        // 'r' - resize
-        const time = view.getFloat32(1, true);
-        const cols = view.getUint16(5, true);
-        const rows = view.getUint16(7, true);
-
-        return [time, "r", { cols, rows }];
-      } else if (type === 0x6d) {
-        // 'm' - marker
-        const time = view.getFloat32(1, true);
-        const len = view.getUint32(5, true);
-        const decoder = new TextDecoder();
-        const text = decoder.decode(new Uint8Array(buffer, 9, len));
-
-        return [time, "m", text];
-      } else if (type === 0x04) {
-        // offline (EOT)
-        return false; // go offline
-      } else {
-        logger.debug(`unknown event type: ${type}`);
+    return {
+      time,
+      term: {
+        size: { cols, rows },
+        theme,
+        init
       }
-    },
+    }
+  }
+
+  function parseEventFrame(buffer) {
+    const view = new DataView(buffer);
+    const type = view.getUint8(0);
+
+    if (type === 0x6f) {
+      // 'o' - output
+      const time = view.getFloat32(1, true);
+      const len = view.getUint32(5, true);
+      const text = outputDecoder.decode(new Uint8Array(buffer, 9, len));
+
+      return [time, "o", text];
+    } else if (type === 0x69) {
+      // 'i' - input
+      const time = view.getFloat32(1, true);
+      const len = view.getUint32(5, true);
+      const text = inputDecoder.decode(new Uint8Array(buffer, 9, len));
+
+      return [time, "i", text];
+    } else if (type === 0x72) {
+      // 'r' - resize
+      const time = view.getFloat32(1, true);
+      const cols = view.getUint16(5, true);
+      const rows = view.getUint16(7, true);
+
+      return [time, "r", { cols, rows }];
+    } else if (type === 0x6d) {
+      // 'm' - marker
+      const time = view.getFloat32(1, true);
+      const len = view.getUint32(5, true);
+      const decoder = new TextDecoder();
+      const text = decoder.decode(new Uint8Array(buffer, 9, len));
+
+      return [time, "m", text];
+    } else if (type === 0x04) {
+      // EOT
+      handler = parseInitFrame;
+      return false;
+    } else {
+      logger.debug(`alis: unknown frame type: ${type}`);
+    }
+  }
+
+  return function(buffer) {
+    return handler(buffer);
   };
 }
 

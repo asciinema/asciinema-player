@@ -1,26 +1,40 @@
-function jsonHandler(buffer) {
-  const header = JSON.parse(buffer);
+function jsonHandler() {
+  let parse = parseHeader;
 
-  if (header.version !== 2) {
-    throw "not an asciicast v2 stream";
+  function parseHeader(buffer) {
+    const header = JSON.parse(buffer);
+
+    if (header.version !== 2) {
+      throw "not an asciicast v2 stream";
+    }
+
+    parse = parseEvent;
+
+    return {
+      time: 0.0,
+      term: {
+        size: {
+          cols: header.width,
+          rows: header.height
+        }
+      }
+    };
   }
 
-  const meta = { cols: header.width, rows: header.height, time: 0.0 };
+  function parseEvent(buffer) {
+    const event = JSON.parse(buffer);
 
-  return {
-    meta,
-
-    handler: function(buffer) {
-      const event = JSON.parse(buffer);
-
-      if (event[1] === "r") {
-        const [cols, rows] = event[2].split("x");
-        return [event[0], "r", { cols, rows }];
-      } else {
-        return event;
-      }
+    if (event[1] === "r") {
+      const [cols, rows] = event[2].split("x");
+      return [event[0], "r", { cols, rows }];
+    } else {
+      return event;
     }
   }
+
+  return function(buffer) {
+    return parse(buffer);
+  };
 }
 
 export { jsonHandler };

@@ -21,6 +21,7 @@ function websocket(
   let successfulConnectionTimeout;
   let stop = false;
   let wasOnline = false;
+  let initTimeout;
 
   function connect() {
     socket = new WebSocket(url, ["v1.alis", "v2.asciicast", "raw"]);
@@ -33,11 +34,11 @@ function websocket(
       logger.info(`activating ${proto} protocol handler`);
 
       if (proto === "v1.alis") {
-        socket.onmessage = onMessage(alisHandler);
+        socket.onmessage = onMessage(alisHandler(logger));
       } else if (proto === "v2.asciicast") {
-        socket.onmessage = onMessage(jsonHandler);
+        socket.onmessage = onMessage(jsonHandler());
       } else if (proto === "raw") {
-        socket.onmessage = onMessage(rawHandler);
+        socket.onmessage = onMessage(rawHandler());
       }
 
       successfulConnectionTimeout = setTimeout(() => {
@@ -46,6 +47,7 @@ function websocket(
     };
 
     socket.onclose = (event) => {
+      clearTimeout(initTimeout);
       stopBuffer();
 
       if (stop || event.code === 1000 || event.code === 1005) {
@@ -67,7 +69,7 @@ function websocket(
   }
 
   function onMessage(handler) {
-    const initialHandler = handler;
+    initTimeout = setTimeout(enterOfflineMode, 5000);
 
     return function (event) {
       const result = handler(event.data);
@@ -78,31 +80,34 @@ function websocket(
         } else if (typeof result === "string") {
           buf.pushText(result);
         } else if (result === false) {
-          stopBuffer();
-          handleOfflineMessage();
-          handler = initialHandler;
+          // EOT
+          enterOfflineMode();
         } else if (result !== undefined) {
           throw `unexpected value from protocol handler: ${result}`;
         }
       } else {
         if (typeof result === "object" && !Array.isArray(result)) {
-          const { cols, rows, time, init, theme } = result.meta;
-          initStream(cols, rows, time, init, theme);
-          handler = result.handler;
-        } else if (result === false) {
-          handleOfflineMessage();
-          handler = initialHandler;
-        } else if (result !== undefined) {
+          const { time, term } = result;
+          const { size, init, theme } = term;
+          const { cols, rows } = size;
+          enterOnlineMode(cols, rows, time, init, theme);
+          clearTimeout(initTimeout);
+        } else if (result === undefined) {
+          clearTimeout(initTimeout);
+          initTimeout = setTimeout(enterOfflineMode, 1000);
+        } else {
+          clearTimeout(initTimeout);
           throw `unexpected value from protocol handler: ${result}`;
         }
       }
     };
   }
 
-  function initStream(cols, rows, time, init, theme) {
+  function enterOnlineMode(cols, rows, time, init, theme) {
     logger.debug(`stream init (${cols}x${rows} @${time})`);
     setState("playing");
-    initBuffer(time);
+    stopBuffer();
+    buf = getBuffer(bufferTime, feed, resize, (t) => clock.setTime(t), time, minFrameTime, logger);
     reset(cols, rows, init, theme);
     clock = new Clock();
     wasOnline = true;
@@ -112,26 +117,14 @@ function websocket(
     }
   }
 
-  function initBuffer(baseStreamTime) {
+  function enterOfflineMode() {
     stopBuffer();
 
-    buf = getBuffer(
-      bufferTime,
-      feed,
-      resize,
-      (t) => clock.setTime(t),
-      baseStreamTime,
-      minFrameTime,
-      logger,
-    );
-  }
-
-  function handleOfflineMessage() {
-    logger.info("stream offline");
-
     if (wasOnline) {
+      logger.info("stream ended");
       setState("offline", { message: "Stream ended" });
     } else {
+      logger.info("stream offline");
       setState("offline", { message: "Stream offline" });
     }
 

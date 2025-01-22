@@ -1,16 +1,29 @@
-function rawHandler(buffer) {
+function rawHandler() {
   const outputDecoder = new TextDecoder();
-  const text = outputDecoder.decode(buffer, { stream: true });
-  const [cols, rows] = sizeFromResizeSeq(text) ?? sizeFromScriptStartMessage(text) ?? [80, 24];
-  const meta = { cols, rows, time: 0.0, init: text };
+  let parse = parseSize;
 
-  return {
-    meta,
+  function parseSize(buffer) {
+    const text = outputDecoder.decode(buffer, { stream: true });
+    const [cols, rows] = sizeFromResizeSeq(text) ?? sizeFromScriptStartMessage(text) ?? [80, 24];
 
-    handler: function(buffer) {
-      return outputDecoder.decode(buffer, { stream: true });
-    },
+    parse = parseOutput;
+
+    return {
+      time: 0.0, 
+      term: {
+        size: { cols, rows },
+        init: text
+      }
+    };
   }
+
+  function parseOutput(buffer) {
+    return outputDecoder.decode(buffer, { stream: true });
+  }
+
+  return function(buffer) {
+    return parse(buffer);
+  };
 }
 
 function sizeFromResizeSeq(text) {
