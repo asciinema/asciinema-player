@@ -20,12 +20,12 @@ function alisHandler(logger) {
     if (type !== 0x01) throw `expected init (0x01) frame, got ${type}`;
 
     let offset = 1;
+    const time = Number(view.getBigUint64(offset, true)) / 1000000;
+    offset += 8;
     const cols = view.getUint16(offset, true);
     offset += 2;
     const rows = view.getUint16(offset, true);
     offset += 2;
-    const time = view.getFloat32(offset, true);
-    offset += 4;
     const themeFormat = view.getUint8(offset);
     offset += 1;
     let theme;
@@ -72,31 +72,31 @@ function alisHandler(logger) {
 
     if (type === 0x6f) {
       // 'o' - output
-      const time = view.getFloat32(1, true);
-      const len = view.getUint32(5, true);
-      const text = outputDecoder.decode(new Uint8Array(buffer, 9, len));
+      const time = Number(view.getBigUint64(1, true)) / 1000000;
+      const len = view.getUint32(9, true);
+      const text = outputDecoder.decode(new Uint8Array(buffer, 13, len));
 
       return [time, "o", text];
     } else if (type === 0x69) {
       // 'i' - input
-      const time = view.getFloat32(1, true);
-      const len = view.getUint32(5, true);
-      const text = inputDecoder.decode(new Uint8Array(buffer, 9, len));
+      const time = Number(view.getBigUint64(1, true)) / 1000000;
+      const len = view.getUint32(9, true);
+      const text = inputDecoder.decode(new Uint8Array(buffer, 13, len));
 
       return [time, "i", text];
     } else if (type === 0x72) {
       // 'r' - resize
-      const time = view.getFloat32(1, true);
-      const cols = view.getUint16(5, true);
-      const rows = view.getUint16(7, true);
+      const time = Number(view.getBigUint64(1, true)) / 1000000;
+      const cols = view.getUint16(9, true);
+      const rows = view.getUint16(11, true);
 
       return [time, "r", { cols, rows }];
     } else if (type === 0x6d) {
       // 'm' - marker
-      const time = view.getFloat32(1, true);
-      const len = view.getUint32(5, true);
+      const time = Number(view.getBigUint64(1, true)) / 1000000;
+      const len = view.getUint32(9, true);
       const decoder = new TextDecoder();
-      const text = decoder.decode(new Uint8Array(buffer, 9, len));
+      const text = decoder.decode(new Uint8Array(buffer, 13, len));
 
       return [time, "m", text];
     } else if (type === 0x04) {
