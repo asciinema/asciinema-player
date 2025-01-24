@@ -1,7 +1,10 @@
+const ONE_SEC_IN_USEC = 1000000;
+
 function alisHandler(logger) {
   const outputDecoder = new TextDecoder();
   const inputDecoder = new TextDecoder();
   let handler = parseMagicString;
+  let lastEventTime;
 
   function parseMagicString(buffer) {
     const text = (new TextDecoder()).decode(buffer);
@@ -14,44 +17,39 @@ function alisHandler(logger) {
   }
 
   function parseInitFrame(buffer) {
-    const view = new DataView(buffer);
-    const type = view.getUint8(0);
+    const view = new DataViewReader(new DataView(buffer));
+    const type = view.getUint8();
 
     if (type !== 0x01) throw `expected init (0x01) frame, got ${type}`;
 
-    let offset = 1;
-    const time = Number(view.getBigUint64(offset, true)) / 1000000;
-    offset += 8;
-    const cols = view.getUint16(offset, true);
-    offset += 2;
-    const rows = view.getUint16(offset, true);
-    offset += 2;
-    const themeFormat = view.getUint8(offset);
-    offset += 1;
+    let time = decodeRelTime(view);
+    lastEventTime = time;
+    time = time / ONE_SEC_IN_USEC;
+    const cols = view.getUint16();
+    const rows = view.getUint16();
+    const themeFormat = view.getUint8();
     let theme;
 
     if (themeFormat === 8) {
       const len = (2 + 8) * 3;
-      theme = parseTheme(new Uint8Array(buffer, offset, len));
-      offset += len;
+      theme = parseTheme(new Uint8Array(buffer, view.offset, len));
+      view.forward(len);
     } else if (themeFormat === 16) {
       const len = (2 + 16) * 3;
-      theme = parseTheme(new Uint8Array(buffer, offset, len));
-      offset += len;
+      theme = parseTheme(new Uint8Array(buffer, view.offset, len));
+      view.forward(len);
     } else if (themeFormat !== 0) {
       logger.warn(`alis: unsupported theme format (${themeFormat})`);
       socket.close();
       return;
     }
 
-    const initLen = view.getUint32(offset, true);
-    offset += 4;
+    const initLen = view.getUint32();
 
     let init;
 
     if (initLen > 0) {
-      init = outputDecoder.decode(new Uint8Array(buffer, offset, initLen));
-      offset += initLen;
+      init = outputDecoder.decode(new Uint8Array(buffer, view.offset, initLen));
     }
 
     handler = parseEventFrame;
@@ -67,38 +65,42 @@ function alisHandler(logger) {
   }
 
   function parseEventFrame(buffer) {
-    const view = new DataView(buffer);
-    const type = view.getUint8(0);
+    const view = new DataViewReader(new DataView(buffer));
+    const type = view.getUint8();
 
     if (type === 0x6f) {
       // 'o' - output
-      const time = Number(view.getBigUint64(1, true)) / 1000000;
-      const len = view.getUint32(9, true);
-      const text = outputDecoder.decode(new Uint8Array(buffer, 13, len));
+      const relTime = decodeRelTime(view);
+      lastEventTime += relTime;
+      const len = view.getUint32();
+      const text = outputDecoder.decode(new Uint8Array(buffer, view.offset, len));
 
-      return [time, "o", text];
+      return [lastEventTime / ONE_SEC_IN_USEC, "o", text];
     } else if (type === 0x69) {
       // 'i' - input
-      const time = Number(view.getBigUint64(1, true)) / 1000000;
-      const len = view.getUint32(9, true);
-      const text = inputDecoder.decode(new Uint8Array(buffer, 13, len));
+      const relTime = decodeRelTime(view);
+      lastEventTime += relTime;
+      const len = view.getUint32();
+      const text = inputDecoder.decode(new Uint8Array(buffer, view.offset, len));
 
-      return [time, "i", text];
+      return [lastEventTime / ONE_SEC_IN_USEC, "i", text];
     } else if (type === 0x72) {
       // 'r' - resize
-      const time = Number(view.getBigUint64(1, true)) / 1000000;
-      const cols = view.getUint16(9, true);
-      const rows = view.getUint16(11, true);
+      const relTime = decodeRelTime(view);
+      lastEventTime += relTime;
+      const cols = view.getUint16();
+      const rows = view.getUint16();
 
-      return [time, "r", { cols, rows }];
+      return [lastEventTime / ONE_SEC_IN_USEC, "r", { cols, rows }];
     } else if (type === 0x6d) {
       // 'm' - marker
-      const time = Number(view.getBigUint64(1, true)) / 1000000;
-      const len = view.getUint32(9, true);
+      const relTime = decodeRelTime(view);
+      lastEventTime += relTime;
+      const len = view.getUint32();
       const decoder = new TextDecoder();
-      const text = decoder.decode(new Uint8Array(buffer, 13, len));
+      const text = decoder.decode(new Uint8Array(buffer, view.offset, len));
 
-      return [time, "m", text];
+      return [lastEventTime / ONE_SEC_IN_USEC, "m", text];
     } else if (type === 0x04) {
       // EOT
       handler = parseInitFrame;
@@ -111,6 +113,22 @@ function alisHandler(logger) {
   return function(buffer) {
     return handler(buffer);
   };
+}
+
+function decodeRelTime(view) {
+  const size = view.getUint8();
+
+  if (size === 1) {
+    return view.getUint8();
+  } else if (size === 2) {
+    return view.getUint16();
+  } else if (size === 4) {
+    return view.getUint32();
+  } else if (size === 8) {
+    return Number(view.getBigUint64());
+  } else {
+    throw `alis: invalid relative time size: ${size}`;
+  }
 }
 
 function parseTheme(arr) {
@@ -132,6 +150,45 @@ function hexColor(r, g, b) {
 
 function byteToHex(value) {
   return value.toString(16).padStart(2, "0");
+}
+
+class DataViewReader {
+  constructor(inner, offset = 0) {
+    this.inner = inner;
+    this.offset = offset;
+  }
+
+  forward(delta) {
+    this.offset += delta;
+  }
+
+  getUint8() {
+    const value = this.inner.getUint8(this.offset);
+    this.offset += 1;
+
+    return value;
+  }
+
+  getUint16() {
+    const value = this.inner.getUint16(this.offset, true);
+    this.offset += 2;
+
+    return value;
+  }
+
+  getUint32() {
+    const value = this.inner.getUint32(this.offset, true);
+    this.offset += 4;
+
+    return value;
+  }
+
+  getBigUint64() {
+    const value = this.inner.getBigUint64(this.offset, true);
+    this.offset += 8;
+
+    return value;
+  }
 }
 
 export { alisHandler };
