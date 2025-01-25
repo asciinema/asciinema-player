@@ -34,6 +34,9 @@ export default (props) => {
               <kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> - rewind / fast-forward by 10%
             </li>
             <li>
+              <kbd>k</kbd> - toggle keystroke popup
+            </li>
+            <li>
               <kbd>[</kbd> / <kbd>]</kbd> - jump to the previous / next marker
             </li>
             <li>
