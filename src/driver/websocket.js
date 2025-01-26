@@ -104,7 +104,7 @@ function websocket(
   }
 
   function enterOnlineMode(cols, rows, time, init, theme) {
-    logger.debug(`stream init (${cols}x${rows} @${time})`);
+    logger.info(`stream init (${cols}x${rows} @${time})`);
     setState("playing");
     stopBuffer();
     buf = getBuffer(bufferTime, feed, resize, (t) => clock.setTime(t), time, minFrameTime, logger);
