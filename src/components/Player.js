@@ -227,16 +227,19 @@ export default (props) => {
   });
 
   const updateTerminal = () => {
-    const changedLines = core.getChangedLines();
+    const changes = core.getChanges();
 
     batch(() => {
-      if (changedLines) {
-        changedLines.forEach((line, i) => {
+      if (changes.lines !== undefined) {
+        changes.lines.forEach((line, i) => {
           setState("lines", i, reconcile(line));
         });
       }
 
-      setState("cursor", reconcile(core.getCursor()));
+      if (changes.cursor !== undefined) {
+        setState("cursor", reconcile(changes.cursor));
+      }
+
       setState("cursorHold", true);
     });
 

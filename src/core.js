@@ -358,7 +358,9 @@ class Core {
     return this.commandQueue;
   }
 
-  getChangedLines() {
+  getChanges() {
+    const changes = {};
+
     if (this.changedLines.size > 0) {
       const lines = new Map();
       const rows = this.vt.rows;
@@ -371,16 +373,15 @@ class Core {
 
       this.changedLines.clear();
 
-      return lines;
+      changes.lines = lines;
     }
-  }
 
-  getCursor() {
     if (this.cursor === undefined && this.vt) {
       this.cursor = this.vt.getCursor() ?? false;
+      changes.cursor = this.cursor;
     }
 
-    return this.cursor;
+    return changes;
   }
 
   getCurrentTime() {
