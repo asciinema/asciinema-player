@@ -1,6 +1,15 @@
 import loadVt from "./vt/Cargo.toml";
 import { parseNpt } from "./util";
 import { Clock, NullClock } from "./clock";
+import recording from "./driver/recording";
+import clock from "./driver/clock";
+import random from "./driver/random";
+import benchmark from "./driver/benchmark";
+import websocket from "./driver/websocket";
+import eventsource from "./driver/eventsource";
+import parseAsciicast from "./parser/asciicast";
+import parseTypescript from "./parser/typescript";
+import parseTtyrec from "./parser/ttyrec";
 const vt = loadVt(); // trigger async loading of wasm
 
 class State {
@@ -166,12 +175,12 @@ class ErroredState extends State {
 class Core {
   // public
 
-  constructor(driverFn, opts) {
+  constructor(src, opts) {
+    this.src = src;
     this.logger = opts.logger;
     this.state = new UninitializedState(this);
     this.stateName = "uninitialized";
     this.driver = null;
-    this.driverFn = driverFn;
     this.changedLines = new Set();
     this.cursor = undefined;
     this.duration = undefined;
@@ -238,7 +247,7 @@ class Core {
 
     const posterTime = this.poster.type === "npt" ? this.poster.value : undefined;
 
-    this.driver = this.driverFn(
+    this.driver = getDriver(this.src)(
       {
         feed,
         onInput,
@@ -548,6 +557,64 @@ class Core {
     if (Array.isArray(markers)) {
       return markers.map((m) => (typeof m === "number" ? [m, ""] : m));
     }
+  }
+}
+
+const DRIVERS = new Map([
+  ["benchmark", benchmark],
+  ["clock", clock],
+  ["eventsource", eventsource],
+  ["random", random],
+  ["recording", recording],
+  ["websocket", websocket],
+]);
+
+const PARSERS = new Map([
+  ["asciicast", parseAsciicast],
+  ["typescript", parseTypescript],
+  ["ttyrec", parseTtyrec],
+]);
+
+function getDriver(src) {
+  if (typeof src === "function") return src;
+
+  if (typeof src === "string") {
+    if (src.substring(0, 5) == "ws://" || src.substring(0, 6) == "wss://") {
+      src = { driver: "websocket", url: src };
+    } else if (src.substring(0, 6) == "clock:") {
+      src = { driver: "clock" };
+    } else if (src.substring(0, 7) == "random:") {
+      src = { driver: "random" };
+    } else if (src.substring(0, 10) == "benchmark:") {
+      src = { driver: "benchmark", url: src.substring(10) };
+    } else {
+      src = { driver: "recording", url: src };
+    }
+  }
+
+  if (src.driver === undefined) {
+    src.driver = "recording";
+  }
+
+  if (src.driver == "recording") {
+    if (src.parser === undefined) {
+      src.parser = "asciicast";
+    }
+
+    if (typeof src.parser === "string") {
+      if (PARSERS.has(src.parser)) {
+        src.parser = PARSERS.get(src.parser);
+      } else {
+        throw `unknown parser: ${src.parser}`;
+      }
+    }
+  }
+
+  if (DRIVERS.has(src.driver)) {
+    const driver = DRIVERS.get(src.driver);
+    return (callbacks, opts) => driver(src, callbacks, opts);
+  } else {
+    throw `unsupported driver: ${JSON.stringify(src)}`;
   }
 }
 
