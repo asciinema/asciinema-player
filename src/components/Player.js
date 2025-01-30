@@ -146,6 +146,8 @@ export default (props) => {
     });
   });
 
+  let renderCount = 0;
+
   core.addEventListener("ended", ({ message }) => {
     batch(() => {
       setIsPlaying(false);
@@ -156,6 +158,8 @@ export default (props) => {
         setOverlay("info");
       }
     });
+
+    logger.debug(`view: render count: ${renderCount}`);
   });
 
   core.addEventListener("errored", () => {
@@ -226,7 +230,7 @@ export default (props) => {
     resizeObserver.disconnect();
   });
 
-  const updateTerminal = () => {
+  const updateTerminal = async () => {
     const changes = core.getChanges();
 
     batch(() => {
@@ -244,6 +248,7 @@ export default (props) => {
     });
 
     frameRequestId = undefined;
+    renderCount += 1;
   };
 
   const terminalElementSize = createMemo(() => {
