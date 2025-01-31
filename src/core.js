@@ -38,16 +38,16 @@ class State {
 class UninitializedState extends State {
   async init() {
     try {
-      await this.core.initializeDriver();
-      return this.core.setState("idle");
+      await this.core._initializeDriver();
+      return this.core._setState("idle");
     } catch (e) {
-      this.core.setState("errored");
+      this.core._setState("errored");
       throw e;
     }
   }
 
   async play() {
-    this.core.dispatchEvent("play");
+    this.core._dispatchEvent("play");
     const idleState = await this.init();
     await idleState.doPlay();
   }
@@ -71,15 +71,15 @@ class UninitializedState extends State {
 
 class Idle extends State {
   onEnter({ reason, message }) {
-    this.core.dispatchEvent("idle", { message });
+    this.core._dispatchEvent("idle", { message });
 
     if (reason === "paused") {
-      this.core.dispatchEvent("pause");
+      this.core._dispatchEvent("pause");
     }
   }
 
   async play() {
-    this.core.dispatchEvent("play");
+    this.core._dispatchEvent("play");
     await this.doPlay();
   }
 
@@ -87,9 +87,9 @@ class Idle extends State {
     const stop = await this.driver.play();
 
     if (stop === true) {
-      this.core.setState("playing");
+      this.core._setState("playing");
     } else if (typeof stop === "function") {
-      this.core.setState("playing");
+      this.core._setState("playing");
       this.driver.stop = stop;
     }
   }
@@ -109,12 +109,12 @@ class Idle extends State {
 
 class PlayingState extends State {
   onEnter() {
-    this.core.dispatchEvent("playing");
+    this.core._dispatchEvent("playing");
   }
 
   pause() {
     if (this.driver.pause() === true) {
-      this.core.setState("idle", { reason: "paused" });
+      this.core._setState("idle", { reason: "paused" });
     }
   }
 
@@ -129,26 +129,26 @@ class PlayingState extends State {
 
 class LoadingState extends State {
   onEnter() {
-    this.core.dispatchEvent("loading");
+    this.core._dispatchEvent("loading");
   }
 }
 
 class OfflineState extends State {
   onEnter({ message }) {
-    this.core.dispatchEvent("offline", { message });
+    this.core._dispatchEvent("offline", { message });
   }
 }
 
 class EndedState extends State {
   onEnter({ message }) {
-    this.core.dispatchEvent("ended", { message });
+    this.core._dispatchEvent("ended", { message });
   }
 
   async play() {
-    this.core.dispatchEvent("play");
+    this.core._dispatchEvent("play");
 
     if (await this.driver.restart()) {
-      this.core.setState('playing');
+      this.core._setState('playing');
     }
   }
 
@@ -158,7 +158,7 @@ class EndedState extends State {
 
   seek(where) {
     if (this.driver.seek(where) === true) {
-      this.core.setState('idle');
+      this.core._setState('idle');
       return true;
     }
 
@@ -168,13 +168,11 @@ class EndedState extends State {
 
 class ErroredState extends State {
   onEnter() {
-    this.core.dispatchEvent("errored");
+    this.core._dispatchEvent("errored");
   }
 }
 
 class Core {
-  // public
-
   constructor(src, opts) {
     this.src = src;
     this.logger = opts.logger;
@@ -191,8 +189,8 @@ class Core {
     this.idleTimeLimit = opts.idleTimeLimit;
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
-    this.poster = this.parsePoster(opts.poster);
-    this.markers = this.normalizeMarkers(opts.markers);
+    this.poster = this._parsePoster(opts.poster);
+    this.markers = this._normalizeMarkers(opts.markers);
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.commandQueue = Promise.resolve();
 
@@ -215,35 +213,25 @@ class Core {
     ]);
   }
 
-  addEventListener(eventName, handler) {
-    this.eventHandlers.get(eventName).push(handler);
-  }
-
-  dispatchEvent(eventName, data = {}) {
-    for (const h of this.eventHandlers.get(eventName)) {
-      h(data);
-    }
-  }
-
   async init() {
     this.wasm = await vt;
 
-    const feed = this.feed.bind(this);
+    const feed = this._feed.bind(this);
 
     const onInput = (data) => {
-      this.dispatchEvent("input", { data });
+      this._dispatchEvent("input", { data });
     };
 
     const onMarker = ({ index, time, label }) => {
-      this.dispatchEvent("marker", { index, time, label });
+      this._dispatchEvent("marker", { index, time, label });
     };
 
-    const now = this.now.bind(this);
     const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
     const setInterval = (f, t) => window.setInterval(f, t / this.speed);
-    const reset = this.resetVt.bind(this);
-    const resize = this.resizeVt.bind(this);
-    const setState = this.setState.bind(this);
+    const now = this._now.bind(this);
+    const reset = this._resetVt.bind(this);
+    const resize = this._resizeVt.bind(this);
+    const setState = this._setState.bind(this);
 
     const posterTime = this.poster.type === "npt" ? this.poster.value : undefined;
 
@@ -277,10 +265,10 @@ class Core {
     }
 
     if (this.preload || posterTime !== undefined) {
-      this.withState((state) => state.init());
+      this._withState((state) => state.init());
     }
 
-    const poster = this.poster.type === "text" ? this.renderPoster(this.poster.value) : undefined;
+    const poster = this.poster.type === "text" ? this._renderPoster(this.poster.value) : undefined;
 
     const config = {
       isPausable: !!this.driver.pause,
@@ -330,41 +318,31 @@ class Core {
   }
 
   play() {
-    return this.withState((state) => state.play());
+    return this._withState((state) => state.play());
   }
 
   pause() {
-    return this.withState((state) => state.pause());
+    return this._withState((state) => state.pause());
   }
 
   togglePlay() {
-    return this.withState((state) => state.togglePlay());
+    return this._withState((state) => state.togglePlay());
   }
 
   seek(where) {
-    return this.withState(async (state) => {
+    return this._withState(async (state) => {
       if (await state.seek(where)) {
-        this.dispatchEvent("seeked");
+        this._dispatchEvent("seeked");
       }
     });
   }
 
   step() {
-    return this.withState((state) => state.step());
+    return this._withState((state) => state.step());
   }
 
   stop() {
-    return this.withState((state) => state.stop());
-  }
-
-  withState(f) {
-    return this.enqueueCommand(() => f(this.state));
-  }
-
-  enqueueCommand(f) {
-    this.commandQueue = this.commandQueue.then(f);
-
-    return this.commandQueue;
+    return this._withState((state) => state.stop());
   }
 
   getChanges() {
@@ -413,9 +391,27 @@ class Core {
     return this.duration;
   }
 
-  // private
+  addEventListener(eventName, handler) {
+    this.eventHandlers.get(eventName).push(handler);
+  }
 
-  setState(newState, data = {}) {
+  _dispatchEvent(eventName, data = {}) {
+    for (const h of this.eventHandlers.get(eventName)) {
+      h(data);
+    }
+  }
+
+  _withState(f) {
+    return this._enqueueCommand(() => f(this.state));
+  }
+
+  _enqueueCommand(f) {
+    this.commandQueue = this.commandQueue.then(f);
+
+    return this.commandQueue;
+  }
+
+  _setState(newState, data = {}) {
     if (this.stateName === newState) return this.state;
     this.stateName = newState;
 
@@ -440,27 +436,27 @@ class Core {
     return this.state;
   }
 
-  feed(data) {
-    this.doFeed(data);
-    this.dispatchEvent("terminalUpdate");
+  _feed(data) {
+    this._doFeed(data);
+    this._dispatchEvent("terminalUpdate");
   }
 
-  doFeed(data) {
+  _doFeed(data) {
     const affectedLines = this.vt.feed(data);
     affectedLines.forEach((i) => this.changedLines.add(i));
     this.cursor = undefined;
   }
 
-  now() {
+  _now() {
     return performance.now() * this.speed;
   }
 
-  async initializeDriver() {
+  async _initializeDriver() {
     const meta = await this.driver.init();
     this.cols = this.cols ?? meta.cols ?? 80;
     this.rows = this.rows ?? meta.rows ?? 24;
     this.duration = this.duration ?? meta.duration;
-    this.markers = this.normalizeMarkers(meta.markers) ?? this.markers ?? [];
+    this.markers = this._normalizeMarkers(meta.markers) ?? this.markers ?? [];
 
     if (this.cols === 0) {
       this.cols = 80;
@@ -470,11 +466,11 @@ class Core {
       this.rows = 24;
     }
 
-    this.initializeVt(this.cols, this.rows);
+    this._initializeVt(this.cols, this.rows);
 
-    const poster = meta.poster !== undefined ? this.renderPoster(meta.poster) : undefined;
+    const poster = meta.poster !== undefined ? this._renderPoster(meta.poster) : undefined;
 
-    this.dispatchEvent("init", {
+    this._dispatchEvent("init", {
       cols: this.cols,
       rows: this.rows,
       duration: this.duration,
@@ -484,20 +480,20 @@ class Core {
     });
   }
 
-  resetVt(cols, rows, init = undefined, theme = undefined) {
+  _resetVt(cols, rows, init = undefined, theme = undefined) {
     this.cols = cols;
     this.rows = rows;
     this.cursor = undefined;
-    this.initializeVt(cols, rows);
+    this._initializeVt(cols, rows);
 
     if (init !== undefined && init !== "") {
-      this.doFeed(init);
+      this._doFeed(init);
     }
 
-    this.dispatchEvent("reset", { cols, rows, theme });
+    this._dispatchEvent("reset", { cols, rows, theme });
   }
 
-  resizeVt(cols, rows) {
+  _resizeVt(cols, rows) {
     if (cols === this.vt.cols && rows === this.vt.rows) return;
 
     const affectedLines = this.vt.resize(cols, rows);
@@ -506,10 +502,10 @@ class Core {
     this.vt.cols = cols;
     this.vt.rows = rows;
     this.logger.debug(`core: vt resize (${cols}x${rows})`);
-    this.dispatchEvent("resize", { cols, rows });
+    this._dispatchEvent("resize", { cols, rows });
   }
 
-  initializeVt(cols, rows) {
+  _initializeVt(cols, rows) {
     this.logger.debug(`core: vt init (${cols}x${rows})`);
 
     this.vt = this.wasm.create(cols, rows, true, 100);
@@ -523,7 +519,7 @@ class Core {
     }
   }
 
-  parsePoster(poster) {
+  _parsePoster(poster) {
     if (typeof poster !== "string") return {};
 
     if (poster.substring(0, 16) == "data:text/plain,") {
@@ -535,7 +531,7 @@ class Core {
     return {};
   }
 
-  renderPoster(poster) {
+  _renderPoster(poster) {
     const cols = this.cols ?? 80;
     const rows = this.rows ?? 24;
 
@@ -553,7 +549,7 @@ class Core {
     return { cursor, lines };
   }
 
-  normalizeMarkers(markers) {
+  _normalizeMarkers(markers) {
     if (Array.isArray(markers)) {
       return markers.map((m) => (typeof m === "number" ? [m, ""] : m));
     }
