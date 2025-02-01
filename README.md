@@ -65,14 +65,35 @@ To build the project run:
     rustup target add wasm32-unknown-unknown
     npm install
     npm run build
-    npm run bundle
 
 This produces following output files:
 
-- `dist/index.js` - ES module, to be `import`-ed in your JS bundle
-- `dist/bundle/asciinema-player.js` - standalone player script, to be linked directly from a website
+- `dist/index.js` - monolithic ES module, to be `import`-ed in your JS bundle
+- `dist/bundle/asciinema-player.js` - standalone monolithic player script (IIFE), to be linked directly from a website
 - `dist/bundle/asciinema-player.min.js` - minimized version of the above
 - `dist/bundle/asciinema-player.css` - stylesheet, to be linked directly from a website or included in a CSS bundle
+
+The monolithic version of the player covers majority of use cases, and it's all
+you need to use the player.
+
+In addition, the split version of the player is built with `npm run build`,
+producing the following files:
+
+- `dist/ui.js` - UI ES module, to be `import`-ed in your JS bundle
+- `dist/worker.js` - web worker ES module, to be `import`-ed in your JS bundle
+- `dist/bundle/asciinema-player-ui.js` - standalone UI script (IIFE), to be linked directly from a website
+- `dist/bundle/asciinema-player-ui.min.js` - minimized version of the above
+- `dist/bundle/asciinema-player-worker.js` - standalone web worker script (IIFE), to be linked directly from a website
+- `dist/bundle/asciinema-player-worker.min.js` - minimized version of the above
+
+The split version runs the UI and data crunching (parsing, terminal emulation)
+in separate OS threads, which improves UI's responsiveness during playback. In
+this setup the UI code runs in the window context, while the processing code
+runs in a
+[WebWorker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API).
+The benefit of this configuration is typically observed only for high
+frame-rate / high bandwidth recordings only. For typical demos/sessions it's
+not worth the setup hassle.
 
 ## Donations
 

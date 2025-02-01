@@ -231,7 +231,7 @@ export default (props) => {
   });
 
   const updateTerminal = async () => {
-    const changes = core.getChanges();
+    const changes = await core.getChanges();
 
     batch(() => {
       if (changes.lines !== undefined) {
@@ -373,10 +373,10 @@ export default (props) => {
     clearInterval(timeUpdateIntervalId);
   };
 
-  const updateTime = () => {
-    const currentTime = core.getCurrentTime();
-    const remainingTime = core.getRemainingTime();
-    const progress = core.getProgress();
+  const updateTime = async () => {
+    const currentTime = await core.getCurrentTime();
+    const remainingTime = await core.getRemainingTime();
+    const progress = await core.getProgress();
 
     setState({ currentTime, remainingTime, progress });
   };

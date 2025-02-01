@@ -226,8 +226,6 @@ class Core {
       this._dispatchEvent("marker", { index, time, label });
     };
 
-    const setTimeout = (f, t) => window.setTimeout(f, t / this.speed);
-    const setInterval = (f, t) => window.setInterval(f, t / this.speed);
     const now = this._now.bind(this);
     const reset = this._resetVt.bind(this);
     const resize = this._resizeVt.bind(this);
@@ -243,8 +241,8 @@ class Core {
         reset,
         resize,
         now,
-        setTimeout,
-        setInterval,
+        setTimeout: (f, t) => setTimeout(f, t / this.speed),
+        setInterval: (f, t) => setInterval(f, t / this.speed),
         setState,
         logger: this.logger,
       },

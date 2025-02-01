@@ -31,7 +31,7 @@
           ];
 
           shellHook = ''
-            alias build='npm run build && npm run bundle'
+            alias build='npm run build'
             alias serve='cd public && python -m http.server 5000'
           '';
         };

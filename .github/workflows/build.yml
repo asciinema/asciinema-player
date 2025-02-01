@@ -21,5 +21,4 @@ jobs:
     - uses: DeterminateSystems/magic-nix-cache-action@main
     - run: nix develop --command npm ci
     - run: nix develop --command npm run build
-    - run: nix develop --command npm run bundle
     - run: ls -lhR dist

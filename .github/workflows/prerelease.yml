@@ -15,7 +15,6 @@ jobs:
     - uses: DeterminateSystems/magic-nix-cache-action@main
     - run: nix develop --command npm ci
     - run: nix develop --command npm run build
-    - run: nix develop --command npm run bundle
     - run: ls -lhR dist
     - run: cp .github/.npmrc .
     - run: nix develop --ignore-environment --keep NODE_AUTH_TOKEN --command npm publish --tag next

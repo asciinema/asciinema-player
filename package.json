@@ -12,16 +12,19 @@
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
+    "./ui.js": "./dist/ui.js",
+    "./worker.js": "./dist/worker.js",
     "./dist/bundle/asciinema-player.css": "./dist/bundle/asciinema-player.css",
-    "./dist/bundle/asciinema-player.min.js": "./dist/bundle/asciinema-player.min.js"
+    "./dist/bundle/asciinema-player.min.js": "./dist/bundle/asciinema-player.min.js",
+    "./dist/bundle/asciinema-player-ui.min.js": "./dist/bundle/asciinema-player-ui.min.js",
+    "./dist/bundle/asciinema-player-worker.min.js": "./dist/bundle/asciinema-player-worker.min.js"
   },
   "files": [
     "dist"
   ],
   "type": "module",
   "scripts": {
-    "build": "rollup -c --environment production",
-    "bundle": "rollup -c rollup.config.bundle.mjs --environment production && lessc src/less/asciinema-player.less >dist/bundle/asciinema-player.css",
+    "build": "rollup -c --environment production && lessc src/less/asciinema-player.less >dist/bundle/asciinema-player.css",
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier src/**/*.js --write"
   },
