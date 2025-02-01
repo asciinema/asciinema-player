@@ -202,8 +202,8 @@ export default (props) => {
   };
 
   onMount(async () => {
-    logger.info("player mounted");
-    logger.debug("font measurements", { charW: state.charW, charH: state.charH });
+    logger.info("view: mounted");
+    logger.debug("view: font measurements", { charW: state.charW, charH: state.charH });
     setupResizeObserver();
     const { isPausable, isSeekable, poster } = await core.init();
 
