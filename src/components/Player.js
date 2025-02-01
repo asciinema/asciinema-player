@@ -305,6 +305,15 @@ export default (props) => {
     }
   };
 
+  const toggleHelp = () => {
+    if (isHelpVisible()) {
+      setIsHelpVisible(false);
+    } else {
+      core.pause();
+      setIsHelpVisible(true);
+    }
+  };
+
   const onKeyDown = (e) => {
     if (e.altKey || e.metaKey || e.ctrlKey) {
       return;
@@ -325,12 +334,7 @@ export default (props) => {
       const pos = (e.key.charCodeAt(0) - 48) / 10;
       core.seek(`${pos * 100}%`);
     } else if (e.key == "?") {
-      if (isHelpVisible()) {
-        setIsHelpVisible(false);
-      } else {
-        core.pause();
-        setIsHelpVisible(true);
-      }
+      toggleHelp();
     } else if (e.key == "ArrowLeft") {
       if (e.shiftKey) {
         core.seek("<<<");
@@ -504,6 +508,7 @@ export default (props) => {
             isSeekable={state.isSeekable}
             onPlayClick={() => core.togglePlay()}
             onFullscreenClick={toggleFullscreen}
+            onHelpClick={toggleHelp}
             onSeekClick={(pos) => core.seek(pos)}
             ref={controlBarRef}
           />

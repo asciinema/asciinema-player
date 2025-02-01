@@ -32,12 +32,15 @@ div.ap-control-bar {
     }
   }
 
-  span.ap-playback-button {
+  span.ap-button {
     display: flex;
     flex: 0 0 auto;
     cursor: pointer;
-    height: 12px;
+  }
+
+  span.ap-playback-button {
     width: 12px;
+    height: 12px;
     padding: 10px;
 
     svg {
@@ -123,13 +126,9 @@ div.ap-control-bar {
   }
 
   .ap-fullscreen-button {
-    display: block;
-    flex: 0 0 auto;
     width: 14px;
     height: 14px;
     padding: 9px;
-    cursor: pointer;
-    position: relative;
 
     svg {
       width: 14px;
@@ -142,6 +141,23 @@ div.ap-control-bar {
 
     svg.ap-icon-fullscreen-off {
       display: none;
+    }
+
+    .ap-tooltip {
+      right: 5px;
+      left: initial;
+      transform: none;
+    }
+  }
+
+  .ap-kbd-button {
+    height: 14px;
+    padding: 9px;
+    margin: 0 4px;
+
+    svg {
+      width: 26px;
+      height: 14px;
     }
 
     .ap-tooltip {
