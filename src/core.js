@@ -28,7 +28,7 @@ class State {
     return false;
   }
 
-  step() {}
+  step(n) {}
 
   stop() {
     this.driver.stop();
@@ -61,9 +61,9 @@ class UninitializedState extends State {
     return await idleState.seek(where);
   }
 
-  async step() {
+  async step(n) {
     const idleState = await this.init();
-    await idleState.step();
+    await idleState.step(n);
   }
 
   stop() {}
@@ -102,8 +102,8 @@ class Idle extends State {
     return this.driver.seek(where);
   }
 
-  step() {
-    this.driver.step();
+  step(n) {
+    this.driver.step(n);
   }
 }
 
@@ -289,7 +289,7 @@ class Core {
     }
 
     if (this.driver.step === undefined) {
-      this.driver.step = () => {};
+      this.driver.step = (n) => {};
     }
 
     if (this.driver.stop === undefined) {
@@ -335,8 +335,8 @@ class Core {
     });
   }
 
-  step() {
-    return this._withState((state) => state.step());
+  step(n) {
+    return this._withState((state) => state.step(n));
   }
 
   stop() {

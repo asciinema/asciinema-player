@@ -41,7 +41,7 @@ export default (props) => {
               90%
             </li>
             <li>
-              <kbd>.</kbd> - step through a recording, one frame at a time (when paused)
+              <kbd>,</kbd> / <kbd>.</kbd> - step back / forward, a frame at a time (when paused)
             </li>
             <li>
               <kbd>?</kbd> - toggle this help popup

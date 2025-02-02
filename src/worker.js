@@ -40,7 +40,7 @@ function invoke(method, params) {
     case "seek":
       return core.seek(params);
     case "step":
-      return core.step();
+      return core.step(params);
     case "getCurrentTime":
       return core.getCurrentTime();
     case "getRemainingTime":

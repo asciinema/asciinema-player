@@ -305,21 +305,65 @@ function recording(
     return firstMarkerTimeAfter;
   }
 
-  function step() {
-    let nextEvent = events[nextEventIndex++];
-
-    while (nextEvent !== undefined && nextEvent[1] !== "o") {
-      nextEvent = events[nextEventIndex++];
+  function step(n) {
+    if (n === undefined) {
+      n = 1;
     }
 
-    if (nextEvent === undefined) return;
+    let nextEvent;
+    let targetIndex;
 
-    feed(nextEvent[2]);
+    if (n > 0) {
+      let index = nextEventIndex;
+      nextEvent = events[index];
 
-    const targetTime = nextEvent[0];
-    lastEventTime = targetTime;
-    pauseElapsedTime = targetTime * 1000;
+      for (let i = 0; i < n; i++) {
+        while (nextEvent !== undefined && nextEvent[1] !== "o") {
+          nextEvent = events[++index];
+        }
+
+        if (nextEvent !== undefined && nextEvent[1] === "o") {
+          targetIndex = index;
+        }
+      }
+    } else {
+      let index = Math.max(nextEventIndex - 2, 0);
+      nextEvent = events[index];
+
+      for (let i = n; i < 0; i++) {
+        while (nextEvent !== undefined && nextEvent[1] !== "o") {
+          nextEvent = events[--index];
+        }
+
+        if (nextEvent !== undefined && nextEvent[1] === "o") {
+          targetIndex = index;
+        }
+      }
+
+      if (targetIndex !== undefined) {
+        feed("\x1bc"); // reset terminal
+        resizeTerminalToInitialSize();
+        nextEventIndex = 0;
+      }
+    }
+
+    if (targetIndex === undefined) return;
+
+    while (nextEventIndex <= targetIndex) {
+      nextEvent = events[nextEventIndex++];
+
+      if (nextEvent[1] === "o") {
+        executeEvent(nextEvent);
+      }
+    }
+
+    lastEventTime = nextEvent[0];
+    pauseElapsedTime = lastEventTime * 1000;
     effectiveStartAt = null;
+
+    if (events[targetIndex + 1] === undefined) {
+      onEnd();
+    }
   }
 
   function restart() {

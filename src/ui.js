@@ -59,8 +59,8 @@ class CoreWorkerProxy {
     return this._sendCommand('seek', where);
   }
 
-  step() {
-    return this._sendCommand('step');
+  step(n) {
+    return this._sendCommand('step', n);
   }
 
   stop() {
