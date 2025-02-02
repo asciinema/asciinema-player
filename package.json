@@ -13,7 +13,6 @@
   "exports": {
     ".": "./dist/index.js",
     "./ui.js": "./dist/ui.js",
-    "./worker.js": "./dist/worker.js",
     "./dist/bundle/asciinema-player.css": "./dist/bundle/asciinema-player.css",
     "./dist/bundle/asciinema-player.min.js": "./dist/bundle/asciinema-player.min.js",
     "./dist/bundle/asciinema-player-ui.min.js": "./dist/bundle/asciinema-player-ui.min.js",

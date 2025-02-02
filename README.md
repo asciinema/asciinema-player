@@ -80,7 +80,6 @@ In addition, the split version of the player is built with `npm run build`,
 producing the following files:
 
 - `dist/ui.js` - UI ES module, to be `import`-ed in your JS bundle
-- `dist/worker.js` - web worker ES module, to be `import`-ed in your JS bundle
 - `dist/bundle/asciinema-player-ui.js` - standalone UI script (IIFE), to be linked directly from a website
 - `dist/bundle/asciinema-player-ui.min.js` - minimized version of the above
 - `dist/bundle/asciinema-player-worker.js` - standalone web worker script (IIFE), to be linked directly from a website
