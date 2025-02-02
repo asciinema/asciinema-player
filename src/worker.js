@@ -22,9 +22,9 @@ function invoke(method, params) {
 
       if (opts.logger === true) {
         logger = console;
-        opts.logger = logger;
       }
 
+      opts.logger = logger;
       core = new Core(params[0], opts);
       return;
     case "init":
