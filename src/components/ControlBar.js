@@ -141,8 +141,8 @@ export default (props) => {
         <span class="ap-time-remaining">{remainingTime()}</span>
       </span>
 
-      <Show when={typeof props.progress === "number" || props.isSeekable}>
-        <span class="ap-progressbar">
+      <span class="ap-progressbar">
+        <Show when={typeof props.progress === "number" || props.isSeekable}>
           <span class="ap-bar" onMouseDown={onMouseDown} onMouseMove={onMove}>
             <span class="ap-gutter ap-gutter-empty"></span>
             <span class="ap-gutter ap-gutter-full" style={gutterBarStyle()}></span>
@@ -162,8 +162,8 @@ export default (props) => {
               )}
             </For>
           </span>
-        </span>
-      </Show>
+        </Show>
+      </span>
 
       <span
         class="ap-button ap-kbd-button ap-tooltip-container"
