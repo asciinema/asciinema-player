@@ -91,7 +91,7 @@ this setup the UI code runs in the window context, while the processing code
 runs in a
 [WebWorker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API).
 The benefit of this configuration is typically observed only for high
-frame-rate / high bandwidth recordings only. For typical demos/sessions it's
+frame-rate / high bandwidth recordings. For typical demos/sessions it's
 not worth the setup hassle.
 
 ## Donations
