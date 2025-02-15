@@ -154,18 +154,20 @@ class BinaryReader {
   }
 
   decodeVarUint() {
-    let number = 0;
-    let shift = 0;
+    let number = BigInt(0);
+    let shift = BigInt(0);
     let byte = this.getUint8();
 
     while (byte > 127) {
       byte &= 127;
-      number += (byte << shift);
-      shift += 7;
+      number += (BigInt(byte) << shift);
+      shift += BigInt(7);
       byte = this.getUint8();
     }
 
-    return number + (byte << shift);
+    number = number + (BigInt(byte) << shift);
+
+    return Number(number);
   }
 }
 
