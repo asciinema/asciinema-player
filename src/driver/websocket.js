@@ -69,42 +69,48 @@ function websocket(
   }
 
   function onMessage(handler) {
-    initTimeout = setTimeout(enterOfflineMode, 5000);
+    initTimeout = setTimeout(onStreamEnd, 5000);
 
     return function (event) {
-      const result = handler(event.data);
+      try {
+        const result = handler(event.data);
 
-      if (buf) {
-        if (Array.isArray(result)) {
-          buf.pushEvent(result);
-        } else if (typeof result === "string") {
-          buf.pushText(result);
-        } else if (result === false) {
-          // EOT
-          enterOfflineMode();
-        } else if (result !== undefined) {
-          throw `unexpected value from protocol handler: ${result}`;
-        }
-      } else {
-        if (typeof result === "object" && !Array.isArray(result)) {
-          const { time, term } = result;
-          const { size, init, theme } = term;
-          const { cols, rows } = size;
-          enterOnlineMode(cols, rows, time, init, theme);
-          clearTimeout(initTimeout);
-        } else if (result === undefined) {
-          clearTimeout(initTimeout);
-          initTimeout = setTimeout(enterOfflineMode, 1000);
+        if (buf) {
+          if (Array.isArray(result)) {
+            buf.pushEvent(result);
+          } else if (typeof result === "string") {
+            buf.pushText(result);
+          } else if (typeof result === "object" && !Array.isArray(result)) {
+            onStreamReset(result);
+          } else if (result === false) {
+            // EOT
+            onStreamEnd();
+          } else if (result !== undefined) {
+            throw `unexpected value from protocol handler: ${result}`;
+          }
         } else {
-          clearTimeout(initTimeout);
-          throw `unexpected value from protocol handler: ${result}`;
+          if (typeof result === "object" && !Array.isArray(result)) {
+            onStreamReset(result);
+            clearTimeout(initTimeout);
+          } else if (result === undefined) {
+            clearTimeout(initTimeout);
+            initTimeout = setTimeout(onStreamEnd, 1000);
+          } else {
+            clearTimeout(initTimeout);
+            throw `unexpected value from protocol handler: ${result}`;
+          }
         }
+      } catch (e) {
+        socket.close();
+        throw e;
       }
     };
   }
 
-  function enterOnlineMode(cols, rows, time, init, theme) {
-    logger.info(`stream init (${cols}x${rows} @${time})`);
+  function onStreamReset({ time, term }) {
+    const { size, init, theme } = term;
+    const { cols, rows } = size;
+    logger.info(`stream reset (${cols}x${rows} @${time})`);
     setState("playing");
     stopBuffer();
     buf = getBuffer(bufferTime, feed, resize, (t) => clock.setTime(t), time, minFrameTime, logger);
@@ -117,7 +123,7 @@ function websocket(
     }
   }
 
-  function enterOfflineMode() {
+  function onStreamEnd() {
     stopBuffer();
 
     if (wasOnline) {

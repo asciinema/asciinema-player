@@ -10,18 +10,22 @@ function alisHandler(logger) {
     const text = (new TextDecoder()).decode(buffer);
 
     if (text === "ALiS\x01") {
-      handler = parseInitFrame;
+      handler = parseFirstFrame;
     } else {
       throw "not an ALiS v1 live stream";
     }
   }
 
-  function parseInitFrame(buffer) {
+  function parseFirstFrame(buffer) {
     const view = new BinaryReader(new DataView(buffer));
     const type = view.getUint8();
 
-    if (type !== 0x01) throw `expected init (0x01) frame, got ${type}`;
+    if (type !== 0x01) throw `expected reset (0x01) frame, got ${type}`;
 
+    return parseResetFrame(view, buffer);
+  }
+
+  function parseResetFrame(view, buffer) {
     let time = view.decodeVarUint();
     lastEventTime = time;
     time = time / ONE_SEC_IN_USEC;
@@ -39,9 +43,7 @@ function alisHandler(logger) {
       theme = parseTheme(new Uint8Array(buffer, view.offset, len));
       view.forward(len);
     } else if (themeFormat !== 0) {
-      logger.warn(`alis: unsupported theme format (${themeFormat})`);
-      socket.close();
-      return;
+      throw `alis: invalid theme format (${themeFormat})`;
     }
 
     const initLen = view.decodeVarUint();
@@ -52,7 +54,7 @@ function alisHandler(logger) {
       init = outputDecoder.decode(new Uint8Array(buffer, view.offset, initLen));
     }
 
-    handler = parseEventFrame;
+    handler = parseFrame;
 
     return {
       time,
@@ -64,50 +66,64 @@ function alisHandler(logger) {
     }
   }
 
-  function parseEventFrame(buffer) {
+  function parseFrame(buffer) {
     const view = new BinaryReader(new DataView(buffer));
     const type = view.getUint8();
 
-    if (type === 0x6f) {
-      // 'o' - output
-      const relTime = view.decodeVarUint();
-      lastEventTime += relTime;
-      const len = view.decodeVarUint();
-      const text = outputDecoder.decode(new Uint8Array(buffer, view.offset, len));
-
-      return [lastEventTime / ONE_SEC_IN_USEC, "o", text];
+    if (type === 0x01) {
+      return parseResetFrame(view, buffer);
+    } else if (type === 0x6f) {
+      return parseOutputFrame(view, buffer);
     } else if (type === 0x69) {
-      // 'i' - input
-      const relTime = view.decodeVarUint();
-      lastEventTime += relTime;
-      const len = view.decodeVarUint();
-      const text = inputDecoder.decode(new Uint8Array(buffer, view.offset, len));
-
-      return [lastEventTime / ONE_SEC_IN_USEC, "i", text];
+      return parseInputFrame(view, buffer);
     } else if (type === 0x72) {
-      // 'r' - resize
-      const relTime = view.decodeVarUint();
-      lastEventTime += relTime;
-      const cols = view.decodeVarUint();
-      const rows = view.decodeVarUint();
-
-      return [lastEventTime / ONE_SEC_IN_USEC, "r", { cols, rows }];
+      return parseResizeFrame(view);
     } else if (type === 0x6d) {
-      // 'm' - marker
-      const relTime = view.decodeVarUint();
-      lastEventTime += relTime;
-      const len = view.decodeVarUint();
-      const decoder = new TextDecoder();
-      const text = decoder.decode(new Uint8Array(buffer, view.offset, len));
-
-      return [lastEventTime / ONE_SEC_IN_USEC, "m", text];
+      return parseMarkerFrame(view, buffer);
     } else if (type === 0x04) {
       // EOT
-      handler = parseInitFrame;
+      handler = parseFirstFrame;
       return false;
     } else {
       logger.debug(`alis: unknown frame type: ${type}`);
     }
+  }
+
+  function parseOutputFrame(view, buffer) {
+    const relTime = view.decodeVarUint();
+    lastEventTime += relTime;
+    const len = view.decodeVarUint();
+    const text = outputDecoder.decode(new Uint8Array(buffer, view.offset, len));
+
+    return [lastEventTime / ONE_SEC_IN_USEC, "o", text];
+  }
+
+  function parseInputFrame(view, buffer) {
+    const relTime = view.decodeVarUint();
+    lastEventTime += relTime;
+    const len = view.decodeVarUint();
+    const text = inputDecoder.decode(new Uint8Array(buffer, view.offset, len));
+
+    return [lastEventTime / ONE_SEC_IN_USEC, "i", text];
+  }
+
+  function parseResizeFrame(view) {
+    const relTime = view.decodeVarUint();
+    lastEventTime += relTime;
+    const cols = view.decodeVarUint();
+    const rows = view.decodeVarUint();
+
+    return [lastEventTime / ONE_SEC_IN_USEC, "r", { cols, rows }];
+  }
+
+  function parseMarkerFrame(view, buffer) {
+    const relTime = view.decodeVarUint();
+    lastEventTime += relTime;
+    const len = view.decodeVarUint();
+    const decoder = new TextDecoder();
+    const text = decoder.decode(new Uint8Array(buffer, view.offset, len));
+
+    return [lastEventTime / ONE_SEC_IN_USEC, "m", text];
   }
 
   return function(buffer) {
