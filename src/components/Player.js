@@ -534,6 +534,8 @@ export default (props) => {
           <HelpOverlay
             fontFamily={props.terminalFontFamily}
             onClose={() => setIsHelpVisible(false)}
+            isPausable={state.isPausable}
+            isSeekable={state.isSeekable}
           />
         </Show>
       </div>
