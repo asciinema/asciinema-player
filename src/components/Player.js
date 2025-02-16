@@ -89,7 +89,7 @@ export default (props) => {
   }
 
   function setPoster(poster) {
-    if (poster !== undefined && !autoPlay) {
+    if (poster !== null && !autoPlay) {
       setState({
         lines: poster.lines,
         cursor: poster.cursor,
@@ -97,7 +97,19 @@ export default (props) => {
     }
   }
 
-  core.addEventListener("init", ({ cols, rows, duration, theme, poster, markers }) => {
+  let resolveCoreReady;
+
+  const coreReady = new Promise((resolve) => {
+    resolveCoreReady = resolve;
+  });
+
+  core.addEventListener("ready", ({ isPausable, isSeekable, poster }) => {
+    setState({ isPausable, isSeekable });
+    setPoster(poster);
+    resolveCoreReady();
+  });
+
+  core.addEventListener("metadata", ({ cols, rows, duration, theme, poster, markers }) => {
     batch(() => {
       resize({ cols, rows });
       setDuration(duration);
@@ -205,22 +217,11 @@ export default (props) => {
     logger.info("view: mounted");
     logger.debug("view: font measurements", { charW: state.charW, charH: state.charH });
     setupResizeObserver();
-    const { isPausable, isSeekable, poster } = await core.init();
 
-    batch(() => {
-      setState({
-        isPausable,
-        isSeekable,
-        containerW: wrapperRef.offsetWidth,
-        containerH: wrapperRef.offsetHeight,
-      });
-
-      setPoster(poster);
+    setState({
+      containerW: wrapperRef.offsetWidth,
+      containerH: wrapperRef.offsetHeight,
     });
-
-    if (autoPlay) {
-      core.play();
-    }
   });
 
   onCleanup(() => {
@@ -454,7 +455,7 @@ export default (props) => {
 
     const themeColors = theme().colors;
 
-    if (themeColors !== undefined) {
+    if (themeColors) {
       style["--term-color-foreground"] = themeColors.foreground;
       style["--term-color-background"] = themeColors.background;
 
@@ -464,6 +465,18 @@ export default (props) => {
     }
 
     return style;
+  };
+
+  const play = () => {
+    coreReady.then(() => core.play());
+  };
+
+  const togglePlay = () => {
+    coreReady.then(() => core.togglePlay());
+  };
+
+  const seek = (pos) => {
+    coreReady.then(() => core.seek(pos));
   };
 
   const playerClass = () => `ap-player asciinema-player-theme-${theme().name}`;
@@ -509,16 +522,16 @@ export default (props) => {
             isPlaying={isPlaying()}
             isPausable={state.isPausable}
             isSeekable={state.isSeekable}
-            onPlayClick={() => core.togglePlay()}
+            onPlayClick={togglePlay}
             onFullscreenClick={toggleFullscreen}
             onHelpClick={toggleHelp}
-            onSeekClick={(pos) => core.seek(pos)}
+            onSeekClick={seek}
             ref={controlBarRef}
           />
         </Show>
         <Switch>
           <Match when={overlay() == "start"}>
-            <StartOverlay onClick={() => core.play()} />
+            <StartOverlay onClick={play} />
           </Match>
           <Match when={overlay() == "loader"}>
             <LoaderOverlay />

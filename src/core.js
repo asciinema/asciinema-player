@@ -183,8 +183,9 @@ class Core {
     this.duration = undefined;
     this.cols = opts.cols;
     this.rows = opts.rows;
-    this.speed = opts.speed ?? 1.0;
+    this.speed = opts.speed;
     this.loop = opts.loop;
+    this.autoPlay = opts.autoPlay;
     this.idleTimeLimit = opts.idleTimeLimit;
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
@@ -197,14 +198,15 @@ class Core {
       ["ended", []],
       ["errored", []],
       ["idle", []],
-      ["init", []],
       ["input", []],
       ["loading", []],
       ["marker", []],
+      ["metadata", []],
       ["offline", []],
       ["pause", []],
       ["play", []],
       ["playing", []],
+      ["ready", []],
       ["reset", []],
       ["resize", []],
       ["seeked", []],
@@ -265,7 +267,7 @@ class Core {
       this._withState((state) => state.init());
     }
 
-    const poster = this.poster.type === "text" ? this._renderPoster(this.poster.value) : undefined;
+    const poster = this.poster.type === "text" ? this._renderPoster(this.poster.value) : null;
 
     const config = {
       isPausable: !!this.driver.pause,
@@ -311,7 +313,11 @@ class Core {
       this.driver.getCurrentTime = () => clock.getTime();
     }
 
-    return config;
+    this._dispatchEvent("ready", config);
+
+    if (this.autoPlay) {
+      this.play();
+    }
   }
 
   play() {
@@ -465,9 +471,9 @@ class Core {
 
     this._initializeVt(this.cols, this.rows);
 
-    const poster = meta.poster !== undefined ? this._renderPoster(meta.poster) : undefined;
+    const poster = meta.poster !== undefined ? this._renderPoster(meta.poster) : null;
 
-    this._dispatchEvent("init", {
+    this._dispatchEvent("metadata", {
       cols: this.cols,
       rows: this.rows,
       duration: this.duration,

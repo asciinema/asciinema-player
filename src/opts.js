@@ -1,4 +1,6 @@
 const CORE_OPTS = [
+  'autoPlay',
+  'autoplay',
   'cols',
   'idleTimeLimit',
   'loop',
@@ -28,6 +30,9 @@ function coreOpts(inputOpts, overrides = {}) {
   const opts = Object.fromEntries(
     Object.entries(inputOpts).filter(([key]) => CORE_OPTS.includes(key))
   );
+
+  opts.autoPlay ??= opts.autoplay;
+  opts.speed ??= 1.0;
 
   return { ...opts, ...overrides };
 }
