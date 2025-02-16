@@ -29,8 +29,6 @@ class CoreWorkerProxy {
   constructor(workerUrl, src, opts) {
     this.worker = new Worker(workerUrl);
     this.worker.onmessage = this._onMessage.bind(this);
-    this.src = src;
-    this.opts = opts;
     this.nextId = 1;
 
     this.eventHandlers = new Map([
@@ -52,7 +50,7 @@ class CoreWorkerProxy {
     ]);
 
     this.resolves = new Map();
-    this._sendCommand("new", [this.src, this.opts]);
+    this._sendCommand("new", [src, opts]);
   }
 
   async init() {
