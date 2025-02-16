@@ -174,11 +174,10 @@ class ErroredState extends State {
 
 class Core {
   constructor(src, opts) {
-    this.src = src;
     this.logger = opts.logger;
     this.state = new UninitializedState(this);
     this.stateName = "uninitialized";
-    this.driver = null;
+    this.driver = getDriver(src);
     this.changedLines = new Set();
     this.cursor = undefined;
     this.duration = undefined;
@@ -233,7 +232,7 @@ class Core {
 
     const posterTime = this.poster.type === "npt" ? this.poster.value : undefined;
 
-    this.driver = getDriver(this.src)(
+    this.driver = this.driver(
       {
         feed,
         onInput,
