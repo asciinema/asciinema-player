@@ -27,21 +27,7 @@ function mount(core, elem, opts = {}) {
     return el;
   }, elem);
 
-  const player = {
-    el: el,
-    dispose: dispose,
-    getCurrentTime: () => core.getCurrentTime(),
-    getDuration: () => core.getDuration(),
-    play: () => core.play(),
-    pause: () => core.pause(),
-    seek: (pos) => core.seek(pos),
-  };
-
-  player.addEventListener = (name, callback) => {
-    return core.addEventListener(name, callback.bind(player));
-  };
-
-  return player;
+  return { el: el, dispose: dispose };
 }
 
 function measureTerminal(fontFamily, lineHeight) {

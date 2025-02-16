@@ -6,7 +6,23 @@ function create(src, elem, workerUrl, opts = {}) {
   const coreLogger = opts.logger === console ? true : undefined;
   const core = new CoreWorkerProxy(workerUrl, src, coreOpts(opts, { logger: coreLogger }));
   const uiLogger = opts.logger ?? new DummyLogger();
-  return mount(core, elem, uiOpts(opts, { logger: uiLogger }));
+  const { el, dispose } =  mount(core, elem, uiOpts(opts, { logger: uiLogger }));
+
+  const player = {
+    el,
+    dispose,
+    getCurrentTime: () => core.getCurrentTime(),
+    getDuration: () => core.getDuration(),
+    play: () => core.play(),
+    pause: () => core.pause(),
+    seek: (pos) => core.seek(pos),
+  };
+
+  player.addEventListener = (name, callback) => {
+    return core.addEventListener(name, callback.bind(player));
+  };
+
+  return player;
 }
 
 class CoreWorkerProxy {
