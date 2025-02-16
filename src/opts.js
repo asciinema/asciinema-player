@@ -37,6 +37,9 @@ function uiOpts(inputOpts, overrides = {}) {
     Object.entries(inputOpts).filter(([key]) => UI_OPTS.includes(key))
   );
 
+  opts.autoPlay ??= opts.autoplay;
+  opts.controls ??= "auto";
+
   return { ...opts, ...overrides };
 }
 
