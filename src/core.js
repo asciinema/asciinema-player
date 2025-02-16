@@ -478,6 +478,7 @@ class Core {
   }
 
   _resetVt(cols, rows, init = undefined, theme = undefined) {
+    this.logger.debug(`core: vt reset (${cols}x${rows})`);
     this.cols = cols;
     this.rows = rows;
     this.cursor = undefined;
@@ -503,8 +504,6 @@ class Core {
   }
 
   _initializeVt(cols, rows) {
-    this.logger.debug(`core: vt init (${cols}x${rows})`);
-
     this.vt = this.wasm.create(cols, rows, true, 100);
     this.vt.cols = cols;
     this.vt.rows = rows;
