@@ -26,6 +26,7 @@ function alisHandler(logger) {
   }
 
   function parseResetFrame(view, buffer) {
+    let _lastId = view.decodeVarUint();
     let time = view.decodeVarUint();
     lastEventTime = time;
     time = time / ONE_SEC_IN_USEC;
@@ -90,6 +91,7 @@ function alisHandler(logger) {
   }
 
   function parseOutputFrame(view, buffer) {
+    let _id = view.decodeVarUint();
     const relTime = view.decodeVarUint();
     lastEventTime += relTime;
     const len = view.decodeVarUint();
@@ -99,6 +101,7 @@ function alisHandler(logger) {
   }
 
   function parseInputFrame(view, buffer) {
+    let _id = view.decodeVarUint();
     const relTime = view.decodeVarUint();
     lastEventTime += relTime;
     const len = view.decodeVarUint();
@@ -108,6 +111,7 @@ function alisHandler(logger) {
   }
 
   function parseResizeFrame(view) {
+    let _id = view.decodeVarUint();
     const relTime = view.decodeVarUint();
     lastEventTime += relTime;
     const cols = view.decodeVarUint();
@@ -117,6 +121,7 @@ function alisHandler(logger) {
   }
 
   function parseMarkerFrame(view, buffer) {
+    let _id = view.decodeVarUint();
     const relTime = view.decodeVarUint();
     lastEventTime += relTime;
     const len = view.decodeVarUint();

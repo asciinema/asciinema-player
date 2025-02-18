@@ -81,6 +81,7 @@ function websocket(
           } else if (typeof result === "string") {
             buf.pushText(result);
           } else if (typeof result === "object" && !Array.isArray(result)) {
+            // TODO: check last event ID from the parser, don't reset if we didn't miss anything
             onStreamReset(result);
           } else if (result === false) {
             // EOT
