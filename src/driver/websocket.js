@@ -11,7 +11,7 @@ function exponentialDelay(attempt) {
 
 function websocket(
   { url, bufferTime, reconnectDelay = exponentialDelay, minFrameTime },
-  { feed, reset, resize, setState, logger },
+  { feed, reset, resize, onInput, onMarker, setState, logger },
 ) {
   logger = new PrefixedLogger(logger, "websocket: ");
   let socket;
@@ -114,7 +114,17 @@ function websocket(
     logger.info(`stream reset (${cols}x${rows} @${time})`);
     setState("playing");
     stopBuffer();
-    buf = getBuffer(bufferTime, feed, resize, (t) => clock.setTime(t), time, minFrameTime, logger);
+    buf = getBuffer(
+      bufferTime,
+      feed,
+      resize,
+      onInput,
+      onMarker,
+      (t) => clock.setTime(t),
+      time,
+      minFrameTime,
+      logger,
+    );
     reset(cols, rows, init, theme);
     clock = new Clock();
     wasOnline = true;
