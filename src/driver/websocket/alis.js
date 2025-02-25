@@ -5,6 +5,7 @@ function alisHandler(logger) {
   const inputDecoder = new TextDecoder();
   let handler = parseMagicString;
   let lastEventTime;
+  let markerIndex = 0;
 
   function parseMagicString(buffer) {
     const text = (new TextDecoder()).decode(buffer);
@@ -30,6 +31,7 @@ function alisHandler(logger) {
     let time = view.decodeVarUint();
     lastEventTime = time;
     time = time / ONE_SEC_IN_USEC;
+    markerIndex = 0;
     const cols = view.decodeVarUint();
     const rows = view.decodeVarUint();
     const themeFormat = view.getUint8();
@@ -126,9 +128,11 @@ function alisHandler(logger) {
     lastEventTime += relTime;
     const len = view.decodeVarUint();
     const decoder = new TextDecoder();
-    const text = decoder.decode(new Uint8Array(buffer, view.offset, len));
+    const index = markerIndex++;
+    const time = lastEventTime / ONE_SEC_IN_USEC;
+    const label = decoder.decode(new Uint8Array(buffer, view.offset, len));
 
-    return [lastEventTime / ONE_SEC_IN_USEC, "m", text];
+    return [time, "m", { index, time, label}];
   }
 
   return function(buffer) {
