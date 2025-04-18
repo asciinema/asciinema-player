@@ -1,35 +1,44 @@
 import Stream from "../stream";
 
 async function parse(data) {
-  let header;
-  let events;
-
   if (data instanceof Response) {
     const text = await data.text();
     const result = parseJsonl(text);
 
     if (result !== undefined) {
-      header = result.header;
-      events = result.events;
+      const { header, events } = result;
+
+      if (header.version === 2) {
+        return parseAsciicastV2(header, events);
+      } else if (header.version === 3) {
+        return parseAsciicastV3(header, events);
+      } else {
+        throw `asciicast v${header.version} format not supported`;
+      }
     } else {
-      header = JSON.parse(text);
+      const header = JSON.parse(text);
+
+      if (header.version === 1) {
+        return parseAsciicastV1(header);
+      }
     }
-  } else if (typeof data === "object" && typeof data.version === "number") {
-    header = data;
+  } else if (typeof data === "object" && data.version === 1) {
+    return parseAsciicastV1(data);
   } else if (Array.isArray(data)) {
-    header = data[0];
-    events = data.slice(1, data.length);
-  } else {
-    throw "invalid data";
+    const header = data[0];
+
+    if (header.version === 2) {
+      const events = data.slice(1, data.length);
+      return parseAsciicastV2(header, events);
+    } else if (header.version === 3) {
+      const events = data.slice(1, data.length);
+      return parseAsciicastV3(header, events);
+    } else {
+      throw `asciicast v${header.version} format not supported`;
+    }
   }
 
-  if (header.version === 1) {
-    return parseAsciicastV1(header);
-  } else if (header.version === 2) {
-    return parseAsciicastV2(header, events);
-  } else {
-    throw `asciicast v${header.version} format not supported`;
-  }
+  throw "invalid data";
 }
 
 function parseJsonl(jsonl) {
@@ -45,8 +54,7 @@ function parseJsonl(jsonl) {
   const events = new Stream(lines)
     .drop(1)
     .filter((l) => l[0] === "[")
-    .map(JSON.parse)
-    .toArray();
+    .map(JSON.parse);
 
   return { header, events };
 }
@@ -76,7 +84,30 @@ function parseAsciicastV2(header, events) {
   };
 }
 
+function parseAsciicastV3(header, events) {
+  if (!(events instanceof Stream)) {
+    events = new Stream(events);
+  }
+
+  let time = 0;
+
+  events = events.map((e) => {
+    time += e[0];
+    return [time, e[1], e[2]];
+  });
+
+  return {
+    cols: header.term.cols,
+    rows: header.term.rows,
+    theme: parseTheme(header.term?.theme),
+    events,
+    idleTimeLimit: header.idle_time_limit,
+  };
+}
+
 function parseTheme(theme) {
+  if (theme === undefined) return;
+
   const colorRegex = /^#[0-9A-Fa-f]{6}$/;
   const paletteRegex = /^(#[0-9A-Fa-f]{6}:){7,}#[0-9A-Fa-f]{6}$/;
   const fg = theme?.fg;
