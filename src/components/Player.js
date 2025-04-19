@@ -400,7 +400,7 @@ export default (props) => {
 
         return changes;
       });
-    }, 500);
+    }, 600);
   };
 
   const stopBlinking = () => {
