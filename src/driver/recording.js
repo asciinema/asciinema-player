@@ -257,7 +257,7 @@ function recording(
     let event = events[nextEventIndex];
 
     while (event && event[0] <= targetTime) {
-      if (event[1] === "o") {
+      if (event[1] === "o" || event[1] === "r") {
         executeEvent(event);
       }
 
@@ -352,7 +352,7 @@ function recording(
     while (nextEventIndex <= targetIndex) {
       nextEvent = events[nextEventIndex++];
 
-      if (nextEvent[1] === "o") {
+      if (nextEvent[1] === "o" || nextEvent[1] === "r") {
         executeEvent(nextEvent);
       }
     }
