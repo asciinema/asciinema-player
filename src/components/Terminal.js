@@ -24,7 +24,7 @@ export default (props) => {
       classList={{ "ap-cursor-on": props.blink || props.cursorHold, "ap-blink": props.blink }}
       style={style()}
       ref={props.ref}
-      aria-live="polite"
+      aria-live="off"
       tabindex="0"
     >
       <For each={props.lines}>
