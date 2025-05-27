@@ -62,16 +62,17 @@ impl Vt {
 
         for cells in chunks {
             let text: String = cells.iter().map(avt::Cell::char).collect();
-            let width: usize = cells.iter().map(avt::Cell::width).sum();
+            let cell_count: usize = cells.iter().map(avt::Cell::width).sum();
 
             segments.push(Segment {
                 text,
                 pen: Pen(*cells[0].pen()),
                 offset,
-                width,
+                cell_count,
+                char_width: cells[0].width(),
             });
 
-            offset += width;
+            offset += cell_count;
         }
 
         serde_wasm_bindgen::to_value(&segments).unwrap()
@@ -100,7 +101,10 @@ struct Segment {
     text: String,
     pen: Pen,
     offset: usize,
-    width: usize,
+    #[serde(rename = "cellCount")]
+    cell_count: usize,
+    #[serde(rename = "charWidth")]
+    char_width: usize,
 }
 
 #[derive(Debug)]

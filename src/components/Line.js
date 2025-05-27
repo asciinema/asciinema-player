@@ -4,41 +4,54 @@ export default (props) => {
   const segments = () => {
     if (typeof props.cursor === "number") {
       const segs = [];
-      let len = 0;
-      let i = 0;
+      let cellOffset = 0;
+      let segIndex = 0;
 
-      while (i < props.segments.length && len + props.segments[i].text.length - 1 < props.cursor) {
-        const seg = props.segments[i];
+      while (
+        segIndex < props.segments.length &&
+        cellOffset + props.segments[segIndex].cellCount - 1 < props.cursor
+      ) {
+        const seg = props.segments[segIndex];
         segs.push(seg);
-        len += seg.text.length;
-        i++;
+        cellOffset += seg.cellCount;
+        segIndex++;
       }
 
-      if (i < props.segments.length) {
-        const seg = props.segments[i];
-        const pos = props.cursor - len;
+      if (segIndex < props.segments.length) {
+        const seg = props.segments[segIndex];
+        const charWidth = seg.charWidth;
+        let cellIndex = props.cursor - cellOffset;
+        const charIndex = Math.floor(cellIndex / charWidth);
+        cellIndex = charIndex * charWidth;
+        const chars = Array.from(seg.text);
 
-        if (pos > 0) {
-          segs.push({ ...seg, text: seg.text.substring(0, pos) });
+        if (charIndex > 0) {
+          segs.push({ ...seg, text: chars.slice(0, charIndex).join("") });
         }
 
         segs.push({
           ...seg,
-          text: seg.text[pos],
-          offset: seg.offset + pos,
+          text: chars[charIndex],
+          offset: cellOffset + cellIndex,
+          cellCount: charWidth,
           extraClass: "ap-cursor",
         });
 
-        if (pos < seg.text.length - 1) {
-          segs.push({ ...seg, text: seg.text.substring(pos + 1), offset: seg.offset + pos + 1 });
+        if (charIndex < chars.length - 1) {
+          segs.push({
+            ...seg,
+            text: chars.slice(charIndex + 1).join(""),
+            offset: cellOffset + cellIndex + 1,
+            cellCount: seg.cellCount - charWidth,
+          });
         }
 
-        i++;
+        segIndex++;
 
-        while (i < props.segments.length) {
-          const seg = props.segments[i];
+        while (segIndex < props.segments.length) {
+          const seg = props.segments[segIndex];
           segs.push(seg);
-          i++;
+          segIndex++;
         }
       }
 

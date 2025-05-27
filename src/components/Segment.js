@@ -12,7 +12,7 @@ export default (props) => {
   });
 
   const text = createMemo(() => (codePoint() ? " " : props.text));
-  const style = createMemo(() => buildStyle(props.pen, props.offset, props.width));
+  const style = createMemo(() => buildStyle(props.pen, props.offset, props.cellCount));
   const className = createMemo(() => buildClassName(props.pen, codePoint(), props.extraClass));
 
   return (
