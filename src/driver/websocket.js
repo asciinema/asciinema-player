@@ -5,8 +5,12 @@ import { rawHandler } from "./websocket/raw";
 import { Clock, NullClock } from "../clock";
 import { PrefixedLogger } from "../logging";
 
+const RECONNECT_DELAY_BASE = 500;
+const RECONNECT_DELAY_CAP = 10000;
+
 function exponentialDelay(attempt) {
-  return Math.min(500 * Math.pow(2, attempt), 5000);
+  const base = Math.min(RECONNECT_DELAY_BASE * Math.pow(2, attempt), RECONNECT_DELAY_CAP);
+  return Math.random() * base;
 }
 
 function websocket(
