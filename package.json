@@ -41,10 +41,10 @@
     "@babel/core": "^7.21.3",
     "@babel/plugin-transform-runtime": "^7.21.0",
     "@babel/preset-env": "^7.20.2",
-    "@rollup/plugin-babel": "^6.0.3",
-    "@rollup/plugin-commonjs": "^24.0.1",
-    "@rollup/plugin-node-resolve": "^15.0.1",
-    "@rollup/plugin-terser": "^0.4.0",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^28.0.5",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-terser": "^0.4.4",
     "@wasm-tool/rollup-plugin-rust": "^2.4.5",
     "babel-preset-solid": "^1.6.13",
     "eslint": "^7.27.0",
@@ -55,6 +55,6 @@
     "eslint-plugin-prettier": "^3.4.0",
     "less": "^4.1.1",
     "prettier": "3.2.5",
-    "rollup": "^3.18.0"
+    "rollup": "^4.43.0"
   }
 }
