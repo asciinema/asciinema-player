@@ -11,7 +11,10 @@ const esmPlugins = [
     presets: ["solid", "@babel/preset-env"],
     plugins: [['@babel/transform-runtime']]
   }),
-  rust({ inlineWasm: true, wasmOptArgs: ["-O4"] }),
+  rust({ 
+    inlineWasm: true, 
+    wasmOptArgs: ["-O4", "--enable-bulk-memory"]
+  }),
   resolve({ extensions: [".js", ".jsx"] })
 ];
 

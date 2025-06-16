@@ -45,7 +45,7 @@
     "@rollup/plugin-commonjs": "^24.0.1",
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@rollup/plugin-terser": "^0.4.0",
-    "@wasm-tool/rollup-plugin-rust": "^2.3.3",
+    "@wasm-tool/rollup-plugin-rust": "^2.4.5",
     "babel-preset-solid": "^1.6.13",
     "eslint": "^7.27.0",
     "eslint-config-airbnb-base": "^14.2.1",
