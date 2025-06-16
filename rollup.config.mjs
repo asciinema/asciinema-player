@@ -13,7 +13,7 @@ const esmPlugins = [
   }),
   rust({ 
     inlineWasm: true, 
-    wasmOptArgs: ["-O4", "--enable-bulk-memory"]
+    wasmOptArgs: ["-O4", "--enable-bulk-memory", "--enable-sign-ext"]
   }),
   resolve({ extensions: [".js", ".jsx"] })
 ];
