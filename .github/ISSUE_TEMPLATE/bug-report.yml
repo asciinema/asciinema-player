@@ -1,0 +1,101 @@
+name: Bug Report
+description: Report a bug to help improve asciinema player
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This is a bug tracker for asciinema web player.**
+        
+        - If your issue is with the CLI recorder or server, please open an issue in the related repository
+        - If you're experiencing issues with asciinema.org, contact admin@asciinema.org
+        - For feature requests, questions, and discussions, use the [forum](https://discourse.asciinema.org) or [GitHub discussions](https://github.com/orgs/asciinema/discussions)
+        
+        Thanks for taking the time to report a bug! Please fill out the sections below.
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe the bug...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Steps to Reproduce
+      description: Provide detailed steps to reproduce the behavior
+      placeholder: |
+        1. Open recording in player...
+        2. Click on...
+        3. Observe error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: What should have happened instead?
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: Operating System
+      description: Which OS and version are you using?
+      placeholder: e.g., Ubuntu 24.04, macOS 14.0, Fedora 39
+    validations:
+      required: true
+
+  - type: input
+    id: browser-version
+    attributes:
+      label: Browser
+      description: Which browser and version are you using?
+      placeholder: e.g., Firefox 121, Safari 17, Chrome 120
+    validations:
+      required: true
+
+  - type: input
+    id: player-version
+    attributes:
+      label: asciinema Player Version
+      description: |
+        What version of asciinema player are you using?
+        Leave empty if you observed the bug on asciinema.org.
+      placeholder: e.g., 3.7.0
+
+  - type: dropdown
+    id: player-integration
+    attributes:
+      label: Player Integration
+      description: How are you using the asciinema player?
+      options:
+        - Embedded in my website - npm package
+        - Embedded in my website - script tag, standalone JS bundle
+        - asciinema.org
+        - Other (please specify in additional context)
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: |
+        Add any other context about the problem here.
+        This could include screenshots, browser extensions, network conditions, etc.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have searched existing issues to make sure this bug hasn't been reported already
+          required: true
+        - label: This is a bug report for asciinema player, not the CLI or the server
+          required: true
