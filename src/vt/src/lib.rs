@@ -40,10 +40,6 @@ impl Vt {
         serde_wasm_bindgen::to_value(&changes.lines).unwrap()
     }
 
-    pub fn inspect(&self) -> String {
-        format!("{:?}", self.vt)
-    }
-
     #[wasm_bindgen(js_name = getSize)]
     pub fn get_size(&self) -> Vec<usize> {
         let (cols, rows) = self.vt.size();
