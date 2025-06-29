@@ -1,4 +1,3 @@
-mod utils;
 use serde::{
     ser::{SerializeMap, Serializer},
     Serialize,
@@ -18,8 +17,6 @@ pub struct Vt {
 
 #[wasm_bindgen]
 pub fn create(cols: usize, rows: usize, scrollback_limit: usize) -> Vt {
-    utils::set_panic_hook();
-
     let vt = avt::Vt::builder()
         .size(cols, rows)
         .scrollback_limit(scrollback_limit)
