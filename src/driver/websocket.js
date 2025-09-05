@@ -1,6 +1,7 @@
 import getBuffer from "../buffer";
 import { alisHandler } from "./websocket/alis";
-import { jsonHandler } from "./websocket/json";
+import { ascicastV2Handler } from "./websocket/asciicast-v2";
+import { ascicastV3Handler } from "./websocket/asciicast-v3";
 import { rawHandler } from "./websocket/raw";
 import { Clock, NullClock } from "../clock";
 import { PrefixedLogger } from "../logging";
@@ -28,7 +29,7 @@ function websocket(
   let initTimeout;
 
   function connect() {
-    socket = new WebSocket(url, ["v1.alis", "v2.asciicast", "raw"]);
+    socket = new WebSocket(url, ["v1.alis", "v2.asciicast", "v3.asciicast", "raw"]);
     socket.binaryType = "arraybuffer";
 
     socket.onopen = () => {
@@ -40,7 +41,9 @@ function websocket(
       if (proto === "v1.alis") {
         socket.onmessage = onMessage(alisHandler(logger));
       } else if (proto === "v2.asciicast") {
-        socket.onmessage = onMessage(jsonHandler());
+        socket.onmessage = onMessage(ascicastV2Handler());
+      } else if (proto === "v3.asciicast") {
+        socket.onmessage = onMessage(ascicastV3Handler());
       } else if (proto === "raw") {
         socket.onmessage = onMessage(rawHandler());
       }

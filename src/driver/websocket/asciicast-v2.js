@@ -1,4 +1,4 @@
-function jsonHandler() {
+function ascicastV2Handler() {
   let parse = parseHeader;
 
   function parseHeader(buffer) {
@@ -26,7 +26,7 @@ function jsonHandler() {
 
     if (event[1] === "r") {
       const [cols, rows] = event[2].split("x");
-      return [event[0], "r", { cols, rows }];
+      return [event[0], "r", { cols: parseInt(cols, 10), rows: parseInt(rows, 10) }];
     } else {
       return event;
     }
@@ -37,4 +37,4 @@ function jsonHandler() {
   };
 }
 
-export { jsonHandler };
+export { ascicastV2Handler };
