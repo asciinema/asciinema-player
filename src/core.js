@@ -193,7 +193,7 @@ class Core {
     this.markers = this._normalizeMarkers(opts.markers);
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.commandQueue = Promise.resolve();
-    this.hideKeystroke = opts.hideKeystroke ?? false;
+    this.hideKeystroke = opts.hideKeystroke ?? true;
 
     this.eventHandlers = new Map([
       ["ended", []],
@@ -461,6 +461,7 @@ class Core {
     this.rows = this.rows ?? meta.rows ?? 24;
     this.duration = this.duration ?? meta.duration;
     this.markers = this._normalizeMarkers(meta.markers) ?? this.markers ?? [];
+    this.hideKeystroke = meta.hideKeystroke ?? true;
 
     if (this.cols === 0) {
       this.cols = 80;
@@ -481,6 +482,7 @@ class Core {
       markers: this.markers,
       theme: meta.theme,
       poster,
+      hideKeystroke: this.hideKeystroke,
     });
   }
 

@@ -119,13 +119,13 @@ export default (props) => {
       setOriginalTheme(theme);
       setMarkers(markers);
       setPoster(poster);
-      setisKeystrokeVisible(!hideKeystroke);
+      setState(hideKeystroke);
     });
   });
 
   core.addEventListener("play", () => {
     setOverlay(null);
-    setisKeystrokeVisible(false);
+    setisKeystrokeVisible(!state.hideKeystroke);
   });
 
   core.addEventListener("playing", () => {
@@ -314,9 +314,9 @@ export default (props) => {
 
   const toggleFullscreen = () => {
     if (state.isFullscreen) {
-      (document.exitFullscreen ?? document.webkitExitFullscreen ?? (() => { })).apply(document);
+      (document.exitFullscreen ?? document.webkitExitFullscreen ?? (() => {})).apply(document);
     } else {
-      (wrapperRef.requestFullscreen ?? wrapperRef.webkitRequestFullscreen ?? (() => { })).apply(
+      (wrapperRef.requestFullscreen ?? wrapperRef.webkitRequestFullscreen ?? (() => {})).apply(
         wrapperRef,
       );
     }
@@ -347,7 +347,6 @@ export default (props) => {
 
     if (e.key == " ") {
       core.togglePlay();
-      setisKeyStrokeFading(false);
     } else if (e.key == ",") {
       core.step(-1);
       updateTime();
@@ -428,7 +427,7 @@ export default (props) => {
 
         return changes;
       });
-    }, 600);
+    }, 500);
   };
 
   const stopBlinking = () => {
@@ -561,7 +560,6 @@ export default (props) => {
           <KeystrokesOverlay
             fontFamily={props.terminalFontFamily}
             keystroke={keyStroke()}
-            hideKeyStroke={hideKeyStroke}
             logger={props.logger}
           />
         </Show>

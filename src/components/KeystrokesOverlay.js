@@ -153,13 +153,11 @@ function formatKeyCode(data, logger) {
 export default (props) => {
   function showKeyPress(data) {
     if (data === null) {
-      props.hideKeyStroke();
       return "";
     }
     var pressed_key = formatKeyCode(data.value, props.logger);
 
     if (pressed_key === "") {
-      props.hideKeyStroke();
       return "";
     }
     setisFading(false);
