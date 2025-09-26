@@ -475,11 +475,18 @@ function recording(
   }
 
   function audioNow() {
-    if (!audioCtx) return 0;
+    if (!audioCtx) throw "audio context not started - can't tell time!";
 
     const { contextTime, performanceTime } = audioCtx.getOutputTimestamp();
 
-    return (contextTime * 1000 + (performance.now() - performanceTime)) * speed;
+    // The check below is needed for Chrome,
+    // which returns 0 for first several dozen millis,
+    // completely ruining the timing (the clock jumps backwards once),
+    // therefore we initially ignore performanceTime in our calculation.
+
+    return performanceTime === 0
+      ? contextTime * 1000
+      : contextTime * 1000 + (performance.now() - performanceTime);
   }
 
   function onAudioWaiting() {
