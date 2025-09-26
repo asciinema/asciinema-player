@@ -478,6 +478,7 @@ function recording(
     audio = new Audio();
     audio.preload = "metadata";
     audio.loop = false;
+    audio.crossOrigin = "anonymous";
     audio.src = audioUrl;
   }
 
