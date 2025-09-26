@@ -326,11 +326,9 @@ export default (props) => {
     if (e.key == " ") {
       core.togglePlay();
     } else if (e.key == ",") {
-      core.step(-1);
-      updateTime();
+      core.step(-1).then(updateTime);
     } else if (e.key == ".") {
-      core.step();
-      updateTime();
+      core.step().then(updateTime);
     } else if (e.key == "f") {
       toggleFullscreen();
     } else if (e.key == "[") {
