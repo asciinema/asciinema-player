@@ -28,86 +28,90 @@ function recording(
   let startTime;
   let pauseElapsedTime;
   let playCount = 0;
+  let waitingForAudio = false;
+  let shouldResumeOnAudioPlaying = false;
 
   async function init() {
     const { parser, minFrameTime, inputOffset, dumpFilename, encoding = "utf-8" } = src;
 
-    const rec = doFetch(src);
-
-    if (audio) {
-      let resolve;
-
-      const canPlay = new Promise((resolve_) => {
-        resolve = resolve_;
-      });
-
-      function onCanPlay() {
-        resolve();
-        audio.removeEventListener("canplay", onCanPlay);
-      }
-
-      audio.addEventListener("canplay", onCanPlay);
-      audio.load();
-      await canPlay;
-    }
-
-    const recording = prepare(await parser(await rec, { encoding }), logger, {
-      idleTimeLimit,
-      startAt,
-      minFrameTime,
-      inputOffset,
-      markers_,
-    });
-
-    ({ cols, rows, events, duration, effectiveStartAt } = recording);
-    initialCols = initialCols ?? cols;
-    initialRows = initialRows ?? rows;
-
-    if (events.length === 0) {
-      throw "recording is missing events";
-    }
-
-    if (dumpFilename !== undefined) {
-      dump(recording, dumpFilename);
-    }
-
-    const poster = posterTime !== undefined ? getPoster(posterTime) : undefined;
-    markers = events.filter((e) => e[1] === "m").map((e) => [e[0], e[2].label]);
-
-    return { cols, rows, duration, theme: recording.theme, poster, markers };
-  }
-
-  async function doFetch({ url, data, fetchOpts = {} }) {
     const timeout = setTimeout(() => {
       setState("loading");
     }, 3000);
 
     try {
-      if (typeof url === "string") {
-        return await doFetchOne(url, fetchOpts);
-      } else if (Array.isArray(url)) {
-        return await Promise.all(url.map((url) => doFetchOne(url, fetchOpts)));
-      } else if (data !== undefined) {
-        if (typeof data === "function") {
-          data = data();
+      const rec = doFetch(src);
+
+      if (audio) {
+        let resolve;
+
+        const audioCanPlay = new Promise((resolve_) => {
+          resolve = resolve_;
+        });
+
+        function onCanPlay() {
+          resolve();
+          audio.removeEventListener("canplay", onCanPlay);
         }
 
-        if (!(data instanceof Promise)) {
-          data = Promise.resolve(data);
-        }
-
-        const value = await data;
-
-        if (typeof value === "string" || value instanceof ArrayBuffer) {
-          return new Response(value);
-        } else {
-          return value;
-        }
-      } else {
-        throw "failed fetching recording file: url/data missing in src";
+        audio.addEventListener("canplay", onCanPlay);
+        audio.addEventListener("playing", onAudioPlaying);
+        audio.addEventListener("waiting", onAudioWaiting);
+        audio.load();
+        await audioCanPlay;
       }
+
+      const recording = prepare(await parser(await rec, { encoding }), logger, {
+        idleTimeLimit,
+        startAt,
+        minFrameTime,
+        inputOffset,
+        markers_,
+      });
+
+      ({ cols, rows, events, duration, effectiveStartAt } = recording);
+      initialCols = initialCols ?? cols;
+      initialRows = initialRows ?? rows;
+
+      if (events.length === 0) {
+        throw "recording is missing events";
+      }
+
+      if (dumpFilename !== undefined) {
+        dump(recording, dumpFilename);
+      }
+
+      const poster = posterTime !== undefined ? getPoster(posterTime) : undefined;
+      markers = events.filter((e) => e[1] === "m").map((e) => [e[0], e[2].label]);
+
+      return { cols, rows, duration, theme: recording.theme, poster, markers };
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  async function doFetch({ url, data, fetchOpts = {} }) {
+    if (typeof url === "string") {
+      return await doFetchOne(url, fetchOpts);
+    } else if (Array.isArray(url)) {
+      return await Promise.all(url.map((url) => doFetchOne(url, fetchOpts)));
+    } else if (data !== undefined) {
+      if (typeof data === "function") {
+        data = data();
+      }
+
+      if (!(data instanceof Promise)) {
+        data = Promise.resolve(data);
+      }
+
+      const value = await data;
+
+      if (typeof value === "string" || value instanceof ArrayBuffer) {
+        return new Response(value);
+      } else {
+        return value;
+      }
+    } else {
+      throw "failed fetching recording file: url/data missing in src";
     }
   }
 
@@ -229,14 +233,16 @@ function recording(
   }
 
   function pause() {
-    if (!eventTimeoutId) return true;
-
-    cancelNextEvent();
-    pauseElapsedTime = now() - startTime;
+    shouldResumeOnAudioPlaying = false;
 
     if (audio) {
       audio.pause();
     }
+
+    if (!eventTimeoutId) return true;
+
+    cancelNextEvent();
+    pauseElapsedTime = now() - startTime;
 
     return true;
   }
@@ -324,10 +330,6 @@ function recording(
 
     if (isPlaying) {
       resume();
-
-      if (audio) {
-        audio.play();
-      }
     }
 
     return true;
@@ -453,6 +455,35 @@ function recording(
 
   function resizeTerminalToInitialSize() {
     resize(initialCols, initialRows);
+  }
+
+  function onAudioWaiting() {
+    logger.debug("audio buffering");
+    waitingForAudio = true;
+    shouldResumeOnAudioPlaying = !!eventTimeoutId;
+    setState("loading");
+
+    if (!eventTimeoutId) return true;
+
+    logger.debug("pausing session playback");
+    cancelNextEvent();
+    pauseElapsedTime = now() - startTime;
+  }
+
+  function onAudioPlaying() {
+    logger.debug("audio resumed");
+    setState("playing");
+
+    if (!waitingForAudio) return;
+
+    waitingForAudio = false;
+
+    if (shouldResumeOnAudioPlaying) {
+      logger.debug("resuming session playback");
+      startTime = now() - pauseElapsedTime;
+      pauseElapsedTime = null;
+      scheduleNextEvent();
+    }
   }
 
   return {
