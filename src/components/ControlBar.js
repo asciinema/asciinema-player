@@ -5,6 +5,8 @@ import KeyboardIcon from "./icons/KeyboardIcon";
 import PauseIcon from "./icons/PauseIcon";
 import PlayIcon from "./icons/PlayIcon";
 import ShrinkIcon from "./icons/ShrinkIcon";
+import SpeakerOnIcon from "./icons/SpeakerOnIcon";
+import SpeakerOffIcon from "./icons/SpeakerOffIcon";
 
 function formatTime(seconds) {
   let s = Math.floor(seconds);
@@ -117,7 +119,7 @@ export default (props) => {
             <Match when={props.isPlaying}>
               <PauseIcon />
             </Match>
-            <Match when={!props.isPlaying}>
+            <Match when={true}>
               <PlayIcon />
             </Match>
           </Switch>
@@ -152,6 +154,33 @@ export default (props) => {
           </span>
         </Show>
       </span>
+
+      <Switch>
+        <Match when={props.isMuted === true}>
+          <span
+            class="ap-button ap-speaker-button ap-tooltip-container"
+            onClick={e(props.onMuteClick)}
+            aria-label="Unmute"
+            role="button"
+            tabindex="0"
+          >
+            <SpeakerOffIcon />
+            <span class="ap-tooltip">Unmute (m)</span>
+          </span>
+        </Match>
+        <Match when={props.isMuted === false}>
+          <span
+            class="ap-button ap-speaker-button ap-tooltip-container"
+            onClick={e(props.onMuteClick)}
+            aria-label="Mute"
+            role="button"
+            tabindex="0"
+          >
+            <SpeakerOnIcon />
+            <span class="ap-tooltip">Mute (m)</span>
+          </span>
+        </Match>
+      </Switch>
 
       <span
         class="ap-button ap-kbd-button ap-tooltip-container"

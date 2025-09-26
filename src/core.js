@@ -24,6 +24,18 @@ class State {
   pause() {}
   togglePlay() {}
 
+  mute() {
+    if (this.driver && this.driver.mute()) {
+      this.core._dispatchEvent("muted", true);
+    }
+  }
+
+  unmute() {
+    if (this.driver && this.driver.unmute()) {
+      this.core._dispatchEvent("muted", false);
+    }
+  }
+
   seek(where) {
     return false;
   }
@@ -203,6 +215,7 @@ class Core {
       ["loading", []],
       ["marker", []],
       ["metadata", []],
+      ["muted", []],
       ["offline", []],
       ["pause", []],
       ["play", []],
@@ -300,6 +313,14 @@ class Core {
       this.driver.restart = () => {};
     }
 
+    if (this.driver.mute === undefined) {
+      this.driver.mute = () => {};
+    }
+
+    if (this.driver.unmute === undefined) {
+      this.driver.unmute = () => {};
+    }
+
     if (this.driver.getCurrentTime === undefined) {
       const play = this.driver.play;
       let clock = new NullClock();
@@ -345,6 +366,14 @@ class Core {
 
   stop() {
     return this._withState((state) => state.stop());
+  }
+
+  mute() {
+    return this._withState((state) => state.mute());
+  }
+
+  unmute() {
+    return this._withState((state) => state.unmute());
   }
 
   getChanges() {
@@ -474,6 +503,7 @@ class Core {
       duration: this.duration,
       markers: this.markers,
       theme: meta.theme,
+      hasAudio: meta.hasAudio,
       poster,
     });
   }

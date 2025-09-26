@@ -54,8 +54,14 @@ export default (props) => {
               <kbd>f</kbd> - toggle fullscreen mode
             </li>
 
+            <Show when={props.hasAudio}>
+              <li>
+                <kbd>m</kbd> - mute / unmute audio
+              </li>
+            </Show>
+
             <li>
-              <kbd>?</kbd> - toggle this help popup
+              <kbd>?</kbd> - show this help popup
             </li>
           </ul>
         </div>

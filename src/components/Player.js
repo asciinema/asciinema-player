@@ -37,6 +37,7 @@ export default (props) => {
   });
 
   const [isPlaying, setIsPlaying] = createSignal(false);
+  const [isMuted, setIsMuted] = createSignal(undefined);
   const [wasPlaying, setWasPlaying] = createSignal(false);
   const [overlay, setOverlay] = createSignal(!autoPlay ? "start" : null);
   const [infoMessage, setInfoMessage] = createSignal(null);
@@ -111,15 +112,19 @@ export default (props) => {
     resolveCoreReady();
   });
 
-  core.addEventListener("metadata", ({ cols, rows, duration, theme, poster, markers }) => {
-    batch(() => {
-      resize({ cols, rows });
-      setDuration(duration);
-      setOriginalTheme(theme);
-      setMarkers(markers);
-      setPoster(poster);
-    });
-  });
+  core.addEventListener(
+    "metadata",
+    ({ cols, rows, duration, theme, poster, markers, hasAudio }) => {
+      batch(() => {
+        resize({ cols, rows });
+        setDuration(duration);
+        setOriginalTheme(theme);
+        setMarkers(markers);
+        setPoster(poster);
+        setIsMuted(hasAudio ? false : undefined);
+      });
+    },
+  );
 
   core.addEventListener("play", () => {
     setOverlay(null);
@@ -159,6 +164,10 @@ export default (props) => {
         setOverlay("info");
       }
     });
+  });
+
+  core.addEventListener("muted", (muted) => {
+    setIsMuted(muted);
   });
 
   let renderCount = 0;
@@ -331,6 +340,8 @@ export default (props) => {
       core.step().then(updateTime);
     } else if (e.key == "f") {
       toggleFullscreen();
+    } else if (e.key == "m") {
+      toggleMuted();
     } else if (e.key == "[") {
       core.seek({ marker: "prev" });
     } else if (e.key == "]") {
@@ -476,6 +487,16 @@ export default (props) => {
     coreReady.then(() => core.togglePlay());
   };
 
+  const toggleMuted = () => {
+    coreReady.then(() => {
+      if (isMuted() === true) {
+        core.unmute();
+      } else {
+        core.mute();
+      }
+    });
+  };
+
   const seek = (pos) => {
     coreReady.then(() => core.seek(pos));
   };
@@ -523,10 +544,12 @@ export default (props) => {
             isPlaying={isPlaying() || overlay() == "loader"}
             isPausable={state.isPausable}
             isSeekable={state.isSeekable}
+            isMuted={isMuted()}
             onPlayClick={togglePlay}
             onFullscreenClick={toggleFullscreen}
             onHelpClick={toggleHelp}
             onSeekClick={seek}
+            onMuteClick={toggleMuted}
             ref={controlBarRef}
           />
         </Show>
@@ -556,6 +579,7 @@ export default (props) => {
             onClose={() => setIsHelpVisible(false)}
             isPausable={state.isPausable}
             isSeekable={state.isSeekable}
+            hasAudio={isMuted() !== undefined}
           />
         </Show>
       </div>

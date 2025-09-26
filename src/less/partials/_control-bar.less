@@ -42,6 +42,7 @@ div.ap-control-bar {
     width: 12px;
     height: 12px;
     padding: 10px;
+    margin: 0 0 0 2px;
 
     svg {
       height: 12px;
@@ -129,6 +130,7 @@ div.ap-control-bar {
     width: 14px;
     height: 14px;
     padding: 9px;
+    margin: 0 2px 0 4px;
 
     svg {
       width: 14px;
@@ -153,7 +155,7 @@ div.ap-control-bar {
   .ap-kbd-button {
     height: 14px;
     padding: 9px;
-    margin: 0 4px;
+    margin: 0 0 0 4px;
 
     svg {
       width: 26px;
@@ -163,6 +165,22 @@ div.ap-control-bar {
     .ap-tooltip {
       right: 5px;
       left: initial;
+      transform: none;
+    }
+  }
+
+  .ap-speaker-button {
+    width: 19px;
+    padding: 6px 9px;
+    margin: 0 0 0 4px;
+    position: relative;
+
+    svg {
+      width: 19px;
+    }
+
+    .ap-tooltip {
+      left: -50%;
       transform: none;
     }
   }

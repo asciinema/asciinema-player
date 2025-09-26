@@ -43,9 +43,10 @@ function recording(
     }, 3000);
 
     try {
-      const metadata = loadRecording(src, logger, { idleTimeLimit, startAt, markers_ });
-      await loadAudio(audioUrl);
-      return await metadata;
+      let metadata = loadRecording(src, logger, { idleTimeLimit, startAt, markers_ });
+      const hasAudio = await loadAudio(audioUrl);
+      metadata = await metadata;
+      return { ...metadata, hasAudio };
     } finally {
       clearTimeout(timeout);
     }
@@ -80,7 +81,7 @@ function recording(
   }
 
   async function loadAudio(audioUrl) {
-    if (!audioUrl) return;
+    if (!audioUrl) return false;
 
     audioElement = await createAudioElement(audioUrl);
 
@@ -98,6 +99,8 @@ function recording(
         `audio is not seekable - you must enable range request support on the server providing ${audioElement.src} for audio seeking to work`,
       );
     }
+
+    return true;
   }
 
   async function doFetch({ url, data, fetchOpts = {} }) {
@@ -519,6 +522,20 @@ function recording(
     }
   }
 
+  function mute() {
+    if (audioElement) {
+      audioElement.muted = true;
+      return true;
+    }
+  }
+
+  function unmute() {
+    if (audioElement) {
+      audioElement.muted = false;
+      return true;
+    }
+  }
+
   return {
     init,
     play,
@@ -527,6 +544,8 @@ function recording(
     step,
     restart,
     stop: pause,
+    mute,
+    unmute,
     getCurrentTime,
   };
 }
