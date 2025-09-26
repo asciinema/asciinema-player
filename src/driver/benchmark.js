@@ -1,6 +1,6 @@
 import parseAsciicast from "../parser/asciicast";
 
-function benchmark({ url, iterations = 10 }, { feed, setState, now }) {
+function benchmark({ url, iterations = 10 }, { feed, setState }) {
   let data;
   let byteCount = 0;
 
@@ -23,7 +23,7 @@ function benchmark({ url, iterations = 10 }, { feed, setState, now }) {
     },
 
     play() {
-      const startTime = now();
+      const startTime = performance.now();
 
       for (let i = 0; i < iterations; i++) {
         for (const [_, text] of data) {
@@ -33,7 +33,7 @@ function benchmark({ url, iterations = 10 }, { feed, setState, now }) {
         feed("\x1bc"); // reset terminal
       }
 
-      const endTime = now();
+      const endTime = performance.now();
       const duration = (endTime - startTime) / 1000;
       const throughput = (byteCount * iterations) / duration;
       const throughputMbs = ((byteCount / (1024 * 1024)) * iterations) / duration;

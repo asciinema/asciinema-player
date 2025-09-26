@@ -5,6 +5,7 @@ function recording(
   src,
   { feed, resize, onInput, onMarker, setState, logger },
   {
+    speed,
     idleTimeLimit,
     startAt,
     loop,
@@ -31,7 +32,7 @@ function recording(
   let waitingForAudio = false;
   let waitingTimeout;
   let shouldResumeOnAudioPlaying = false;
-  let now = performance.now.bind(performance);
+  let now = () => performance.now() * speed;
   let audioCtx;
   let audio;
   let audioSeekable = false;
@@ -135,24 +136,24 @@ function recording(
     return response;
   }
 
-  function delay(targetTime) {
-    let delay = targetTime * 1000 - (now() - startTime);
-
-    if (delay < 0) {
-      delay = 0;
-    }
-
-    return delay;
-  }
-
   function scheduleNextEvent() {
     const nextEvent = events[nextEventIndex];
 
     if (nextEvent) {
-      eventTimeoutId = setTimeout(runNextEvent, delay(nextEvent[0]));
+      eventTimeoutId = scheduleAt(runNextEvent, nextEvent[0]);
     } else {
       onEnd();
     }
+  }
+
+  function scheduleAt(f, targetTime) {
+    let timeout = (targetTime * 1000 - (now() - startTime)) / speed;
+
+    if (timeout < 0) {
+      timeout = 0;
+    }
+
+    return setTimeout(f, timeout);
   }
 
   function runNextEvent() {
@@ -335,7 +336,7 @@ function recording(
     effectiveStartAt = null;
 
     if (audio && audioSeekable) {
-      audio.currentTime = targetTime;
+      audio.currentTime = targetTime / speed;
     }
 
     if (isPlaying) {
@@ -432,7 +433,7 @@ function recording(
     effectiveStartAt = null;
 
     if (audio && audioSeekable) {
-      audio.currentTime = lastEventTime;
+      audio.currentTime = lastEventTime / speed;
     }
 
     if (events[targetIndex + 1] === undefined) {
@@ -478,7 +479,7 @@ function recording(
 
     const { contextTime, performanceTime } = audioCtx.getOutputTimestamp();
 
-    return contextTime * 1000 + (performance.now() - performanceTime);
+    return (contextTime * 1000 + (performance.now() - performanceTime)) * speed;
   }
 
   function onAudioWaiting() {

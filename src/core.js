@@ -228,7 +228,6 @@ class Core {
       this._dispatchEvent("marker", { index, time, label });
     };
 
-    const now = this._now.bind(this);
     const reset = this._resetVt.bind(this);
     const resize = this._resizeVt.bind(this);
     const setState = this._setState.bind(this);
@@ -242,15 +241,13 @@ class Core {
         onMarker,
         reset,
         resize,
-        now,
-        setTimeout: (f, t) => setTimeout(f, t / this.speed),
-        setInterval: (f, t) => setInterval(f, t / this.speed),
         setState,
         logger: this.logger,
       },
       {
         cols: this.cols,
         rows: this.rows,
+        speed: this.speed,
         idleTimeLimit: this.idleTimeLimit,
         startAt: this.startAt,
         loop: this.loop,
@@ -450,10 +447,6 @@ class Core {
     const affectedLines = this.vt.feed(data);
     affectedLines.forEach((i) => this.changedLines.add(i));
     this.cursor = undefined;
-  }
-
-  _now() {
-    return performance.now() * this.speed;
   }
 
   async _initializeDriver() {
