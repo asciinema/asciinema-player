@@ -3,7 +3,7 @@ import Stream from "../stream";
 
 function recording(
   src,
-  { feed, resize, onInput, onMarker, now, setTimeout, setState, logger },
+  { feed, resize, onInput, onMarker, setState, logger },
   {
     idleTimeLimit,
     startAt,
@@ -31,6 +31,8 @@ function recording(
   let waitingForAudio = false;
   let waitingTimeout;
   let shouldResumeOnAudioPlaying = false;
+  let now = performance.now.bind(performance);
+  let audioCtx;
   let audio;
   let audioSeekable = false;
 
@@ -256,6 +258,8 @@ function recording(
   }
 
   function resume() {
+    if (audio && !audioCtx) setupAudioCtx();
+
     startTime = now() - pauseElapsedTime;
     pauseElapsedTime = null;
     scheduleNextEvent();
@@ -460,6 +464,21 @@ function recording(
 
   function resizeTerminalToInitialSize() {
     resize(initialCols, initialRows);
+  }
+
+  function setupAudioCtx() {
+    audioCtx = new AudioContext({ latencyHint: "interactive" });
+    const src = audioCtx.createMediaElementSource(audio);
+    src.connect(audioCtx.destination);
+    now = audioNow;
+  }
+
+  function audioNow() {
+    if (!audioCtx) return 0;
+
+    const { contextTime, performanceTime } = audioCtx.getOutputTimestamp();
+
+    return contextTime * 1000 + (performance.now() - performanceTime);
   }
 
   function onAudioWaiting() {
