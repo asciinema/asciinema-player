@@ -520,7 +520,7 @@ export default (props) => {
             remainingTime={state.remainingTime}
             progress={state.progress}
             markers={markers}
-            isPlaying={isPlaying()}
+            isPlaying={isPlaying() || overlay() == "loader"}
             isPausable={state.isPausable}
             isSeekable={state.isSeekable}
             onPlayClick={togglePlay}
