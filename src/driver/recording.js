@@ -13,6 +13,7 @@ function recording(
     pauseOnMarkers,
     cols: initialCols,
     rows: initialRows,
+    audio,
   },
 ) {
   let cols;
@@ -31,7 +32,26 @@ function recording(
   async function init() {
     const { parser, minFrameTime, inputOffset, dumpFilename, encoding = "utf-8" } = src;
 
-    const recording = prepare(await parser(await doFetch(src), { encoding }), logger, {
+    const rec = doFetch(src);
+
+    if (audio) {
+      let resolve;
+
+      const canPlay = new Promise((resolve_) => {
+        resolve = resolve_;
+      });
+
+      function onCanPlay() {
+        resolve();
+        audio.removeEventListener("canplay", onCanPlay);
+      }
+
+      audio.addEventListener("canplay", onCanPlay);
+      audio.load();
+      await canPlay;
+    }
+
+    const recording = prepare(await parser(await rec, { encoding }), logger, {
       idleTimeLimit,
       startAt,
       minFrameTime,
@@ -181,9 +201,17 @@ function recording(
       feed("\x1bc"); // reset terminal
       resizeTerminalToInitialSize();
       scheduleNextEvent();
+
+      if (audio) {
+        audio.currentTime = 0;
+      }
     } else {
       pauseElapsedTime = duration * 1000;
       setState("ended");
+
+      if (audio) {
+        audio.pause();
+      }
     }
   }
 
@@ -206,6 +234,10 @@ function recording(
     cancelNextEvent();
     pauseElapsedTime = now() - startTime;
 
+    if (audio) {
+      audio.pause();
+    }
+
     return true;
   }
 
@@ -213,11 +245,21 @@ function recording(
     startTime = now() - pauseElapsedTime;
     pauseElapsedTime = null;
     scheduleNextEvent();
+
+    if (audio) {
+      audio.play();
+    }
   }
 
   function seek(where) {
     const isPlaying = !!eventTimeoutId;
     pause();
+
+    if (audio) {
+      audio.pause();
+    }
+
+    // TODO don't seek when audio doesn't support it
 
     const currentTime = (pauseElapsedTime ?? 0) / 1000;
 
@@ -276,8 +318,16 @@ function recording(
     pauseElapsedTime = targetTime * 1000;
     effectiveStartAt = null;
 
+    if (audio) {
+      audio.currentTime = targetTime;
+    }
+
     if (isPlaying) {
       resume();
+
+      if (audio) {
+        audio.play();
+      }
     }
 
     return true;
@@ -368,6 +418,11 @@ function recording(
     lastEventTime = nextEvent[0];
     pauseElapsedTime = lastEventTime * 1000;
     effectiveStartAt = null;
+
+    if (audio) {
+      // TODO fix this
+      audio.currentTime = lastEventTime;
+    }
 
     if (events[targetIndex + 1] === undefined) {
       onEnd();

@@ -192,6 +192,7 @@ class Core {
     this.poster = this._parsePoster(opts.poster);
     this.markers = this._normalizeMarkers(opts.markers);
     this.pauseOnMarkers = opts.pauseOnMarkers;
+    this.audio = opts.audio;
     this.commandQueue = Promise.resolve();
 
     this.eventHandlers = new Map([
@@ -256,6 +257,7 @@ class Core {
         posterTime: posterTime,
         markers: this.markers,
         pauseOnMarkers: this.pauseOnMarkers,
+        audio: this.audio,
       },
     );
 

@@ -11,6 +11,7 @@ const CORE_OPTS = [
   'rows',
   'speed',
   'startAt',
+  'audio',
 ];
 
 const UI_OPTS = [
