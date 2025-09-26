@@ -29,6 +29,7 @@ function recording(
   let pauseElapsedTime;
   let playCount = 0;
   let waitingForAudio = false;
+  let waitingTimeout;
   let shouldResumeOnAudioPlaying = false;
 
   async function init() {
@@ -461,7 +462,7 @@ function recording(
     logger.debug("audio buffering");
     waitingForAudio = true;
     shouldResumeOnAudioPlaying = !!eventTimeoutId;
-    setState("loading");
+    waitingTimeout = setTimeout(() => setState("loading"), 1000);
 
     if (!eventTimeoutId) return true;
 
@@ -472,6 +473,7 @@ function recording(
 
   function onAudioPlaying() {
     logger.debug("audio resumed");
+    clearTimeout(waitingTimeout);
     setState("playing");
 
     if (!waitingForAudio) return;
