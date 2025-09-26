@@ -31,6 +31,7 @@ function recording(
   let waitingForAudio = false;
   let waitingTimeout;
   let shouldResumeOnAudioPlaying = false;
+  let audioSeekable = false;
 
   async function init() {
     const { parser, minFrameTime, inputOffset, dumpFilename, encoding = "utf-8" } = src;
@@ -55,10 +56,26 @@ function recording(
         }
 
         audio.addEventListener("canplay", onCanPlay);
-        audio.addEventListener("playing", onAudioPlaying);
-        audio.addEventListener("waiting", onAudioWaiting);
+
+        if (audioSeekable) {
+          audio.addEventListener("playing", onAudioPlaying);
+          audio.addEventListener("waiting", onAudioWaiting);
+        }
+
         audio.load();
         await audioCanPlay;
+
+        audioSeekable =
+          audio.duration !== NaN &&
+          audio.duration !== Infinity &&
+          audio.seekable.length > 0 &&
+          audio.seekable.end(audio.seekable.length - 1) === audio.duration;
+
+        if (!audioSeekable) {
+          logger.warn(
+            `audio is not seekable - you must enable range request support on the server providing ${audio.src} for audio seeking to work`,
+          );
+        }
       }
 
       const recording = prepare(await parser(await rec, { encoding }), logger, {
@@ -266,8 +283,6 @@ function recording(
       audio.pause();
     }
 
-    // TODO don't seek when audio doesn't support it
-
     const currentTime = (pauseElapsedTime ?? 0) / 1000;
 
     if (typeof where === "string") {
@@ -325,7 +340,7 @@ function recording(
     pauseElapsedTime = targetTime * 1000;
     effectiveStartAt = null;
 
-    if (audio) {
+    if (audio && audioSeekable) {
       audio.currentTime = targetTime;
     }
 
@@ -422,8 +437,7 @@ function recording(
     pauseElapsedTime = lastEventTime * 1000;
     effectiveStartAt = null;
 
-    if (audio) {
-      // TODO fix this
+    if (audio && audioSeekable) {
       audio.currentTime = lastEventTime;
     }
 
