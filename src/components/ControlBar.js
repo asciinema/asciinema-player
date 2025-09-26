@@ -1,5 +1,10 @@
 import { Match, Switch, createMemo, createSignal, onCleanup } from "solid-js";
 import { throttle } from "../util";
+import ExpandIcon from "./icons/ExpandIcon";
+import KeyboardIcon from "./icons/KeyboardIcon";
+import PauseIcon from "./icons/PauseIcon";
+import PlayIcon from "./icons/PlayIcon";
+import ShrinkIcon from "./icons/ShrinkIcon";
 
 function formatTime(seconds) {
   let s = Math.floor(seconds);
@@ -110,27 +115,10 @@ export default (props) => {
         <span class="ap-button ap-playback-button" onClick={e(props.onPlayClick)} tabindex="0">
           <Switch>
             <Match when={props.isPlaying}>
-              <svg
-                version="1.1"
-                viewBox="0 0 12 12"
-                class="ap-icon"
-                aria-label="Pause"
-                role="button"
-              >
-                <path d="M1,0 L4,0 L4,12 L1,12 Z"></path>
-                <path d="M8,0 L11,0 L11,12 L8,12 Z"></path>
-              </svg>
+              <PauseIcon />
             </Match>
             <Match when={!props.isPlaying}>
-              <svg
-                version="1.1"
-                viewBox="0 0 12 12"
-                class="ap-icon"
-                aria-label="Play"
-                role="button"
-              >
-                <path d="M1,0 L11,6 L1,12 Z"></path>
-              </svg>
+              <PlayIcon />
             </Match>
           </Switch>
         </span>
@@ -172,9 +160,7 @@ export default (props) => {
         role="button"
         tabindex="0"
       >
-        <svg version="1.1" viewBox="6 8 14 16" class="ap-icon">
-          <path d="M0.938 8.313h22.125c0.5 0 0.938 0.438 0.938 0.938v13.5c0 0.5-0.438 0.938-0.938 0.938h-22.125c-0.5 0-0.938-0.438-0.938-0.938v-13.5c0-0.5 0.438-0.938 0.938-0.938zM1.594 22.063h20.813v-12.156h-20.813v12.156zM3.844 11.188h1.906v1.938h-1.906v-1.938zM7.469 11.188h1.906v1.938h-1.906v-1.938zM11.031 11.188h1.938v1.938h-1.938v-1.938zM14.656 11.188h1.875v1.938h-1.875v-1.938zM18.25 11.188h1.906v1.938h-1.906v-1.938zM5.656 15.031h1.938v1.938h-1.938v-1.938zM9.281 16.969v-1.938h1.906v1.938h-1.906zM12.875 16.969v-1.938h1.906v1.938h-1.906zM18.406 16.969h-1.938v-1.938h1.938v1.938zM16.531 20.781h-9.063v-1.906h9.063v1.906z"></path>
-        </svg>
+        <KeyboardIcon />
         <span class="ap-tooltip">Keyboard shortcuts (?)</span>
       </span>
 
@@ -185,14 +171,8 @@ export default (props) => {
         role="button"
         tabindex="0"
       >
-        <svg version="1.1" viewBox="0 0 12 12" class="ap-icon ap-icon-fullscreen-on">
-          <path d="M12,0 L7,0 L9,2 L7,4 L8,5 L10,3 L12,5 Z"></path>
-          <path d="M0,12 L0,7 L2,9 L4,7 L5,8 L3,10 L5,12 Z"></path>
-        </svg>
-        <svg version="1.1" viewBox="0 0 12 12" class="ap-icon ap-icon-fullscreen-off">
-          <path d="M7,5 L7,0 L9,2 L11,0 L12,1 L10,3 L12,5 Z"></path>
-          <path d="M5,7 L0,7 L2,9 L0,11 L1,12 L3,10 L5,12 Z"></path>
-        </svg>
+        <ShrinkIcon />
+        <ExpandIcon />
         <span class="ap-tooltip">Fullscreen (f)</span>
       </span>
     </div>
