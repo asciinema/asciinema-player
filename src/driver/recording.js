@@ -35,77 +35,65 @@ function recording(
   let audioSeekable = false;
 
   async function init() {
-    const { parser, minFrameTime, inputOffset, dumpFilename, encoding = "utf-8" } = src;
-
     const timeout = setTimeout(() => {
       setState("loading");
     }, 3000);
 
     try {
-      const rec = doFetch(src);
-
-      if (audioUrl) {
-        createAudioElement();
-
-        let resolve;
-
-        const audioCanPlay = new Promise((resolve_) => {
-          resolve = resolve_;
-        });
-
-        function onCanPlay() {
-          resolve();
-          audio.removeEventListener("canplay", onCanPlay);
-        }
-
-        audio.addEventListener("canplay", onCanPlay);
-
-        if (audioSeekable) {
-          audio.addEventListener("playing", onAudioPlaying);
-          audio.addEventListener("waiting", onAudioWaiting);
-        }
-
-        await audioCanPlay;
-
-        audioSeekable =
-          audio.duration !== NaN &&
-          audio.duration !== Infinity &&
-          audio.seekable.length > 0 &&
-          audio.seekable.end(audio.seekable.length - 1) === audio.duration;
-
-        if (!audioSeekable) {
-          logger.warn(
-            `audio is not seekable - you must enable range request support on the server providing ${audio.src} for audio seeking to work`,
-          );
-        }
-      }
-
-      const recording = prepare(await parser(await rec, { encoding }), logger, {
-        idleTimeLimit,
-        startAt,
-        minFrameTime,
-        inputOffset,
-        markers_,
-      });
-
-      ({ cols, rows, events, duration, effectiveStartAt } = recording);
-      initialCols = initialCols ?? cols;
-      initialRows = initialRows ?? rows;
-
-      if (events.length === 0) {
-        throw "recording is missing events";
-      }
-
-      if (dumpFilename !== undefined) {
-        dump(recording, dumpFilename);
-      }
-
-      const poster = posterTime !== undefined ? getPoster(posterTime) : undefined;
-      markers = events.filter((e) => e[1] === "m").map((e) => [e[0], e[2].label]);
-
-      return { cols, rows, duration, theme: recording.theme, poster, markers };
+      const metadata = loadRecording(src, logger, { idleTimeLimit, startAt, markers_ });
+      await loadAudio(audioUrl);
+      return await metadata;
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  async function loadRecording(src, logger, opts) {
+    const { parser, minFrameTime, inputOffset, dumpFilename, encoding = "utf-8" } = src;
+    const data = await doFetch(src);
+
+    const recording = prepare(await parser(data, { encoding }), logger, {
+      ...opts,
+      minFrameTime,
+      inputOffset,
+    });
+
+    ({ cols, rows, events, duration, effectiveStartAt } = recording);
+    initialCols = initialCols ?? cols;
+    initialRows = initialRows ?? rows;
+
+    if (events.length === 0) {
+      throw "recording is missing events";
+    }
+
+    if (dumpFilename !== undefined) {
+      dump(recording, dumpFilename);
+    }
+
+    const poster = posterTime !== undefined ? getPoster(posterTime) : undefined;
+    markers = events.filter((e) => e[1] === "m").map((e) => [e[0], e[2].label]);
+
+    return { cols, rows, duration, theme: recording.theme, poster, markers };
+  }
+
+  async function loadAudio(audioUrl) {
+    if (!audioUrl) return;
+
+    audio = await createAudioElement(audioUrl);
+
+    audioSeekable =
+      audio.duration !== NaN &&
+      audio.duration !== Infinity &&
+      audio.seekable.length > 0 &&
+      audio.seekable.end(audio.seekable.length - 1) === audio.duration;
+
+    if (audioSeekable) {
+      audio.addEventListener("playing", onAudioPlaying);
+      audio.addEventListener("waiting", onAudioWaiting);
+    } else {
+      logger.warn(
+        `audio is not seekable - you must enable range request support on the server providing ${audio.src} for audio seeking to work`,
+      );
     }
   }
 
@@ -474,14 +462,6 @@ function recording(
     resize(initialCols, initialRows);
   }
 
-  function createAudioElement() {
-    audio = new Audio();
-    audio.preload = "metadata";
-    audio.loop = false;
-    audio.crossOrigin = "anonymous";
-    audio.src = audioUrl;
-  }
-
   function onAudioWaiting() {
     logger.debug("audio buffering");
     waitingForAudio = true;
@@ -646,6 +626,30 @@ function dump(recording, filename) {
   link.href = URL.createObjectURL(new Blob([asciicast], { type: "text/plain" }));
   link.download = filename;
   link.click();
+}
+
+async function createAudioElement(src) {
+  const audio = new Audio();
+  audio.preload = "metadata";
+  audio.loop = false;
+  audio.crossOrigin = "anonymous";
+  audio.src = src;
+
+  let resolve;
+
+  const canPlay = new Promise((resolve_) => {
+    resolve = resolve_;
+  });
+
+  function onCanPlay() {
+    resolve();
+    audio.removeEventListener("canplay", onCanPlay);
+  }
+
+  audio.addEventListener("canplay", onCanPlay);
+  await canPlay;
+
+  return audio;
 }
 
 export default recording;
