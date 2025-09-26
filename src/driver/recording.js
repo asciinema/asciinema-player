@@ -34,7 +34,7 @@ function recording(
   let shouldResumeOnAudioPlaying = false;
   let now = () => performance.now() * speed;
   let audioCtx;
-  let audio;
+  let audioElement;
   let audioSeekable = false;
 
   async function init() {
@@ -82,20 +82,20 @@ function recording(
   async function loadAudio(audioUrl) {
     if (!audioUrl) return;
 
-    audio = await createAudioElement(audioUrl);
+    audioElement = await createAudioElement(audioUrl);
 
     audioSeekable =
-      audio.duration !== NaN &&
-      audio.duration !== Infinity &&
-      audio.seekable.length > 0 &&
-      audio.seekable.end(audio.seekable.length - 1) === audio.duration;
+      audioElement.duration !== NaN &&
+      audioElement.duration !== Infinity &&
+      audioElement.seekable.length > 0 &&
+      audioElement.seekable.end(audioElement.seekable.length - 1) === audioElement.duration;
 
     if (audioSeekable) {
-      audio.addEventListener("playing", onAudioPlaying);
-      audio.addEventListener("waiting", onAudioWaiting);
+      audioElement.addEventListener("playing", onAudioPlaying);
+      audioElement.addEventListener("waiting", onAudioWaiting);
     } else {
       logger.warn(
-        `audio is not seekable - you must enable range request support on the server providing ${audio.src} for audio seeking to work`,
+        `audio is not seekable - you must enable range request support on the server providing ${audioElement.src} for audio seeking to work`,
       );
     }
   }
@@ -217,15 +217,15 @@ function recording(
       resizeTerminalToInitialSize();
       scheduleNextEvent();
 
-      if (audio) {
-        audio.currentTime = 0;
+      if (audioElement) {
+        audioElement.currentTime = 0;
       }
     } else {
       pauseElapsedTime = duration * 1000;
       setState("ended");
 
-      if (audio) {
-        audio.pause();
+      if (audioElement) {
+        audioElement.pause();
       }
     }
   }
@@ -246,8 +246,8 @@ function recording(
   function pause() {
     shouldResumeOnAudioPlaying = false;
 
-    if (audio) {
-      audio.pause();
+    if (audioElement) {
+      audioElement.pause();
     }
 
     if (!eventTimeoutId) return true;
@@ -259,14 +259,14 @@ function recording(
   }
 
   function resume() {
-    if (audio && !audioCtx) setupAudioCtx();
+    if (audioElement && !audioCtx) setupAudioCtx();
 
     startTime = now() - pauseElapsedTime;
     pauseElapsedTime = null;
     scheduleNextEvent();
 
-    if (audio) {
-      audio.play();
+    if (audioElement) {
+      audioElement.play();
     }
   }
 
@@ -274,8 +274,8 @@ function recording(
     const isPlaying = !!eventTimeoutId;
     pause();
 
-    if (audio) {
-      audio.pause();
+    if (audioElement) {
+      audioElement.pause();
     }
 
     const currentTime = (pauseElapsedTime ?? 0) / 1000;
@@ -335,8 +335,8 @@ function recording(
     pauseElapsedTime = targetTime * 1000;
     effectiveStartAt = null;
 
-    if (audio && audioSeekable) {
-      audio.currentTime = targetTime / speed;
+    if (audioElement && audioSeekable) {
+      audioElement.currentTime = targetTime / speed;
     }
 
     if (isPlaying) {
@@ -432,8 +432,8 @@ function recording(
     pauseElapsedTime = lastEventTime * 1000;
     effectiveStartAt = null;
 
-    if (audio && audioSeekable) {
-      audio.currentTime = lastEventTime / speed;
+    if (audioElement && audioSeekable) {
+      audioElement.currentTime = lastEventTime / speed;
     }
 
     if (events[targetIndex + 1] === undefined) {
@@ -469,7 +469,7 @@ function recording(
 
   function setupAudioCtx() {
     audioCtx = new AudioContext({ latencyHint: "interactive" });
-    const src = audioCtx.createMediaElementSource(audio);
+    const src = audioCtx.createMediaElementSource(audioElement);
     src.connect(audioCtx.destination);
     now = audioNow;
   }
