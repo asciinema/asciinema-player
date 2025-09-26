@@ -13,7 +13,7 @@ function recording(
     pauseOnMarkers,
     cols: initialCols,
     rows: initialRows,
-    audio,
+    audioUrl,
   },
 ) {
   let cols;
@@ -31,6 +31,7 @@ function recording(
   let waitingForAudio = false;
   let waitingTimeout;
   let shouldResumeOnAudioPlaying = false;
+  let audio;
   let audioSeekable = false;
 
   async function init() {
@@ -43,7 +44,9 @@ function recording(
     try {
       const rec = doFetch(src);
 
-      if (audio) {
+      if (audioUrl) {
+        createAudioElement();
+
         let resolve;
 
         const audioCanPlay = new Promise((resolve_) => {
@@ -62,7 +65,6 @@ function recording(
           audio.addEventListener("waiting", onAudioWaiting);
         }
 
-        audio.load();
         await audioCanPlay;
 
         audioSeekable =
@@ -470,6 +472,13 @@ function recording(
 
   function resizeTerminalToInitialSize() {
     resize(initialCols, initialRows);
+  }
+
+  function createAudioElement() {
+    audio = new Audio();
+    audio.preload = "metadata";
+    audio.loop = false;
+    audio.src = audioUrl;
   }
 
   function onAudioWaiting() {

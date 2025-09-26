@@ -5,8 +5,7 @@ import { DummyLogger } from "./logging";
 
 function create(src, elem, opts = {}) {
   const logger = opts.logger ?? new DummyLogger();
-  const audio = createAudioElement(opts.audioUrl);
-  const core = new Core(src, coreOpts(opts, { logger, audio }));
+  const core = new Core(src, coreOpts(opts, { logger }));
   const { el, dispose } = mount(core, elem, uiOpts(opts, { logger }));
 
   const ready = core.init();
@@ -26,17 +25,6 @@ function create(src, elem, opts = {}) {
   };
 
   return player;
-}
-
-function createAudioElement(url) {
-  if (url === undefined) return;
-
-  const audio = new Audio(url);
-  audio.controls = true;
-  audio.preload = "none";
-  audio.loop = false;
-
-  return audio;
 }
 
 export { create };
