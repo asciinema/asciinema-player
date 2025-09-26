@@ -57,29 +57,37 @@ function recording(
     return { cols, rows, duration, theme: recording.theme, poster, markers };
   }
 
-  function doFetch({ url, data, fetchOpts = {} }) {
-    if (typeof url === "string") {
-      return doFetchOne(url, fetchOpts);
-    } else if (Array.isArray(url)) {
-      return Promise.all(url.map((url) => doFetchOne(url, fetchOpts)));
-    } else if (data !== undefined) {
-      if (typeof data === "function") {
-        data = data();
-      }
+  async function doFetch({ url, data, fetchOpts = {} }) {
+    const timeout = setTimeout(() => {
+      setState("loading");
+    }, 3000);
 
-      if (!(data instanceof Promise)) {
-        data = Promise.resolve(data);
-      }
+    try {
+      if (typeof url === "string") {
+        return await doFetchOne(url, fetchOpts);
+      } else if (Array.isArray(url)) {
+        return await Promise.all(url.map((url) => doFetchOne(url, fetchOpts)));
+      } else if (data !== undefined) {
+        if (typeof data === "function") {
+          data = data();
+        }
 
-      return data.then((value) => {
+        if (!(data instanceof Promise)) {
+          data = Promise.resolve(data);
+        }
+
+        const value = await data;
+
         if (typeof value === "string" || value instanceof ArrayBuffer) {
           return new Response(value);
         } else {
           return value;
         }
-      });
-    } else {
-      throw "failed fetching recording file: url/data missing in src";
+      } else {
+        throw "failed fetching recording file: url/data missing in src";
+      }
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
