@@ -129,6 +129,41 @@
       font-size: 8em;
     }
   }
+
+  .slide-enter-active {
+    transition: opacity 0.2s;
+  }
+
+  .slide-enter-active.ap-was-playing {
+    transition: top 0.2s ease-out, opacity 0.2s;
+  }
+
+  .slide-exit-active {
+    transition: top 0.2s ease-in, opacity 0.2s;
+  }
+
+  .slide-enter {
+    top: -50%;
+    opacity: 0;
+  }
+
+  .slide-enter-to {
+    top: 0%;
+  }
+
+  .slide-enter, .slide-enter-to, .slide-exit, .slide-exit-to {
+    bottom: auto;
+    height: 100%;
+  }
+
+  .slide-exit {
+    top: 0%;
+  }
+
+  .slide-exit-to {
+    top: -50%;
+    opacity: 0;
+  }
 }
 
 @keyframes ap-loader-rotation {
@@ -140,3 +175,4 @@
     transform: rotate(360deg);
   }
 }
+

@@ -1,5 +1,6 @@
 import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
+import { Transition } from "solid-transition-group";
 import { debounce } from "../util";
 import Terminal from "./Terminal";
 import ControlBar from "./ControlBar";
@@ -36,6 +37,7 @@ export default (props) => {
   });
 
   const [isPlaying, setIsPlaying] = createSignal(false);
+  const [wasPlaying, setWasPlaying] = createSignal(false);
   const [overlay, setOverlay] = createSignal(!autoPlay ? "start" : null);
   const [infoMessage, setInfoMessage] = createSignal(null);
 
@@ -126,6 +128,7 @@ export default (props) => {
   core.addEventListener("playing", () => {
     batch(() => {
       setIsPlaying(true);
+      setWasPlaying(true);
       setOverlay(null);
       onPlaying();
     });
@@ -536,13 +539,19 @@ export default (props) => {
           <Match when={overlay() == "loader"}>
             <LoaderOverlay />
           </Match>
-          <Match when={overlay() == "info"}>
-            <InfoOverlay message={infoMessage()} fontFamily={props.terminalFontFamily} />
-          </Match>
           <Match when={overlay() == "error"}>
             <ErrorOverlay />
           </Match>
         </Switch>
+        <Transition name="slide">
+          <Show when={overlay() == "info"}>
+            <InfoOverlay
+              message={infoMessage()}
+              fontFamily={props.terminalFontFamily}
+              wasPlaying={wasPlaying()}
+            />
+          </Show>
+        </Transition>
         <Show when={isHelpVisible()}>
           <HelpOverlay
             fontFamily={props.terminalFontFamily}
