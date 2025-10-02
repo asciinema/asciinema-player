@@ -233,7 +233,7 @@ function recording(
     }
   }
 
-  function play() {
+  async function play() {
     if (eventTimeoutId) throw "already playing";
     if (events[nextEventIndex] === undefined) throw "already ended";
 
@@ -241,7 +241,7 @@ function recording(
       seek(effectiveStartAt);
     }
 
-    resume();
+    await resume();
 
     return true;
   }
@@ -261,7 +261,7 @@ function recording(
     return true;
   }
 
-  function resume() {
+  async function resume() {
     if (audioElement && !audioCtx) setupAudioCtx();
 
     startTime = now() - pauseElapsedTime;
@@ -269,11 +269,11 @@ function recording(
     scheduleNextEvent();
 
     if (audioElement) {
-      audioElement.play();
+      await audioElement.play();
     }
   }
 
-  function seek(where) {
+  async function seek(where) {
     const isPlaying = !!eventTimeoutId;
     pause();
 
@@ -343,7 +343,7 @@ function recording(
     }
 
     if (isPlaying) {
-      resume();
+      await resume();
     }
 
     return true;
@@ -444,12 +444,12 @@ function recording(
     }
   }
 
-  function restart() {
+  async function restart() {
     if (eventTimeoutId) throw "still playing";
     if (events[nextEventIndex] !== undefined) throw "not ended";
 
     seek(0);
-    resume();
+    await resume();
 
     return true;
   }
