@@ -274,6 +274,10 @@ function recording(
   }
 
   async function seek(where) {
+    if (waitingForAudio) {
+      return false;
+    }
+
     const isPlaying = !!eventTimeoutId;
     pause();
 
