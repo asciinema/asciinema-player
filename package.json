@@ -24,7 +24,7 @@
   "type": "module",
   "scripts": {
     "build": "rollup -c --environment production && lessc src/less/asciinema-player.less >dist/bundle/asciinema-player.css",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "playwright test",
     "format": "prettier src/**/*.js --write"
   },
   "browserslist": [
@@ -42,6 +42,7 @@
     "@babel/core": "^7.21.3",
     "@babel/plugin-transform-runtime": "^7.21.0",
     "@babel/preset-env": "^7.20.2",
+    "@playwright/test": "^1.54.0",
     "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-commonjs": "^28.0.5",
     "@rollup/plugin-node-resolve": "^16.0.1",

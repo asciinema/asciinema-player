@@ -4,3 +4,5 @@
 /public
 /.direnv
 /.envrc
+/test-results
+/playwright-report

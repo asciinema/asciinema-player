@@ -28,12 +28,15 @@
             (rust-bin.stable."1.78.0".default.override { targets = [ "wasm32-unknown-unknown" ]; })
             binaryen
             python3
+            playwright-driver.browsers
           ];
 
           shellHook = ''
             alias build='npm run build'
             alias serve='cd public && python -m http.server 5000'
           '';
+
+          PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
         };
       }
     );
