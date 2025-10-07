@@ -25,7 +25,7 @@
   "scripts": {
     "build": "rollup -c --environment production && lessc src/less/asciinema-player.less >dist/bundle/asciinema-player.css",
     "test": "playwright test",
-    "format": "prettier src/**/*.js --write"
+    "format": "prettier src/**/*.js tests/**/*.spec.js --write"
   },
   "browserslist": [
     "defaults and supports wasm"

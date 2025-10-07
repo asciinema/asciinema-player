@@ -9,7 +9,7 @@ export default defineConfig({
   reporter: 'list',
 
   use: {
-    baseURL: 'http://localhost:5000',
+    baseURL: 'http://localhost:8066',
     trace: 'on-first-retry',
   },
 
@@ -29,8 +29,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'cd tests && python -m http.server 5000',
-    url: 'http://localhost:5000',
+    command: 'cd tests && python -m http.server 8066',
+    url: 'http://localhost:8066',
     reuseExistingServer: !process.env.CI,
   },
 });

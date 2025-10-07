@@ -1,0 +1,12 @@
+{"version": 2, "width": 80, "height": 24}
+[2, "o", "hello\r\n"]
+[3, "o", "hello\r\n"]
+[3.000001, "o", "hello\r\n"]
+[3.000002, "o", "hello\r\n"]
+[6, "o", "hello\r\n"]
+[7, "o", "hello\r\n"]
+[8, "o", "hello\r\n"]
+[9, "o", "hello\r\n"]
+[10, "o", "hello\r\n"]
+[11, "o", "hello\r\n"]
+[12, "o", "hello\r\n"]
