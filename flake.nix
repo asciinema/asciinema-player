@@ -23,9 +23,9 @@
       {
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [
-            nodejs_18
+            nodejs_20
             typescript-language-server
-            (rust-bin.stable."1.78.0".default.override { targets = [ "wasm32-unknown-unknown" ]; })
+            (rust-bin.stable."1.85.0".default.override { targets = [ "wasm32-unknown-unknown" ]; })
             binaryen
             python3
             playwright-driver.browsers
