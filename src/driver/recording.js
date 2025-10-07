@@ -680,10 +680,9 @@ function dump(recording, filename) {
 
 async function createAudioElement(src) {
   const audio = new Audio();
-  audio.preload = "none";
+  audio.preload = "metadata";
   audio.loop = false;
   audio.crossOrigin = "anonymous";
-  audio.src = src;
 
   let resolve;
 
@@ -697,6 +696,7 @@ async function createAudioElement(src) {
   }
 
   audio.addEventListener("canplay", onCanPlay);
+  audio.src = src;
   audio.load();
   await canPlay;
 
