@@ -155,32 +155,26 @@ export default (props) => {
         </Show>
       </span>
 
-      <Switch>
-        <Match when={props.isMuted === true}>
-          <span
-            class="ap-button ap-speaker-button ap-tooltip-container"
-            onClick={e(props.onMuteClick)}
-            aria-label="Unmute"
-            role="button"
-            tabindex="0"
-          >
-            <SpeakerOffIcon />
-            <span class="ap-tooltip">Unmute (m)</span>
-          </span>
-        </Match>
-        <Match when={props.isMuted === false}>
-          <span
-            class="ap-button ap-speaker-button ap-tooltip-container"
-            onClick={e(props.onMuteClick)}
-            aria-label="Mute"
-            role="button"
-            tabindex="0"
-          >
-            <SpeakerOnIcon />
-            <span class="ap-tooltip">Mute (m)</span>
-          </span>
-        </Match>
-      </Switch>
+      <Show when={props.isMuted !== undefined}>
+        <span
+          class="ap-button ap-speaker-button ap-tooltip-container"
+          onClick={e(props.onMuteClick)}
+          aria-label="Mute / unmute"
+          role="button"
+          tabindex="0"
+        >
+          <Switch>
+            <Match when={props.isMuted === true}>
+              <SpeakerOffIcon />
+              <span class="ap-tooltip">Unmute (m)</span>
+            </Match>
+            <Match when={props.isMuted === false}>
+              <SpeakerOnIcon />
+              <span class="ap-tooltip">Mute (m)</span>
+            </Match>
+          </Switch>
+        </span>
+      </Show>
 
       <span
         class="ap-button ap-kbd-button ap-tooltip-container"
