@@ -17,6 +17,7 @@ function exponentialDelay(attempt) {
 function websocket(
   { url, bufferTime, reconnectDelay = exponentialDelay, minFrameTime },
   { feed, reset, resize, onInput, onMarker, setState, logger },
+  { audioUrl },
 ) {
   logger = new PrefixedLogger(logger, "websocket: ");
   let socket;
@@ -27,6 +28,7 @@ function websocket(
   let stop = false;
   let wasOnline = false;
   let initTimeout;
+  let audioElement;
 
   function connect() {
     socket = new WebSocket(url, ["v1.alis", "v2.asciicast", "v3.asciicast", "raw"]);
@@ -162,16 +164,55 @@ function websocket(
     buf = null;
   }
 
+  function startAudio() {
+    if (!audioUrl) return;
+
+    audioElement = new Audio();
+    audioElement.preload = "auto";
+    audioElement.crossOrigin = "anonymous";
+    audioElement.src = audioUrl;
+    audioElement.play();
+  }
+
+  function stopAudio() {
+    if (!audioElement) return;
+
+    audioElement.pause();
+  }
+
+  function mute() {
+    if (audioElement) {
+      audioElement.muted = true;
+      return true;
+    }
+  }
+
+  function unmute() {
+    if (audioElement) {
+      audioElement.muted = false;
+      return true;
+    }
+  }
+
   return {
+    init: () => {
+      return { hasAudio: !!audioUrl };
+    },
+
     play: () => {
       connect();
+      startAudio();
     },
 
     stop: () => {
       stop = true;
       stopBuffer();
       if (socket !== undefined) socket.close();
+      stopAudio();
     },
+
+    mute,
+    unmute,
 
     getCurrentTime: () => clock.getTime(),
   };
