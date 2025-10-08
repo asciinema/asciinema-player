@@ -121,6 +121,7 @@ function websocket(
     logger.info(`stream reset (${cols}x${rows} @${time})`);
     setState("playing");
     stopBuffer();
+
     buf = getBuffer(
       bufferTime,
       feed,
@@ -132,6 +133,7 @@ function websocket(
       minFrameTime,
       logger,
     );
+
     reset(cols, rows, init, theme);
     clock = new Clock();
     wasOnline = true;
