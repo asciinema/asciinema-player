@@ -35,7 +35,7 @@ function nullBuffer(execute) {
       execute("o", text);
     },
 
-    stop() {},
+    stop() { },
   };
 }
 
@@ -123,71 +123,141 @@ function sleep(t) {
   });
 }
 
-function adaptiveBufferTimeProvider({ logger }, { minTime = 25, maxLevel = 100, interval = 50, windowSize = 20, smoothingFactor = 0.2, minImprovementDuration = 1000 }) {
-  let bufferLevel = 0;
-  let bufferTime = calcBufferTime(bufferLevel);
-  let latencies = [];
-  let maxJitter = 0;
-  let jitterRange = 0;
-  let improvementTs = null;
-
-  function calcBufferTime(level) {
-    if (level === 0) {
-      return minTime;
-    } else {
-      return interval * level;
-    }
+function adaptiveBufferTimeProvider(
+  { logger } = {},
+  {
+    minBufferTime = 50,
+    bufferLevelStep = 100,
+    maxBufferLevel = 50,
+    transitionDuration = 500,
+    peakHalfLifeUp = 100,
+    peakHalfLifeDown = 10000,
+    floorHalfLifeUp = 5000,
+    floorHalfLifeDown = 100,
+    idealHalfLifeUp = 1000,
+    idealHalfLifeDown = 5000,
+    safetyMultiplier = 1.2,
+    minImprovementDuration = 3000,
+  } = {}
+) {
+  function levelToMs(level) {
+    return level === 0 ? minBufferTime : bufferLevelStep * level;
   }
 
-  return (latency) => {
-    latencies.push(latency);
+  let bufferLevel = 1;
+  let bufferTime = levelToMs(bufferLevel);
+  let lastUpdateTime = performance.now();
+  let smoothedPeakLatency = null;
+  let smoothedFloorLatency = null;
+  let smoothedIdealBufferTime = null;
+  let stableSince = null;
+  let targetBufferTime = null;
+  let transitionRate = null;
 
-    if (latencies.length < windowSize) {
-      return bufferTime;
-    };
+  return function(latency) {
+    const now = performance.now();
+    const dt = Math.max(0, now - lastUpdateTime);
+    lastUpdateTime = now;
 
-    latencies = latencies.slice(-windowSize);
-    const currentMinJitter = min(latencies);
-    const currentMaxJitter = max(latencies);
-    const currentJitterRange = currentMaxJitter - currentMinJitter;
-    maxJitter = currentMaxJitter * smoothingFactor + maxJitter * (1 - smoothingFactor);
-    jitterRange = currentJitterRange * smoothingFactor + jitterRange * (1 - smoothingFactor);
-    const minBufferTime = maxJitter + jitterRange;
+    // adjust EMA-smoothed peak latency from current latency
+
+    if (smoothedPeakLatency === null) {
+      smoothedPeakLatency = latency;
+    } else if (latency > smoothedPeakLatency) {
+      const alphaUp = 1 - Math.pow(2, -dt / peakHalfLifeUp);
+      smoothedPeakLatency += alphaUp * (latency - smoothedPeakLatency);
+    } else {
+      const alphaDown = 1 - Math.pow(2, -dt / peakHalfLifeDown);
+      smoothedPeakLatency += alphaDown * (latency - smoothedPeakLatency);
+    }
+
+    smoothedPeakLatency = Math.max(smoothedPeakLatency, 0);
+
+    // adjust EMA-smoothed floor latency from current latency
+
+    if (smoothedFloorLatency === null) {
+      smoothedFloorLatency = latency;
+    } else if (latency > smoothedFloorLatency) {
+      const alphaUp = 1 - Math.pow(2, -dt / floorHalfLifeUp);
+      smoothedFloorLatency += alphaUp * (latency - smoothedFloorLatency);
+    } else {
+      const alphaDown = 1 - Math.pow(2, -dt / floorHalfLifeDown);
+      smoothedFloorLatency += alphaDown * (latency - smoothedFloorLatency);
+    }
+
+    smoothedFloorLatency = Math.max(smoothedFloorLatency, 0);
+
+    // adjust EMA-smoothed ideal buffer time
+
+    const jitter = smoothedPeakLatency - smoothedFloorLatency;
+    const idealBufferTime = safetyMultiplier * (smoothedPeakLatency + jitter);
+
+    if (smoothedIdealBufferTime === null) {
+      smoothedIdealBufferTime = idealBufferTime;
+    } else if (idealBufferTime > smoothedIdealBufferTime) {
+      const alphaUp = 1 - Math.pow(2, -dt / idealHalfLifeUp);
+      smoothedIdealBufferTime += + alphaUp * (idealBufferTime - smoothedIdealBufferTime);
+    } else {
+      const alphaDown = 1 - Math.pow(2, -dt / idealHalfLifeDown);
+      smoothedIdealBufferTime += + alphaDown * (idealBufferTime - smoothedIdealBufferTime);
+    }
+
+    // quantize smoothed ideal buffer time to discrete buffer level
+
+    let newBufferLevel;
+
+    if (smoothedIdealBufferTime <= minBufferTime) {
+      newBufferLevel = 0;
+    } else {
+      newBufferLevel = clamp(Math.ceil(smoothedIdealBufferTime / bufferLevelStep), 1, maxBufferLevel);
+    }
 
     if (latency > bufferTime) {
-      logger.debug('buffer underrun', { latency, maxJitter, jitterRange, bufferTime });
+      logger.debug('buffer underrun', { latency, bufferTime });
     }
 
-    if (bufferLevel < maxLevel && minBufferTime > bufferTime) {
-        bufferTime = calcBufferTime((bufferLevel += 1));
-        logger.debug(`jitter increased, raising bufferTime`, { latency, maxJitter, jitterRange, bufferTime });
-    } else if (
-      (bufferLevel > 1 && minBufferTime < calcBufferTime(bufferLevel - 2)) ||
-      (bufferLevel == 1 && minBufferTime < calcBufferTime(bufferLevel - 1))
-    ) {
-      if (improvementTs === null) {
-        improvementTs = performance.now();
-      } else if (performance.now() - improvementTs > minImprovementDuration) {
-        improvementTs = performance.now();
-        bufferTime = calcBufferTime((bufferLevel -= 1));
-        logger.debug(`jitter decreased, lowering bufferTime`, { latency, maxJitter, jitterRange, bufferTime });
+    // adjust buffer level and target buffer time for new buffer level
+
+    if (newBufferLevel > bufferLevel) {
+      if (latency > bufferTime) { // <- underrun - raise quickly
+        bufferLevel = Math.min(newBufferLevel, bufferLevel + 3);
+      } else {
+        bufferLevel += 1;
       }
 
-      return bufferTime;
+      targetBufferTime = levelToMs(bufferLevel);
+      transitionRate = (targetBufferTime - bufferTime) / transitionDuration;
+      stableSince = null;
+      logger.debug('raising buffer', { latency, bufferTime, targetBufferTime });
+    } else if (newBufferLevel < bufferLevel) {
+      if (stableSince == null) stableSince = now;
+
+      if (now - stableSince >= minImprovementDuration) {
+        bufferLevel -= 1;
+        targetBufferTime = levelToMs(bufferLevel);
+        transitionRate = (targetBufferTime - bufferTime) / transitionDuration;
+        stableSince = now;
+        logger.debug('lowering buffer', { latency, bufferTime, targetBufferTime });
+      }
+    } else {
+      stableSince = null;
     }
 
-    improvementTs = null;
+    // linear transition to target buffer time
+
+    if (targetBufferTime !== null) {
+      bufferTime += transitionRate * dt;
+
+      if (transitionRate >= 0 && bufferTime > targetBufferTime || transitionRate < 0 && bufferTime < targetBufferTime) {
+        bufferTime = targetBufferTime;
+        targetBufferTime = null;
+      }
+    }
 
     return bufferTime;
   };
 }
 
-function min(numbers) {
-  return numbers.reduce((prev, cur) => cur < prev ? cur : prev);
-}
-
-function max(numbers) {
-  return numbers.reduce((prev, cur) => cur > prev ? cur : prev);
-}
+function clamp(x, lo, hi) { return Math.min(hi, Math.max(lo, x)); }
 
 export default getBuffer;
