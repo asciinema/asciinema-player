@@ -168,8 +168,8 @@ class EndedState extends State {
     await this.play();
   }
 
-  seek(where) {
-    if (this.driver.seek(where) === true) {
+  async seek(where) {
+    if (await this.driver.seek(where)) {
       this.core._setState('idle');
       return true;
     }
