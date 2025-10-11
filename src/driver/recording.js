@@ -348,6 +348,8 @@ function recording(
 
     if (isPlaying) {
       await resume();
+    } else if (events[nextEventIndex] === undefined) {
+      onEnd();
     }
 
     return true;
