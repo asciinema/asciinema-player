@@ -110,8 +110,16 @@ class Idle extends State {
     await this.play();
   }
 
-  seek(where) {
-    return this.driver.seek(where);
+  async seek(where) {
+    const result = await this.driver.seek(where);
+
+    const remaining = this.core.getRemainingTime?.();
+
+    if (result && remaining === 0) {
+      this.core._setState("ended");
+    }
+
+    return result;
   }
 
   step(n) {
@@ -169,12 +177,20 @@ class EndedState extends State {
   }
 
   async seek(where) {
-    if (await this.driver.seek(where)) {
-      this.core._setState('idle');
+    const result = await this.driver.seek(where);
+
+    if (!result) {
+      return false;
+    }
+
+    const remaining = this.core.getRemainingTime?.();
+
+    if (remaining === 0) {
       return true;
     }
 
-    return false;
+    this.core._setState("idle");
+    return true;
   }
 }
 
