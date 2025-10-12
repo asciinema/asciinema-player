@@ -321,6 +321,8 @@ function recording(
 
     const targetTime = Math.min(Math.max(where, 0), duration);
 
+    if (targetTime * 1000 === pauseElapsedTime) return false;
+
     if (targetTime < lastEventTime) {
       feed("\x1bc"); // reset terminal
       resizeTerminalToInitialSize();
