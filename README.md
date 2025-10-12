@@ -6,7 +6,7 @@ __asciinema player__ is a web player for terminal sessions recordings.
 
 Unlike typical web _video_ players, which play heavyweight video files (`.mp4`,
 `.mov`), asciinema player plays lightweight terminal session recordings in the
-text-based [asciicast](https://docs.asciinema.org/manual/asciicast/v2/) format
+text-based [asciicast](https://docs.asciinema.org/manual/asciicast/v3/) format
 (`.cast`), such as those produced by the [asciinema
 recorder](https://docs.asciinema.org/manual/cli/).
 

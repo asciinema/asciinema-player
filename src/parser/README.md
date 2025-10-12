@@ -59,10 +59,12 @@ AsciinemaPlayer.create({ url: url, parser: 'built-in-parser-name' }, containerEl
 
 ### asciicast
 
-`asciicast` parser handles both [asciicast
-v1](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v1.md) and
+`asciicast` parser handles [asciicast
+v1](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v1.md),
 [asciicast
 v2](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md)
+and [asciicast
+v3](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v3.md)
 file formats produced by [asciinema
 recorder](https://github.com/asciinema/asciinema).
 
