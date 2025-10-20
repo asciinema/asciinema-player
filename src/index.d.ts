@@ -1,31 +1,48 @@
+/**
+ * @param src the url for fetching the asciicast recording
+ * @param element the container element to mount the player into
+ * @param options player options
+ * @returns the created AsciinemaPlayer instance
+ */
 export function create(
   src: RequestInfo | URL,
   element: HTMLElement,
   options?: options,
 ): AsciinemaPlayer;
+/**
+ * @param data the object for fetching data and parsing it to a asciicast recording
+ * @param element the container element to mount the player into
+ * @param options player options
+ * @returns the created AsciinemaPlayer instance
+ */
 export function create(
   data: {
     url: RequestInfo | URL;
     fetchOpts?: RequestInit;
-    parser?: parser;
+    parser?: "asciicast" | "ttyrec" | "typescript" | ((response: Response) => recording);
   },
   element: HTMLElement,
   options?: options,
 ): AsciinemaPlayer;
+/**
+ * @param data the object for providing asciicast recording, either directly or via a function
+ * @param element the container element to mount the player into
+ * @param options player options
+ * @returns the created AsciinemaPlayer instance
+ */
 export function create(
   data: {
-    data: asciicastDataSource;
+    data: asciicastProvider;
   },
   element: HTMLElement,
   options?: options,
 ): AsciinemaPlayer;
 
-export type RecordingDataModel = {
+export type recording = {
   cols: number;
   rows: number;
   events: Array<[number, "o" | "i" | "m" | "r", string]>;
 };
-type parser = "asciicast" | "ttyrec" | "typescript" | ((response: Response) => RecordingDataModel);
 
 export type asciicastV1 = {
   version: 1;
@@ -78,8 +95,8 @@ export type asciicastV3 = [
   ...Array<[number, "o" | "i" | "m" | "r" | "x", string]>,
 ];
 
-type asciicastData = asciicastV1 | asciicastV2 | asciicastV3 | string;
-type asciicastDataSource = asciicastData | (() => Promise<asciicastData>) | (() => asciicastData);
+export type asciicast = asciicastV1 | asciicastV2 | asciicastV3 | string;
+export type asciicastProvider = asciicast | (() => Promise<asciicast>) | (() => asciicast);
 
 /**
  * Look and feel of the asciinema player can be configured extensively by passing additional options
@@ -359,11 +376,11 @@ export interface options {
    * logger: console
    */
   logger?: {
-    log(...args: any[]): void;
-    debug(...args: any[]): void;
-    info(...args: any[]): void;
-    warn(...args: any[]): void;
-    error(...args: any[]): void;
+    log(...args: unknown[]): void;
+    debug(...args: unknown[]): void;
+    info(...args: unknown[]): void;
+    warn(...args: unknown[]): void;
+    error(...args: unknown[]): void;
   };
 }
 
@@ -500,7 +517,7 @@ interface AsciinemaPlayer {
 }
 
 /** Seek location union matching the docs. */
-type SeekLocation =
+export type SeekLocation =
   | number // seconds
   | `${number}%` // percentage string, e.g. "50%"
   | { marker: number } // go to marker by 0-based index
@@ -508,7 +525,7 @@ type SeekLocation =
   | { marker: "next" }; // next marker
 
 /** Payload for the `input` event. */
-type InputEventDetail = {
+export type InputEventDetail = {
   /**
    * Registered input value (ASCII or control char).
    *
@@ -521,7 +538,7 @@ type InputEventDetail = {
 };
 
 /** Payload for the `marker` event. */
-type MarkerEventDetail = {
+export type MarkerEventDetail = {
   /** 0-based marker index. */
   index: number;
   /** Marker time in seconds. */

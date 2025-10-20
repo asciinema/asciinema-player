@@ -3,6 +3,7 @@ import resolve from "@rollup/plugin-node-resolve";
 import rust from "@wasm-tool/rollup-plugin-rust";
 import commonjs from '@rollup/plugin-commonjs';
 import terser from "@rollup/plugin-terser";
+import copy from "rollup-plugin-copy";
 
 const esmPlugins = [
   babel({
@@ -15,7 +16,12 @@ const esmPlugins = [
     inlineWasm: true, 
     wasmOptArgs: ["-O4", "--enable-bulk-memory", "--enable-sign-ext"]
   }),
-  resolve({ extensions: [".js", ".jsx"] })
+  resolve({ extensions: [".js", ".jsx"] }),
+  copy({
+    targets:[
+      { src: "src/*.d.ts", dest: "dist/" }
+    ]
+  })
 ];
 
 const cjsPlugins = [
