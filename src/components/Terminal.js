@@ -9,7 +9,6 @@ export default (props) => {
       width: `${props.cols}ch`,
       height: `${lineHeight() * props.rows}em`,
       "font-size": `${(props.scale || 1.0) * 100}%`,
-      "font-family": props.fontFamily,
       "--term-line-height": `${lineHeight()}em`,
       "--term-cols": props.cols,
     };

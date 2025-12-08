@@ -34,9 +34,15 @@ function measureTerminal(fontFamily, lineHeight) {
   const cols = 80;
   const rows = 24;
   const div = document.createElement("div");
+  div.className = "ap-default-term-ff";
   div.style.height = "0px";
   div.style.overflow = "hidden";
   div.style.fontSize = "15px"; // must match font-size of div.asciinema-player in CSS
+
+  if (fontFamily !== undefined) {
+    div.style["--term-font-family"] = fontFamily;
+  }
+
   document.body.appendChild(div);
   let el;
 
@@ -46,7 +52,6 @@ function measureTerminal(fontFamily, lineHeight) {
         cols={cols}
         rows={rows}
         lineHeight={lineHeight}
-        fontFamily={fontFamily}
         lines={[]}
       />
     );

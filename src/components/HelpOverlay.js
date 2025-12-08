@@ -1,8 +1,4 @@
 export default (props) => {
-  const style = () => {
-    return { "font-family": props.fontFamily };
-  };
-
   const e = (f) => {
     return (e) => {
       e.preventDefault();
@@ -11,7 +7,7 @@ export default (props) => {
   };
 
   return (
-    <div class="ap-overlay ap-overlay-help" style={style()} onClick={e(props.onClose)}>
+    <div class="ap-overlay ap-overlay-help" onClick={e(props.onClose)}>
       <div
         onClick={(e) => {
           e.stopPropagation();

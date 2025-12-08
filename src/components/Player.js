@@ -465,6 +465,10 @@ export default (props) => {
       style["height"] = `${size.height}px`;
     }
 
+    if (props.terminalFontFamily !== undefined) {
+      style["--term-font-family"] = props.terminalFontFamily;
+    }
+
     const themeColors = theme().colors;
 
     if (themeColors) {
@@ -501,7 +505,7 @@ export default (props) => {
     coreReady.then(() => core.seek(pos));
   };
 
-  const playerClass = () => `ap-player asciinema-player-theme-${theme().name}`;
+  const playerClass = () => `ap-player ap-default-term-ff asciinema-player-theme-${theme().name}`;
   const terminalScale = () => terminalElementSize()?.scale;
 
   const el = (
@@ -530,7 +534,6 @@ export default (props) => {
           lines={state.lines}
           cursor={state.cursor}
           cursorHold={state.cursorHold}
-          fontFamily={props.terminalFontFamily}
           lineHeight={props.terminalLineHeight}
           ref={terminalRef}
         />
@@ -566,16 +569,11 @@ export default (props) => {
         </Switch>
         <Transition name="slide">
           <Show when={overlay() == "info"}>
-            <InfoOverlay
-              message={infoMessage()}
-              fontFamily={props.terminalFontFamily}
-              wasPlaying={wasPlaying()}
-            />
+            <InfoOverlay message={infoMessage()} wasPlaying={wasPlaying()} />
           </Show>
         </Transition>
         <Show when={isHelpVisible()}>
           <HelpOverlay
-            fontFamily={props.terminalFontFamily}
             onClose={() => setIsHelpVisible(false)}
             isPausable={state.isPausable}
             isSeekable={state.isSeekable}

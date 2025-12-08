@@ -16,20 +16,26 @@ pre.ap-terminal {
   border-color: var(--term-color-background);
   outline: none;
   line-height: var(--term-line-height);
-
-  .terminal-font;
+  font-family: var(--term-font-family);
+  font-variant-ligatures: none;
 
   .ap-line {
     display: block;
     width: 100%;
     height: var(--term-line-height);
     position: relative;
+    letter-spacing: normal;
+    overflow: hidden;
 
     span {
       position: absolute;
       left: calc(100% * var(--offset) / var(--term-cols));
       color: var(--fg);
       background-color: var(--bg);
+
+      padding: 0;
+      display: inline-block;
+      height: 100%;
     }
 
     .ap-inverse {
