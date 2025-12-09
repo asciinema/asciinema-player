@@ -86,6 +86,10 @@ function buildStyle(attrs, offset, width) {
     width: `${width + 0.01}ch`,
   };
 
+  if (width == 1) {
+    style["text-align"] = "center";
+  }
+
   if (typeof fg === "string") {
     style["--fg"] = fg;
   }

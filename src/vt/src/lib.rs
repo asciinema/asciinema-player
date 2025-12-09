@@ -1,8 +1,9 @@
+use std::ops::RangeInclusive;
+
 use serde::{
     ser::{SerializeMap, Serializer},
     Serialize,
 };
-use std::ops::RangeInclusive;
 use wasm_bindgen::prelude::*;
 
 // Use `wee_alloc` as the global allocator for smaller binary size
@@ -10,10 +11,76 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-const BOX_DRAWING_RANGE: RangeInclusive<char> = '\u{2500}'..='\u{257f}';
-const BLOCK_ELEMENTS_RANGE: RangeInclusive<char> = '\u{2580}'..='\u{259f}';
-const BRAILLE_PATTERNS_RANGE: RangeInclusive<char> = '\u{2800}'..='\u{28ff}';
-const POWERLINE_TRIANGLES_RANGE: RangeInclusive<char> = '\u{e0b0}'..='\u{e0b3}';
+static STANDALONE_CHARS_LUT: [bool; 65536] = build_standalone_chars_lut();
+const NF_MATERIAL_DESIGN_ICONS: RangeInclusive<char> = '\u{f0001}'..='\u{f1af0}';
+
+const fn build_standalone_chars_lut() -> [bool; 65536] {
+    let mut lut = [false; 65536];
+
+    // box drawing
+    fill_lut(&mut lut, 0x2500..=0x257f);
+
+    // block elements
+    fill_lut(&mut lut, 0x2580..=0x259f);
+
+    // braille patterns
+    fill_lut(&mut lut, 0x2800..=0x28ff);
+
+    // NF Seti-UI
+    fill_lut(&mut lut, 0xe5fa..=0xe6b7);
+
+    // NF Devicons
+    fill_lut(&mut lut, 0xe700..=0xe8ef);
+
+    // NF Font Awesome
+    fill_lut(&mut lut, 0xed00..=0xf2ff);
+
+    // NF Font Awesome Extension
+    fill_lut(&mut lut, 0xe200..=0xe2a9);
+
+    // NF Weather
+    fill_lut(&mut lut, 0xe300..=0xe3e3);
+
+    // NF Octicons
+    fill_lut(&mut lut, 0xf400..=0xf533);
+    fill_lut(&mut lut, 0x2665..=0x2665);
+    fill_lut(&mut lut, 0x26a1..=0x26a1);
+
+    // NF Powerline Symbols
+    fill_lut(&mut lut, 0xe0a0..=0xe0a2);
+    fill_lut(&mut lut, 0xe0b0..=0xe0b3);
+
+    // NF Powerline Extra Symbols
+    fill_lut(&mut lut, 0xe0a3..=0xe0a3);
+    fill_lut(&mut lut, 0xe0b4..=0xe0c8);
+    fill_lut(&mut lut, 0xe0ca..=0xe0ca);
+    fill_lut(&mut lut, 0xe0cc..=0xe0d7);
+    fill_lut(&mut lut, 0x2630..=0x2630);
+
+    // NF IEC Power Symbols
+    fill_lut(&mut lut, 0x23fb..=0x23fe);
+    fill_lut(&mut lut, 0x2b58..=0x2b58);
+
+    // NF Font Logos
+    fill_lut(&mut lut, 0xf300..=0xf381);
+
+    // NF Pomicons
+    fill_lut(&mut lut, 0xe000..=0xe00a);
+
+    // NF Codicons
+    fill_lut(&mut lut, 0xea60..=0xec1e);
+
+    lut
+}
+
+const fn fill_lut(t: &mut [bool; 65536], range: RangeInclusive<u32>) {
+    let mut cp = *range.start();
+
+    while cp <= *range.end() {
+        t[cp as usize] = true;
+        cp += 1;
+    }
+}
 
 #[wasm_bindgen]
 pub struct Vt {
@@ -52,7 +119,7 @@ impl Vt {
     #[wasm_bindgen(js_name = getLine)]
     pub fn get_line(&self, n: usize) -> JsValue {
         let chunks = self.vt.line(n).chunks(|c1: &avt::Cell, c2: &avt::Cell| {
-            c1.pen() != c2.pen() || is_special_char(c1) || is_special_char(c2)
+            c1.pen() != c2.pen() || is_standalone_char(c1) || is_standalone_char(c2)
         });
 
         let mut offset = 0;
@@ -84,14 +151,24 @@ impl Vt {
     }
 }
 
-fn is_special_char(cell: &avt::Cell) -> bool {
-    let ch = &cell.char();
+fn is_standalone_char(cell: &avt::Cell) -> bool {
+    let ch = cell.char();
 
-    cell.width() > 1
-        || BOX_DRAWING_RANGE.contains(ch)
-        || BRAILLE_PATTERNS_RANGE.contains(ch)
-        || BLOCK_ELEMENTS_RANGE.contains(ch)
-        || POWERLINE_TRIANGLES_RANGE.contains(ch)
+    if ch.is_ascii() {
+        return false;
+    }
+
+    // all wide chars should be standalone
+    if cell.width() > 1 {
+        return true;
+    }
+
+    // symbols with codepoints < 65536 - use lookup table
+    if (ch as u32) & 0xffff0000 == 0 {
+        return STANDALONE_CHARS_LUT[ch as usize];
+    }
+
+    NF_MATERIAL_DESIGN_ICONS.contains(&ch)
 }
 
 #[derive(Debug, Serialize)]
