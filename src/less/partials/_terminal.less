@@ -285,12 +285,50 @@ pre.ap-terminal {
       box-sizing: border-box;
     }
 
+    // powerline right bracket
+    .cp-e0b1 {
+      color: var(--fg);
+    }
+
+    .cp-e0b1::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-color: currentColor;
+      mask: no-repeat center / 100% 100%
+        url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">\
+  <path d="M0 0 L100 50 L0 100" fill="none" stroke="white" stroke-width="7"/>\
+</svg>');
+
+      pointer-events: none;
+    }
+
     // powerline left full triangle
     .cp-e0b2 {
       border-right: 1.0ch solid var(--fg);
       border-top: calc(0.5 * var(--term-line-height)) solid transparent;
       border-bottom: calc(0.5 * var(--term-line-height)) solid transparent;
       box-sizing: border-box;
+    }
+
+    // powerline left bracket
+    .cp-e0b3 {
+      color: var(--fg);
+    }
+
+    .cp-e0b3::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-color: currentColor;
+      mask: no-repeat center / 100% 100%
+        url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">\
+  <path d="M100 0 L0 50 L100 100" fill="none" stroke="white" stroke-width="7"/>\
+</svg>');
+
+      pointer-events: none;
     }
   }
 
