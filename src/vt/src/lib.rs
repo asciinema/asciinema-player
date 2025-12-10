@@ -14,6 +14,294 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 static STANDALONE_CHARS_LUT: [bool; 65536] = build_standalone_chars_lut();
 const NF_MATERIAL_DESIGN_ICONS: RangeInclusive<char> = '\u{f0001}'..='\u{f1af0}';
 
+#[wasm_bindgen]
+pub struct Vt {
+    vt: avt::Vt,
+}
+
+#[derive(Serialize)]
+struct Line {
+    bg: Vec<BgSpan>,
+    fg: Vec<FgSpan>,
+}
+
+#[derive(Serialize)]
+struct BgSpan {
+    x: usize,
+    w: usize,
+    c: BgColor,
+}
+
+#[derive(Serialize)]
+struct FgSpan {
+    x: usize,
+    w: usize,
+    p: Pen,
+    t: String,
+    #[serde(rename = "W")]
+    char_width: usize,
+}
+
+#[derive(Clone, PartialEq)]
+enum BgColor {
+    Value(avt::Color),
+    DefaultFg,
+}
+
+#[derive(Debug, PartialEq)]
+struct Pen(avt::Pen);
+
+#[wasm_bindgen]
+pub fn create(cols: usize, rows: usize, scrollback_limit: usize) -> Vt {
+    let vt = avt::Vt::builder()
+        .size(cols, rows)
+        .scrollback_limit(scrollback_limit)
+        .build();
+
+    Vt { vt }
+}
+
+#[wasm_bindgen]
+impl Vt {
+    pub fn feed(&mut self, s: &str) -> JsValue {
+        let changes = self.vt.feed_str(s);
+        serde_wasm_bindgen::to_value(&changes.lines).unwrap()
+    }
+
+    pub fn resize(&mut self, cols: usize, rows: usize) -> JsValue {
+        let changes = self.vt.resize(cols, rows);
+        serde_wasm_bindgen::to_value(&changes.lines).unwrap()
+    }
+
+    #[wasm_bindgen(js_name = getSize)]
+    pub fn get_size(&self) -> Vec<usize> {
+        let (cols, rows) = self.vt.size();
+
+        vec![cols, rows]
+    }
+
+    #[wasm_bindgen(js_name = getLine)]
+    pub fn get_line(&self, n: usize) -> JsValue {
+        let mut bg: Vec<BgSpan> = Vec::new();
+        let mut fg: Vec<FgSpan> = Vec::new();
+        let mut prev_bg_span: Option<BgSpan> = None;
+        let mut prev_fg_span: Option<FgSpan> = None;
+        let mut x = 0;
+
+        for cell in self.vt.line(n).cells() {
+            let w = cell.width();
+            let pen = cell.pen();
+
+            match (prev_bg_span.take(), bg_color(pen)) {
+                (None, None) => {}
+
+                (None, Some(c)) => {
+                    prev_bg_span = Some(BgSpan { x, w, c });
+                }
+
+                (Some(span), None) => {
+                    bg.push(span);
+                    prev_bg_span = None;
+                }
+
+                (Some(mut span), Some(c)) if span.c == c => {
+                    span.w += w;
+                    prev_bg_span = Some(span);
+                }
+
+                (Some(span), Some(c)) => {
+                    bg.push(span);
+                    prev_bg_span = Some(BgSpan { x, w, c });
+                }
+            }
+
+            let new_span = FgSpan {
+                x,
+                w,
+                p: Pen(*pen),
+                t: String::from(cell.char()),
+                char_width: w,
+            };
+
+            if is_standalone_char(cell) {
+                if let Some(span) = prev_fg_span.take() {
+                    fg.push(span);
+                }
+
+                fg.push(new_span);
+            } else {
+                match (prev_fg_span.take(), pen) {
+                    (None, _pen) => {
+                        prev_fg_span = Some(new_span);
+                    }
+
+                    (Some(mut span), pen) if &span.p.0 == pen => {
+                        span.t.push(cell.char());
+                        span.w += w;
+                        prev_fg_span = Some(span);
+                    }
+
+                    (Some(span), _pen) => {
+                        fg.push(span);
+                        prev_fg_span = Some(new_span);
+                    }
+                }
+            }
+
+            x += w;
+        }
+
+        if let Some(span) = prev_bg_span {
+            bg.push(span);
+        }
+
+        if let Some(span) = prev_fg_span {
+            fg.push(span);
+        }
+
+        let line = Line { bg, fg };
+
+        serde_wasm_bindgen::to_value(&line).unwrap()
+    }
+
+    #[wasm_bindgen(js_name = getCursor)]
+    pub fn get_cursor(&self) -> JsValue {
+        let cursor: Option<(usize, usize)> = self.vt.cursor().into();
+
+        serde_wasm_bindgen::to_value(&cursor).unwrap()
+    }
+}
+
+fn bg_color(pen: &avt::Pen) -> Option<BgColor> {
+    if pen.is_inverse() {
+        if let Some(c) = pen.foreground() {
+            Some(BgColor::Value(c))
+        } else {
+            Some(BgColor::DefaultFg)
+        }
+    } else {
+        pen.background().map(BgColor::Value)
+    }
+}
+
+fn is_standalone_char(cell: &avt::Cell) -> bool {
+    let ch = cell.char();
+
+    if ch.is_ascii() {
+        return false;
+    }
+
+    // all wide chars should be standalone
+    if cell.width() > 1 {
+        return true;
+    }
+
+    // symbols with codepoints < 65536 - use lookup table
+    if (ch as u32) & 0xffff0000 == 0 {
+        return STANDALONE_CHARS_LUT[ch as usize];
+    }
+
+    NF_MATERIAL_DESIGN_ICONS.contains(&ch)
+}
+
+impl Serialize for Pen {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut len = 0;
+
+        if self.0.foreground().is_some() {
+            len += 1;
+        }
+
+        if self.0.background().is_some() {
+            len += 1;
+        }
+
+        if self.0.is_bold() || self.0.is_faint() {
+            len += 1;
+        }
+
+        if self.0.is_italic() {
+            len += 1;
+        }
+
+        if self.0.is_underline() {
+            len += 1;
+        }
+
+        if self.0.is_strikethrough() {
+            len += 1;
+        }
+
+        if self.0.is_blink() {
+            len += 1;
+        }
+
+        if self.0.is_inverse() {
+            len += 1;
+        }
+
+        let mut map = serializer.serialize_map(Some(len))?;
+
+        if let Some(c) = self.0.foreground() {
+            map.serialize_entry("fg", &BgColor::Value(c))?;
+        }
+
+        if let Some(c) = self.0.background() {
+            map.serialize_entry("bg", &BgColor::Value(c))?;
+        }
+
+        if self.0.is_bold() {
+            map.serialize_entry("bold", &true)?;
+        } else if self.0.is_faint() {
+            map.serialize_entry("faint", &true)?;
+        }
+
+        if self.0.is_italic() {
+            map.serialize_entry("italic", &true)?;
+        }
+
+        if self.0.is_underline() {
+            map.serialize_entry("underline", &true)?;
+        }
+
+        if self.0.is_strikethrough() {
+            map.serialize_entry("strikethrough", &true)?;
+        }
+
+        if self.0.is_blink() {
+            map.serialize_entry("blink", &true)?;
+        }
+
+        if self.0.is_inverse() {
+            map.serialize_entry("inverse", &true)?;
+        }
+
+        map.end()
+    }
+}
+
+impl Serialize for BgColor {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use BgColor::*;
+
+        match self {
+            Value(avt::Color::Indexed(c)) => serializer.serialize_u8(*c),
+
+            Value(avt::Color::RGB(c)) => {
+                serializer.serialize_str(&format!("#{:02x}{:02x}{:02x}", c.r, c.g, c.b))
+            }
+
+            DefaultFg => serializer.serialize_str("fg"),
+        }
+    }
+}
+
 const fn build_standalone_chars_lut() -> [bool; 65536] {
     let mut lut = [false; 65536];
 
@@ -79,206 +367,5 @@ const fn fill_lut(t: &mut [bool; 65536], range: RangeInclusive<u32>) {
     while cp <= *range.end() {
         t[cp as usize] = true;
         cp += 1;
-    }
-}
-
-#[wasm_bindgen]
-pub struct Vt {
-    vt: avt::Vt,
-}
-
-#[wasm_bindgen]
-pub fn create(cols: usize, rows: usize, scrollback_limit: usize) -> Vt {
-    let vt = avt::Vt::builder()
-        .size(cols, rows)
-        .scrollback_limit(scrollback_limit)
-        .build();
-
-    Vt { vt }
-}
-
-#[wasm_bindgen]
-impl Vt {
-    pub fn feed(&mut self, s: &str) -> JsValue {
-        let changes = self.vt.feed_str(s);
-        serde_wasm_bindgen::to_value(&changes.lines).unwrap()
-    }
-
-    pub fn resize(&mut self, cols: usize, rows: usize) -> JsValue {
-        let changes = self.vt.resize(cols, rows);
-        serde_wasm_bindgen::to_value(&changes.lines).unwrap()
-    }
-
-    #[wasm_bindgen(js_name = getSize)]
-    pub fn get_size(&self) -> Vec<usize> {
-        let (cols, rows) = self.vt.size();
-
-        vec![cols, rows]
-    }
-
-    #[wasm_bindgen(js_name = getLine)]
-    pub fn get_line(&self, n: usize) -> JsValue {
-        let chunks = self.vt.line(n).chunks(|c1: &avt::Cell, c2: &avt::Cell| {
-            c1.pen() != c2.pen() || is_standalone_char(c1) || is_standalone_char(c2)
-        });
-
-        let mut offset = 0;
-        let mut segments: Vec<Segment> = Vec::new();
-
-        for cells in chunks {
-            let text: String = cells.iter().map(avt::Cell::char).collect();
-            let cell_count: usize = cells.iter().map(avt::Cell::width).sum();
-
-            segments.push(Segment {
-                text,
-                pen: Pen(*cells[0].pen()),
-                offset,
-                cell_count,
-                char_width: cells[0].width(),
-            });
-
-            offset += cell_count;
-        }
-
-        serde_wasm_bindgen::to_value(&segments).unwrap()
-    }
-
-    #[wasm_bindgen(js_name = getCursor)]
-    pub fn get_cursor(&self) -> JsValue {
-        let cursor: Option<(usize, usize)> = self.vt.cursor().into();
-
-        serde_wasm_bindgen::to_value(&cursor).unwrap()
-    }
-}
-
-fn is_standalone_char(cell: &avt::Cell) -> bool {
-    let ch = cell.char();
-
-    if ch.is_ascii() {
-        return false;
-    }
-
-    // all wide chars should be standalone
-    if cell.width() > 1 {
-        return true;
-    }
-
-    // symbols with codepoints < 65536 - use lookup table
-    if (ch as u32) & 0xffff0000 == 0 {
-        return STANDALONE_CHARS_LUT[ch as usize];
-    }
-
-    NF_MATERIAL_DESIGN_ICONS.contains(&ch)
-}
-
-#[derive(Debug, Serialize)]
-struct Segment {
-    text: String,
-    pen: Pen,
-    offset: usize,
-    #[serde(rename = "cellCount")]
-    cell_count: usize,
-    #[serde(rename = "charWidth")]
-    char_width: usize,
-}
-
-#[derive(Debug)]
-struct Pen(avt::Pen);
-
-impl Serialize for Pen {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut len = 0;
-
-        if self.0.foreground().is_some() {
-            len += 1;
-        }
-
-        if self.0.background().is_some() {
-            len += 1;
-        }
-
-        if self.0.is_bold() || self.0.is_faint() {
-            len += 1;
-        }
-
-        if self.0.is_italic() {
-            len += 1;
-        }
-
-        if self.0.is_underline() {
-            len += 1;
-        }
-
-        if self.0.is_strikethrough() {
-            len += 1;
-        }
-
-        if self.0.is_blink() {
-            len += 1;
-        }
-
-        if self.0.is_inverse() {
-            len += 1;
-        }
-
-        let mut map = serializer.serialize_map(Some(len))?;
-
-        if let Some(c) = self.0.foreground() {
-            map.serialize_entry("fg", &Color(c))?;
-        }
-
-        if let Some(c) = self.0.background() {
-            map.serialize_entry("bg", &Color(c))?;
-        }
-
-        if self.0.is_bold() {
-            map.serialize_entry("bold", &true)?;
-        } else if self.0.is_faint() {
-            map.serialize_entry("faint", &true)?;
-        }
-
-        if self.0.is_italic() {
-            map.serialize_entry("italic", &true)?;
-        }
-
-        if self.0.is_underline() {
-            map.serialize_entry("underline", &true)?;
-        }
-
-        if self.0.is_strikethrough() {
-            map.serialize_entry("strikethrough", &true)?;
-        }
-
-        if self.0.is_blink() {
-            map.serialize_entry("blink", &true)?;
-        }
-
-        if self.0.is_inverse() {
-            map.serialize_entry("inverse", &true)?;
-        }
-
-        map.end()
-    }
-}
-
-struct Color(avt::Color);
-
-impl Serialize for Color {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use avt::Color;
-
-        match self.0 {
-            Color::Indexed(c) => serializer.serialize_u8(c),
-
-            Color::RGB(c) => {
-                serializer.serialize_str(&format!("#{:02x}{:02x}{:02x}", c.r, c.g, c.b))
-            }
-        }
     }
 }

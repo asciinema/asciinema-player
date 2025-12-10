@@ -9,7 +9,7 @@ test("initializes successfully and mounts in DOM", async ({ page }) => {
   const player = page.locator(".ap-player");
   await expect(player).toBeVisible();
 
-  const terminal = page.locator(".ap-terminal");
+  const terminal = page.locator(".ap-term");
   await expect(terminal).toBeVisible();
 
   const controlBar = page.locator(".ap-control-bar");

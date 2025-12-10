@@ -385,7 +385,9 @@ class Core {
 
       for (const i of this.changedLines) {
         if (i < rows) {
-          lines.set(i, { id: i, segments: this.vt.getLine(i) });
+          const line = this.vt.getLine(i);
+          line.id = i;
+          lines.set(i, line);
         }
       }
 
@@ -570,7 +572,9 @@ class Core {
     const lines = [];
 
     for (let i = 0; i < rows; i++) {
-      lines.push({ id: i, segments: vt.getLine(i) });
+      const line = vt.getLine(i);
+      line.id = i;
+      lines.push(line);
     }
 
     return { cursor, lines };

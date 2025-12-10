@@ -2,8 +2,8 @@ import { createMemo } from "solid-js";
 
 export default (props) => {
   const codePoint = createMemo(() => {
-    if (props.text.length == 1) {
-      const cp = props.text.codePointAt(0);
+    if (props.t.length == 1) {
+      const cp = props.t.codePointAt(0);
 
       // box drawing chars, block elements and some Powerline symbols
       // are rendered with CSS classes (cp-<codepoint>)
@@ -13,9 +13,9 @@ export default (props) => {
     }
   });
 
-  const text = createMemo(() => (codePoint() ? " " : props.text));
-  const style = createMemo(() => buildStyle(props.pen, props.offset, props.cellCount));
-  const className = createMemo(() => buildClassName(props.pen, codePoint(), props.extraClass));
+  const text = createMemo(() => (codePoint() ? " " : props.t));
+  const style = createMemo(() => buildStyle(props.p, props.x, props.w, props.cursor));
+  const className = createMemo(() => buildClassName(props.p, codePoint(), props.w, props.cursor));
 
   return (
     <span class={className()} style={style()}>
@@ -24,25 +24,14 @@ export default (props) => {
   );
 };
 
-function buildClassName(attrs, codePoint, extraClass) {
-  const fgClass = colorClass(attrs.get("fg"), attrs.get("bold"), "fg-");
-  const bgClass = colorClass(attrs.get("bg"), false, "bg-");
-
-  let cls = extraClass ?? "";
+function buildClassName(attrs, codePoint, width, cursor) {
+  let cls = cursor ? "ap-cursor" : "";
 
   if (codePoint !== undefined) {
     cls += ` cp-${codePoint.toString(16)}`;
   }
 
-  if (fgClass) {
-    cls += " " + fgClass;
-  }
-
-  if (bgClass) {
-    cls += " " + bgClass;
-  }
-
-  if (attrs.has("bold")) {
+  if (attrs.has("bold") || isBrightColor(attrs.get("fg"))) {
     cls += " ap-bright";
   }
 
@@ -66,39 +55,52 @@ function buildClassName(attrs, codePoint, extraClass) {
     cls += " ap-inverse";
   }
 
-  return cls;
-}
+  if (width == 1) {
+    cls += " ap-symbol";
+  }
 
-function colorClass(color, intense, prefix) {
-  if (typeof color === "number") {
-    if (intense && color < 8) {
-      color += 8;
-    }
-
-    return `${prefix}${color}`;
+  if (cls === "") {
+    return undefined;
+  } else {
+    return cls;
   }
 }
 
-function buildStyle(attrs, offset, width) {
-  const fg = attrs.get("fg");
-  const bg = attrs.get("bg");
+function isBrightColor(color) {
+  return typeof color === "number" && color >= 8 && color <= 15;
+}
 
+function buildStyle(attrs, offset, width, cursor) {
   let style = {
     "--offset": offset,
     width: `${width + 0.01}ch`,
   };
 
-  if (width == 1) {
-    style["text-align"] = "center";
-  }
+  const fg = colorValue(attrs.get("fg"), attrs.get("bold"));
 
-  if (typeof fg === "string") {
+  if (fg) {
     style["--fg"] = fg;
   }
 
-  if (typeof bg === "string") {
-    style["--bg"] = bg;
+  if (cursor) {
+    const bg = colorValue(attrs.get("bg"), false);
+
+    if (bg) {
+      style["--bg"] = bg;
+    }
   }
 
   return style;
+}
+
+function colorValue(color, intense) {
+  if (typeof color === "number") {
+    if (intense && color < 8) {
+      color += 8;
+    }
+
+    return `var(--term-color-${color})`;
+  } else if (typeof color === "string") {
+    return color;
+  }
 }
