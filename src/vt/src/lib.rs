@@ -88,7 +88,7 @@ impl Vt {
         let mut prev_fg_span: Option<FgSpan> = None;
         let mut x = 0;
 
-        for cell in self.vt.line(n).cells() {
+        for cell in self.vt.line(n).cells().iter().filter(|c| c.width() > 0) {
             let w = cell.width();
             let pen = cell.pen();
 
