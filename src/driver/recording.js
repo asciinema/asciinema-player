@@ -86,7 +86,7 @@ function recording(
     audioElement = await createAudioElement(audioUrl);
 
     audioSeekable =
-      audioElement.duration !== NaN &&
+      !Number.isNaN(audioElement.duration) &&
       audioElement.duration !== Infinity &&
       audioElement.seekable.length > 0 &&
       audioElement.seekable.end(audioElement.seekable.length - 1) === audioElement.duration;
