@@ -40,7 +40,7 @@ function measureTerminal(fontFamily, lineHeight) {
   div.style.fontSize = "15px"; // must match font-size of div.asciinema-player in CSS
 
   if (fontFamily !== undefined) {
-    div.style["--term-font-family"] = fontFamily;
+    div.style.setProperty("--term-font-family", fontFamily);
   }
 
   document.body.appendChild(div);
