@@ -14,7 +14,7 @@ export default (props) => {
   });
 
   const text = createMemo(() => (codePoint() ? " " : props.t));
-  const style = createMemo(() => buildStyle(props.p, props.x, props.w));
+  const style = createMemo(() => buildStyle(props.p, props.x, props.w, props.theme));
   const className = createMemo(() => buildClassName(props.p, codePoint(), props.w, props.cursor));
 
   return (
@@ -70,19 +70,19 @@ function isBrightColor(color) {
   return typeof color === "number" && color >= 8 && color <= 15;
 }
 
-function buildStyle(attrs, offset, width) {
+function buildStyle(attrs, offset, width, theme) {
   let style = {
     "--offset": offset,
     width: `${width + 0.01}ch`,
   };
 
-  const fg = colorValue(attrs.get("fg"), attrs.get("bold"));
+  const fg = colorValue(theme, attrs.get("fg"), attrs.get("bold"));
 
   if (fg) {
     style["--fg"] = fg;
   }
 
-  const bg = colorValue(attrs.get("bg"), false);
+  const bg = colorValue(theme, attrs.get("bg"), false);
 
   if (bg) {
     style["--bg"] = bg;
@@ -91,14 +91,16 @@ function buildStyle(attrs, offset, width) {
   return style;
 }
 
-function colorValue(color, intense) {
+function colorValue(theme, color, intense) {
+  if (color === undefined) return;
+
   if (typeof color === "number") {
     if (intense && color < 8) {
       color += 8;
     }
 
-    return `var(--term-color-${color})`;
-  } else if (typeof color === "string") {
-    return color;
+    return theme.palette[color];
   }
+
+  if (typeof color === "string") return color;
 }

@@ -535,6 +535,7 @@ export default (props) => {
           cursor={state.cursor}
           cursorHold={state.cursorHold}
           lineHeight={props.terminalLineHeight}
+          theme={theme().colors}
           ref={terminalRef}
         />
         <Show when={props.controls !== false}>
