@@ -62,7 +62,7 @@ export default (props) => {
   };
 
   return (
-    <span class="ap-line" role="paragraph">
+    <span class="ap-line" role="paragraph" style={{ "--row": props.row }}>
       <Index each={segments()}>{(s) => <Segment {...s()} />}</Index>
     </span>
   );

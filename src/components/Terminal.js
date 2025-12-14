@@ -11,6 +11,7 @@ export default (props) => {
       "font-size": `${(props.scale || 1.0) * 100}%`,
       "--term-line-height": `${lineHeight()}em`,
       "--term-cols": props.cols,
+      "--term-rows": props.rows,
     };
   });
 
@@ -45,7 +46,7 @@ export default (props) => {
             {(line, row) => (
               <For each={line.bg}>
                 {(span, _i) => (
-                  <rect x={span.x} y={row()} width={span.w} height="1.01" style={bgStyle(span.c)} />
+                  <rect x={span.x} y={row()} width={span.w} height="1" style={bgStyle(span.c)} />
                 )}
               </For>
             )}

@@ -41,7 +41,8 @@ div.ap-term {
     display: block;
     width: 100%;
     height: var(--term-line-height);
-    position: relative;
+    position: absolute;
+    top: calc(100% * var(--row) / var(--term-rows));
     letter-spacing: normal;
     overflow: hidden;
 
