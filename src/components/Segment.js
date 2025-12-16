@@ -14,7 +14,7 @@ export default (props) => {
   });
 
   const text = createMemo(() => (codePoint() ? " " : props.t));
-  const style = createMemo(() => buildStyle(props.p, props.x, props.w, props.cursor));
+  const style = createMemo(() => buildStyle(props.p, props.x, props.w));
   const className = createMemo(() => buildClassName(props.p, codePoint(), props.w, props.cursor));
 
   return (
@@ -70,7 +70,7 @@ function isBrightColor(color) {
   return typeof color === "number" && color >= 8 && color <= 15;
 }
 
-function buildStyle(attrs, offset, width, cursor) {
+function buildStyle(attrs, offset, width) {
   let style = {
     "--offset": offset,
     width: `${width + 0.01}ch`,
@@ -82,12 +82,10 @@ function buildStyle(attrs, offset, width, cursor) {
     style["--fg"] = fg;
   }
 
-  if (cursor) {
-    const bg = colorValue(attrs.get("bg"), false);
+  const bg = colorValue(attrs.get("bg"), false);
 
-    if (bg) {
-      style["--bg"] = bg;
-    }
+  if (bg) {
+    style["--bg"] = bg;
   }
 
   return style;
