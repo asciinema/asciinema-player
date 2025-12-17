@@ -10,6 +10,10 @@ import eventsource from "./driver/eventsource";
 import parseAsciicast from "./parser/asciicast";
 import parseTypescript from "./parser/typescript";
 import parseTtyrec from "./parser/ttyrec";
+
+const DEFAULT_COLS = 80;
+const DEFAULT_ROWS = 24;
+
 const vt = loadVt(); // trigger async loading of wasm
 
 class State {
@@ -191,7 +195,6 @@ class Core {
     this.stateName = "uninitialized";
     this.driver = getDriver(src);
     this.changedLines = new Set();
-    this.cursor = undefined;
     this.duration = undefined;
     this.cols = opts.cols;
     this.rows = opts.rows;
@@ -206,6 +209,7 @@ class Core {
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.audioUrl = opts.audioUrl;
     this.commandQueue = Promise.resolve();
+    this.needsClear = false;
 
     this.eventHandlers = new Map([
       ["ended", []],
@@ -221,15 +225,14 @@ class Core {
       ["play", []],
       ["playing", []],
       ["ready", []],
-      ["reset", []],
-      ["resize", []],
       ["seeked", []],
-      ["terminalUpdate", []],
+      ["vtUpdate", []],
     ]);
   }
 
   async init() {
     this.wasm = await vt;
+    this._initializeVt(this.cols ?? DEFAULT_COLS, this.rows ?? DEFAULT_ROWS);
 
     const feed = this._feed.bind(this);
 
@@ -245,7 +248,10 @@ class Core {
     const resize = this._resizeVt.bind(this);
     const setState = this._setState.bind(this);
 
-    const posterTime = this.poster.type === "npt" ? this.poster.value : undefined;
+    const posterTime =
+      this.poster.type === "npt" && !this.autoPlay
+        ? this.poster.value
+        : undefined;
 
     this.driver = this.driver(
       {
@@ -279,12 +285,9 @@ class Core {
       this._withState((state) => state.init());
     }
 
-    const poster = this.poster.type === "text" ? this._renderPoster(this.poster.value) : null;
-
     const config = {
       isPausable: !!this.driver.pause,
       isSeekable: !!this.driver.seek,
-      poster,
     };
 
     if (this.driver.init === undefined) {
@@ -337,10 +340,13 @@ class Core {
 
     if (this.autoPlay) {
       this.play();
+    } else if (this.poster.type === "text") {
+      this._feed(this.poster.value);
     }
   }
 
   play() {
+    this._clearIfNeeded();
     return this._withState((state) => state.play());
   }
 
@@ -349,10 +355,13 @@ class Core {
   }
 
   togglePlay() {
+    this._clearIfNeeded();
     return this._withState((state) => state.togglePlay());
   }
 
   seek(where) {
+    this._clearIfNeeded();
+
     return this._withState(async (state) => {
       if (await state.seek(where)) {
         this._dispatchEvent("seeked");
@@ -361,6 +370,7 @@ class Core {
   }
 
   step(n) {
+    this._clearIfNeeded();
     return this._withState((state) => state.step(n));
   }
 
@@ -396,10 +406,7 @@ class Core {
       changes.lines = lines;
     }
 
-    if (this.cursor === undefined && this.vt) {
-      this.cursor = this.vt.getCursor() ?? false;
-      changes.cursor = this.cursor;
-    }
+    changes.cursor = this.vt.getCursor() ?? false;
 
     return changes;
   }
@@ -470,58 +477,81 @@ class Core {
   }
 
   _feed(data) {
-    this._doFeed(data);
-    this._dispatchEvent("terminalUpdate");
+    if (this._doFeed(data)) {
+      this._dispatchEvent("vtUpdate", { dirty: true });
+    }
   }
 
   _doFeed(data) {
     const affectedLines = this.vt.feed(data);
     affectedLines.forEach((i) => this.changedLines.add(i));
-    this.cursor = undefined;
+    return affectedLines.length > 0;
   }
 
   async _initializeDriver() {
     const meta = await this.driver.init();
-    this.cols = this.cols ?? meta.cols ?? 80;
-    this.rows = this.rows ?? meta.rows ?? 24;
+    this.cols = this.cols ?? meta.cols ?? DEFAULT_COLS;
+    this.rows = this.rows ?? meta.rows ?? DEFAULT_ROWS;
     this.duration = this.duration ?? meta.duration;
     this.markers = this._normalizeMarkers(meta.markers) ?? this.markers ?? [];
 
     if (this.cols === 0) {
-      this.cols = 80;
+      this.cols = DEFAULT_COLS;
     }
 
     if (this.rows === 0) {
-      this.rows = 24;
+      this.rows = DEFAULT_ROWS;
     }
 
     this._initializeVt(this.cols, this.rows);
 
-    const poster = meta.poster !== undefined ? this._renderPoster(meta.poster) : null;
+    if (meta.poster !== undefined) {
+      this.needsClear = true;
+      meta.poster.forEach((text) => this._doFeed(text));
+    }
 
     this._dispatchEvent("metadata", {
-      cols: this.cols,
-      rows: this.rows,
+      size: { cols: this.cols, rows: this.rows },
+      theme: meta.theme ?? null,
       duration: this.duration,
       markers: this.markers,
-      theme: meta.theme,
       hasAudio: meta.hasAudio,
-      poster,
     });
+
+    this._dispatchEvent("vtUpdate", {
+      size: { cols: this.cols, rows: this.rows },
+      theme: meta.theme ?? null,
+      dirty: true
+    });
+  }
+
+  _clearIfNeeded() {
+    if (this.needsClear) {
+      this._feed('\x1bc');
+      this.needsClear = false;
+    }
   }
 
   _resetVt(cols, rows, init = undefined, theme = undefined) {
     this.logger.debug(`core: vt reset (${cols}x${rows})`);
     this.cols = cols;
     this.rows = rows;
-    this.cursor = undefined;
     this._initializeVt(cols, rows);
 
     if (init !== undefined && init !== "") {
       this._doFeed(init);
     }
 
-    this._dispatchEvent("reset", { cols, rows, theme });
+    this._dispatchEvent("metadata", {
+      size: { cols, rows },
+      theme: theme ?? null,
+    });
+
+    this._dispatchEvent("vtUpdate", {
+      size: { cols, rows },
+      theme: theme ?? null,
+      dirty: true
+    });
   }
 
   _resizeVt(cols, rows) {
@@ -529,14 +559,22 @@ class Core {
 
     const affectedLines = this.vt.resize(cols, rows);
     affectedLines.forEach((i) => this.changedLines.add(i));
-    this.cursor = undefined;
     this.vt.cols = cols;
     this.vt.rows = rows;
     this.logger.debug(`core: vt resize (${cols}x${rows})`);
-    this._dispatchEvent("resize", { cols, rows });
+
+    this._dispatchEvent("metadata", {
+      size: { cols, rows },
+    });
+
+    this._dispatchEvent("vtUpdate", {
+      size: { cols, rows },
+      dirty: affectedLines.length > 0,
+    });
   }
 
   _initializeVt(cols, rows) {
+    console.log('vt init', { cols, rows });
     this.vt = this.wasm.create(cols, rows, true, 100);
     this.vt.cols = cols;
     this.vt.rows = rows;
@@ -552,32 +590,12 @@ class Core {
     if (typeof poster !== "string") return {};
 
     if (poster.substring(0, 16) == "data:text/plain,") {
-      return { type: "text", value: [poster.substring(16)] };
+      return { type: "text", value: poster.substring(16) };
     } else if (poster.substring(0, 4) == "npt:") {
       return { type: "npt", value: parseNpt(poster.substring(4)) };
     }
 
     return {};
-  }
-
-  _renderPoster(poster) {
-    const cols = this.cols ?? 80;
-    const rows = this.rows ?? 24;
-
-    this.logger.debug(`core: poster init (${cols}x${rows})`);
-
-    const vt = this.wasm.create(cols, rows, false, 0);
-    poster.forEach((text) => vt.feed(text));
-    const cursor = vt.getCursor() ?? false;
-    const lines = [];
-
-    for (let i = 0; i < rows; i++) {
-      const line = vt.getLine(i);
-      line.id = i;
-      lines.push(line);
-    }
-
-    return { cursor, lines };
   }
 
   _normalizeMarkers(markers) {

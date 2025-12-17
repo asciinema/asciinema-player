@@ -49,7 +49,7 @@ class CoreWorkerProxy {
       ["reset", []],
       ["resize", []],
       ["seeked", []],
-      ["terminalUpdate", []],
+      ["vtUpdate", []],
     ]);
 
     this.resolves = new Map();

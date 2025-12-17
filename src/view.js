@@ -1,6 +1,5 @@
 import { render } from "solid-js/web";
 import Player from "./components/Player";
-import Terminal from "./components/Terminal";
 
 function mount(core, elem, opts = {}) {
   const metrics = measureTerminal(opts.terminalFontFamily, opts.terminalLineHeight);
@@ -33,40 +32,34 @@ function mount(core, elem, opts = {}) {
 function measureTerminal(fontFamily, lineHeight) {
   const cols = 80;
   const rows = 24;
-  const div = document.createElement("div");
-  div.className = "ap-default-term-ff";
-  div.style.height = "0px";
-  div.style.overflow = "hidden";
-  div.style.fontSize = "15px"; // must match font-size of div.asciinema-player in CSS
+
+  const playerDiv = document.createElement("div");
+  playerDiv.className = "ap-default-term-ff";
+  playerDiv.style.height = "0px";
+  playerDiv.style.overflow = "hidden";
+  playerDiv.style.fontSize = "15px"; // must match font-size of div.asciinema-player in CSS
 
   if (fontFamily !== undefined) {
-    div.style.setProperty("--term-font-family", fontFamily);
+    playerDiv.style.setProperty("--term-font-family", fontFamily);
   }
 
-  document.body.appendChild(div);
-  let el;
+  const termDiv = document.createElement("div");
+  termDiv.className = "ap-term";
+  termDiv.style.width = `${cols}ch`;
+  termDiv.style.height = `${rows * (lineHeight ?? 1.3333333333)}em`;
+  termDiv.style.fontSize = "100%";
 
-  const dispose = render(() => {
-    el = (
-      <Terminal
-        cols={cols}
-        rows={rows}
-        lineHeight={lineHeight}
-        lines={[]}
-      />
-    );
-    return el;
-  }, div);
+  playerDiv.appendChild(termDiv);
+  document.body.appendChild(playerDiv);
 
   const metrics = {
-    charW: el.clientWidth / cols,
-    charH: el.clientHeight / rows,
-    bordersW: el.offsetWidth - el.clientWidth,
-    bordersH: el.offsetHeight - el.clientHeight,
+    charW: termDiv.clientWidth / cols,
+    charH: termDiv.clientHeight / rows,
+    bordersW: termDiv.offsetWidth - termDiv.clientWidth,
+    bordersH: termDiv.offsetHeight - termDiv.clientHeight,
   };
 
-  dispose();
-  document.body.removeChild(div);
+  document.body.removeChild(playerDiv);
 
   return metrics;
 }

@@ -1,5 +1,5 @@
 import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch } from "solid-js";
-import { createStore, reconcile } from "solid-js/store";
+import { createStore } from "solid-js/store";
 import { Transition } from "solid-transition-group";
 import { debounce } from "../util";
 import Terminal from "./Terminal";
@@ -16,14 +16,12 @@ export default (props) => {
   const logger = props.logger;
   const core = props.core;
   const autoPlay = props.autoPlay;
+  const charW = props.charW;
+  const charH = props.charH;
+  const bordersW = props.bordersW;
+  const bordersH = props.bordersH;
 
   const [state, setState] = createStore({
-    lines: [],
-    cursor: undefined,
-    charW: props.charW,
-    charH: props.charH,
-    bordersW: props.bordersW,
-    bordersH: props.bordersH,
     containerW: 0,
     containerH: 0,
     isPausable: true,
@@ -32,8 +30,6 @@ export default (props) => {
     currentTime: null,
     remainingTime: null,
     progress: null,
-    blink: true,
-    cursorHold: false,
   });
 
   const [isPlaying, setIsPlaying] = createSignal(false);
@@ -41,17 +37,18 @@ export default (props) => {
   const [wasPlaying, setWasPlaying] = createSignal(false);
   const [overlay, setOverlay] = createSignal(!autoPlay ? "start" : null);
   const [infoMessage, setInfoMessage] = createSignal(null);
+  const [blinking, setBlinking] = createSignal(false);
 
   const [terminalSize, setTerminalSize] = createSignal(
     { cols: props.cols, rows: props.rows },
     { equals: (newVal, oldVal) => newVal.cols === oldVal.cols && newVal.rows === oldVal.rows },
   );
 
-  const [duration, setDuration] = createSignal(undefined);
+  const [duration, setDuration] = createSignal(null);
   const [markers, setMarkers] = createStore([]);
   const [userActive, setUserActive] = createSignal(false);
   const [isHelpVisible, setIsHelpVisible] = createSignal(false);
-  const [originalTheme, setOriginalTheme] = createSignal(undefined);
+  const [originalTheme, setOriginalTheme] = createSignal(null);
   const terminalCols = createMemo(() => terminalSize().cols || 80);
   const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
@@ -59,45 +56,22 @@ export default (props) => {
   const controlsVisible = () =>
     props.controls === true || (props.controls === "auto" && userActive());
 
-  let frameRequestId;
   let userActivityTimeoutId;
   let timeUpdateIntervalId;
-  let blinkIntervalId;
   let wrapperRef;
   let playerRef;
-  let terminalRef;
   let controlBarRef;
   let resizeObserver;
 
   function onPlaying() {
-    updateTerminal();
-    startBlinking();
+    setBlinking(true);
     startTimeUpdates();
   }
 
   function onStopped() {
-    stopBlinking();
+    setBlinking(false);
     stopTimeUpdates();
     updateTime();
-  }
-
-  function resize(size_) {
-    batch(() => {
-      if (size_.rows < terminalSize().rows) {
-        setState("lines", state.lines.slice(0, size_.rows));
-      }
-
-      setTerminalSize(size_);
-    });
-  }
-
-  function setPoster(poster) {
-    if (poster !== null && !autoPlay) {
-      setState({
-        lines: poster.lines,
-        cursor: poster.cursor,
-      });
-    }
   }
 
   let resolveCoreReady;
@@ -106,25 +80,34 @@ export default (props) => {
     resolveCoreReady = resolve;
   });
 
-  core.addEventListener("ready", ({ isPausable, isSeekable, poster }) => {
+  core.addEventListener("ready", ({ isPausable, isSeekable }) => {
     setState({ isPausable, isSeekable });
-    setPoster(poster);
     resolveCoreReady();
   });
 
-  core.addEventListener(
-    "metadata",
-    ({ cols, rows, duration, theme, poster, markers, hasAudio }) => {
-      batch(() => {
-        resize({ cols, rows });
-        setDuration(duration);
-        setOriginalTheme(theme);
-        setMarkers(markers);
-        setPoster(poster);
-        setIsMuted(hasAudio ? false : undefined);
-      });
-    },
-  );
+  core.addEventListener("metadata", (meta) => {
+    batch(() => {
+      if (meta.duration !== undefined) {
+        setDuration(meta.duration);
+      }
+
+      if (meta.markers !== undefined) {
+        setMarkers(meta.markers);
+      }
+
+      if (meta.hasAudio !== undefined) {
+        setIsMuted(meta.hasAudio ? false : undefined);
+      }
+
+      if (meta.size !== undefined) {
+        setTerminalSize(meta.size);
+      }
+
+      if (meta.theme !== undefined) {
+        setOriginalTheme(meta.theme);
+      }
+    });
+  });
 
   core.addEventListener("play", () => {
     setOverlay(null);
@@ -170,7 +153,7 @@ export default (props) => {
     setIsMuted(muted);
   });
 
-  let renderCount = 0;
+  const stats = { terminal: { renders: 0 } };
 
   core.addEventListener("ended", ({ message }) => {
     batch(() => {
@@ -183,31 +166,15 @@ export default (props) => {
       }
     });
 
-    logger.debug(`view: render count: ${renderCount}`);
+    logger.debug("stats", stats);
   });
 
   core.addEventListener("errored", () => {
     setOverlay("error");
   });
 
-  core.addEventListener("resize", resize);
-
-  core.addEventListener("reset", ({ cols, rows, theme }) => {
-    batch(() => {
-      resize({ cols, rows });
-      setOriginalTheme(theme);
-      updateTerminal();
-    });
-  });
-
   core.addEventListener("seeked", () => {
     updateTime();
-  });
-
-  core.addEventListener("terminalUpdate", () => {
-    if (frameRequestId === undefined) {
-      frameRequestId = requestAnimationFrame(updateTerminal);
-    }
   });
 
   const setupResizeObserver = () => {
@@ -227,7 +194,7 @@ export default (props) => {
 
   onMount(async () => {
     logger.info("view: mounted");
-    logger.debug("view: font measurements", { charW: state.charW, charH: state.charH });
+    logger.debug("view: font measurements", { charW, charH });
     setupResizeObserver();
 
     setState({
@@ -238,35 +205,13 @@ export default (props) => {
 
   onCleanup(() => {
     core.stop();
-    stopBlinking();
     stopTimeUpdates();
     resizeObserver.disconnect();
   });
 
-  const updateTerminal = async () => {
-    const changes = await core.getChanges();
-
-    batch(() => {
-      if (changes.lines !== undefined) {
-        changes.lines.forEach((line, i) => {
-          setState("lines", i, reconcile(line));
-        });
-      }
-
-      if (changes.cursor !== undefined) {
-        setState("cursor", reconcile(changes.cursor));
-      }
-
-      setState("cursorHold", true);
-    });
-
-    frameRequestId = undefined;
-    renderCount += 1;
-  };
-
   const terminalElementSize = createMemo(() => {
-    const terminalW = state.charW * terminalCols() + state.bordersW;
-    const terminalH = state.charH * terminalRows() + state.bordersH;
+    const terminalW = charW * terminalCols() + bordersW;
+    const terminalH = charH * terminalRows() + bordersH;
 
     let fit = props.fit ?? "width";
 
@@ -401,25 +346,6 @@ export default (props) => {
     setState({ currentTime, remainingTime, progress });
   };
 
-  const startBlinking = () => {
-    blinkIntervalId = setInterval(() => {
-      setState((state) => {
-        const changes = { blink: !state.blink };
-
-        if (changes.blink) {
-          changes.cursorHold = false;
-        }
-
-        return changes;
-      });
-    }, 600);
-  };
-
-  const stopBlinking = () => {
-    clearInterval(blinkIntervalId);
-    setState("blink", true);
-  };
-
   const onUserActive = (show) => {
     clearTimeout(userActivityTimeoutId);
 
@@ -474,10 +400,6 @@ export default (props) => {
     if (themeColors) {
       style["--term-color-foreground"] = themeColors.foreground;
       style["--term-color-background"] = themeColors.background;
-
-      themeColors.palette.forEach((color, i) => {
-        style[`--term-color-${i}`] = color;
-      });
     }
 
     return style;
@@ -530,13 +452,11 @@ export default (props) => {
           cols={terminalCols()}
           rows={terminalRows()}
           scale={terminalScale()}
-          blink={state.blink}
-          lines={state.lines}
-          cursor={state.cursor}
-          cursorHold={state.cursorHold}
+          blinking={blinking()}
           lineHeight={props.terminalLineHeight}
           theme={theme().colors}
-          ref={terminalRef}
+          core={core}
+          stats={stats.terminal}
         />
         <Show when={props.controls !== false}>
           <ControlBar

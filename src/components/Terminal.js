@@ -1,51 +1,158 @@
-import { createEffect, createMemo, createSignal, onMount } from "solid-js";
+import { batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 import Line from "./Line";
 
 export default (props) => {
   let canvas;
   let ctx;
   let el;
+  let frameRequestId;
+  let blinkIntervalId;
+  let cssTheme;
+
+  const core = props.core;
+
+  const [size, setSize] = createSignal(
+    { cols: props.cols, rows: props.rows },
+    { equals: (newVal, oldVal) => newVal.cols === oldVal.cols && newVal.rows === oldVal.rows },
+  );
 
   const [theme, setTheme] = createSignal(buildTheme(FALLBACK_THEME));
   const lineHeight = () => props.lineHeight ?? 1.3333333333;
+  const [lines, setLines] = createStore([]);
+  const [cursor, setCursor] = createSignal(undefined);
+  const [cursorHold, setCursorHold] = createSignal(false);
+  const [blinkOn, setBlinkOn] = createSignal(true);
 
   const style = createMemo(() => {
     return {
-      width: `${props.cols}ch`,
-      height: `${lineHeight() * props.rows}em`,
+      width: `${size().cols}ch`,
+      height: `${lineHeight() * size().rows}em`,
       "font-size": `${(props.scale || 1.0) * 100}%`,
       "--term-line-height": `${lineHeight()}em`,
-      "--term-cols": props.cols,
-      "--term-rows": props.rows,
+      "--term-cols": size().cols,
+      "--term-rows": size().rows,
     };
   });
 
-  const cursorCol = createMemo(() => props.cursor?.[0]);
-  const cursorRow = createMemo(() => props.cursor?.[1]);
+  const cursorCol = createMemo(() => cursor()?.[0]);
+  const cursorRow = createMemo(() => cursor()?.[1]);
+
+  let pendingChanges = {};
 
   onMount(() => {
     ctx = canvas.getContext("2d");
     if (!ctx) throw "2D ctx not available";
-    canvas.width = props.cols;
-    canvas.height = props.rows;
+    const { cols, rows } = size();
+    canvas.width = cols;
+    canvas.height = rows;
     canvas.style.imageRendering = "pixelated";
     ctx.imageSmoothingEnabled = false;
-    updateTheme(props.theme ?? getCssTheme(el));
+    cssTheme = getCssTheme(el);
+    pendingChanges.theme = props.theme ?? cssTheme;
+    core.addEventListener("vtUpdate", onVtUpdate);
+  });
+
+  onCleanup(() => {
+    clearInterval(blinkIntervalId);
+    cancelAnimationFrame(frameRequestId);
   });
 
   createEffect(() => {
-    updateTheme(props.theme);
+    if (props.blinking && blinkIntervalId === undefined) {
+      blinkIntervalId = setInterval(() => {
+        setBlinkOn((blink) => !blink);
+      }, 600);
+    } else {
+      clearInterval(blinkIntervalId);
+      blinkIntervalId = undefined;
+      setBlinkOn(true);
+    }
   });
 
   createEffect(() => {
-    props.lines;
-    drawBackground();
+    if (blinkOn()) {
+      setCursorHold(false);
+    }
   });
 
-  createEffect(() => {
-    canvas.width = props.cols;
-    canvas.height = props.rows;
-  });
+  function onVtUpdate({ size, theme, dirty }) {
+    if (size !== undefined) {
+      pendingChanges.size = size;
+    }
+
+    if (theme !== undefined) {
+      pendingChanges.theme = theme;
+    }
+
+    if (dirty) {
+      pendingChanges.dirty = true;
+    }
+
+    if (frameRequestId === undefined) {
+      frameRequestId = requestAnimationFrame(applyChanges);
+    }
+  }
+
+  function applyChanges() {
+    frameRequestId = undefined;
+    const { size, theme, dirty } = pendingChanges;
+    let dirtyBg = false;
+
+    batch(function () {
+      if (size !== undefined) {
+        canvas.width = size.cols;
+        canvas.height = size.rows;
+
+        if (size.rows < lines.length) {
+          setLines(lines.slice(0, size.rows));
+        }
+
+        setSize(size);
+        dirtyBg = true;
+      }
+
+      if (theme !== undefined) {
+        if (theme === null) {
+          setTheme(buildTheme(cssTheme));
+        } else {
+          setTheme(buildTheme(theme));
+        }
+        dirtyBg = true;
+      }
+
+      if (dirty) {
+        const changes = core.getChanges();
+        let holdCursor = false;
+
+        if (changes.lines !== undefined) {
+          changes.lines.forEach((line, i) => {
+            setLines(i, reconcile(line));
+          });
+
+          holdCursor = true;
+        }
+
+        if (changes.cursor !== undefined) {
+          setCursor(changes.cursor);
+          holdCursor = true;
+        }
+
+        if (holdCursor) {
+          setCursorHold(true);
+        }
+
+        dirtyBg = true;
+      }
+    });
+
+    if (dirtyBg) {
+      drawBackground();
+    }
+
+    pendingChanges = {};
+    props.stats.renders += 1;
+  }
 
   function drawBackground() {
     const theme_ = theme();
@@ -53,7 +160,7 @@ export default (props) => {
 
     ctx.clearRect(0, 0, props.cols, props.rows);
 
-    for (const line of props.lines) {
+    for (const line of lines) {
       for (const span of line.bg) {
         ctx.fillStyle = colorValue(theme_, span.c);
         ctx.fillRect(span.x, row, span.w, 1);
@@ -63,24 +170,16 @@ export default (props) => {
     }
   }
 
-  function updateTheme(theme) {
-    if (theme === undefined) return;
-
-    setTheme(buildTheme(theme));
-    drawBackground();
-  }
-
   return (
     <div class="ap-term" style={style()} ref={el}>
       <canvas class="ap-term-bg" ref={canvas} />
       <pre
         class="ap-term-text"
-        classList={{ "ap-cursor-on": props.blink || props.cursorHold, "ap-blink": props.blink }}
-        ref={props.ref}
+        classList={{ "ap-cursor-on": blinkOn() || cursorHold(), "ap-blink": blinkOn() }}
         aria-live="off"
         tabindex="0"
       >
-        <For each={props.lines}>
+        <For each={lines}>
           {(line, i) => (
             <Line
               segments={line.fg}
