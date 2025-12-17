@@ -8,7 +8,7 @@ div.ap-term {
   box-sizing: content-box;
 }
 
-.ap-term canvas {
+div.ap-term canvas.ap-term-bg {
   position: absolute;
   inset: 0;
   display: block;
@@ -16,7 +16,7 @@ div.ap-term {
   height: 100%;
 }
 
-.ap-term .ap-term-text {
+div.ap-term pre.ap-term-text {
   position: absolute;
   inset: 0;
   box-sizing: content-box;
@@ -36,10 +36,10 @@ div.ap-term {
   font-variant-ligatures: none;
   border: 0;
   border-radius: 0;
-  background-color: transparent;
+  background-color: transparent !important;
 }
 
-.ap-term-text {
+pre.ap-term-text {
   .ap-line {
     display: block;
     width: 100%;

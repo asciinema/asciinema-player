@@ -72,7 +72,7 @@ export default (props) => {
 
   return (
     <div class="ap-term" style={style()} ref={el}>
-      <canvas ref={canvas} />
+      <canvas class="ap-term-bg" ref={canvas} />
       <pre
         class="ap-term-text"
         classList={{ "ap-cursor-on": props.blink || props.cursorHold, "ap-blink": props.blink }}
