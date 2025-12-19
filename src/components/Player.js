@@ -166,7 +166,7 @@ export default (props) => {
       }
     });
 
-    logger.debug("stats", stats);
+    logger.debug("stats", stats.terminal);
   });
 
   core.addEventListener("errored", () => {

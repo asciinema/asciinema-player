@@ -1,11 +1,10 @@
 import { batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
-import { createStore, reconcile } from "solid-js/store";
-import Line from "./Line";
 
 export default (props) => {
-  let canvas;
+  let canvasEl;
   let ctx;
   let el;
+  let textEl;
   let frameRequestId;
   let blinkIntervalId;
   let cssTheme;
@@ -19,7 +18,6 @@ export default (props) => {
 
   const [theme, setTheme] = createSignal(buildTheme(FALLBACK_THEME));
   const lineHeight = () => props.lineHeight ?? 1.3333333333;
-  const [lines, setLines] = createStore([]);
   const [cursor, setCursor] = createSignal(undefined);
   const [cursorHold, setCursorHold] = createSignal(false);
   const [blinkOn, setBlinkOn] = createSignal(true);
@@ -41,12 +39,12 @@ export default (props) => {
   let pendingChanges = {};
 
   onMount(() => {
-    ctx = canvas.getContext("2d");
+    ctx = canvasEl.getContext("2d");
     if (!ctx) throw "2D ctx not available";
     const { cols, rows } = size();
-    canvas.width = cols;
-    canvas.height = rows;
-    canvas.style.imageRendering = "pixelated";
+    canvasEl.width = cols;
+    canvasEl.height = rows;
+    canvasEl.style.imageRendering = "pixelated";
     ctx.imageSmoothingEnabled = false;
     cssTheme = getCssTheme(el);
     pendingChanges.theme = props.theme ?? cssTheme;
@@ -94,31 +92,62 @@ export default (props) => {
     }
   }
 
+  const rowPool = [];
+  const spanPool = [];
+
+  function getNewRow() {
+    let row = rowPool.pop();
+
+    if (row === undefined) {
+      row = document.createElement('span');
+      row.className = 'ap-line';
+    }
+
+    return row;
+  }
+
+  function getNewSpan() {
+    return spanPool.pop() ?? document.createElement('span');
+  }
+
   function applyChanges() {
     frameRequestId = undefined;
-    const { size, theme, dirty } = pendingChanges;
-    let dirtyBg = false;
+    const { size: newSize, theme: newTheme, dirty } = pendingChanges;
 
     batch(function () {
-      if (size !== undefined) {
-        canvas.width = size.cols;
-        canvas.height = size.rows;
+      if (newSize !== undefined) {
+        // resize canvas
 
-        if (size.rows < lines.length) {
-          setLines(lines.slice(0, size.rows));
+        canvasEl.width = newSize.cols;
+        canvasEl.height = newSize.rows;
+
+        // ensure correct number of child elements
+
+        let r = textEl.children.length;
+
+        while (textEl.children.length < newSize.rows) {
+          const row = getNewRow();
+          row.style.setProperty("--row", r);
+          textEl.appendChild(row);
+          r += 1;
         }
 
-        setSize(size);
-        dirtyBg = true;
+        while (textEl.children.length > newSize.rows) {
+          const row = textEl.lastElementChild;
+          textEl.removeChild(row);
+          rowPool.push(row);
+        }
+
+        setSize(newSize);
       }
 
-      if (theme !== undefined) {
-        if (theme === null) {
+      if (newTheme !== undefined) {
+        if (newTheme === null) {
           setTheme(buildTheme(cssTheme));
         } else {
-          setTheme(buildTheme(theme));
+          setTheme(buildTheme(newTheme));
         }
-        dirtyBg = true;
+        // TODO we probably should do full background repaint at this point
       }
 
       if (dirty) {
@@ -126,9 +155,105 @@ export default (props) => {
         let holdCursor = false;
 
         if (changes.lines !== undefined) {
-          changes.lines.forEach((line, i) => {
-            setLines(i, reconcile(line));
-          });
+          const theme_ = theme();
+
+          for (const [r, line] of changes.lines) {
+            const fg = line.fg;
+            const row = textEl.children[r];
+
+            // ensure correct number of child elements
+
+            while (row.children.length < fg.length) {
+              row.appendChild(getNewSpan());
+            }
+
+            while (row.children.length > fg.length) {
+              const span = row.lastElementChild;
+              row.removeChild(span);
+              spanPool.push(span);
+            }
+
+            let s = 0;
+
+            for (const span of fg) {
+              const el = row.children[s++];
+              const style = el.style;
+              const attrs = span.p;
+              style.setProperty("--offset", span.x);
+              style.width = `${span.w + 0.01}ch`;
+              el.textContent = span.t;
+
+              const fg = colorValue(theme_, attrs.get("fg"), attrs.get("bold"));
+
+              if (fg) {
+                style.setProperty("--fg", fg);
+              } else {
+                style.removeProperty("--fg");
+              }
+
+              const bg = colorValue(theme_, attrs.get("bg"));
+
+              if (bg) {
+                style.setProperty("--bg", bg);
+              } else {
+                style.removeProperty("--bg");
+              }
+
+              let cls = "";
+
+              // TODO ap-cursor
+
+              if (span.t.length == 1) {
+                const cp = span.t.codePointAt(0);
+
+                // box drawing chars, block elements and some Powerline symbols
+                // are rendered with CSS classes (cp-<codepoint>)
+                if ((cp >= 0x2580 && cp <= 0x259f) || (cp >= 0xe0b0 && cp <= 0xe0b3)) {
+                  cls += ` cp-${cp.toString(16)}`;
+                  el.textContent = " ";
+                }
+              }
+
+              if (attrs.has("bold") || isBrightColor(attrs.get("fg"))) {
+                cls += " ap-bright";
+              }
+
+              if (attrs.has("faint")) {
+                cls += " ap-faint";
+              }
+
+              if (attrs.has("italic")) {
+                cls += " ap-italic";
+              }
+
+              if (attrs.has("underline")) {
+                cls += " ap-underline";
+              }
+
+              if (attrs.has("blink")) {
+                cls += " ap-blink";
+              }
+
+              if (attrs.get("inverse")) {
+                cls += " ap-inverse";
+              }
+
+              if (span.w == 1) {
+                cls += " ap-symbol";
+              }
+
+              el.className = cls == "" ? undefined : cls;
+            }
+
+            // paint the background
+
+            ctx.clearRect(0, r, size().cols, 1);
+
+            for (const span of line.bg) {
+              ctx.fillStyle = colorValue(theme_, span.c);
+              ctx.fillRect(span.x, r, span.w, 1);
+            }
+          }
 
           holdCursor = true;
         }
@@ -141,55 +266,23 @@ export default (props) => {
         if (holdCursor) {
           setCursorHold(true);
         }
-
-        dirtyBg = true;
       }
     });
-
-    if (dirtyBg) {
-      drawBackground();
-    }
 
     pendingChanges = {};
     props.stats.renders += 1;
   }
 
-  function drawBackground() {
-    const theme_ = theme();
-    let row = 0;
-
-    ctx.clearRect(0, 0, props.cols, props.rows);
-
-    for (const line of lines) {
-      for (const span of line.bg) {
-        ctx.fillStyle = colorValue(theme_, span.c);
-        ctx.fillRect(span.x, row, span.w, 1);
-      }
-
-      row += 1;
-    }
-  }
-
   return (
     <div class="ap-term" style={style()} ref={el}>
-      <canvas class="ap-term-bg" ref={canvas} />
+      <canvas class="ap-term-bg" ref={canvasEl} />
       <pre
         class="ap-term-text"
         classList={{ "ap-cursor-on": blinkOn() || cursorHold(), "ap-blink": blinkOn() }}
+        ref={textEl}
         aria-live="off"
         tabindex="0"
-      >
-        <For each={lines}>
-          {(line, i) => (
-            <Line
-              segments={line.fg}
-              row={i()}
-              cursor={i() === cursorRow() ? cursorCol() : null}
-              theme={theme()}
-            />
-          )}
-        </For>
-      </pre>
+      ></pre>
     </div>
   );
 };
@@ -217,14 +310,25 @@ function getCssTheme(el) {
   return { foreground, background, palette };
 }
 
-function colorValue(theme, color) {
+function colorValue(theme, color, intense = false) {
   if (color === undefined) return;
-  if (typeof color === "number") return theme.palette[color];
+
+  if (typeof color === "number") {
+    if (intense && color < 8) {
+      color += 8;
+    }
+
+    return theme.palette[color];
+  }
 
   if (typeof color === "string") {
     if (color == "fg") return theme.fg;
     return color;
   }
+}
+
+function isBrightColor(color) {
+  return typeof color === "number" && color >= 8 && color <= 15;
 }
 
 const FALLBACK_THEME = {
