@@ -93,7 +93,6 @@ export default (props) => {
   }
 
   const rowPool = [];
-  const spanPool = [];
 
   function getNewRow() {
     let row = rowPool.pop();
@@ -104,10 +103,6 @@ export default (props) => {
     }
 
     return row;
-  }
-
-  function getNewSpan() {
-    return spanPool.pop() ?? document.createElement('span');
   }
 
   function applyChanges() {
@@ -163,20 +158,10 @@ export default (props) => {
 
             // ensure correct number of child elements
 
-            while (row.children.length < fg.length) {
-              row.appendChild(getNewSpan());
-            }
-
-            while (row.children.length > fg.length) {
-              const span = row.lastElementChild;
-              row.removeChild(span);
-              spanPool.push(span);
-            }
-
-            let s = 0;
+            const frag = document.createDocumentFragment();
 
             for (const span of fg) {
-              const el = row.children[s++];
+              const el = document.createElement('span');
               const style = el.style;
               const attrs = span.p;
               style.setProperty("--offset", span.x);
@@ -187,16 +172,12 @@ export default (props) => {
 
               if (fg) {
                 style.setProperty("--fg", fg);
-              } else {
-                style.removeProperty("--fg");
               }
 
               const bg = colorValue(theme_, attrs.get("bg"));
 
               if (bg) {
                 style.setProperty("--bg", bg);
-              } else {
-                style.removeProperty("--bg");
               }
 
               let cls = "";
@@ -242,8 +223,14 @@ export default (props) => {
                 cls += " ap-symbol";
               }
 
-              el.className = cls == "" ? undefined : cls;
+              if (cls != "") {
+                el.className = cls ;
+              }
+
+              frag.appendChild(el);
             }
+
+            row.replaceChildren(frag);
 
             // paint the background
 
