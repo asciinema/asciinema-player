@@ -135,7 +135,7 @@ impl Vt {
                         prev_fg_span = Some(new_span);
                     }
 
-                    (Some(mut span), pen) if &span.p.0 == pen => {
+                    (Some(mut span), pen) if is_same_text_attr(&span.p.0, pen) => {
                         span.t.push(cell.char());
                         span.w += w;
                         prev_fg_span = Some(span);
@@ -170,6 +170,16 @@ impl Vt {
 
         serde_wasm_bindgen::to_value(&cursor).unwrap()
     }
+}
+
+fn is_same_text_attr(pen1: &avt::Pen, pen2: &avt::Pen) -> bool {
+    pen1.foreground() == pen2.foreground()
+        && pen1.is_bold() == pen2.is_bold()
+        && pen1.is_faint() == pen2.is_faint()
+        && pen1.is_italic() == pen2.is_italic()
+        && pen1.is_blink() == pen2.is_blink()
+        && pen1.is_underline() == pen2.is_underline()
+        && pen1.is_strikethrough() == pen2.is_strikethrough()
 }
 
 fn bg_color(pen: &avt::Pen) -> Option<BgColor> {
