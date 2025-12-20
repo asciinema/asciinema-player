@@ -395,9 +395,7 @@ class Core {
 
       for (const i of this.changedLines) {
         if (i < rows) {
-          const line = this.vt.getLine(i);
-          line.id = i;
-          lines.set(i, line);
+          lines.set(i, this.vt.getLine(i));
         }
       }
 
