@@ -120,11 +120,17 @@ export default (props) => {
 
         let r = textEl.children.length;
 
-        while (textEl.children.length < newSize.rows) {
-          const row = getNewRow();
-          row.style.setProperty("--row", r);
-          textEl.appendChild(row);
-          r += 1;
+        if (r < newSize.rows) {
+          const frag = document.createDocumentFragment();
+
+          while (r < newSize.rows) {
+            const row = getNewRow();
+            row.style.setProperty("--row", r);
+            frag.appendChild(row);
+            r += 1;
+          }
+
+          textEl.appendChild(frag);
         }
 
         while (textEl.children.length > newSize.rows) {
