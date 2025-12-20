@@ -98,8 +98,8 @@ export default (props) => {
     let row = rowPool.pop();
 
     if (row === undefined) {
-      row = document.createElement('span');
-      row.className = 'ap-line';
+      row = document.createElement("span");
+      row.className = "ap-line";
     }
 
     return row;
@@ -161,7 +161,7 @@ export default (props) => {
             const frag = document.createDocumentFragment();
 
             for (const span of fg) {
-              const el = document.createElement('span');
+              const el = document.createElement("span");
               const style = el.style;
               const attrs = span.p;
               style.setProperty("--offset", span.x);
@@ -224,7 +224,7 @@ export default (props) => {
               }
 
               if (cls != "") {
-                el.className = cls ;
+                el.className = cls;
               }
 
               frag.appendChild(el);
