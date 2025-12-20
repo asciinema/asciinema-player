@@ -1,4 +1,4 @@
-import loadVt from "./vt/Cargo.toml";
+import * as vtModule from "./vt/Cargo.toml?custom";
 import { parseNpt } from "./util";
 import { Clock, NullClock } from "./clock";
 import recording from "./driver/recording";
@@ -14,7 +14,7 @@ import parseTtyrec from "./parser/ttyrec";
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
 
-const vt = loadVt(); // trigger async loading of wasm
+const vt = vtModule.init({ module: vtModule.module }); // trigger async loading of wasm
 
 class State {
   constructor(core) {

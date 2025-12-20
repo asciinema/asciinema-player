@@ -20,7 +20,7 @@ wee_alloc = "0.4"
 
 
 [dependencies.wasm-bindgen]
-version = "0.2.92"
+version = "0.2.106"
 features = ["serde-serialize"]
 
 
