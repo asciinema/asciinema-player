@@ -33,6 +33,7 @@
               ];
             })
             binaryen
+            just
             python3
             playwright-driver.browsers
           ];
