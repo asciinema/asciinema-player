@@ -201,8 +201,8 @@ export default (props) => {
                 }
               }
 
-              if (attrs.has("bold") || isBrightColor(attrs.get("fg"))) {
-                cls += " ap-bright";
+              if (attrs.has("bold")) {
+                cls += " ap-bold";
               }
 
               if (attrs.has("faint")) {
@@ -318,10 +318,6 @@ function colorValue(theme, color, intense = false) {
     if (color == "fg") return theme.fg;
     return color;
   }
-}
-
-function isBrightColor(color) {
-  return typeof color === "number" && color >= 8 && color <= 15;
 }
 
 const FALLBACK_THEME = {
