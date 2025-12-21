@@ -174,7 +174,7 @@ export default (props) => {
               style.width = `${span.w + 0.01}ch`;
               el.textContent = span.t;
 
-              const fg = colorValue(theme_, attrs.get("fg"), attrs.get("bold"));
+              const fg = colorValue(theme_, attrs.get("fg"));
 
               if (fg) {
                 style.setProperty("--fg", fg);
@@ -303,16 +303,8 @@ function getCssTheme(el) {
   return { foreground, background, palette };
 }
 
-function colorValue(theme, color, intense = false) {
-  if (color === undefined) return;
-
-  if (typeof color === "number") {
-    if (intense && color < 8) {
-      color += 8;
-    }
-
-    return theme.palette[color];
-  }
+function colorValue(theme, color) {
+  if (typeof color === "number") return theme.palette[color];
 
   if (typeof color === "string") {
     if (color == "fg") return theme.fg;
