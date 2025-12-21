@@ -386,8 +386,8 @@ class Core {
     return this._withState((state) => state.unmute());
   }
 
-  getLine(n) {
-    return this.vt.getLine(n);
+  getLine(n, cursorOn) {
+    return this.vt.getLine(n, cursorOn);
   }
 
   getCursor() {

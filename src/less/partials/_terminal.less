@@ -59,11 +59,6 @@ pre.ap-term-text {
       height: 100%;
     }
 
-    .ap-inverse {
-      color: var(--bg);
-      background-color: var(--fg);
-    }
-
     .ap-symbol {
       text-align: center;
     }
@@ -358,17 +353,6 @@ pre.ap-term-text {
     }
   }
 
-  &.ap-cursor-on .ap-line .ap-cursor {
-    color: var(--bg);
-    background-color: var(--fg);
-    border-radius: 0.05em;
-
-    &.ap-inverse {
-      color: var(--fg);
-      background-color: var(--bg);
-    }
-  }
-
   &:not(.ap-blink) .ap-line .ap-blink {
     color: transparent;
     border-color: transparent;
@@ -390,7 +374,7 @@ pre.ap-term-text {
     font-style: italic;
   }
 
-  .ap-strikethrough {
+  .ap-strike {
     text-decoration: line-through;
   }
 }

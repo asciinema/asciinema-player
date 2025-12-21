@@ -1,15 +1,8 @@
 import { batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
 export default (props) => {
-  let canvasEl;
-  let ctx;
-  let el;
-  let textEl;
-  let frameRequestId;
-  let blinkIntervalId;
-  let cssTheme;
-
   const core = props.core;
+  const rowPool = [];
 
   const [size, setSize] = createSignal(
     { cols: props.cols, rows: props.rows },
@@ -18,8 +11,8 @@ export default (props) => {
 
   const [theme, setTheme] = createSignal(buildTheme(FALLBACK_THEME));
   const lineHeight = () => props.lineHeight ?? 1.3333333333;
-  const [cursorHold, setCursorHold] = createSignal(false);
   const [blinkOn, setBlinkOn] = createSignal(true);
+  const cursorOn = createMemo(() => blinkOn() || cursorHold);
 
   const style = createMemo(() => {
     return {
@@ -32,7 +25,7 @@ export default (props) => {
     };
   });
 
-  let lastCursor = {
+  let cursor = {
     col: 0,
     row: 0,
     visible: false,
@@ -43,6 +36,15 @@ export default (props) => {
     theme: undefined,
     rows: new Set(),
   };
+
+  let canvasEl;
+  let ctx;
+  let el;
+  let textEl;
+  let frameRequestId;
+  let blinkIntervalId;
+  let cssTheme;
+  let cursorHold = false;
 
   onMount(() => {
     ctx = canvasEl.getContext("2d");
@@ -65,7 +67,10 @@ export default (props) => {
   createEffect(() => {
     if (props.blinking && blinkIntervalId === undefined) {
       blinkIntervalId = setInterval(() => {
-        setBlinkOn((blink) => !blink);
+        setBlinkOn((blink) => {
+          if (!blink) cursorHold = false;
+          return !blink;
+        });
       }, 600);
     } else {
       clearInterval(blinkIntervalId);
@@ -75,8 +80,11 @@ export default (props) => {
   });
 
   createEffect(() => {
-    if (blinkOn()) {
-      setCursorHold(false);
+    cursorOn();
+
+    if (cursor.visible) {
+      pendingChanges.rows.add(cursor.row);
+      scheduleRender();
     }
   });
 
@@ -92,28 +100,39 @@ export default (props) => {
     if (changedRows !== undefined) {
       for (const row of changedRows) {
         pendingChanges.rows.add(row);
+        cursorHold = true;
       }
     }
 
+    const newCursor = core.getCursor();
+
+    if (
+      newCursor.visible != cursor.visible ||
+      newCursor.col != cursor.col ||
+      newCursor.row != cursor.row
+    ) {
+      if (cursor.visible) {
+        pendingChanges.rows.add(cursor.row);
+      }
+
+      if (newCursor.visible) {
+        pendingChanges.rows.add(newCursor.row);
+      }
+
+      cursor = newCursor;
+      cursorHold = true;
+    }
+
+    scheduleRender();
+  }
+
+  function scheduleRender() {
     if (frameRequestId === undefined) {
-      frameRequestId = requestAnimationFrame(applyChanges);
+      frameRequestId = requestAnimationFrame(render);
     }
   }
 
-  const rowPool = [];
-
-  function getNewRow() {
-    let row = rowPool.pop();
-
-    if (row === undefined) {
-      row = document.createElement("span");
-      row.className = "ap-line";
-    }
-
-    return row;
-  }
-
-  function applyChanges() {
+  function render() {
     frameRequestId = undefined;
     const { size: newSize, theme: newTheme, rows } = pendingChanges;
 
@@ -124,7 +143,7 @@ export default (props) => {
         canvasEl.width = newSize.cols;
         canvasEl.height = newSize.rows;
 
-        // ensure correct number of child elements
+        // ensure correct number of child elements (rows)
 
         let r = textEl.children.length;
 
@@ -159,100 +178,42 @@ export default (props) => {
         // TODO we probably should do full background repaint at this point
       }
 
-      const newCursor = core.getCursor();
-
-      if (
-        newCursor.visible != lastCursor.visible ||
-        newCursor.col != lastCursor.col ||
-        newCursor.row != lastCursor.row
-      ) {
-        if (lastCursor.visible) {
-          rows.add(lastCursor.row);
-        }
-
-        if (newCursor.visible) {
-          rows.add(newCursor.row);
-        }
-
-        lastCursor = newCursor;
-      }
-
-      let holdCursor = false;
       const theme_ = theme();
+      const cursorOn_ = blinkOn() || cursorHold;
 
       for (const r of rows) {
-        const line = core.getLine(r);
+        const line = core.getLine(r, cursorOn_);
         const fg = line.fg;
         const row = textEl.children[r];
 
-        // ensure correct number of child elements
+        // update (replace) foreground (text) nodes
 
         const frag = document.createDocumentFragment();
 
         for (const span of fg) {
           const el = document.createElement("span");
           const style = el.style;
-          const attrs = span.p;
-          style.setProperty("--offset", span.x);
-          style.width = `${span.w + 0.01}ch`;
-          el.textContent = span.t;
+          style.setProperty("--offset", span.get("x"));
+          style.width = `${span.get("width") + 0.01}ch`;
+          const text = span.get("text");
+          el.textContent = text;
 
-          const fg = colorValue(theme_, attrs.get("fg"));
+          const fg = colorValue(theme_, span.get("fg"));
 
           if (fg) {
+            // TODO set color directly
             style.setProperty("--fg", fg);
           }
 
-          const bg = colorValue(theme_, attrs.get("bg"));
+          const bg = colorValue(theme_, span.get("bg"));
 
           if (bg) {
             style.setProperty("--bg", bg);
           }
 
-          let cls = "";
+          const cls = span.get("class");
 
-          // TODO ap-cursor
-
-          if (span.t.length == 1) {
-            const cp = span.t.codePointAt(0);
-
-            // box drawing chars, block elements and some Powerline symbols
-            // are rendered with CSS classes (cp-<codepoint>)
-            if ((cp >= 0x2580 && cp <= 0x259f) || (cp >= 0xe0b0 && cp <= 0xe0b3)) {
-              cls += ` cp-${cp.toString(16)}`;
-              el.textContent = " ";
-            }
-          }
-
-          if (attrs.has("bold")) {
-            cls += " ap-bold";
-          }
-
-          if (attrs.has("faint")) {
-            cls += " ap-faint";
-          }
-
-          if (attrs.has("italic")) {
-            cls += " ap-italic";
-          }
-
-          if (attrs.has("underline")) {
-            cls += " ap-underline";
-          }
-
-          if (attrs.has("blink")) {
-            cls += " ap-blink";
-          }
-
-          if (attrs.get("inverse")) {
-            cls += " ap-inverse";
-          }
-
-          if (span.w == 1) {
-            cls += " ap-symbol";
-          }
-
-          if (cls != "") {
+          if (cls !== undefined) {
             el.className = cls;
           }
 
@@ -266,15 +227,9 @@ export default (props) => {
         ctx.clearRect(0, r, size().cols, 1);
 
         for (const span of line.bg) {
-          ctx.fillStyle = colorValue(theme_, span.c);
-          ctx.fillRect(span.x, r, span.w, 1);
+          ctx.fillStyle = colorValue(theme_, span.get("bg"));
+          ctx.fillRect(span.get("x"), r, span.get("width"), 1);
         }
-
-        holdCursor = true;
-      }
-
-      if (holdCursor) {
-        setCursorHold(true);
       }
     });
 
@@ -285,12 +240,23 @@ export default (props) => {
     props.stats.renders += 1;
   }
 
+  function getNewRow() {
+    let row = rowPool.pop();
+
+    if (row === undefined) {
+      row = document.createElement("span");
+      row.className = "ap-line";
+    }
+
+    return row;
+  }
+
   return (
     <div class="ap-term" style={style()} ref={el}>
       <canvas class="ap-term-bg" ref={canvasEl} />
       <pre
         class="ap-term-text"
-        classList={{ "ap-cursor-on": blinkOn() || cursorHold(), "ap-blink": blinkOn() }}
+        classList={{ "ap-blink": blinkOn() }}
         ref={textEl}
         aria-live="off"
         tabindex="0"
@@ -327,6 +293,7 @@ function colorValue(theme, color) {
 
   if (typeof color === "string") {
     if (color == "fg") return theme.fg;
+    if (color == "bg") return theme.bg;
     return color;
   }
 }

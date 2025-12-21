@@ -25,31 +25,32 @@ struct Line {
     fg: Vec<FgSpan>,
 }
 
-#[derive(Serialize)]
 struct BgSpan {
     x: usize,
-    w: usize,
-    c: BgColor,
+    width: usize,
+    bg: Color,
 }
 
-#[derive(Serialize)]
 struct FgSpan {
     x: usize,
-    w: usize,
-    p: Pen,
-    t: String,
-    #[serde(rename = "W")]
-    char_width: usize,
+    width: usize,
+    text: Vec<char>,
+    bg: Option<Color>,
+    fg: Option<Color>,
+    bold: bool,
+    faint: bool,
+    italic: bool,
+    underline: bool,
+    strikethrough: bool,
+    blink: bool,
 }
 
 #[derive(Clone, PartialEq)]
-enum BgColor {
+enum Color {
     Value(avt::Color),
+    DefaultBg,
     DefaultFg,
 }
-
-#[derive(Debug, PartialEq)]
-struct Pen(avt::Pen);
 
 #[wasm_bindgen]
 pub fn create(cols: usize, rows: usize, scrollback_limit: usize) -> Vt {
@@ -81,22 +82,41 @@ impl Vt {
     }
 
     #[wasm_bindgen(js_name = getLine)]
-    pub fn get_line(&self, n: usize) -> JsValue {
+    pub fn get_line(&self, row: usize, cursor_on: bool) -> JsValue {
         let mut bg: Vec<BgSpan> = Vec::new();
         let mut fg: Vec<FgSpan> = Vec::new();
         let mut prev_bg_span: Option<BgSpan> = None;
         let mut prev_fg_span: Option<FgSpan> = None;
         let mut x = 0;
 
-        for cell in self.vt.line(n).cells().iter().filter(|c| c.width() > 0) {
-            let w = cell.width();
-            let pen = cell.pen();
+        let cursor_col = {
+            let cursor = self.vt.cursor();
 
-            match (prev_bg_span.take(), bg_color(pen)) {
+            if cursor.visible && cursor.row == row && cursor_on {
+                Some(cursor.col)
+            } else {
+                None
+            }
+        };
+
+        for cell in self.vt.line(row).cells().iter().filter(|c| c.width() > 0) {
+            let width = cell.width();
+            let pen = cell.pen();
+            let inverse = matches!(cursor_col, Some(col) if col == x);
+            let bg_color = bg_color(pen, inverse);
+            let fg_color = fg_color(pen, inverse);
+
+            // bg spans
+
+            match (prev_bg_span.take(), bg_color.as_ref()) {
                 (None, None) => {}
 
-                (None, Some(c)) => {
-                    prev_bg_span = Some(BgSpan { x, w, c });
+                (None, Some(color)) => {
+                    prev_bg_span = Some(BgSpan {
+                        x,
+                        width,
+                        bg: color.clone(),
+                    });
                 }
 
                 (Some(span), None) => {
@@ -104,51 +124,51 @@ impl Vt {
                     prev_bg_span = None;
                 }
 
-                (Some(mut span), Some(c)) if span.c == c => {
-                    span.w += w;
+                (Some(mut span), Some(c)) if &span.bg == c => {
+                    span.width += width;
                     prev_bg_span = Some(span);
                 }
 
-                (Some(span), Some(c)) => {
+                (Some(span), Some(color)) => {
                     bg.push(span);
-                    prev_bg_span = Some(BgSpan { x, w, c });
+                    prev_bg_span = Some(BgSpan {
+                        x,
+                        width,
+                        bg: color.clone(),
+                    });
                 }
             }
 
-            let new_span = FgSpan {
-                x,
-                w,
-                p: Pen(*pen),
-                t: String::from(cell.char()),
-                char_width: w,
-            };
+            // fg spans
 
             if is_standalone_char(cell) {
                 if let Some(span) = prev_fg_span.take() {
                     fg.push(span);
                 }
 
-                fg.push(new_span);
+                fg.push(build_fg_span(x, width, bg_color, fg_color, cell));
             } else {
                 match (prev_fg_span.take(), pen) {
                     (None, _pen) => {
-                        prev_fg_span = Some(new_span);
+                        prev_fg_span = Some(build_fg_span(x, width, bg_color, fg_color, cell));
                     }
 
-                    (Some(mut span), pen) if is_same_text_attr(&span.p.0, pen) => {
-                        span.t.push(cell.char());
-                        span.w += w;
+                    (Some(mut span), pen)
+                        if fg_color == span.fg && is_same_text_style(&span, pen) =>
+                    {
+                        span.text.push(cell.char());
+                        span.width += width;
                         prev_fg_span = Some(span);
                     }
 
                     (Some(span), _pen) => {
                         fg.push(span);
-                        prev_fg_span = Some(new_span);
+                        prev_fg_span = Some(build_fg_span(x, width, bg_color, fg_color, cell));
                     }
                 }
             }
 
-            x += w;
+            x += width;
         }
 
         if let Some(span) = prev_bg_span {
@@ -172,25 +192,60 @@ impl Vt {
     }
 }
 
-fn is_same_text_attr(pen1: &avt::Pen, pen2: &avt::Pen) -> bool {
-    pen1.foreground() == pen2.foreground()
-        && pen1.is_bold() == pen2.is_bold()
-        && pen1.is_faint() == pen2.is_faint()
-        && pen1.is_italic() == pen2.is_italic()
-        && pen1.is_blink() == pen2.is_blink()
-        && pen1.is_underline() == pen2.is_underline()
-        && pen1.is_strikethrough() == pen2.is_strikethrough()
+fn build_fg_span(
+    x: usize,
+    width: usize,
+    bg: Option<Color>,
+    fg: Option<Color>,
+    cell: &avt::Cell,
+) -> FgSpan {
+    let pen = cell.pen();
+
+    FgSpan {
+        x,
+        width,
+        bg,
+        fg,
+        bold: pen.is_bold(),
+        faint: pen.is_faint(),
+        italic: pen.is_italic(),
+        underline: pen.is_underline(),
+        strikethrough: pen.is_strikethrough(),
+        blink: pen.is_blink(),
+        text: vec![cell.char()],
+    }
 }
 
-fn bg_color(pen: &avt::Pen) -> Option<BgColor> {
-    if pen.is_inverse() {
+fn is_same_text_style(span: &FgSpan, pen: &avt::Pen) -> bool {
+    span.bold == pen.is_bold()
+        && span.faint == pen.is_faint()
+        && span.italic == pen.is_italic()
+        && span.underline == pen.is_underline()
+        && span.strikethrough == pen.is_strikethrough()
+        && span.blink == pen.is_blink()
+}
+
+fn bg_color(pen: &avt::Pen, inverse: bool) -> Option<Color> {
+    if pen.is_inverse() ^ inverse {
         if let Some(c) = pen.foreground() {
-            Some(BgColor::Value(c))
+            Some(Color::Value(c))
         } else {
-            Some(BgColor::DefaultFg)
+            Some(Color::DefaultFg)
         }
     } else {
-        pen.background().map(BgColor::Value)
+        pen.background().map(Color::Value)
+    }
+}
+
+fn fg_color(pen: &avt::Pen, inverse: bool) -> Option<Color> {
+    if pen.is_inverse() ^ inverse {
+        if let Some(c) = pen.background() {
+            Some(Color::Value(c))
+        } else {
+            Some(Color::DefaultBg)
+        }
+    } else {
+        pen.foreground().map(Color::Value)
     }
 }
 
@@ -214,91 +269,111 @@ fn is_standalone_char(cell: &avt::Cell) -> bool {
     NF_MATERIAL_DESIGN_ICONS.contains(&ch)
 }
 
-impl Serialize for Pen {
+impl Serialize for BgSpan {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut len = 0;
+        let mut map = serializer.serialize_map(Some(3))?;
+        map.serialize_entry("x", &self.x)?;
+        map.serialize_entry("width", &self.width)?;
+        map.serialize_entry("bg", &self.bg)?;
 
-        if self.0.foreground().is_some() {
+        map.end()
+    }
+}
+
+impl Serialize for FgSpan {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut len = 3;
+        let mut class = String::new();
+        let mut css_symbol = false;
+
+        if self.fg.is_some() {
             len += 1;
         }
 
-        if self.0.background().is_some() {
+        if self.bg.is_some() {
             len += 1;
         }
 
-        if self.0.is_bold() || self.0.is_faint() {
-            len += 1;
+        if self.bold {
+            class.push_str("ap-bold ");
+        } else if self.faint {
+            class.push_str("ap-faint ");
         }
 
-        if self.0.is_italic() {
-            len += 1;
+        if self.italic {
+            class.push_str("ap-italic ");
         }
 
-        if self.0.is_underline() {
-            len += 1;
+        if self.underline {
+            class.push_str("ap-underline ");
         }
 
-        if self.0.is_strikethrough() {
-            len += 1;
+        if self.strikethrough {
+            class.push_str("ap-strike ");
         }
 
-        if self.0.is_blink() {
-            len += 1;
+        if self.blink {
+            class.push_str("ap-blink ");
         }
 
-        if self.0.is_inverse() {
+        if self.text.len() == 1 {
+            let ch = self.text[0];
+
+            // box drawing chars, block elements and some Powerline symbols
+            // are rendered with CSS classes (cp-<codepoint>)
+            if ('\u{2580}'..='\u{259f}').contains(&ch) || ('\u{e0b0}'..='\u{e0b3}').contains(&ch) {
+                css_symbol = true;
+                class.push_str(&format!("cp-{:04x} ", ch as u32));
+            }
+        }
+
+        if !class.is_empty() {
             len += 1;
         }
 
         let mut map = serializer.serialize_map(Some(len))?;
 
-        if let Some(c) = self.0.foreground() {
-            map.serialize_entry("fg", &BgColor::Value(c))?;
+        map.serialize_entry("x", &self.x)?;
+        map.serialize_entry("width", &self.width)?;
+        let text: String = self.text.iter().collect();
+
+        if css_symbol {
+            map.serialize_entry("text", " ")?;
+        } else {
+            map.serialize_entry("text", &text)?;
         }
 
-        if let Some(c) = self.0.background() {
-            map.serialize_entry("bg", &BgColor::Value(c))?;
+        if let Some(color) = &self.fg {
+            map.serialize_entry("fg", color)?;
         }
 
-        if self.0.is_bold() {
-            map.serialize_entry("bold", &true)?;
-        } else if self.0.is_faint() {
-            map.serialize_entry("faint", &true)?;
+        if css_symbol {
+            // some symbols rendered with CSS classes (see above) need bg color
+            if let Some(color) = &self.bg {
+                map.serialize_entry("bg", color)?;
+            }
         }
 
-        if self.0.is_italic() {
-            map.serialize_entry("italic", &true)?;
-        }
-
-        if self.0.is_underline() {
-            map.serialize_entry("underline", &true)?;
-        }
-
-        if self.0.is_strikethrough() {
-            map.serialize_entry("strikethrough", &true)?;
-        }
-
-        if self.0.is_blink() {
-            map.serialize_entry("blink", &true)?;
-        }
-
-        if self.0.is_inverse() {
-            map.serialize_entry("inverse", &true)?;
+        if !class.is_empty() {
+            map.serialize_entry("class", &class)?;
         }
 
         map.end()
     }
 }
 
-impl Serialize for BgColor {
+impl Serialize for Color {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        use BgColor::*;
+        use Color::*;
 
         match self {
             Value(avt::Color::Indexed(c)) => serializer.serialize_u8(*c),
@@ -306,6 +381,8 @@ impl Serialize for BgColor {
             Value(avt::Color::RGB(c)) => {
                 serializer.serialize_str(&format!("#{:02x}{:02x}{:02x}", c.r, c.g, c.b))
             }
+
+            DefaultBg => serializer.serialize_str("bg"),
 
             DefaultFg => serializer.serialize_str("fg"),
         }
