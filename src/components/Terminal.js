@@ -18,7 +18,6 @@ export default (props) => {
 
   const [theme, setTheme] = createSignal(buildTheme(FALLBACK_THEME));
   const lineHeight = () => props.lineHeight ?? 1.3333333333;
-  const [cursor, setCursor] = createSignal(undefined);
   const [cursorHold, setCursorHold] = createSignal(false);
   const [blinkOn, setBlinkOn] = createSignal(true);
 
@@ -33,10 +32,17 @@ export default (props) => {
     };
   });
 
-  const cursorCol = createMemo(() => cursor()?.[0]);
-  const cursorRow = createMemo(() => cursor()?.[1]);
+  let lastCursor = {
+    col: 0,
+    row: 0,
+    visible: false,
+  };
 
-  let pendingChanges = {};
+  let pendingChanges = {
+    size: undefined,
+    theme: undefined,
+    rows: new Set(),
+  };
 
   onMount(() => {
     ctx = canvasEl.getContext("2d");
@@ -74,7 +80,7 @@ export default (props) => {
     }
   });
 
-  function onVtUpdate({ size, theme, dirty }) {
+  function onVtUpdate({ size, theme, changedRows }) {
     if (size !== undefined) {
       pendingChanges.size = size;
     }
@@ -83,8 +89,10 @@ export default (props) => {
       pendingChanges.theme = theme;
     }
 
-    if (dirty) {
-      pendingChanges.dirty = true;
+    if (changedRows !== undefined) {
+      for (const row of changedRows) {
+        pendingChanges.rows.add(row);
+      }
     }
 
     if (frameRequestId === undefined) {
@@ -107,7 +115,7 @@ export default (props) => {
 
   function applyChanges() {
     frameRequestId = undefined;
-    const { size: newSize, theme: newTheme, dirty } = pendingChanges;
+    const { size: newSize, theme: newTheme, rows } = pendingChanges;
 
     batch(function () {
       if (newSize !== undefined) {
@@ -151,118 +159,129 @@ export default (props) => {
         // TODO we probably should do full background repaint at this point
       }
 
-      if (dirty) {
-        const changes = core.getChanges();
-        let holdCursor = false;
+      const newCursor = core.getCursor();
 
-        if (changes.lines !== undefined) {
-          const theme_ = theme();
+      if (
+        newCursor.visible != lastCursor.visible ||
+        newCursor.col != lastCursor.col ||
+        newCursor.row != lastCursor.row
+      ) {
+        if (lastCursor.visible) {
+          rows.add(lastCursor.row);
+        }
 
-          for (const [r, line] of changes.lines) {
-            const fg = line.fg;
-            const row = textEl.children[r];
+        if (newCursor.visible) {
+          rows.add(newCursor.row);
+        }
 
-            // ensure correct number of child elements
+        lastCursor = newCursor;
+      }
 
-            const frag = document.createDocumentFragment();
+      let holdCursor = false;
+      const theme_ = theme();
 
-            for (const span of fg) {
-              const el = document.createElement("span");
-              const style = el.style;
-              const attrs = span.p;
-              style.setProperty("--offset", span.x);
-              style.width = `${span.w + 0.01}ch`;
-              el.textContent = span.t;
+      for (const r of rows) {
+        const line = core.getLine(r);
+        const fg = line.fg;
+        const row = textEl.children[r];
 
-              const fg = colorValue(theme_, attrs.get("fg"));
+        // ensure correct number of child elements
 
-              if (fg) {
-                style.setProperty("--fg", fg);
-              }
+        const frag = document.createDocumentFragment();
 
-              const bg = colorValue(theme_, attrs.get("bg"));
+        for (const span of fg) {
+          const el = document.createElement("span");
+          const style = el.style;
+          const attrs = span.p;
+          style.setProperty("--offset", span.x);
+          style.width = `${span.w + 0.01}ch`;
+          el.textContent = span.t;
 
-              if (bg) {
-                style.setProperty("--bg", bg);
-              }
+          const fg = colorValue(theme_, attrs.get("fg"));
 
-              let cls = "";
+          if (fg) {
+            style.setProperty("--fg", fg);
+          }
 
-              // TODO ap-cursor
+          const bg = colorValue(theme_, attrs.get("bg"));
 
-              if (span.t.length == 1) {
-                const cp = span.t.codePointAt(0);
+          if (bg) {
+            style.setProperty("--bg", bg);
+          }
 
-                // box drawing chars, block elements and some Powerline symbols
-                // are rendered with CSS classes (cp-<codepoint>)
-                if ((cp >= 0x2580 && cp <= 0x259f) || (cp >= 0xe0b0 && cp <= 0xe0b3)) {
-                  cls += ` cp-${cp.toString(16)}`;
-                  el.textContent = " ";
-                }
-              }
+          let cls = "";
 
-              if (attrs.has("bold")) {
-                cls += " ap-bold";
-              }
+          // TODO ap-cursor
 
-              if (attrs.has("faint")) {
-                cls += " ap-faint";
-              }
+          if (span.t.length == 1) {
+            const cp = span.t.codePointAt(0);
 
-              if (attrs.has("italic")) {
-                cls += " ap-italic";
-              }
-
-              if (attrs.has("underline")) {
-                cls += " ap-underline";
-              }
-
-              if (attrs.has("blink")) {
-                cls += " ap-blink";
-              }
-
-              if (attrs.get("inverse")) {
-                cls += " ap-inverse";
-              }
-
-              if (span.w == 1) {
-                cls += " ap-symbol";
-              }
-
-              if (cls != "") {
-                el.className = cls;
-              }
-
-              frag.appendChild(el);
-            }
-
-            row.replaceChildren(frag);
-
-            // paint the background
-
-            ctx.clearRect(0, r, size().cols, 1);
-
-            for (const span of line.bg) {
-              ctx.fillStyle = colorValue(theme_, span.c);
-              ctx.fillRect(span.x, r, span.w, 1);
+            // box drawing chars, block elements and some Powerline symbols
+            // are rendered with CSS classes (cp-<codepoint>)
+            if ((cp >= 0x2580 && cp <= 0x259f) || (cp >= 0xe0b0 && cp <= 0xe0b3)) {
+              cls += ` cp-${cp.toString(16)}`;
+              el.textContent = " ";
             }
           }
 
-          holdCursor = true;
+          if (attrs.has("bold")) {
+            cls += " ap-bold";
+          }
+
+          if (attrs.has("faint")) {
+            cls += " ap-faint";
+          }
+
+          if (attrs.has("italic")) {
+            cls += " ap-italic";
+          }
+
+          if (attrs.has("underline")) {
+            cls += " ap-underline";
+          }
+
+          if (attrs.has("blink")) {
+            cls += " ap-blink";
+          }
+
+          if (attrs.get("inverse")) {
+            cls += " ap-inverse";
+          }
+
+          if (span.w == 1) {
+            cls += " ap-symbol";
+          }
+
+          if (cls != "") {
+            el.className = cls;
+          }
+
+          frag.appendChild(el);
         }
 
-        if (changes.cursor !== undefined) {
-          setCursor(changes.cursor);
-          holdCursor = true;
+        row.replaceChildren(frag);
+
+        // paint the background
+
+        ctx.clearRect(0, r, size().cols, 1);
+
+        for (const span of line.bg) {
+          ctx.fillStyle = colorValue(theme_, span.c);
+          ctx.fillRect(span.x, r, span.w, 1);
         }
 
-        if (holdCursor) {
-          setCursorHold(true);
-        }
+        holdCursor = true;
+      }
+
+      if (holdCursor) {
+        setCursorHold(true);
       }
     });
 
-    pendingChanges = {};
+    pendingChanges.size = undefined;
+    pendingChanges.theme = undefined;
+    pendingChanges.rows.clear();
+
     props.stats.renders += 1;
   }
 

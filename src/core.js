@@ -386,27 +386,18 @@ class Core {
     return this._withState((state) => state.unmute());
   }
 
-  getChanges() {
-    const changes = {};
+  getLine(n) {
+    return this.vt.getLine(n);
+  }
 
-    if (this.changedLines.size > 0) {
-      const lines = new Map();
-      const rows = this.vt.rows;
+  getCursor() {
+    const cursor = this.vt.getCursor();
 
-      for (const i of this.changedLines) {
-        if (i < rows) {
-          lines.set(i, this.vt.getLine(i));
-        }
-      }
-
-      this.changedLines.clear();
-
-      changes.lines = lines;
+    if (cursor) {
+      return { col: cursor[0], row: cursor[1], visible: true };
     }
 
-    changes.cursor = this.vt.getCursor() ?? false;
-
-    return changes;
+    return { col: 0, row: 0, visible: false };
   }
 
   getCurrentTime() {
@@ -475,15 +466,8 @@ class Core {
   }
 
   _feed(data) {
-    if (this._doFeed(data)) {
-      this._dispatchEvent("vtUpdate", { dirty: true });
-    }
-  }
-
-  _doFeed(data) {
-    const affectedLines = this.vt.feed(data);
-    affectedLines.forEach((i) => this.changedLines.add(i));
-    return affectedLines.length > 0;
+    const changedRows = this.vt.feed(data);
+    this._dispatchEvent("vtUpdate", { changedRows });
   }
 
   async _initializeDriver() {
@@ -505,7 +489,7 @@ class Core {
 
     if (meta.poster !== undefined) {
       this.needsClear = true;
-      meta.poster.forEach((text) => this._doFeed(text));
+      meta.poster.forEach((text) => this.vt.feed(text));
     }
 
     this._dispatchEvent("metadata", {
@@ -519,7 +503,7 @@ class Core {
     this._dispatchEvent("vtUpdate", {
       size: { cols: this.cols, rows: this.rows },
       theme: meta.theme ?? null,
-      dirty: true
+      changedRows: Array.from({ length: this.rows }, (_, i) => i),
     });
   }
 
@@ -537,7 +521,7 @@ class Core {
     this._initializeVt(cols, rows);
 
     if (init !== undefined && init !== "") {
-      this._doFeed(init);
+      this.vt.feed(init);
     }
 
     this._dispatchEvent("metadata", {
@@ -548,15 +532,14 @@ class Core {
     this._dispatchEvent("vtUpdate", {
       size: { cols, rows },
       theme: theme ?? null,
-      dirty: true
+      changedRows: Array.from({ length: rows }, (_, i) => i),
     });
   }
 
   _resizeVt(cols, rows) {
     if (cols === this.vt.cols && rows === this.vt.rows) return;
 
-    const affectedLines = this.vt.resize(cols, rows);
-    affectedLines.forEach((i) => this.changedLines.add(i));
+    const changedRows = this.vt.resize(cols, rows);
     this.vt.cols = cols;
     this.vt.rows = rows;
     this.logger.debug(`core: vt resize (${cols}x${rows})`);
@@ -567,7 +550,7 @@ class Core {
 
     this._dispatchEvent("vtUpdate", {
       size: { cols, rows },
-      dirty: affectedLines.length > 0,
+      changedRows,
     });
   }
 
@@ -576,12 +559,6 @@ class Core {
     this.vt = this.wasm.create(cols, rows, true, 100);
     this.vt.cols = cols;
     this.vt.rows = rows;
-
-    this.changedLines.clear();
-
-    for (let i = 0; i < rows; i++) {
-      this.changedLines.add(i);
-    }
   }
 
   _parsePoster(poster) {
