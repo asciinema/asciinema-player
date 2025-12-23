@@ -47,15 +47,8 @@ export default (props) => {
   let cursorHold = false;
 
   onMount(() => {
-    ctx = canvasEl.getContext("2d");
-    if (!ctx) throw "2D ctx not available";
-    const { cols, rows } = size();
-    canvasEl.width = cols;
-    canvasEl.height = rows;
-    canvasEl.style.imageRendering = "pixelated";
-    ctx.imageSmoothingEnabled = false;
-    cssTheme = getCssTheme(el);
-    pendingChanges.theme = props.theme ?? cssTheme;
+    setupCanvas();
+    setInitialTheme();
     core.addEventListener("vtUpdate", onVtUpdate);
   });
 
@@ -66,12 +59,7 @@ export default (props) => {
 
   createEffect(() => {
     if (props.blinking && blinkIntervalId === undefined) {
-      blinkIntervalId = setInterval(() => {
-        setBlinkOn((blink) => {
-          if (!blink) cursorHold = false;
-          return !blink;
-        });
-      }, 600);
+      blinkIntervalId = setInterval(toggleBlink, 600);
     } else {
       clearInterval(blinkIntervalId);
       blinkIntervalId = undefined;
@@ -87,6 +75,26 @@ export default (props) => {
       scheduleRender();
     }
   });
+
+  function setupCanvas() {
+    ctx = canvasEl.getContext("2d");
+    if (!ctx) throw "2D ctx not available";
+    const { cols, rows } = size();
+    canvasEl.width = cols;
+    canvasEl.height = rows;
+    canvasEl.style.imageRendering = "pixelated";
+    ctx.imageSmoothingEnabled = false;
+  }
+
+  function resizeCanvas({ cols, rows }) {
+    canvasEl.width = cols;
+    canvasEl.height = rows;
+  }
+
+  function setInitialTheme() {
+    cssTheme = getCssTheme(el);
+    pendingChanges.theme = props.theme ?? cssTheme;
+  }
 
   function onVtUpdate({ size, theme, changedRows }) {
     if (size !== undefined) {
@@ -126,6 +134,13 @@ export default (props) => {
     scheduleRender();
   }
 
+  function toggleBlink() {
+    setBlinkOn((blink) => {
+      if (!blink) cursorHold = false;
+      return !blink;
+    });
+  }
+
   function scheduleRender() {
     if (frameRequestId === undefined) {
       frameRequestId = requestAnimationFrame(render);
@@ -138,34 +153,8 @@ export default (props) => {
 
     batch(function () {
       if (newSize !== undefined) {
-        // resize canvas
-
-        canvasEl.width = newSize.cols;
-        canvasEl.height = newSize.rows;
-
-        // ensure correct number of child elements (rows)
-
-        let r = textEl.children.length;
-
-        if (r < newSize.rows) {
-          const frag = document.createDocumentFragment();
-
-          while (r < newSize.rows) {
-            const row = getNewRow();
-            row.style.setProperty("--row", r);
-            frag.appendChild(row);
-            r += 1;
-          }
-
-          textEl.appendChild(frag);
-        }
-
-        while (textEl.children.length > newSize.rows) {
-          const row = textEl.lastElementChild;
-          textEl.removeChild(row);
-          rowPool.push(row);
-        }
-
+        resizeCanvas(newSize);
+        adjustRowNodeCount(newSize.rows);
         setSize(newSize);
       }
 
@@ -182,54 +171,7 @@ export default (props) => {
       const cursorOn_ = blinkOn() || cursorHold;
 
       for (const r of rows) {
-        const line = core.getLine(r, cursorOn_);
-        const fg = line.fg;
-        const row = textEl.children[r];
-
-        // update (replace) foreground (text) nodes
-
-        const frag = document.createDocumentFragment();
-
-        for (const span of fg) {
-          const el = document.createElement("span");
-          const style = el.style;
-          style.setProperty("--offset", span.get("x"));
-          style.width = `${span.get("width") + 0.01}ch`;
-          const text = span.get("text");
-          el.textContent = text;
-
-          const fg = colorValue(theme_, span.get("fg"));
-
-          if (fg) {
-            // TODO set color directly
-            style.setProperty("--fg", fg);
-          }
-
-          const bg = colorValue(theme_, span.get("bg"));
-
-          if (bg) {
-            style.setProperty("--bg", bg);
-          }
-
-          const cls = span.get("class");
-
-          if (cls !== undefined) {
-            el.className = cls;
-          }
-
-          frag.appendChild(el);
-        }
-
-        row.replaceChildren(frag);
-
-        // paint the background
-
-        ctx.clearRect(0, r, size().cols, 1);
-
-        for (const span of line.bg) {
-          ctx.fillStyle = colorValue(theme_, span.get("bg"));
-          ctx.fillRect(span.get("x"), r, span.get("width"), 1);
-        }
+        renderRow(r, theme_, cursorOn_);
       }
     });
 
@@ -238,6 +180,80 @@ export default (props) => {
     pendingChanges.rows.clear();
 
     props.stats.renders += 1;
+  }
+
+  function renderRow(r, theme, cursorOn) {
+    const line = core.getLine(r, cursorOn);
+    const fg = line.fg;
+    const row = textEl.children[r];
+
+    // update (replace) foreground (text) nodes
+
+    const frag = document.createDocumentFragment();
+
+    for (const span of fg) {
+      const el = document.createElement("span");
+      const style = el.style;
+      style.setProperty("--offset", span.get("x"));
+      style.width = `${span.get("width") + 0.01}ch`;
+      const text = span.get("text");
+      el.textContent = text;
+
+      const fg = colorValue(theme, span.get("fg"));
+
+      if (fg) {
+        // TODO set color directly
+        style.setProperty("--fg", fg);
+      }
+
+      const bg = colorValue(theme, span.get("bg"));
+
+      if (bg) {
+        style.setProperty("--bg", bg);
+      }
+
+      const cls = span.get("class");
+
+      if (cls !== undefined) {
+        el.className = cls;
+      }
+
+      frag.appendChild(el);
+    }
+
+    row.replaceChildren(frag);
+
+    // paint the background
+
+    ctx.clearRect(0, r, size().cols, 1);
+
+    for (const span of line.bg) {
+      ctx.fillStyle = colorValue(theme, span.get("bg"));
+      ctx.fillRect(span.get("x"), r, span.get("width"), 1);
+    }
+  }
+
+  function adjustRowNodeCount(rows) {
+    let r = textEl.children.length;
+
+    if (r < rows) {
+      const frag = document.createDocumentFragment();
+
+      while (r < rows) {
+        const row = getNewRow();
+        row.style.setProperty("--row", r);
+        frag.appendChild(row);
+        r += 1;
+      }
+
+      textEl.appendChild(frag);
+    }
+
+    while (textEl.children.length > rows) {
+      const row = textEl.lastElementChild;
+      textEl.removeChild(row);
+      rowPool.push(row);
+    }
   }
 
   function getNewRow() {
