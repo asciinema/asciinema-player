@@ -154,7 +154,8 @@ impl Vt {
                     }
 
                     (Some(mut span), pen)
-                        if fg_color == span.fg && is_same_text_style(&span, pen) =>
+                        if (fg_color == span.fg && is_same_text_style(&span, pen))
+                            || (cell.char() == ' ' && !span.underline) =>
                     {
                         span.text.push(cell.char());
                         span.width += width;
