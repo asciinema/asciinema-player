@@ -4,7 +4,7 @@ build:
   rm -rf dist/*
   npm run build
 
-test:
+test: build
   npm run test
 
 format:
