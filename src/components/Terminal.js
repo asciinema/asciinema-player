@@ -97,10 +97,6 @@ export default (props) => {
   }
 
   function onVtUpdate({ size, theme, changedRows }) {
-    if (size !== undefined) {
-      pendingChanges.size = size;
-    }
-
     if (theme !== undefined) {
       pendingChanges.theme = theme;
     }
@@ -129,6 +125,16 @@ export default (props) => {
 
       cursor = newCursor;
       cursorHold = true;
+    }
+
+    if (size !== undefined) {
+      pendingChanges.size = size;
+
+      for (const row of pendingChanges.rows) {
+        if (row >= size.rows) {
+          pendingChanges.rows.delete(row);
+        }
+      }
     }
 
     scheduleRender();
