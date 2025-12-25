@@ -1,0 +1,7 @@
+{"version": 2, "width": 80, "height": 24}
+[0.2, "o", "start\r\n"]
+[0.5, "m", "first"]
+[0.6, "o", "middle\r\n"]
+[1.1, "m", "second"]
+[1.3, "o", "end\r\n"]
+[2.0, "o", "done\r\n"]
