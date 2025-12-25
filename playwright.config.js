@@ -29,7 +29,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'cd tests && python -m http.server 8066',
+    command: 'cd tests && python -m http.server 8066 > /dev/null 2>&1',
     url: 'http://localhost:8066',
     reuseExistingServer: !process.env.CI,
   },
