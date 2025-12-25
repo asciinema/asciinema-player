@@ -98,15 +98,19 @@ export default (props) => {
     pendingChanges.theme = props.theme ?? cssTheme;
   }
 
-  function onVtUpdate({ size, theme, changedRows }) {
-    if (theme !== undefined) {
-      pendingChanges.theme = theme;
-    }
-
+  function onVtUpdate({ size: newSize, theme, changedRows }) {
     if (changedRows !== undefined) {
       for (const row of changedRows) {
         pendingChanges.rows.add(row);
         cursorHold = true;
+      }
+    }
+
+    if (theme !== undefined) {
+      pendingChanges.theme = theme;
+
+      for (let row = 0; row < size().rows; row++) {
+        pendingChanges.rows.add(row);
       }
     }
 
@@ -129,11 +133,11 @@ export default (props) => {
       cursorHold = true;
     }
 
-    if (size !== undefined) {
-      pendingChanges.size = size;
+    if (newSize !== undefined) {
+      pendingChanges.size = newSize;
 
       for (const row of pendingChanges.rows) {
-        if (row >= size.rows) {
+        if (row >= newSize.rows) {
           pendingChanges.rows.delete(row);
         }
       }
@@ -172,7 +176,6 @@ export default (props) => {
         } else {
           setTheme(buildTheme(newTheme));
         }
-        // TODO we probably should do full background repaint at this point
       }
 
       const theme_ = theme();
