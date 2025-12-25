@@ -565,7 +565,7 @@ class Core {
 
   _initializeVt(cols, rows) {
     this.logger.debug('vt init', { cols, rows });
-    this.vt = this.wasm.create(cols, rows, true, 100);
+    this.vt = this.wasm.create(cols, rows, 100);
     this.vt.cols = cols;
     this.vt.rows = rows;
   }
