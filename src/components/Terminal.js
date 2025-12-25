@@ -49,6 +49,7 @@ export default (props) => {
   onMount(() => {
     setupCanvas();
     setInitialTheme();
+    adjustRowNodeCount(size().rows);
     core.addEventListener("vtUpdate", onVtUpdate);
   });
 
