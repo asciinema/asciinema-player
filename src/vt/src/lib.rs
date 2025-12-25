@@ -155,7 +155,10 @@ impl Vt {
 
                     (Some(mut span), pen)
                         if (fg_color == span.fg && is_same_text_style(&span, pen))
-                            || (cell.char() == ' ' && !span.underline) =>
+                            || (cell.char() == ' ' && !span.underline && !span.strikethrough) =>
+                    // spaces with no underline/strike-through produce no visual output therefore
+                    // they can be safely merged into the previous span regardles of their
+                    // color/style, reducing the overall number of text spans representing a row
                     {
                         span.text.push(cell.char());
                         span.width += width;
