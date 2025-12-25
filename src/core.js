@@ -424,6 +424,15 @@ class Core {
     this.eventHandlers.get(eventName).push(handler);
   }
 
+  removeEventListener(eventName, handler) {
+    const handlers = this.eventHandlers.get(eventName);
+
+    if (!handlers) return;
+
+    const idx = handlers.indexOf(handler);
+    if (idx !== -1) handlers.splice(idx, 1);
+  }
+
   _dispatchEvent(eventName, data = {}) {
     for (const h of this.eventHandlers.get(eventName)) {
       h(data);

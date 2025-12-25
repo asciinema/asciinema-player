@@ -80,12 +80,12 @@ export default (props) => {
     resolveCoreReady = resolve;
   });
 
-  core.addEventListener("ready", ({ isPausable, isSeekable }) => {
+  const onCoreReady = ({ isPausable, isSeekable }) => {
     setState({ isPausable, isSeekable });
     resolveCoreReady();
-  });
+  };
 
-  core.addEventListener("metadata", (meta) => {
+  const onCoreMetadata = (meta) => {
     batch(() => {
       if (meta.duration !== undefined) {
         setDuration(meta.duration);
@@ -107,37 +107,37 @@ export default (props) => {
         setOriginalTheme(meta.theme);
       }
     });
-  });
+  };
 
-  core.addEventListener("play", () => {
+  const onCorePlay = () => {
     setOverlay(null);
-  });
+  };
 
-  core.addEventListener("playing", () => {
+  const onCorePlaying = () => {
     batch(() => {
       setIsPlaying(true);
       setWasPlaying(true);
       setOverlay(null);
       onPlaying();
     });
-  });
+  };
 
-  core.addEventListener("idle", () => {
+  const onCoreIdle = () => {
     batch(() => {
       setIsPlaying(false);
       onStopped();
     });
-  });
+  };
 
-  core.addEventListener("loading", () => {
+  const onCoreLoading = () => {
     batch(() => {
       setIsPlaying(false);
       onStopped();
       setOverlay("loader");
     });
-  });
+  };
 
-  core.addEventListener("offline", ({ message }) => {
+  const onCoreOffline = ({ message }) => {
     batch(() => {
       setIsPlaying(false);
       onStopped();
@@ -147,15 +147,15 @@ export default (props) => {
         setOverlay("info");
       }
     });
-  });
+  };
 
-  core.addEventListener("muted", (muted) => {
+  const onCoreMuted = (muted) => {
     setIsMuted(muted);
-  });
+  };
 
   const stats = { terminal: { renders: 0 } };
 
-  core.addEventListener("ended", ({ message }) => {
+  const onCoreEnded = ({ message }) => {
     batch(() => {
       setIsPlaying(false);
       onStopped();
@@ -167,15 +167,27 @@ export default (props) => {
     });
 
     logger.debug("stats", stats.terminal);
-  });
+  };
 
-  core.addEventListener("errored", () => {
+  const onCoreErrored = () => {
     setOverlay("error");
-  });
+  };
 
-  core.addEventListener("seeked", () => {
+  const onCoreSeeked = () => {
     updateTime();
-  });
+  };
+
+  core.addEventListener("ready", onCoreReady);
+  core.addEventListener("metadata", onCoreMetadata);
+  core.addEventListener("play", onCorePlay);
+  core.addEventListener("playing", onCorePlaying);
+  core.addEventListener("idle", onCoreIdle);
+  core.addEventListener("loading", onCoreLoading);
+  core.addEventListener("offline", onCoreOffline);
+  core.addEventListener("muted", onCoreMuted);
+  core.addEventListener("ended", onCoreEnded);
+  core.addEventListener("errored", onCoreErrored);
+  core.addEventListener("seeked", onCoreSeeked);
 
   const setupResizeObserver = () => {
     resizeObserver = new ResizeObserver(
@@ -204,6 +216,17 @@ export default (props) => {
   });
 
   onCleanup(() => {
+    core.removeEventListener("ready", onCoreReady);
+    core.removeEventListener("metadata", onCoreMetadata);
+    core.removeEventListener("play", onCorePlay);
+    core.removeEventListener("playing", onCorePlaying);
+    core.removeEventListener("idle", onCoreIdle);
+    core.removeEventListener("loading", onCoreLoading);
+    core.removeEventListener("offline", onCoreOffline);
+    core.removeEventListener("muted", onCoreMuted);
+    core.removeEventListener("ended", onCoreEnded);
+    core.removeEventListener("errored", onCoreErrored);
+    core.removeEventListener("seeked", onCoreSeeked);
     core.stop();
     stopTimeUpdates();
     resizeObserver.disconnect();

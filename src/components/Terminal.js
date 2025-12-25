@@ -54,6 +54,7 @@ export default (props) => {
   });
 
   onCleanup(() => {
+    core.removeEventListener("vtUpdate", onVtUpdate);
     clearInterval(blinkIntervalId);
     cancelAnimationFrame(frameRequestId);
   });
