@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await failOnPageError(page);
+});
+
 test("initializes successfully and mounts in DOM", async ({ page }) => {
   await page.goto("/index.html");
 
@@ -64,4 +68,22 @@ async function createPlayer(page, src, opts = {}) {
     },
     { src, opts },
   );
+}
+
+async function failOnPageError(page) {
+  await page.addInitScript(() => {
+    window.addEventListener("unhandledrejection", (event) => {
+      setTimeout(() => {
+        // Re-throw asynchronously so Firefox reports it via pageerror with a browser stack.
+        throw event.reason;
+      });
+    });
+  });
+
+  page.on("pageerror", (error) => {
+    throw error;
+  });
+  page.on("crash", () => {
+    throw new Error("Page crashed.");
+  });
 }
