@@ -9,3 +9,4 @@ test: build
 
 format:
   npm run format
+  cd src/vt && cargo fmt
