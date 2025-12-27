@@ -16,6 +16,32 @@ div.ap-term canvas.ap-term-bg {
   height: 100%;
 }
 
+div.ap-term canvas.ap-term-blocks {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+div.ap-term svg.ap-term-symbols {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+
+  use {
+    color: var(--term-color-foreground);
+  }
+}
+
+div.ap-term svg.ap-term-symbols:not(.ap-blink) .ap-blink {
+  opacity: 0;
+}
+
 div.ap-term pre.ap-term-text {
   position: absolute;
   inset: 0;
@@ -58,299 +84,6 @@ pre.ap-term-text {
       display: inline-block;
       height: 100%;
     }
-
-    .ap-symbol {
-      text-align: center;
-    }
-
-    // upper half block
-    .cp-2580 {
-      border-top: calc(0.5 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // lower one eighth block
-    .cp-2581 {
-      border-bottom: calc(0.125 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // lower one quarter block
-    .cp-2582 {
-      border-bottom: calc(0.25 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // lower three eighths block
-    .cp-2583 {
-      border-bottom: calc(0.375 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // lower half block
-    .cp-2584 {
-      border-bottom: calc(0.5 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // lower five eighths block
-    .cp-2585 {
-      border-bottom: calc(0.625 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // lower three quarters block
-    .cp-2586 {
-      border-bottom: calc(0.75 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // lower seven eighths block
-    .cp-2587 {
-      border-bottom: calc(0.875 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // full block
-    .cp-2588 {
-      background-color: var(--fg);
-    }
-
-    // left seven eighths block
-    .cp-2589 {
-      border-left: 0.875ch solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // left three quarters block
-    .cp-258a {
-      border-left: 0.75ch solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // left five eighths block
-    .cp-258b {
-      border-left: 0.625ch solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // left half block
-    .cp-258c {
-      border-left: 0.5ch solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // left three eighths block
-    .cp-258d {
-      border-left: 0.375ch solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // left one quarter block
-    .cp-258e {
-      border-left: 0.25ch solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // left one eighth block
-    .cp-258f {
-      border-left: 0.125ch solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // right half block
-    .cp-2590 {
-      border-right: 0.5ch solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // light shade (░)
-    .cp-2591 {
-      background-color: color-mix(in srgb, var(--fg) 25%, var(--bg));
-    }
-
-    // medium shade (▒)
-    .cp-2592 {
-      background-color: color-mix(in srgb, var(--fg) 50%, var(--bg));
-    }
-
-    // dark shade (▓)
-    .cp-2593 {
-      background-color: color-mix(in srgb, var(--fg) 75%, var(--bg));
-    }
-
-    // upper one eighth block
-    .cp-2594 {
-      border-top: calc(0.125 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // right one eighth block
-    .cp-2595 {
-      border-right: 0.125ch solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // quadrant lower left (▖)
-    .cp-2596 {
-      border-right: 0.5ch solid var(--bg);
-      border-top: calc(0.5 * var(--term-line-height)) solid var(--bg);
-      background-color: var(--fg);
-      box-sizing: border-box;
-    }
-
-    // quadrant lower right (▗)
-    .cp-2597 {
-      border-left: 0.5ch solid var(--bg);
-      border-top: calc(0.5 * var(--term-line-height)) solid var(--bg);
-      background-color: var(--fg);
-      box-sizing: border-box;
-    }
-
-    // quadrant upper left (▘)
-    .cp-2598 {
-      border-right: 0.5ch solid var(--bg);
-      border-bottom: calc(0.5 * var(--term-line-height)) solid var(--bg);
-      background-color: var(--fg);
-      box-sizing: border-box;
-    }
-
-    // quadrant upper left and lower left and lower right
-    .cp-2599 {
-      border-left: 0.5ch solid var(--fg);
-      border-bottom: calc(0.5 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // quadrant upper left and lower right (▚)
-    .cp-259a {
-      box-sizing: border-box;
-    }
-
-    .cp-259a::before, .cp-259a::after {
-      content: '';
-      position: absolute;
-      width: 0.5ch;
-      height: calc(0.5 * var(--term-line-height));
-      background-color: var(--fg);
-    }
-
-    .cp-259a::before {
-      top: 0;
-      left: 0;
-    }
-
-    .cp-259a::after {
-      bottom: 0;
-      right: 0;
-    }
-
-    // quadrant upper left and upper right and lower left
-    .cp-259b {
-      border-left: 0.5ch solid var(--fg);
-      border-top: calc(0.5 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // quadrant upper left and upper right and lower right
-    .cp-259c {
-      border-right: 0.5ch solid var(--fg);
-      border-top: calc(0.5 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // quadrant upper right (▝)
-    .cp-259d {
-      border-left: 0.5ch solid var(--bg);
-      border-bottom: calc(0.5 * var(--term-line-height)) solid var(--bg);
-      background-color: var(--fg);
-      box-sizing: border-box;
-    }
-
-    // quadrant upper right and lower left (▞)
-    .cp-259e {
-      box-sizing: border-box;
-    }
-
-    .cp-259e::before, .cp-259e::after {
-      content: '';
-      position: absolute;
-      width: 0.5ch;
-      height: calc(0.5 * var(--term-line-height));
-      background-color: var(--fg);
-    }
-
-    .cp-259e::before {
-      top: 0;
-      right: 0;
-    }
-
-    .cp-259e::after {
-      bottom: 0;
-      left: 0;
-    }
-
-    // quadrant upper right and lower left and lower right
-    .cp-259f {
-      border-right: 0.5ch solid var(--fg);
-      border-bottom: calc(0.5 * var(--term-line-height)) solid var(--fg);
-      box-sizing: border-box;
-    }
-
-    // powerline right full triangle
-    .cp-e0b0 {
-      border-left: 1.0ch solid var(--fg);
-      border-top: calc(0.5 * var(--term-line-height)) solid transparent;
-      border-bottom: calc(0.5 * var(--term-line-height)) solid transparent;
-      box-sizing: border-box;
-      left: calc(-0.1px + 100% * var(--offset) / var(--term-cols));
-    }
-
-    // powerline right bracket
-    .cp-e0b1 {
-      color: var(--fg);
-    }
-
-    .cp-e0b1::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-color: currentColor;
-      mask: no-repeat center / 100% 100%
-        url('data:image/svg+xml;utf8,\
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">\
-  <path d="M0 0 L100 50 L0 100" fill="none" stroke="white" stroke-width="7"/>\
-</svg>');
-
-      pointer-events: none;
-    }
-
-    // powerline left full triangle
-    .cp-e0b2 {
-      border-right: 1.0ch solid var(--fg);
-      border-top: calc(0.5 * var(--term-line-height)) solid transparent;
-      border-bottom: calc(0.5 * var(--term-line-height)) solid transparent;
-      box-sizing: border-box;
-    }
-
-    // powerline left bracket
-    .cp-e0b3 {
-      color: var(--fg);
-    }
-
-    .cp-e0b3::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-color: currentColor;
-      mask: no-repeat center / 100% 100%
-        url('data:image/svg+xml;utf8,\
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">\
-  <path d="M100 0 L0 50 L100 100" fill="none" stroke="white" stroke-width="7"/>\
-</svg>');
-
-      pointer-events: none;
-    }
   }
 
   &:not(.ap-blink) .ap-line .ap-blink {
@@ -381,5 +114,4 @@ pre.ap-term-text {
 
 .ap-line span {
   --fg: var(--term-color-foreground);
-  --bg: var(--term-color-background);
 }

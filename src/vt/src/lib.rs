@@ -23,26 +23,40 @@ pub struct Vt {
 #[derive(Serialize)]
 struct Line {
     bg: Vec<BgSpan>,
-    fg: Vec<FgSpan>,
+    text: Vec<TextSpan>,
+    blocks: Vec<Block>,
+    symbols: Vec<Symbol>,
 }
 
 struct BgSpan {
     x: usize,
     width: usize,
-    bg: Color,
+    color: Color,
 }
 
-struct FgSpan {
+struct TextSpan {
     x: usize,
     width: usize,
     text: Vec<char>,
-    bg: Option<Color>,
-    fg: Option<Color>,
+    color: Option<Color>,
     bold: bool,
     faint: bool,
     italic: bool,
     underline: bool,
     strikethrough: bool,
+    blink: bool,
+}
+
+struct Block {
+    x: usize,
+    cp: u32,
+    color: Option<Color>,
+}
+
+struct Symbol {
+    x: usize,
+    cp: u32,
+    color: Option<Color>,
     blink: bool,
 }
 
@@ -85,9 +99,11 @@ impl Vt {
     #[wasm_bindgen(js_name = getLine)]
     pub fn get_line(&self, row: usize, cursor_on: bool) -> JsValue {
         let mut bg: Vec<BgSpan> = Vec::new();
-        let mut fg: Vec<FgSpan> = Vec::new();
+        let mut text: Vec<TextSpan> = Vec::new();
+        let mut blocks: Vec<Block> = Vec::new();
+        let mut symbols: Vec<Symbol> = Vec::new();
         let mut prev_bg_span: Option<BgSpan> = None;
-        let mut prev_fg_span: Option<FgSpan> = None;
+        let mut prev_text_span: Option<TextSpan> = None;
         let mut x = 0;
 
         let cursor_col = {
@@ -103,6 +119,7 @@ impl Vt {
         for cell in self.vt.line(row).cells().iter().filter(|c| c.width() > 0) {
             let width = cell.width();
             let pen = cell.pen();
+            let ch = cell.char();
             let inverse = matches!(cursor_col, Some(col) if col == x);
             let bg_color = self.bg_color(pen, inverse);
             let fg_color = self.fg_color(pen, inverse);
@@ -116,7 +133,7 @@ impl Vt {
                     prev_bg_span = Some(BgSpan {
                         x,
                         width,
-                        bg: color.clone(),
+                        color: color.clone(),
                     });
                 }
 
@@ -125,37 +142,65 @@ impl Vt {
                     prev_bg_span = None;
                 }
 
-                (Some(mut span), Some(c)) if &span.bg == c => {
+                (Some(mut span), Some(c)) if &span.color == c => {
                     span.width += width;
                     prev_bg_span = Some(span);
                 }
 
                 (Some(span), Some(color)) => {
                     bg.push(span);
+
                     prev_bg_span = Some(BgSpan {
                         x,
                         width,
-                        bg: color.clone(),
+                        color: color.clone(),
                     });
                 }
             }
 
-            // fg spans
+            // text spans, blocks and symbols
 
             if is_standalone_char(cell) {
-                if let Some(span) = prev_fg_span.take() {
-                    fg.push(span);
+                if let Some(span) = prev_text_span.take() {
+                    text.push(span);
                 }
 
-                fg.push(build_fg_span(x, width, bg_color, fg_color, cell));
+                if is_block(ch) {
+                    if pen.is_underline() || pen.is_strikethrough() {
+                        let mut span = build_text_span(x, width, fg_color.clone(), cell);
+                        span.text = vec![' '];
+                        text.push(span);
+                    }
+
+                    blocks.push(Block {
+                        x,
+                        cp: ch as u32,
+                        color: fg_color,
+                    });
+                } else if is_symbol(ch) {
+                    if pen.is_underline() || pen.is_strikethrough() {
+                        let mut span = build_text_span(x, width, fg_color.clone(), cell);
+                        span.text = vec![' '];
+                        text.push(span);
+                    }
+
+                    symbols.push(Symbol {
+                        x,
+                        cp: ch as u32,
+                        color: fg_color,
+                        blink: pen.is_blink(),
+                    });
+                } else {
+                    text.push(build_text_span(x, width, fg_color, cell));
+                }
             } else {
-                match (prev_fg_span.take(), pen) {
+                match (prev_text_span.take(), pen) {
                     (None, _pen) => {
-                        prev_fg_span = Some(build_fg_span(x, width, bg_color, fg_color, cell));
+                        prev_text_span = Some(build_text_span(x, width, fg_color, cell));
                     }
 
                     (Some(mut span), pen)
-                        if (fg_color == span.fg && is_same_text_style(&span, pen))
+                        if (fg_color == span.color && is_same_text_style(&span, pen))
                             || (cell.char() == ' ' && !span.underline && !span.strikethrough) =>
                     // spaces with no underline/strike-through produce no visual output therefore
                     // they can be safely merged into the previous span regardles of their
@@ -163,12 +208,12 @@ impl Vt {
                     {
                         span.text.push(cell.char());
                         span.width += width;
-                        prev_fg_span = Some(span);
+                        prev_text_span = Some(span);
                     }
 
                     (Some(span), _pen) => {
-                        fg.push(span);
-                        prev_fg_span = Some(build_fg_span(x, width, bg_color, fg_color, cell));
+                        text.push(span);
+                        prev_text_span = Some(build_text_span(x, width, fg_color, cell));
                     }
                 }
             }
@@ -180,11 +225,16 @@ impl Vt {
             bg.push(span);
         }
 
-        if let Some(span) = prev_fg_span {
-            fg.push(span);
+        if let Some(span) = prev_text_span {
+            text.push(span);
         }
 
-        let line = Line { bg, fg };
+        let line = Line {
+            bg,
+            text,
+            blocks,
+            symbols,
+        };
 
         serde_wasm_bindgen::to_value(&line).unwrap()
     }
@@ -225,20 +275,13 @@ impl Vt {
     }
 }
 
-fn build_fg_span(
-    x: usize,
-    width: usize,
-    bg: Option<Color>,
-    fg: Option<Color>,
-    cell: &avt::Cell,
-) -> FgSpan {
+fn build_text_span(x: usize, width: usize, color: Option<Color>, cell: &avt::Cell) -> TextSpan {
     let pen = cell.pen();
 
-    FgSpan {
+    TextSpan {
         x,
         width,
-        bg,
-        fg,
+        color,
         bold: pen.is_bold(),
         faint: pen.is_faint(),
         italic: pen.is_italic(),
@@ -249,7 +292,7 @@ fn build_fg_span(
     }
 }
 
-fn is_same_text_style(span: &FgSpan, pen: &avt::Pen) -> bool {
+fn is_same_text_style(span: &TextSpan, pen: &avt::Pen) -> bool {
     span.bold == pen.is_bold()
         && span.faint == pen.is_faint()
         && span.italic == pen.is_italic()
@@ -290,6 +333,16 @@ fn is_standalone_char(cell: &avt::Cell) -> bool {
     NF_MATERIAL_DESIGN_ICONS.contains(&ch)
 }
 
+fn is_symbol(ch: char) -> bool {
+    // Powerline triangles
+    ('\u{e0b0}'..='\u{e0b3}').contains(&ch)
+}
+
+fn is_block(ch: char) -> bool {
+    // box drawing + block elements + black square
+    ('\u{2580}'..='\u{259f}').contains(&ch) || ch == '\u{25a0}'
+}
+
 impl Serialize for BgSpan {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -297,21 +350,20 @@ impl Serialize for BgSpan {
     {
         let mut map = serializer.serialize_map(Some(3))?;
         map.serialize_entry("x", &self.x)?;
-        map.serialize_entry("width", &self.width)?;
-        map.serialize_entry("bg", &self.bg)?;
+        map.serialize_entry("w", &self.width)?;
+        map.serialize_entry("c", &self.color)?;
 
         map.end()
     }
 }
 
-impl Serialize for FgSpan {
+impl Serialize for TextSpan {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut len = 3;
         let mut class = String::new();
-        let mut css_symbol = false;
 
         if self.bold {
             class.push_str("ap-bold ");
@@ -335,54 +387,81 @@ impl Serialize for FgSpan {
             class.push_str("ap-blink ");
         }
 
-        if self.text.len() == 1 {
-            let ch = self.text[0];
-
-            // box drawing chars, block elements and some Powerline symbols
-            // are rendered with CSS classes (cp-<codepoint>)
-            if ('\u{2580}'..='\u{259f}').contains(&ch) || ('\u{e0b0}'..='\u{e0b3}').contains(&ch) {
-                css_symbol = true;
-                class.push_str(&format!("cp-{:04x} ", ch as u32));
-            }
-        }
-
         if !class.is_empty() {
             len += 1;
         }
 
-        if self.fg.is_some() {
-            len += 1;
-        }
-
-        if css_symbol && self.bg.is_some() {
+        if self.color.is_some() {
             len += 1;
         }
 
         let mut map = serializer.serialize_map(Some(len))?;
 
         map.serialize_entry("x", &self.x)?;
-        map.serialize_entry("width", &self.width)?;
+        map.serialize_entry("w", &self.width)?;
+
         let text: String = self.text.iter().collect();
+        map.serialize_entry("t", &text)?;
 
-        if css_symbol {
-            map.serialize_entry("text", " ")?;
-        } else {
-            map.serialize_entry("text", &text)?;
-        }
-
-        if let Some(color) = &self.fg {
-            map.serialize_entry("fg", color)?;
-        }
-
-        if css_symbol {
-            // some symbols rendered with CSS classes (see above) need bg color
-            if let Some(color) = &self.bg {
-                map.serialize_entry("bg", color)?;
-            }
+        if let Some(color) = &self.color {
+            map.serialize_entry("c", color)?;
         }
 
         if !class.is_empty() {
-            map.serialize_entry("class", &class)?;
+            map.serialize_entry("k", &class)?;
+        }
+
+        map.end()
+    }
+}
+
+impl Serialize for Block {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut len = 2;
+        if self.color.is_some() {
+            len += 1;
+        }
+
+        let mut map = serializer.serialize_map(Some(len))?;
+        map.serialize_entry("x", &self.x)?;
+        map.serialize_entry("cp", &self.cp)?;
+
+        if let Some(color) = &self.color {
+            map.serialize_entry("c", color)?;
+        }
+
+        map.end()
+    }
+}
+
+impl Serialize for Symbol {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut len = 2;
+
+        if self.color.is_some() {
+            len += 1;
+        }
+
+        if self.blink {
+            len += 1;
+        }
+
+        let mut map = serializer.serialize_map(Some(len))?;
+        map.serialize_entry("x", &self.x)?;
+        map.serialize_entry("cp", &self.cp)?;
+
+        if let Some(color) = &self.color {
+            map.serialize_entry("c", color)?;
+        }
+
+        if self.blink {
+            map.serialize_entry("b", &true)?;
         }
 
         map.end()
@@ -421,6 +500,9 @@ const fn build_standalone_chars_lut() -> [bool; 65536] {
 
     // braille patterns
     fill_lut(&mut lut, 0x2800..=0x28ff);
+
+    // black square
+    fill_lut(&mut lut, 0x25a0..=0x25a0);
 
     // NF Seti-UI
     fill_lut(&mut lut, 0xe5fa..=0xe6b7);

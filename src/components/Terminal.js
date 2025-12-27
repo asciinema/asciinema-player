@@ -1,8 +1,20 @@
 import { batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+const BLOCK_RESOLUTION = 8;
+
+const SHADED_BLOCK_ALPHA = new Map([
+  [0x2591, 0.25],
+  [0x2592, 0.5],
+  [0x2593, 0.75],
+]);
+
 export default (props) => {
   const core = props.core;
-  const rowPool = [];
+  const textRowPool = [];
+  const symbolRowPool = [];
+  const symbolUsePool = [];
+  const symbolDefCache = new Set();
 
   const [size, setSize] = createSignal(
     { cols: props.cols, rows: props.rows },
@@ -37,19 +49,26 @@ export default (props) => {
     rows: new Set(),
   };
 
-  let canvasEl;
-  let ctx;
   let el;
+  let bgCanvasEl;
+  let bgCanvasCtx;
+  let blocksCanvasEl;
+  let blocksCanvasCtx;
   let textEl;
+  let symbolsEl;
+  let symbolDefsEl;
+  let symbolRowsEl;
   let frameRequestId;
   let blinkIntervalId;
   let cssTheme;
   let cursorHold = false;
 
   onMount(() => {
-    setupCanvas();
+    setupBgCanvas();
+    setupBlocksCanvas();
     setInitialTheme();
-    adjustRowNodeCount(size().rows);
+    adjustTextRowNodeCount(size().rows);
+    adjustSymbolRowNodeCount(size().rows);
     core.addEventListener("vtUpdate", onVtUpdate);
   });
 
@@ -78,19 +97,36 @@ export default (props) => {
     }
   });
 
-  function setupCanvas() {
-    ctx = canvasEl.getContext("2d");
-    if (!ctx) throw new Error("2D ctx not available");
+  function setupBgCanvas() {
+    bgCanvasCtx = bgCanvasEl.getContext("2d");
+    if (!bgCanvasCtx) throw new Error("2D ctx not available");
     const { cols, rows } = size();
-    canvasEl.width = cols;
-    canvasEl.height = rows;
-    canvasEl.style.imageRendering = "pixelated";
-    ctx.imageSmoothingEnabled = false;
+    bgCanvasEl.width = cols;
+    bgCanvasEl.height = rows;
+    bgCanvasEl.style.imageRendering = "pixelated";
+    bgCanvasCtx.imageSmoothingEnabled = false;
+  }
+
+  function setupBlocksCanvas() {
+    blocksCanvasCtx = blocksCanvasEl.getContext("2d");
+    if (!blocksCanvasCtx) throw new Error("2D ctx not available");
+    const { cols, rows } = size();
+    blocksCanvasEl.width = cols * BLOCK_RESOLUTION;
+    blocksCanvasEl.height = rows * BLOCK_RESOLUTION;
+    blocksCanvasEl.style.imageRendering = "pixelated";
+    blocksCanvasCtx.imageSmoothingEnabled = false;
   }
 
   function resizeCanvas({ cols, rows }) {
-    canvasEl.width = cols;
-    canvasEl.height = rows;
+    bgCanvasEl.width = cols;
+    bgCanvasEl.height = rows;
+    bgCanvasCtx.imageSmoothingEnabled = false;
+  }
+
+  function resizeBlocksCanvas({ cols, rows }) {
+    blocksCanvasEl.width = cols * BLOCK_RESOLUTION;
+    blocksCanvasEl.height = rows * BLOCK_RESOLUTION;
+    blocksCanvasCtx.imageSmoothingEnabled = false;
   }
 
   function setInitialTheme() {
@@ -174,7 +210,9 @@ export default (props) => {
     batch(function () {
       if (newSize !== undefined) {
         resizeCanvas(newSize);
-        adjustRowNodeCount(newSize.rows);
+        resizeBlocksCanvas(newSize);
+        adjustTextRowNodeCount(newSize.rows);
+        adjustSymbolRowNodeCount(newSize.rows);
         setSize(newSize);
       }
 
@@ -201,37 +239,33 @@ export default (props) => {
     props.stats.renders += 1;
   }
 
-  function renderRow(r, theme, cursorOn) {
-    const line = core.getLine(r, cursorOn);
-    const fg = line.fg;
-    const row = textEl.children[r];
+  function renderRow(rowIndex, theme, cursorOn) {
+    const line = core.getLine(rowIndex, cursorOn);
 
-    // update (replace) foreground (text) nodes
+    renderRowText(rowIndex, line.text, theme);
+    renderRowBlocks(rowIndex, line.blocks, theme);
+    renderRowSymbols(rowIndex, line.symbols, theme);
+    renderRowBg(rowIndex, line.bg, theme);
+  }
 
+  function renderRowText(rowIndex, spans, theme) {
     const frag = document.createDocumentFragment();
 
-    for (const span of fg) {
+    for (const span of spans) {
       const el = document.createElement("span");
       const style = el.style;
       style.setProperty("--offset", span.get("x"));
-      style.width = `${span.get("width") + 0.01}ch`; // Add 0.01ch to prevent sub-pixel gaps in some browsers
-      const text = span.get("text");
-      el.textContent = text;
+      style.width = `${span.get("w") + 0.01}ch`; // Add 0.01ch to prevent sub-pixel gaps in some browsers
+      el.textContent = span.get("t");
 
-      const fg = colorValue(theme, span.get("fg"));
+      const fg = colorValue(theme, span.get("c"));
 
       if (fg) {
         // TODO set color directly
         style.setProperty("--fg", fg);
       }
 
-      const bg = colorValue(theme, span.get("bg"));
-
-      if (bg) {
-        style.setProperty("--bg", bg);
-      }
-
-      const cls = span.get("class");
+      const cls = span.get("k");
 
       if (cls !== undefined) {
         el.className = cls;
@@ -240,19 +274,65 @@ export default (props) => {
       frag.appendChild(el);
     }
 
-    row.replaceChildren(frag);
+    textEl.children[rowIndex].replaceChildren(frag);
+  }
 
-    // paint the background
+  function renderRowBlocks(rowIndex, blocks, theme) {
+    const y = rowIndex * BLOCK_RESOLUTION;
+    const width = size().cols * BLOCK_RESOLUTION;
+    blocksCanvasCtx.clearRect(0, y, width, BLOCK_RESOLUTION);
 
-    ctx.clearRect(0, r, size().cols, 1);
+    for (const block of blocks) {
+      const codepoint = block.get("cp");
+      const x = block.get("x");
 
-    for (const span of line.bg) {
-      ctx.fillStyle = colorValue(theme, span.get("bg"));
-      ctx.fillRect(span.get("x"), r, span.get("width"), 1);
+      const color = colorValue(theme, block.get("c")) || theme.fg;
+      const alpha = SHADED_BLOCK_ALPHA.get(codepoint);
+
+      if (alpha !== undefined) {
+        blocksCanvasCtx.save();
+        blocksCanvasCtx.globalAlpha = alpha;
+        blocksCanvasCtx.fillStyle = color;
+        blocksCanvasCtx.fillRect(x * BLOCK_RESOLUTION, y, BLOCK_RESOLUTION, BLOCK_RESOLUTION);
+        blocksCanvasCtx.restore();
+        continue;
+      }
+
+      blocksCanvasCtx.fillStyle = color;
+      drawBlockGlyph(blocksCanvasCtx, codepoint, x * BLOCK_RESOLUTION, y);
     }
   }
 
-  function adjustRowNodeCount(rows) {
+  function renderRowSymbols(rowIndex, symbols, theme) {
+    const symbolFrag = document.createDocumentFragment();
+    const symbolRow = symbolRowsEl.children[rowIndex];
+
+    for (const symbol of symbols) {
+      const codepoint = symbol.get("cp");
+      const x = symbol.get("x");
+      const color = colorValue(theme, symbol.get("c"));
+      const blink = symbol.get("b") === true;
+      const el = createSymbolNode(codepoint, x, color, blink);
+
+      if (el) {
+        symbolFrag.appendChild(el);
+      }
+    }
+
+    recycleSymbolUses(symbolRow);
+    symbolRow.replaceChildren(symbolFrag);
+  }
+
+  function renderRowBg(rowIndex, spans, theme) {
+    bgCanvasCtx.clearRect(0, rowIndex, size().cols, 1);
+
+    for (const span of spans) {
+      bgCanvasCtx.fillStyle = colorValue(theme, span.get("c"));
+      bgCanvasCtx.fillRect(span.get("x"), rowIndex, span.get("w"), 1);
+    }
+  }
+
+  function adjustTextRowNodeCount(rows) {
     let r = textEl.children.length;
 
     if (r < rows) {
@@ -271,12 +351,35 @@ export default (props) => {
     while (textEl.children.length > rows) {
       const row = textEl.lastElementChild;
       textEl.removeChild(row);
-      rowPool.push(row);
+      textRowPool.push(row);
+    }
+  }
+
+  function adjustSymbolRowNodeCount(rows) {
+    let r = symbolRowsEl.children.length;
+
+    if (r < rows) {
+      const frag = document.createDocumentFragment();
+
+      while (r < rows) {
+        const row = getNewSymbolRow();
+        row.setAttribute("transform", `translate(0 ${r})`);
+        frag.appendChild(row);
+        r += 1;
+      }
+
+      symbolRowsEl.appendChild(frag);
+    }
+
+    while (symbolRowsEl.children.length > rows) {
+      const row = symbolRowsEl.lastElementChild;
+      symbolRowsEl.removeChild(row);
+      symbolRowPool.push(row);
     }
   }
 
   function getNewRow() {
-    let row = rowPool.pop();
+    let row = textRowPool.pop();
 
     if (row === undefined) {
       row = document.createElement("span");
@@ -286,9 +389,102 @@ export default (props) => {
     return row;
   }
 
+  function getNewSymbolRow() {
+    let row = symbolRowPool.pop();
+
+    if (row === undefined) {
+      row = document.createElementNS(SVG_NS, "g");
+      row.setAttribute("class", "ap-symbol-line");
+    }
+
+    return row;
+  }
+
+  function createSymbolNode(codepoint, x, fg, blink) {
+    if (!ensureSymbolDef(codepoint)) {
+      return null;
+    }
+
+    const node = getSymbolUse();
+    node.setAttribute("href", `#sym-${codepoint}`);
+    node.setAttribute("x", x);
+    node.setAttribute("y", 0);
+    node.setAttribute("width", "1");
+    node.setAttribute("height", "1");
+
+    if (fg) {
+      node.style.setProperty("color", fg);
+    } else {
+      node.style.removeProperty("color");
+    }
+
+    if (blink) {
+      node.classList.add("ap-blink");
+    } else {
+      node.classList.remove("ap-blink");
+    }
+
+    return node;
+  }
+
+  function recycleSymbolUses(row) {
+    while (row.firstChild) {
+      const child = row.firstChild;
+      row.removeChild(child);
+      symbolUsePool.push(child);
+    }
+  }
+
+  function getSymbolUse() {
+    let node = symbolUsePool.pop();
+
+    if (node === undefined) {
+      node = document.createElementNS(SVG_NS, "use");
+    }
+
+    return node;
+  }
+
+  function ensureSymbolDef(codepoint) {
+    const content = SYMBOL_DEFS[codepoint];
+
+    if (!content) {
+      return false;
+    }
+
+    if (symbolDefCache.has(codepoint)) {
+      return true;
+    }
+
+    const id = `sym-${codepoint}`;
+    const symbol = document.createElementNS(SVG_NS, "symbol");
+    symbol.setAttribute("id", id);
+    symbol.setAttribute("viewBox", "0 0 1 1");
+    symbol.setAttribute("preserveAspectRatio", "none");
+    symbol.innerHTML = content;
+    symbolDefsEl.appendChild(symbol);
+    symbolDefCache.add(codepoint);
+    return true;
+  }
+
   return (
     <div class="ap-term" style={style()} ref={el}>
-      <canvas class="ap-term-bg" ref={canvasEl} />
+      <canvas class="ap-term-bg" ref={bgCanvasEl} />
+      <canvas class="ap-term-blocks" ref={blocksCanvasEl} />
+      <svg
+        class="ap-term-symbols"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox={`0 0 ${size().cols} ${size().rows}`}
+        preserveAspectRatio="none"
+        width="100%"
+        height="100%"
+        aria-hidden="true"
+        classList={{ "ap-blink": blinkOn() }}
+        ref={symbolsEl}
+      >
+        <defs ref={symbolDefsEl}></defs>
+        <g ref={symbolRowsEl}></g>
+      </svg>
       <pre
         class="ap-term-text"
         classList={{ "ap-blink": blinkOn() }}
@@ -332,6 +528,152 @@ function colorValue(theme, color) {
     return color;
   }
 }
+
+function drawBlockGlyph(ctx, codepoint, x, y) {
+  switch (codepoint) {
+    case 0x2580:
+      // upper half block
+      ctx.fillRect(x, y, 8, 4);
+      break;
+    case 0x2581:
+      // lower one eighth block
+      ctx.fillRect(x, y + 7, 8, 1);
+      break;
+    case 0x2582:
+      // lower one quarter block
+      ctx.fillRect(x, y + 6, 8, 2);
+      break;
+    case 0x2583:
+      // lower three eighths block
+      ctx.fillRect(x, y + 5, 8, 3);
+      break;
+    case 0x2584:
+      // lower half block
+      ctx.fillRect(x, y + 4, 8, 4);
+      break;
+    case 0x2585:
+      // lower five eighths block
+      ctx.fillRect(x, y + 3, 8, 5);
+      break;
+    case 0x2586:
+      // lower three quarters block
+      ctx.fillRect(x, y + 2, 8, 6);
+      break;
+    case 0x2587:
+      // lower seven eighths block
+      ctx.fillRect(x, y + 1, 8, 7);
+      break;
+    case 0x2588:
+      // full block
+      ctx.fillRect(x, y, 8, 8);
+      break;
+    case 0x25a0:
+      // black square
+      ctx.fillRect(x, y + 2, 8, 4);
+      break;
+    case 0x2589:
+      // left seven eighths block
+      ctx.fillRect(x, y, 7, 8);
+      break;
+    case 0x258a:
+      // left three quarters block
+      ctx.fillRect(x, y, 6, 8);
+      break;
+    case 0x258b:
+      // left five eighths block
+      ctx.fillRect(x, y, 5, 8);
+      break;
+    case 0x258c:
+      // left half block
+      ctx.fillRect(x, y, 4, 8);
+      break;
+    case 0x258d:
+      // left three eighths block
+      ctx.fillRect(x, y, 3, 8);
+      break;
+    case 0x258e:
+      // left one quarter block
+      ctx.fillRect(x, y, 2, 8);
+      break;
+    case 0x258f:
+      // left one eighth block
+      ctx.fillRect(x, y, 1, 8);
+      break;
+    case 0x2590:
+      // right half block
+      ctx.fillRect(x + 4, y, 4, 8);
+      break;
+    case 0x2594:
+      // upper one eighth block
+      ctx.fillRect(x, y, 8, 1);
+      break;
+    case 0x2595:
+      // right one eighth block
+      ctx.fillRect(x + 7, y, 1, 8);
+      break;
+    case 0x2596:
+      // quadrant lower left
+      ctx.fillRect(x, y + 4, 4, 4);
+      break;
+    case 0x2597:
+      // quadrant lower right
+      ctx.fillRect(x + 4, y + 4, 4, 4);
+      break;
+    case 0x2598:
+      // quadrant upper left
+      ctx.fillRect(x, y, 4, 4);
+      break;
+    case 0x2599:
+      // quadrant upper left and lower left and lower right
+      ctx.fillRect(x, y, 4, 8);
+      ctx.fillRect(x + 4, y + 4, 4, 4);
+      break;
+    case 0x259a:
+      // quadrant upper left and lower right
+      ctx.fillRect(x, y, 4, 4);
+      ctx.fillRect(x + 4, y + 4, 4, 4);
+      break;
+    case 0x259b:
+      // quadrant upper left and upper right and lower left
+      ctx.fillRect(x, y, 8, 4);
+      ctx.fillRect(x, y + 4, 4, 4);
+      break;
+    case 0x259c:
+      // quadrant upper left and upper right and lower right
+      ctx.fillRect(x, y, 8, 4);
+      ctx.fillRect(x + 4, y + 4, 4, 4);
+      break;
+    case 0x259d:
+      // quadrant upper right
+      ctx.fillRect(x + 4, y, 4, 4);
+      break;
+    case 0x259e:
+      // quadrant upper right and lower left
+      ctx.fillRect(x + 4, y, 4, 4);
+      ctx.fillRect(x, y + 4, 4, 4);
+      break;
+    case 0x259f:
+      // quadrant upper right and lower left and lower right
+      ctx.fillRect(x + 4, y, 4, 8);
+      ctx.fillRect(x, y + 4, 4, 4);
+      break;
+    default:
+      break;
+  }
+}
+
+const SYMBOL_DEFS = {
+  // powerline right full triangle
+  0xe0b0: '<path d="M0,0 L1,0.5 L0,1 Z" fill="currentColor"/>',
+  // powerline right bracket
+  0xe0b1:
+    '<path d="M0,0 L1,0.5 L0,1" fill="none" stroke="currentColor" stroke-width="0.07" stroke-linejoin="miter"/>',
+  // powerline left full triangle
+  0xe0b2: '<path d="M1,0 L0,0.5 L1,1 Z" fill="currentColor"/>',
+  // powerline left bracket
+  0xe0b3:
+    '<path d="M1,0 L0,0.5 L1,1" fill="none" stroke="currentColor" stroke-width="0.07" stroke-linejoin="miter"/>',
+};
 
 const FALLBACK_THEME = {
   foreground: "black",
