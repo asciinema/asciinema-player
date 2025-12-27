@@ -206,7 +206,7 @@ export default (props) => {
       const el = document.createElement("span");
       const style = el.style;
       style.setProperty("--offset", span.get("x"));
-      style.width = `${span.get("width") + 0.01}ch`;
+      style.width = `${span.get("width") + 0.01}ch`; // Add 0.01ch to prevent sub-pixel gaps in some browsers
       const text = span.get("text");
       el.textContent = text;
 
