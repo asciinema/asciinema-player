@@ -2,6 +2,7 @@ name: Prerelease
 
 permissions:
   contents: write
+  id-token: write
 
 on:
   push:
@@ -31,11 +32,7 @@ jobs:
 
       - run: ls -lhR dist
 
-      - run: cp .github/.npmrc .
-
-      - run: nix develop --ignore-environment --keep NODE_AUTH_TOKEN --command npm publish --tag next
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+      - run: nix develop --command npm publish --tag next --provenance
 
       - name: Create the release
         env:
