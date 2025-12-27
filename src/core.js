@@ -466,7 +466,7 @@ class Core {
     } else if (newState === "errored") {
       this.state = new ErroredState(this);
     } else {
-      throw `invalid state: ${newState}`;
+      throw new Error(`invalid state: ${newState}`);
     }
 
     this.state.onEnter(data);
@@ -634,7 +634,7 @@ function getDriver(src) {
       if (PARSERS.has(src.parser)) {
         src.parser = PARSERS.get(src.parser);
       } else {
-        throw `unknown parser: ${src.parser}`;
+        throw new Error(`unknown parser: ${src.parser}`);
       }
     }
   }
@@ -643,7 +643,7 @@ function getDriver(src) {
     const driver = DRIVERS.get(src.driver);
     return (callbacks, opts) => driver(src, callbacks, opts);
   } else {
-    throw `unsupported driver: ${JSON.stringify(src)}`;
+    throw new Error(`unsupported driver: ${JSON.stringify(src)}`);
   }
 }
 

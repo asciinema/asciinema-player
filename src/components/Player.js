@@ -268,7 +268,7 @@ export default (props) => {
         height: state.containerH,
       };
     } else {
-      throw `unsupported fit mode: ${fit}`;
+      throw new Error(`unsupported fit mode: ${fit}`);
     }
   });
 

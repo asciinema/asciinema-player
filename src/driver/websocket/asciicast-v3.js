@@ -6,7 +6,7 @@ function ascicastV3Handler() {
     const header = JSON.parse(buffer);
 
     if (header.version !== 3) {
-      throw "not an asciicast v3 stream";
+      throw new Error("not an asciicast v3 stream");
     }
 
     parse = parseEvent;

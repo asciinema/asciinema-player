@@ -96,7 +96,7 @@ function websocket(
             // EOT
             onStreamEnd();
           } else if (result !== undefined) {
-            throw `unexpected value from protocol handler: ${result}`;
+            throw new Error(`unexpected value from protocol handler: ${result}`);
           }
         } else {
           if (typeof result === "object" && !Array.isArray(result)) {
@@ -107,7 +107,7 @@ function websocket(
             initTimeout = setTimeout(onStreamEnd, 1000);
           } else {
             clearTimeout(initTimeout);
-            throw `unexpected value from protocol handler: ${result}`;
+            throw new Error(`unexpected value from protocol handler: ${result}`);
           }
         }
       } catch (e) {

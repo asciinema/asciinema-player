@@ -80,7 +80,7 @@ export default (props) => {
 
   function setupCanvas() {
     ctx = canvasEl.getContext("2d");
-    if (!ctx) throw "2D ctx not available";
+    if (!ctx) throw new Error("2D ctx not available");
     const { cols, rows } = size();
     canvasEl.width = cols;
     canvasEl.height = rows;
@@ -308,7 +308,7 @@ function getCssTheme(el) {
 
   for (let i = 0; i < 16; i++) {
     const c = style.getPropertyValue(`--term-color-${i}`);
-    if (c === undefined) throw `--term-color-${i} has not been defined`;
+    if (c === undefined) throw new Error(`--term-color-${i} has not been defined`);
     palette[i] = c;
   }
 

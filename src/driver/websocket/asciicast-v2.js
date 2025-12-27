@@ -5,7 +5,7 @@ function ascicastV2Handler() {
     const header = JSON.parse(buffer);
 
     if (header.version !== 2) {
-      throw "not an asciicast v2 stream";
+      throw new Error("not an asciicast v2 stream");
     }
 
     parse = parseEvent;

@@ -13,7 +13,7 @@ async function parse(data) {
       } else if (header.version === 3) {
         return parseAsciicastV3(header, events);
       } else {
-        throw `asciicast v${header.version} format not supported`;
+        throw new Error(`asciicast v${header.version} format not supported`);
       }
     } else {
       const header = JSON.parse(text);
@@ -34,11 +34,11 @@ async function parse(data) {
       const events = data.slice(1, data.length);
       return parseAsciicastV3(header, events);
     } else {
-      throw `asciicast v${header.version} format not supported`;
+      throw new Error(`asciicast v${header.version} format not supported`);
     }
   }
 
-  throw "invalid data";
+  throw new Error("invalid data");
 }
 
 function parseJsonl(jsonl) {

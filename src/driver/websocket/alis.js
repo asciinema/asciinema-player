@@ -13,7 +13,7 @@ function alisHandler(logger) {
     if (text === "ALiS\x01") {
       handler = parseFirstFrame;
     } else {
-      throw "not an ALiS v1 live stream";
+      throw new Error("not an ALiS v1 live stream");
     }
   }
 
@@ -21,7 +21,7 @@ function alisHandler(logger) {
     const view = new BinaryReader(new DataView(buffer));
     const type = view.getUint8();
 
-    if (type !== 0x01) throw `expected reset (0x01) frame, got ${type}`;
+    if (type !== 0x01) throw new Error(`expected reset (0x01) frame, got ${type}`);
 
     return parseResetFrame(view, buffer);
   }
@@ -46,7 +46,7 @@ function alisHandler(logger) {
       theme = parseTheme(new Uint8Array(buffer, view.offset, len));
       view.forward(len);
     } else if (themeFormat !== 0) {
-      throw `alis: invalid theme format (${themeFormat})`;
+      throw new Error(`alis: invalid theme format (${themeFormat})`);
     }
 
     const initLen = view.decodeVarUint();

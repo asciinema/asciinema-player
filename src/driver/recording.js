@@ -67,7 +67,7 @@ function recording(
     initialRows = initialRows ?? rows;
 
     if (events.length === 0) {
-      throw "recording is missing events";
+      throw new Error("recording is missing events");
     }
 
     if (dumpFilename !== undefined) {
@@ -125,7 +125,7 @@ function recording(
         return value;
       }
     } else {
-      throw "failed fetching recording file: url/data missing in src";
+      throw new Error("failed fetching recording file: url/data missing in src");
     }
   }
 
@@ -133,7 +133,9 @@ function recording(
     const response = await fetch(url, fetchOpts);
 
     if (!response.ok) {
-      throw `failed fetching recording from ${url}: ${response.status} ${response.statusText}`;
+      throw new Error(
+        `failed fetching recording from ${url}: ${response.status} ${response.statusText}`,
+      );
     }
 
     return response;
@@ -234,8 +236,8 @@ function recording(
   }
 
   async function play() {
-    if (eventTimeoutId) throw "already playing";
-    if (events[nextEventIndex] === undefined) throw "already ended";
+    if (eventTimeoutId) throw new Error("already playing");
+    if (events[nextEventIndex] === undefined) throw new Error("already ended");
 
     if (effectiveStartAt !== null) {
       seek(effectiveStartAt);
@@ -312,7 +314,7 @@ function recording(
         const marker = markers[where.marker];
 
         if (marker === undefined) {
-          throw `invalid marker index: ${where.marker}`;
+          throw new Error(`invalid marker index: ${where.marker}`);
         } else {
           where = marker[0];
         }
@@ -453,8 +455,8 @@ function recording(
   }
 
   async function restart() {
-    if (eventTimeoutId) throw "still playing";
-    if (events[nextEventIndex] !== undefined) throw "not ended";
+    if (eventTimeoutId) throw new Error("still playing");
+    if (events[nextEventIndex] !== undefined) throw new Error("not ended");
 
     seek(0);
     await resume();
@@ -486,7 +488,7 @@ function recording(
   }
 
   function audioNow() {
-    if (!audioCtx) throw "audio context not started - can't tell time!";
+    if (!audioCtx) throw new Error("audio context not started - can't tell time!");
 
     const { contextTime, performanceTime } = audioCtx.getOutputTimestamp();
 

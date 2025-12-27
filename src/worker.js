@@ -53,6 +53,6 @@ function invoke(method, params) {
       });
       return;
     default:
-      throw `invalid method ${method}`;
+      throw new Error(`invalid method ${method}`);
   }
 }
