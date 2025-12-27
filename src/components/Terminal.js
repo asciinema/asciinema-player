@@ -99,10 +99,13 @@ export default (props) => {
   }
 
   function onVtUpdate({ size: newSize, theme, changedRows }) {
+    let activity = false;
+
     if (changedRows !== undefined) {
       for (const row of changedRows) {
         pendingChanges.rows.add(row);
         cursorHold = true;
+        activity = true;
       }
     }
 
@@ -131,6 +134,7 @@ export default (props) => {
 
       cursor = newCursor;
       cursorHold = true;
+      activity = true;
     }
 
     if (newSize !== undefined) {
@@ -141,6 +145,10 @@ export default (props) => {
           pendingChanges.rows.delete(row);
         }
       }
+    }
+
+    if (activity && cursor.visible) {
+      pendingChanges.rows.add(cursor.row);
     }
 
     scheduleRender();
