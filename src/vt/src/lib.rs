@@ -296,14 +296,6 @@ impl Serialize for FgSpan {
         let mut class = String::new();
         let mut css_symbol = false;
 
-        if self.fg.is_some() {
-            len += 1;
-        }
-
-        if self.bg.is_some() {
-            len += 1;
-        }
-
         if self.bold {
             class.push_str("ap-bold ");
         } else if self.faint {
@@ -338,6 +330,14 @@ impl Serialize for FgSpan {
         }
 
         if !class.is_empty() {
+            len += 1;
+        }
+
+        if self.fg.is_some() {
+            len += 1;
+        }
+
+        if css_symbol && self.bg.is_some() {
             len += 1;
         }
 
