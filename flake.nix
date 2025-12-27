@@ -23,7 +23,7 @@
       {
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [
-            nodejs_20
+            nodejs_24
             typescript-language-server
             (rust-bin.stable."1.85.0".default.override {
               targets = [ "wasm32-unknown-unknown" ];
