@@ -258,23 +258,28 @@ async function createPlayer(page, src, opts = {}) {
   await page.evaluate(
     ({ src, opts, eventNames }) => {
       window.__events = [];
-      window.__eventWaiters = [];
+      window.__eventIndex = 0;
+      window.__eventWaiter = null;
       window.__pushEvent = (event) => {
         window.__events.push(event);
 
-        if (!window.__eventWaiters.length) return;
-
-        const pending = [];
-
-        for (const waiter of window.__eventWaiters) {
-          if (window.__events.length > waiter.index) {
-            waiter.resolve(window.__events[waiter.index]);
-          } else {
-            pending.push(waiter);
-          }
+        if (window.__eventWaiter) {
+          const resolve = window.__eventWaiter;
+          window.__eventWaiter = null;
+          resolve(window.__events[window.__eventIndex]);
+          window.__eventIndex += 1;
+        }
+      };
+      window.__nextEvent = () => {
+        if (window.__events.length > window.__eventIndex) {
+          const event = window.__events[window.__eventIndex];
+          window.__eventIndex += 1;
+          return Promise.resolve(event);
         }
 
-        window.__eventWaiters = pending;
+        return new Promise((resolve) => {
+          window.__eventWaiter = resolve;
+        });
       };
 
       window.player = AsciinemaPlayer.create(src, document.getElementById("player"), opts);
@@ -301,26 +306,9 @@ async function createPlayer(page, src, opts = {}) {
 }
 
 function createEventStream(page) {
-  let index = 0;
-
   return {
     async next() {
-      const event = await page.evaluate((index) => {
-        return new Promise((resolve) => {
-          const events = window.__events ?? [];
-
-          if (events.length > index) {
-            resolve(events[index]);
-            return;
-          }
-
-          window.__eventWaiters = window.__eventWaiters ?? [];
-          window.__eventWaiters.push({ index, resolve });
-        });
-      }, index);
-
-      index += 1;
-      return event;
+      return await page.evaluate(() => window.__nextEvent());
     },
 
     async expectNext(name) {
