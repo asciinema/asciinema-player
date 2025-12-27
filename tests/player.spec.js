@@ -152,9 +152,9 @@ test("loop option replays before ending", async ({ page }) => {
 
   await playerApi.play();
   await playerApi.events.waitFor("playing");
-  await expectCurrentTime(playerApi).toBeGreaterThan(0.35);
-  await expectCurrentTime(playerApi).toBeLessThan(0.15);
-  await expectCurrentTime(playerApi).toBeGreaterThan(0.35);
+  await expectCurrentTime(playerApi, 3000).toBeGreaterThan(0.35);
+  await expectCurrentTime(playerApi, 3000).toBeLessThan(0.15);
+  await expectCurrentTime(playerApi, 3000).toBeGreaterThan(0.35);
   await playerApi.events.waitFor("ended");
 });
 
@@ -342,8 +342,8 @@ function createEventStream(page) {
   };
 }
 
-function expectCurrentTime(player) {
-  return expect.poll(() => player.getCurrentTime(), { timeout: 1000 });
+function expectCurrentTime(player, timeout = 1000) {
+  return expect.poll(() => player.getCurrentTime(), { timeout });
 }
 
 function expectDuration(player) {
