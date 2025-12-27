@@ -208,6 +208,7 @@ class Core {
     this.markers = this._normalizeMarkers(opts.markers);
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.audioUrl = opts.audioUrl;
+    this.boldIsBright = opts.boldIsBright ?? false;
     this.commandQueue = Promise.resolve();
     this.needsClear = false;
 
@@ -565,7 +566,7 @@ class Core {
 
   _initializeVt(cols, rows) {
     this.logger.debug('vt init', { cols, rows });
-    this.vt = this.wasm.create(cols, rows, 100);
+    this.vt = this.wasm.create(cols, rows, 100, this.boldIsBright);
     this.vt.cols = cols;
     this.vt.rows = rows;
   }

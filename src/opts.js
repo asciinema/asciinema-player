@@ -1,6 +1,8 @@
 const CORE_OPTS = [
+  'audioUrl',
   'autoPlay',
   'autoplay',
+  'boldIsBright',
   'cols',
   'idleTimeLimit',
   'loop',
@@ -11,7 +13,6 @@ const CORE_OPTS = [
   'rows',
   'speed',
   'startAt',
-  'audioUrl',
 ];
 
 const UI_OPTS = [

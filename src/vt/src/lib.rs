@@ -17,6 +17,7 @@ const NF_MATERIAL_DESIGN_ICONS: RangeInclusive<char> = '\u{f0001}'..='\u{f1af0}'
 #[wasm_bindgen]
 pub struct Vt {
     vt: avt::Vt,
+    bold_is_bright: bool,
 }
 
 #[derive(Serialize)]
@@ -53,13 +54,13 @@ enum Color {
 }
 
 #[wasm_bindgen]
-pub fn create(cols: usize, rows: usize, scrollback_limit: usize) -> Vt {
+pub fn create(cols: usize, rows: usize, scrollback_limit: usize, bold_is_bright: bool) -> Vt {
     let vt = avt::Vt::builder()
         .size(cols, rows)
         .scrollback_limit(scrollback_limit)
         .build();
 
-    Vt { vt }
+    Vt { vt, bold_is_bright }
 }
 
 #[wasm_bindgen]
@@ -103,8 +104,8 @@ impl Vt {
             let width = cell.width();
             let pen = cell.pen();
             let inverse = matches!(cursor_col, Some(col) if col == x);
-            let bg_color = bg_color(pen, inverse);
-            let fg_color = fg_color(pen, inverse);
+            let bg_color = self.bg_color(pen, inverse);
+            let fg_color = self.fg_color(pen, inverse);
 
             // bg spans
 
@@ -194,6 +195,34 @@ impl Vt {
 
         serde_wasm_bindgen::to_value(&cursor).unwrap()
     }
+
+    fn bg_color(&self, pen: &avt::Pen, inverse: bool) -> Option<Color> {
+        if pen.is_inverse() ^ inverse {
+            if let Some(c) = pen.foreground() {
+                Some(Color::Value(c))
+            } else {
+                Some(Color::DefaultFg)
+            }
+        } else {
+            pen.background().map(Color::Value)
+        }
+    }
+
+    fn fg_color(&self, pen: &avt::Pen, inverse: bool) -> Option<Color> {
+        if pen.is_inverse() ^ inverse {
+            if let Some(c) = pen.background() {
+                Some(Color::Value(maybe_brighten(
+                    c,
+                    pen.is_bold() && self.bold_is_bright,
+                )))
+            } else {
+                Some(Color::DefaultBg)
+            }
+        } else {
+            pen.foreground()
+                .map(|c| Color::Value(maybe_brighten(c, pen.is_bold() && self.bold_is_bright)))
+        }
+    }
 }
 
 fn build_fg_span(
@@ -229,28 +258,16 @@ fn is_same_text_style(span: &FgSpan, pen: &avt::Pen) -> bool {
         && span.blink == pen.is_blink()
 }
 
-fn bg_color(pen: &avt::Pen, inverse: bool) -> Option<Color> {
-    if pen.is_inverse() ^ inverse {
-        if let Some(c) = pen.foreground() {
-            Some(Color::Value(c))
-        } else {
-            Some(Color::DefaultFg)
+fn maybe_brighten(color: avt::Color, brighten: bool) -> avt::Color {
+    if brighten {
+        if let avt::Color::Indexed(i) = &color {
+            if *i < 8 {
+                return avt::Color::Indexed(i + 8);
+            }
         }
-    } else {
-        pen.background().map(Color::Value)
     }
-}
 
-fn fg_color(pen: &avt::Pen, inverse: bool) -> Option<Color> {
-    if pen.is_inverse() ^ inverse {
-        if let Some(c) = pen.background() {
-            Some(Color::Value(c))
-        } else {
-            Some(Color::DefaultBg)
-        }
-    } else {
-        pen.foreground().map(Color::Value)
-    }
+    color
 }
 
 fn is_standalone_char(cell: &avt::Cell) -> bool {
