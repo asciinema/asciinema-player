@@ -131,7 +131,7 @@ export default (props) => {
 
   function setInitialTheme() {
     cssTheme = getCssTheme(el);
-    pendingChanges.theme = props.theme ?? cssTheme;
+    pendingChanges.theme = cssTheme;
   }
 
   function onVtUpdate({ size: newSize, theme, changedRows }) {
@@ -145,7 +145,7 @@ export default (props) => {
       }
     }
 
-    if (theme !== undefined) {
+    if (theme !== undefined && props.preferEmbeddedTheme) {
       pendingChanges.theme = theme;
 
       for (let row = 0; row < size().rows; row++) {

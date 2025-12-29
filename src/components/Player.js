@@ -20,6 +20,9 @@ export default (props) => {
   const charH = props.charH;
   const bordersW = props.bordersW;
   const bordersH = props.bordersH;
+  const themeOption = props.theme ?? "auto/asciinema";
+  const preferEmbeddedTheme = themeOption.slice(0, 5) === "auto/";
+  const themeName = preferEmbeddedTheme ? themeOption.slice(5) : themeOption;
 
   const [state, setState] = createStore({
     containerW: 0,
@@ -379,18 +382,7 @@ export default (props) => {
     setUserActive(show);
   };
 
-  const theme = createMemo(() => {
-    const name = props.theme || "auto/asciinema";
-
-    if (name.slice(0, 5) === "auto/") {
-      return {
-        name: name.slice(5),
-        colors: originalTheme(),
-      };
-    } else {
-      return { name };
-    }
-  });
+  const embeddedTheme = createMemo(() => (preferEmbeddedTheme ? originalTheme() : null));
 
   const playerStyle = () => {
     const style = {};
@@ -418,7 +410,7 @@ export default (props) => {
       style["--term-font-family"] = props.terminalFontFamily;
     }
 
-    const themeColors = theme().colors;
+    const themeColors = embeddedTheme();
 
     if (themeColors) {
       style["--term-color-foreground"] = themeColors.foreground;
@@ -450,7 +442,7 @@ export default (props) => {
     coreReady.then(() => core.seek(pos));
   };
 
-  const playerClass = () => `ap-player ap-default-term-ff asciinema-player-theme-${theme().name}`;
+  const playerClass = () => `ap-player ap-default-term-ff asciinema-player-theme-${themeName}`;
   const terminalScale = () => terminalElementSize()?.scale;
 
   const el = (
@@ -477,7 +469,7 @@ export default (props) => {
           scale={terminalScale()}
           blinking={blinking()}
           lineHeight={props.terminalLineHeight}
-          theme={theme().colors}
+          preferEmbeddedTheme={preferEmbeddedTheme}
           core={core}
           stats={stats.terminal}
         />

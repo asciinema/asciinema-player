@@ -286,6 +286,89 @@ test("bold+inverse keeps indexed fg when boldIsBright=false", async ({ page }) =
   expect(colors.fg).toBe(theme.palette[2]);
 });
 
+test("automatic embedded theme", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/theme.cast", {
+    autoPlay: true,
+  });
+
+  await playerApi.events.waitFor("ended");
+
+  const screenshot = await takeTerminalScreenshot(page);
+
+  const embeddedTheme = {
+    fg: "#fafafa",
+    bg: "#bababa",
+    palette: [
+      "#000000",
+      "#111111",
+      "#222222",
+      "#333333",
+      "#444444",
+      "#555555",
+      "#666666",
+      "#777777",
+      "#888888",
+      "#999999",
+      "#aaaaaa",
+      "#bbbbbb",
+      "#cccccc",
+      "#dddddd",
+      "#eeeeee",
+      "#ffffff",
+    ],
+  };
+
+  const expectedColors = buildThemeSamples(embeddedTheme);
+
+  expect(pixelColorAtBorder(screenshot)).toBe("#bababa");
+
+  for (const [row, col, x, y, color] of expectedColors) {
+    expect(pixelColorAtCell(screenshot, row, col, x, y)).toBe(color);
+  }
+});
+
+test("explicit theme", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/theme.cast", {
+    autoPlay: true,
+    theme: "dracula",
+  });
+
+  await playerApi.events.waitFor("ended");
+
+  const screenshot = await takeTerminalScreenshot(page);
+
+  const draculaTheme = {
+    fg: "#f8f8f2",
+    bg: "#282a36",
+    palette: [
+      "#21222c",
+      "#ff5555",
+      "#50fa7b",
+      "#f1fa8c",
+      "#bd93f9",
+      "#ff79c6",
+      "#8be9fd",
+      "#f8f8f2",
+      "#6272a4",
+      "#ff6e6e",
+      "#69ff94",
+      "#ffffa5",
+      "#d6acff",
+      "#ff92df",
+      "#a4ffff",
+      "#ffffff",
+    ],
+  };
+
+  const expectedColors = buildThemeSamples(draculaTheme);
+
+  expect(pixelColorAtBorder(screenshot)).toBe("#282a36");
+
+  for (const [row, col, x, y, color] of expectedColors) {
+    expect(pixelColorAtCell(screenshot, row, col, x, y)).toBe(color);
+  }
+});
+
 const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "input", "marker"];
 
 async function createPlayer(page, src, opts = {}) {
@@ -478,6 +561,109 @@ async function getSpanAt(page, row, col) {
   }
 
   return line.locator("span").nth(index);
+}
+
+async function takeTerminalScreenshot(page) {
+  const term = page.locator(".ap-term");
+  await term.waitFor();
+  const buffer = await term.screenshot({ type: "png" });
+  const dataUrl = `data:image/png;base64,${buffer.toString("base64")}`;
+
+  return await term.evaluate(async (node, dataUrl) => {
+    const style = getComputedStyle(node);
+    const rect = node.getBoundingClientRect();
+    const cols = Number.parseInt(style.getPropertyValue("--term-cols"), 10);
+    const rows = Number.parseInt(style.getPropertyValue("--term-rows"), 10);
+    const img = new Image();
+
+    const loaded = new Promise((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("Failed to decode screenshot"));
+    });
+
+    img.src = dataUrl;
+    await loaded;
+
+    const scaleX = img.width / rect.width;
+    const scaleY = img.height / rect.height;
+    const borderLeft = (Number.parseFloat(style.borderLeftWidth) || 0) * scaleX;
+    const borderRight = (Number.parseFloat(style.borderRightWidth) || 0) * scaleX;
+    const borderTop = (Number.parseFloat(style.borderTopWidth) || 0) * scaleY;
+    const borderBottom = (Number.parseFloat(style.borderBottomWidth) || 0) * scaleY;
+    const contentWidth = img.width - borderLeft - borderRight;
+    const contentHeight = img.height - borderTop - borderBottom;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("2D ctx not available");
+    ctx.drawImage(img, 0, 0);
+
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    return {
+      width: canvas.width,
+      height: canvas.height,
+      data: Array.from(imgData.data),
+      cols,
+      rows,
+      borderLeft,
+      borderRight,
+      borderTop,
+      borderBottom,
+      contentWidth,
+      contentHeight,
+    };
+  }, dataUrl);
+}
+
+function pixelColorAtCell(screenshot, row, col, x, y) {
+  const cellWidth = screenshot.contentWidth / screenshot.cols;
+  const cellHeight = screenshot.contentHeight / screenshot.rows;
+  const px = screenshot.borderLeft + (col + x) * cellWidth;
+  const py = screenshot.borderTop + (row + y) * cellHeight;
+
+  return pixelColorAt(screenshot, px, py);
+}
+
+function pixelColorAtBorder(screenshot) {
+  const px = Math.max(0, screenshot.borderLeft / 2);
+  const py = screenshot.height / 2;
+
+  return pixelColorAt(screenshot, px, py);
+}
+
+function pixelColorAt(screenshot, x, y) {
+  const px = Math.max(0, Math.min(screenshot.width - 1, Math.floor(x)));
+  const py = Math.max(0, Math.min(screenshot.height - 1, Math.floor(y)));
+  const idx = (py * screenshot.width + px) * 4;
+  const r = screenshot.data[idx];
+  const g = screenshot.data[idx + 1];
+  const b = screenshot.data[idx + 2];
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function toHex(value) {
+  return value.toString(16).padStart(2, "0");
+}
+
+function buildThemeSamples(theme) {
+  const samples = [];
+
+  for (let color = 0; color < 16; color += 1) {
+    for (let offset = 0; offset < 3; offset += 1) {
+      const col = color * 3 + offset;
+      samples.push([0, col, 0.9, 0.1, theme.bg]);
+      samples.push([0, col, 0.5, 0.5, theme.palette[color]]);
+      samples.push([1, col, 0.9, 0.1, theme.palette[color]]);
+      samples.push([1, col, 0.5, 0.5, theme.fg]);
+    }
+  }
+
+  return samples;
 }
 
 async function failOnPageError(page) {
