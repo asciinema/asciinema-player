@@ -405,11 +405,15 @@ export default (props) => {
       return null;
     }
 
+    const isPowerline = POWERLINE_SYMBOLS.has(codepoint);
+    const symbolX = isPowerline ? x - POWERLINE_SYMBOL_NUDGE : x;
+    const symbolWidth = isPowerline ? 1 + POWERLINE_SYMBOL_NUDGE * 2 : 1;
+
     const node = getSymbolUse();
     node.setAttribute("href", `#sym-${codepoint}`);
-    node.setAttribute("x", x);
+    node.setAttribute("x", symbolX);
     node.setAttribute("y", 0);
-    node.setAttribute("width", "1");
+    node.setAttribute("width", symbolWidth);
     node.setAttribute("height", "1");
 
     if (fg) {
@@ -674,6 +678,9 @@ const SYMBOL_DEFS = {
   0xe0b3:
     '<path d="M1,0 L0,0.5 L1,1" fill="none" stroke="currentColor" stroke-width="0.07" stroke-linejoin="miter"/>',
 };
+
+const POWERLINE_SYMBOLS = new Set([0xe0b0, 0xe0b1, 0xe0b2, 0xe0b3]);
+const POWERLINE_SYMBOL_NUDGE = 0.02;
 
 const FALLBACK_THEME = {
   foreground: "black",
