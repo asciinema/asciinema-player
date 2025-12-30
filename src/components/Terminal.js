@@ -9,12 +9,21 @@ const SHADED_BLOCK_ALPHA = new Map([
   [0x2593, 0.75],
 ]);
 
+const BOLD_MASK = 1;
+const FAINT_MASK = 1 << 1;
+const ITALIC_MASK = 1 << 2;
+const UNDERLINE_MASK = 1 << 3;
+const STRIKETHROUGH_MASK = 1 << 4;
+const BLINK_MASK = 1 << 5;
+
 export default (props) => {
   const core = props.core;
   const textRowPool = [];
   const symbolRowPool = [];
   const symbolUsePool = [];
   const symbolDefCache = new Set();
+  const colorsCache = new Map();
+  const attrClassCache = new Map();
 
   const [size, setSize] = createSignal(
     { cols: props.cols, rows: props.rows },
@@ -222,6 +231,8 @@ export default (props) => {
         } else {
           setTheme(buildTheme(newTheme));
         }
+
+        colorsCache.clear();
       }
 
       const theme_ = theme();
@@ -242,32 +253,44 @@ export default (props) => {
   function renderRow(rowIndex, theme, cursorOn) {
     const line = core.getLine(rowIndex, cursorOn);
 
-    renderRowText(rowIndex, line.text, theme);
+    renderRowText(rowIndex, line.text, line.codepoints, theme);
     renderRowBlocks(rowIndex, line.blocks, theme);
     renderRowSymbols(rowIndex, line.symbols, theme);
     renderRowBg(rowIndex, line.bg, theme);
   }
 
-  function renderRowText(rowIndex, spans, theme) {
-    const frag = document.createDocumentFragment();
+  function renderRowText(rowIndex, spans, codepoints, theme) {
+    // The memory layout of a TextSpan must follow one defined in lib.rs (see the assertions at the bottom)
+    const spansView = core.getDataView(spans, 12);
 
-    for (const span of spans) {
+    const codepointsView = core.getUint32Array(codepoints);
+    const frag = document.createDocumentFragment();
+    let i = 0;
+
+    while (i < spansView.byteLength) {
+      const column = spansView.getUint16(i + 0, true);
+      const codepointsStart = spansView.getUint16(i + 2, true);
+      const len = spansView.getUint16(i + 4, true);
+      const color = getColor(spansView, i + 6, theme);
+      const attrs = spansView.getUint8(i + 10);
+      const text = String.fromCodePoint(
+        ...codepointsView.subarray(codepointsStart, codepointsStart + len),
+      );
+      i += 12;
+
       const el = document.createElement("span");
       const style = el.style;
-      style.setProperty("--offset", span.get("x"));
-      style.width = `${span.get("w") + 0.01}ch`; // Add 0.01ch to prevent sub-pixel gaps in some browsers
-      el.textContent = span.get("t");
+      style.setProperty("--offset", column);
+      el.textContent = text;
 
-      const fg = colorValue(theme, span.get("c"));
-
-      if (fg) {
+      if (color) {
         // TODO set color directly
-        style.setProperty("--fg", fg);
+        style.setProperty("--fg", color);
       }
 
-      const cls = span.get("k");
+      const cls = getAttrClass(attrs);
 
-      if (cls !== undefined) {
+      if (cls !== null) {
         el.className = cls;
       }
 
@@ -278,41 +301,53 @@ export default (props) => {
   }
 
   function renderRowBlocks(rowIndex, blocks, theme) {
+    // The memory layout of a Block must follow one defined in lib.rs (see the assertions at the bottom)
+    const view = core.getDataView(blocks, 12);
+
     const y = rowIndex * BLOCK_RESOLUTION;
     const width = size().cols * BLOCK_RESOLUTION;
     blocksCanvasCtx.clearRect(0, y, width, BLOCK_RESOLUTION);
+    let i = 0;
 
-    for (const block of blocks) {
-      const codepoint = block.get("cp");
-      const x = block.get("x");
+    while (i < view.byteLength) {
+      const column = view.getUint16(i + 0, true);
+      const codepoint = view.getUint32(i + 4, true);
+      const color = getColor(view, i + 8, theme) || theme.fg;
+      i += 12;
 
-      const color = colorValue(theme, block.get("c")) || theme.fg;
       const alpha = SHADED_BLOCK_ALPHA.get(codepoint);
 
       if (alpha !== undefined) {
         blocksCanvasCtx.save();
         blocksCanvasCtx.globalAlpha = alpha;
         blocksCanvasCtx.fillStyle = color;
-        blocksCanvasCtx.fillRect(x * BLOCK_RESOLUTION, y, BLOCK_RESOLUTION, BLOCK_RESOLUTION);
+        blocksCanvasCtx.fillRect(column * BLOCK_RESOLUTION, y, BLOCK_RESOLUTION, BLOCK_RESOLUTION);
         blocksCanvasCtx.restore();
         continue;
       }
 
       blocksCanvasCtx.fillStyle = color;
-      drawBlockGlyph(blocksCanvasCtx, codepoint, x * BLOCK_RESOLUTION, y);
+      drawBlockGlyph(blocksCanvasCtx, codepoint, column * BLOCK_RESOLUTION, y);
     }
   }
 
   function renderRowSymbols(rowIndex, symbols, theme) {
+    // The memory layout of a Symbol must follow one defined in lib.rs (see the assertions at the bottom)
+    const view = core.getDataView(symbols, 16);
+
     const symbolFrag = document.createDocumentFragment();
     const symbolRow = symbolRowsEl.children[rowIndex];
+    let i = 0;
 
-    for (const symbol of symbols) {
-      const codepoint = symbol.get("cp");
-      const x = symbol.get("x");
-      const color = colorValue(theme, symbol.get("c"));
-      const blink = symbol.get("b") === true;
-      const el = createSymbolNode(codepoint, x, color, blink);
+    while (i < view.byteLength) {
+      const column = view.getUint16(i + 0, true);
+      const codepoint = view.getUint32(i + 4, true);
+      const color = getColor(view, i + 8, theme);
+      const attrs = view.getUint8(i + 12);
+      i += 16;
+
+      const blink = (attrs & BLINK_MASK) !== 0;
+      const el = createSymbolNode(codepoint, column, color, blink);
 
       if (el) {
         symbolFrag.appendChild(el);
@@ -324,11 +359,88 @@ export default (props) => {
   }
 
   function renderRowBg(rowIndex, spans, theme) {
-    bgCanvasCtx.clearRect(0, rowIndex, size().cols, 1);
+    // The memory layout of a BgSpan must follow one defined in lib.rs (see the assertions at the bottom)
+    const view = core.getDataView(spans, 8);
 
-    for (const span of spans) {
-      bgCanvasCtx.fillStyle = colorValue(theme, span.get("c"));
-      bgCanvasCtx.fillRect(span.get("x"), rowIndex, span.get("w"), 1);
+    bgCanvasCtx.clearRect(0, rowIndex, size().cols, 1);
+    let i = 0;
+
+    while (i < view.byteLength) {
+      const column = view.getUint16(i + 0, true);
+      const width = view.getUint16(i + 2, true);
+      const color = getColor(view, i + 4, theme);
+      i += 8;
+
+      bgCanvasCtx.fillStyle = color;
+      bgCanvasCtx.fillRect(column, rowIndex, width, 1);
+    }
+  }
+
+  function getAttrClass(attrs) {
+    let c = attrClassCache.get(attrs);
+
+    if (c === undefined) {
+      c = buildAttrClass(attrs);
+      attrClassCache.set(attrs, c);
+    }
+
+    return c;
+  }
+
+  function buildAttrClass(attrs) {
+    let cls = "";
+
+    if ((attrs & BOLD_MASK) !== 0) {
+      cls += "ap-bold ";
+    } else if ((attrs & FAINT_MASK) !== 0) {
+      cls += "ap-faint ";
+    }
+
+    if ((attrs & ITALIC_MASK) !== 0) {
+      cls += "ap-italic ";
+    }
+
+    if ((attrs & UNDERLINE_MASK) !== 0) {
+      cls += "ap-underline ";
+    }
+
+    if ((attrs & STRIKETHROUGH_MASK) !== 0) {
+      cls += "ap-strike ";
+    }
+
+    if ((attrs & BLINK_MASK) !== 0) {
+      cls += "ap-blink ";
+    }
+
+    return cls === "" ? null : cls;
+  }
+
+  function getColor(view, offset, theme) {
+    const tag = view.getUint8(offset);
+
+    if (tag === 0) {
+      return null;
+    } else if (tag === 1) {
+      return theme.fg;
+    } else if (tag === 2) {
+      return theme.bg;
+    } else if (tag === 3) {
+      return theme.palette[view.getUint8(offset + 1)];
+    } else if (tag === 4) {
+      const key = view.getUint32(offset, true);
+      let c = colorsCache.get(key);
+
+      if (c === undefined) {
+        const r = view.getUint8(offset + 1);
+        const g = view.getUint8(offset + 2);
+        const b = view.getUint8(offset + 3);
+        c = "rgb(" + r + "," + g + "," + b + ")";
+        colorsCache.set(key, c);
+      }
+
+      return c;
+    } else {
+      throw new Error(`invalid color tag: ${tag}`);
     }
   }
 
@@ -400,13 +512,13 @@ export default (props) => {
     return row;
   }
 
-  function createSymbolNode(codepoint, x, fg, blink) {
+  function createSymbolNode(codepoint, column, fg, blink) {
     if (!ensureSymbolDef(codepoint)) {
       return null;
     }
 
     const isPowerline = POWERLINE_SYMBOLS.has(codepoint);
-    const symbolX = isPowerline ? x - POWERLINE_SYMBOL_NUDGE : x;
+    const symbolX = isPowerline ? column - POWERLINE_SYMBOL_NUDGE : column;
     const symbolWidth = isPowerline ? 1 + POWERLINE_SYMBOL_NUDGE * 2 : 1;
 
     const node = getSymbolUse();
@@ -521,16 +633,6 @@ function getCssTheme(el) {
   }
 
   return { foreground, background, palette };
-}
-
-function colorValue(theme, color) {
-  if (typeof color === "number") return theme.palette[color];
-
-  if (typeof color === "string") {
-    if (color == "fg") return theme.fg;
-    if (color == "bg") return theme.bg;
-    return color;
-  }
 }
 
 function drawBlockGlyph(ctx, codepoint, x, y) {

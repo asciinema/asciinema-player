@@ -578,9 +578,8 @@ async function getSpanAt(page, row, col) {
     for (let i = 0; i < spans.length; i += 1) {
       const span = spans[i];
       const offset = Number.parseFloat(span.style.getPropertyValue("--offset") || "0");
-      const width = Number.parseFloat(span.style.width || "0");
 
-      if (col >= offset && col < offset + width) {
+      if (col === offset) {
         return i;
       }
     }

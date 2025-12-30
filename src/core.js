@@ -1,4 +1,4 @@
-import * as vtModule from "./vt/Cargo.toml?custom";
+import { init as initVt, module as vtWasmModule } from "./vt/Cargo.toml?custom";
 import { parseNpt } from "./util";
 import { Clock, NullClock } from "./clock";
 import recording from "./driver/recording";
@@ -14,7 +14,7 @@ import parseTtyrec from "./parser/ttyrec";
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
 
-const vt = vtModule.init({ module: vtModule.module }); // trigger async loading of wasm
+const vt = initVt({ module: vtWasmModule }); // trigger async loading of wasm
 
 class State {
   constructor(core) {
@@ -233,6 +233,8 @@ class Core {
 
   async init() {
     this.wasm = await vt;
+    const { memory } = await this.wasm.default();
+    this.memory = memory;
     this._initializeVt(this.cols ?? DEFAULT_COLS, this.rows ?? DEFAULT_ROWS);
 
     const feed = this._feed.bind(this);
@@ -389,6 +391,14 @@ class Core {
 
   getLine(n, cursorOn) {
     return this.vt.getLine(n, cursorOn);
+  }
+
+  getDataView([ptr, len], size) {
+    return new DataView(this.memory.buffer, ptr, len * size);
+  }
+
+  getUint32Array([ptr, len]) {
+    return new Uint32Array(this.memory.buffer, ptr, len);
   }
 
   getCursor() {
@@ -569,6 +579,7 @@ class Core {
     this.vt = this.wasm.create(cols, rows, 100, this.boldIsBright);
     this.vt.cols = cols;
     this.vt.rows = rows;
+
   }
 
   _parsePoster(poster) {
