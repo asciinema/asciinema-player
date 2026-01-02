@@ -1,7 +1,8 @@
 import { batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-const BLOCK_RESOLUTION = 8;
+const BLOCK_H_RES = 8;
+const BLOCK_V_RES = 24;
 
 const SHADED_BLOCK_ALPHA = new Map([
   [0x2591, 0.25],
@@ -120,8 +121,8 @@ export default (props) => {
     blocksCanvasCtx = blocksCanvasEl.getContext("2d");
     if (!blocksCanvasCtx) throw new Error("2D ctx not available");
     const { cols, rows } = size();
-    blocksCanvasEl.width = cols * BLOCK_RESOLUTION;
-    blocksCanvasEl.height = rows * BLOCK_RESOLUTION;
+    blocksCanvasEl.width = cols * BLOCK_H_RES;
+    blocksCanvasEl.height = rows * BLOCK_V_RES;
     blocksCanvasEl.style.imageRendering = "pixelated";
     blocksCanvasCtx.imageSmoothingEnabled = false;
   }
@@ -133,8 +134,8 @@ export default (props) => {
   }
 
   function resizeBlocksCanvas({ cols, rows }) {
-    blocksCanvasEl.width = cols * BLOCK_RESOLUTION;
-    blocksCanvasEl.height = rows * BLOCK_RESOLUTION;
+    blocksCanvasEl.width = cols * BLOCK_H_RES;
+    blocksCanvasEl.height = rows * BLOCK_V_RES;
     blocksCanvasCtx.imageSmoothingEnabled = false;
   }
 
@@ -303,9 +304,9 @@ export default (props) => {
     // The memory layout of a Block must follow one defined in lib.rs (see the assertions at the bottom)
     const view = core.getDataView(blocks, 12);
 
-    const y = rowIndex * BLOCK_RESOLUTION;
-    const width = size().cols * BLOCK_RESOLUTION;
-    blocksCanvasCtx.clearRect(0, y, width, BLOCK_RESOLUTION);
+    const y = rowIndex * BLOCK_V_RES;
+    const width = size().cols * BLOCK_H_RES;
+    blocksCanvasCtx.clearRect(0, y, width, BLOCK_V_RES);
     let i = 0;
 
     while (i < view.byteLength) {
@@ -320,13 +321,13 @@ export default (props) => {
         blocksCanvasCtx.save();
         blocksCanvasCtx.globalAlpha = alpha;
         blocksCanvasCtx.fillStyle = color;
-        blocksCanvasCtx.fillRect(column * BLOCK_RESOLUTION, y, BLOCK_RESOLUTION, BLOCK_RESOLUTION);
+        blocksCanvasCtx.fillRect(column * BLOCK_H_RES, y, BLOCK_H_RES, BLOCK_V_RES);
         blocksCanvasCtx.restore();
         continue;
       }
 
       blocksCanvasCtx.fillStyle = color;
-      drawBlockGlyph(blocksCanvasCtx, codepoint, column * BLOCK_RESOLUTION, y);
+      drawBlockGlyph(blocksCanvasCtx, codepoint, column * BLOCK_H_RES, y);
     }
   }
 
@@ -635,132 +636,137 @@ function getCssTheme(el) {
 }
 
 function drawBlockGlyph(ctx, codepoint, x, y) {
+  const unitX = BLOCK_H_RES / 8;
+  const unitY = BLOCK_V_RES / 8;
+  const halfX = BLOCK_H_RES / 2;
+  const halfY = BLOCK_V_RES / 2;
+
   switch (codepoint) {
     case 0x2580:
       // upper half block
-      ctx.fillRect(x, y, 8, 4);
+      ctx.fillRect(x, y, BLOCK_H_RES, halfY);
       break;
     case 0x2581:
       // lower one eighth block
-      ctx.fillRect(x, y + 7, 8, 1);
+      ctx.fillRect(x, y + unitY * 7, BLOCK_H_RES, unitY);
       break;
     case 0x2582:
       // lower one quarter block
-      ctx.fillRect(x, y + 6, 8, 2);
+      ctx.fillRect(x, y + unitY * 6, BLOCK_H_RES, unitY * 2);
       break;
     case 0x2583:
       // lower three eighths block
-      ctx.fillRect(x, y + 5, 8, 3);
+      ctx.fillRect(x, y + unitY * 5, BLOCK_H_RES, unitY * 3);
       break;
     case 0x2584:
       // lower half block
-      ctx.fillRect(x, y + 4, 8, 4);
+      ctx.fillRect(x, y + halfY, BLOCK_H_RES, halfY);
       break;
     case 0x2585:
       // lower five eighths block
-      ctx.fillRect(x, y + 3, 8, 5);
+      ctx.fillRect(x, y + unitY * 3, BLOCK_H_RES, unitY * 5);
       break;
     case 0x2586:
       // lower three quarters block
-      ctx.fillRect(x, y + 2, 8, 6);
+      ctx.fillRect(x, y + unitY * 2, BLOCK_H_RES, unitY * 6);
       break;
     case 0x2587:
       // lower seven eighths block
-      ctx.fillRect(x, y + 1, 8, 7);
+      ctx.fillRect(x, y + unitY, BLOCK_H_RES, unitY * 7);
       break;
     case 0x2588:
       // full block
-      ctx.fillRect(x, y, 8, 8);
+      ctx.fillRect(x, y, BLOCK_H_RES, BLOCK_V_RES);
       break;
     case 0x25a0:
       // black square
-      ctx.fillRect(x, y + 2, 8, 4);
+      ctx.fillRect(x, y + unitY * 2, BLOCK_H_RES, unitY * 4);
       break;
     case 0x2589:
       // left seven eighths block
-      ctx.fillRect(x, y, 7, 8);
+      ctx.fillRect(x, y, unitX * 7, BLOCK_V_RES);
       break;
     case 0x258a:
       // left three quarters block
-      ctx.fillRect(x, y, 6, 8);
+      ctx.fillRect(x, y, unitX * 6, BLOCK_V_RES);
       break;
     case 0x258b:
       // left five eighths block
-      ctx.fillRect(x, y, 5, 8);
+      ctx.fillRect(x, y, unitX * 5, BLOCK_V_RES);
       break;
     case 0x258c:
       // left half block
-      ctx.fillRect(x, y, 4, 8);
+      ctx.fillRect(x, y, halfX, BLOCK_V_RES);
       break;
     case 0x258d:
       // left three eighths block
-      ctx.fillRect(x, y, 3, 8);
+      ctx.fillRect(x, y, unitX * 3, BLOCK_V_RES);
       break;
     case 0x258e:
       // left one quarter block
-      ctx.fillRect(x, y, 2, 8);
+      ctx.fillRect(x, y, unitX * 2, BLOCK_V_RES);
       break;
     case 0x258f:
       // left one eighth block
-      ctx.fillRect(x, y, 1, 8);
+      ctx.fillRect(x, y, unitX, BLOCK_V_RES);
       break;
     case 0x2590:
       // right half block
-      ctx.fillRect(x + 4, y, 4, 8);
+      ctx.fillRect(x + halfX, y, halfX, BLOCK_V_RES);
       break;
     case 0x2594:
       // upper one eighth block
-      ctx.fillRect(x, y, 8, 1);
+      ctx.fillRect(x, y, BLOCK_H_RES, unitY);
       break;
     case 0x2595:
       // right one eighth block
-      ctx.fillRect(x + 7, y, 1, 8);
+      ctx.fillRect(x + unitX * 7, y, unitX, BLOCK_V_RES);
       break;
     case 0x2596:
       // quadrant lower left
-      ctx.fillRect(x, y + 4, 4, 4);
+      ctx.fillRect(x, y + halfY, halfX, halfY);
       break;
     case 0x2597:
       // quadrant lower right
-      ctx.fillRect(x + 4, y + 4, 4, 4);
+      ctx.fillRect(x + halfX, y + halfY, halfX, halfY);
       break;
     case 0x2598:
       // quadrant upper left
-      ctx.fillRect(x, y, 4, 4);
+      ctx.fillRect(x, y, halfX, halfY);
       break;
     case 0x2599:
       // quadrant upper left and lower left and lower right
-      ctx.fillRect(x, y, 4, 8);
-      ctx.fillRect(x + 4, y + 4, 4, 4);
+      ctx.fillRect(x, y, halfX, BLOCK_V_RES);
+      ctx.fillRect(x + halfX, y + halfY, halfX, halfY);
       break;
     case 0x259a:
       // quadrant upper left and lower right
-      ctx.fillRect(x, y, 4, 4);
-      ctx.fillRect(x + 4, y + 4, 4, 4);
+      ctx.fillRect(x, y, halfX, halfY);
+      ctx.fillRect(x + halfX, y + halfY, halfX, halfY);
       break;
     case 0x259b:
       // quadrant upper left and upper right and lower left
-      ctx.fillRect(x, y, 8, 4);
-      ctx.fillRect(x, y + 4, 4, 4);
+      ctx.fillRect(x, y, BLOCK_H_RES, halfY);
+      ctx.fillRect(x, y + halfY, halfX, halfY);
       break;
     case 0x259c:
       // quadrant upper left and upper right and lower right
-      ctx.fillRect(x, y, 8, 4);
-      ctx.fillRect(x + 4, y + 4, 4, 4);
+      ctx.fillRect(x, y, BLOCK_H_RES, halfY);
+      ctx.fillRect(x + halfX, y + halfY, halfX, halfY);
       break;
     case 0x259d:
       // quadrant upper right
-      ctx.fillRect(x + 4, y, 4, 4);
+      ctx.fillRect(x + halfX, y, halfX, halfY);
       break;
     case 0x259e:
       // quadrant upper right and lower left
-      ctx.fillRect(x + 4, y, 4, 4);
-      ctx.fillRect(x, y + 4, 4, 4);
+      ctx.fillRect(x + halfX, y, halfX, halfY);
+      ctx.fillRect(x, y + halfY, halfX, halfY);
       break;
     case 0x259f:
       // quadrant upper right and lower left and lower right
-      ctx.fillRect(x + 4, y, 4, 8);
-      ctx.fillRect(x, y + 4, 4, 4);
+      ctx.fillRect(x + halfX, y, halfX, BLOCK_V_RES);
+      ctx.fillRect(x, y + halfY, halfX, halfY);
       break;
     default:
       break;
