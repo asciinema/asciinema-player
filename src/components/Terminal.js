@@ -284,8 +284,7 @@ export default (props) => {
       el.textContent = text;
 
       if (color) {
-        // TODO set color directly
-        style.setProperty("--fg", color);
+        style.color = color;
       }
 
       const cls = getAttrClass(attrs);

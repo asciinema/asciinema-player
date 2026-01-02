@@ -78,8 +78,6 @@ pre.ap-term-text {
     span {
       position: absolute;
       left: calc(100% * var(--offset) / var(--term-cols));
-      color: var(--fg);
-
       padding: 0;
       display: inline-block;
       height: 100%;
@@ -113,5 +111,5 @@ pre.ap-term-text {
 }
 
 .ap-line span {
-  --fg: var(--term-color-foreground);
+  color: var(--term-color-foreground);
 }
