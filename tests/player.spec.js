@@ -257,33 +257,31 @@ test("help overlay toggles with keyboard shortcuts", async ({ page }) => {
 });
 
 test("bold+inverse brightens indexed fg when boldIsBright=true", async ({ page }) => {
-  await createPlayer(page, "/assets/bold-inverse-indexed.cast", {
+  const playerApi = await createPlayer(page, "/assets/bold-inverse-indexed.cast", {
     autoPlay: true,
     boldIsBright: true,
+    theme: "tango",
   });
 
-  const span = await getSpanAt(page, 0, 0);
-  await expect(span).toHaveText("X");
+  await playerApi.events.waitFor("ended");
 
-  const theme = await getTermTheme(page);
-  const colors = await getSpanColors(span);
+  const { cells } = await sampleTerminalPixels(page, { cells: [[0, 0, 0.5, 0.5]] });
 
-  expect(colors.fg).toBe(theme.palette[10]);
+  expect(cells[0]).toBe("#8ae234");
 });
 
 test("bold+inverse keeps indexed fg when boldIsBright=false", async ({ page }) => {
-  await createPlayer(page, "/assets/bold-inverse-indexed.cast", {
+  const playerApi = await createPlayer(page, "/assets/bold-inverse-indexed.cast", {
     autoPlay: true,
     boldIsBright: false,
+    theme: "tango",
   });
 
-  const span = await getSpanAt(page, 0, 0);
-  await expect(span).toHaveText("X");
+  await playerApi.events.waitFor("ended");
 
-  const theme = await getTermTheme(page);
-  const colors = await getSpanColors(span);
+  const { cells } = await sampleTerminalPixels(page, { cells: [[0, 0, 0.5, 0.5]] });
 
-  expect(colors.fg).toBe(theme.palette[2]);
+  expect(cells[0]).toBe("#4e9a06");
 });
 
 test("RGB color rendering", async ({ page }) => {
@@ -537,61 +535,6 @@ async function setPlayerContainerSize(page, width, height) {
     },
     { width, height },
   );
-}
-
-async function getTermTheme(page) {
-  const term = page.locator(".ap-term");
-  await term.waitFor();
-
-  return await term.evaluate((node) => {
-    const style = getComputedStyle(node);
-    const palette = Array.from({ length: 16 }, (_, i) =>
-      style.getPropertyValue(`--term-color-${i}`).trim(),
-    );
-
-    return {
-      palette,
-      fg: style.getPropertyValue("--term-color-foreground").trim(),
-      bg: style.getPropertyValue("--term-color-background").trim(),
-    };
-  });
-}
-
-async function getSpanColors(span) {
-  return await span.evaluate((node) => {
-    const spanStyle = getComputedStyle(node);
-
-    return {
-      fg: spanStyle.getPropertyValue("--fg").trim(),
-      bg: spanStyle.getPropertyValue("--bg").trim(),
-    };
-  });
-}
-
-async function getSpanAt(page, row, col) {
-  const line = page.locator(".ap-term-text .ap-line").nth(row);
-  await line.waitFor();
-
-  const index = await line.evaluate((node, col) => {
-    const spans = Array.from(node.querySelectorAll("span"));
-
-    for (let i = 0; i < spans.length; i += 1) {
-      const span = spans[i];
-      const offset = Number.parseFloat(span.style.getPropertyValue("--offset") || "0");
-
-      if (col === offset) {
-        return i;
-      }
-    }
-
-    return -1;
-  }, col);
-
-  if (index < 0) {
-    throw new Error(`No span at row ${row}, col ${col}`);
-  }
-
-  return line.locator("span").nth(index);
 }
 
 async function sampleTerminalPixels(page, options = {}) {
