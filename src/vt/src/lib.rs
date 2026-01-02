@@ -363,8 +363,12 @@ fn is_symbol(ch: char) -> bool {
 }
 
 fn is_block(ch: char) -> bool {
-    // box drawing + block elements + black square
-    ('\u{2580}'..='\u{259f}').contains(&ch) || ch == '\u{25a0}'
+    // box drawing + block elements
+    ('\u{2580}'..='\u{259f}').contains(&ch)
+        // black square
+        || ch == '\u{25a0}'
+        // block sextants (1FB00-1FB3B)
+        || ('\u{1fb00}'..='\u{1fb3b}').contains(&ch)
 }
 
 impl TextSpan {
@@ -436,14 +440,8 @@ const fn build_standalone_chars_lut() -> [bool; 65536] {
     // box drawing
     fill_lut(&mut lut, 0x2500..=0x257f);
 
-    // block elements
-    fill_lut(&mut lut, 0x2580..=0x259f);
-
     // braille patterns
     fill_lut(&mut lut, 0x2800..=0x28ff);
-
-    // black square
-    fill_lut(&mut lut, 0x25a0..=0x25a0);
 
     // NF Seti-UI
     fill_lut(&mut lut, 0xe5fa..=0xe6b7);
