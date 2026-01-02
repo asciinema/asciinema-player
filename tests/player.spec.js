@@ -286,14 +286,38 @@ test("bold+inverse keeps indexed fg when boldIsBright=false", async ({ page }) =
   expect(colors.fg).toBe(theme.palette[2]);
 });
 
+test("RGB color rendering", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/rgb.cast", {
+    autoPlay: true,
+  });
+
+  await playerApi.events.waitFor("ended");
+
+  const { cells } = await sampleTerminalPixels(page, {
+    cells: [
+      [0, 0, 0.9, 0.1],
+      [0, 0, 0.5, 0.5],
+      [0, 1, 0.9, 0.1],
+      [0, 1, 0.5, 0.5],
+      [0, 2, 0.9, 0.1],
+      [0, 2, 0.5, 0.5],
+    ],
+  });
+
+  expect(cells[0]).toBe("#123456");
+  expect(cells[1]).toBe("#fedcba");
+  expect(cells[2]).toBe("#123456");
+  expect(cells[3]).toBe("#fedcba");
+  expect(cells[4]).toBe("#123456");
+  expect(cells[5]).toBe("#fedcba");
+});
+
 test("automatic embedded theme", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/theme.cast", {
     autoPlay: true,
   });
 
   await playerApi.events.waitFor("ended");
-
-  const screenshot = await takeTerminalScreenshot(page);
 
   const embeddedTheme = {
     fg: "#fafafa",
@@ -320,10 +344,15 @@ test("automatic embedded theme", async ({ page }) => {
 
   const expectedColors = buildThemeSamples(embeddedTheme);
 
-  expect(pixelColorAtBorder(screenshot)).toBe("#bababa");
+  const { cells, border } = await sampleTerminalPixels(page, {
+    cells: expectedColors,
+    border: true,
+  });
 
-  for (const [row, col, x, y, color] of expectedColors) {
-    expect(pixelColorAtCell(screenshot, row, col, x, y)).toBe(color);
+  expect(border).toBe("#bababa");
+
+  for (let i = 0; i < expectedColors.length; i += 1) {
+    expect(cells[i]).toBe(expectedColors[i][4]);
   }
 });
 
@@ -334,8 +363,6 @@ test("explicit theme", async ({ page }) => {
   });
 
   await playerApi.events.waitFor("ended");
-
-  const screenshot = await takeTerminalScreenshot(page);
 
   const draculaTheme = {
     fg: "#f8f8f2",
@@ -362,10 +389,15 @@ test("explicit theme", async ({ page }) => {
 
   const expectedColors = buildThemeSamples(draculaTheme);
 
-  expect(pixelColorAtBorder(screenshot)).toBe("#282a36");
+  const { cells, border } = await sampleTerminalPixels(page, {
+    cells: expectedColors,
+    border: true,
+  });
 
-  for (const [row, col, x, y, color] of expectedColors) {
-    expect(pixelColorAtCell(screenshot, row, col, x, y)).toBe(color);
+  expect(border).toBe("#282a36");
+
+  for (let i = 0; i < expectedColors.length; i += 1) {
+    expect(cells[i]).toBe(expectedColors[i][4]);
   }
 });
 
@@ -563,91 +595,87 @@ async function getSpanAt(page, row, col) {
   return line.locator("span").nth(index);
 }
 
-async function takeTerminalScreenshot(page) {
+async function sampleTerminalPixels(page, options = {}) {
+  const { cells = [], border = false } = options;
+
   const term = page.locator(".ap-term");
   await term.waitFor();
   const buffer = await term.screenshot({ type: "png" });
   const dataUrl = `data:image/png;base64,${buffer.toString("base64")}`;
 
-  return await term.evaluate(async (node, dataUrl) => {
-    const style = getComputedStyle(node);
-    const rect = node.getBoundingClientRect();
-    const cols = Number.parseInt(style.getPropertyValue("--term-cols"), 10);
-    const rows = Number.parseInt(style.getPropertyValue("--term-rows"), 10);
-    const img = new Image();
+  return await term.evaluate(
+    async (node, { dataUrl, cells, border }) => {
+      const style = getComputedStyle(node);
+      const rect = node.getBoundingClientRect();
+      const img = new Image();
 
-    const loaded = new Promise((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error("Failed to decode screenshot"));
-    });
+      const loaded = new Promise((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to decode screenshot"));
+      });
 
-    img.src = dataUrl;
-    await loaded;
+      img.src = dataUrl;
+      await loaded;
 
-    const scaleX = img.width / rect.width;
-    const scaleY = img.height / rect.height;
-    const borderLeft = (Number.parseFloat(style.borderLeftWidth) || 0) * scaleX;
-    const borderRight = (Number.parseFloat(style.borderRightWidth) || 0) * scaleX;
-    const borderTop = (Number.parseFloat(style.borderTopWidth) || 0) * scaleY;
-    const borderBottom = (Number.parseFloat(style.borderBottomWidth) || 0) * scaleY;
-    const contentWidth = img.width - borderLeft - borderRight;
-    const contentHeight = img.height - borderTop - borderBottom;
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = img.width;
-    canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("2D ctx not available");
+      ctx.drawImage(img, 0, 0);
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("2D ctx not available");
-    ctx.drawImage(img, 0, 0);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      const scaleX = img.width / rect.width;
+      const scaleY = img.height / rect.height;
+      const borderLeft = (Number.parseFloat(style.borderLeftWidth) || 0) * scaleX;
+      const borderTop = (Number.parseFloat(style.borderTopWidth) || 0) * scaleY;
 
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const toHex = (value) => value.toString(16).padStart(2, "0");
+      const rgbToHex = (r, g, b) => `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 
-    return {
-      width: canvas.width,
-      height: canvas.height,
-      data: Array.from(imgData.data),
-      cols,
-      rows,
-      borderLeft,
-      borderRight,
-      borderTop,
-      borderBottom,
-      contentWidth,
-      contentHeight,
-    };
-  }, dataUrl);
-}
+      const samplePixel = (px, py) => {
+        const ix = Math.max(0, Math.min(canvas.width - 1, Math.floor(px)));
+        const iy = Math.max(0, Math.min(canvas.height - 1, Math.floor(py)));
+        const idx = (iy * canvas.width + ix) * 4;
+        const r = imgData[idx];
+        const g = imgData[idx + 1];
+        const b = imgData[idx + 2];
+        return rgbToHex(r, g, b);
+      };
 
-function pixelColorAtCell(screenshot, row, col, x, y) {
-  const cellWidth = screenshot.contentWidth / screenshot.cols;
-  const cellHeight = screenshot.contentHeight / screenshot.rows;
-  const px = screenshot.borderLeft + (col + x) * cellWidth;
-  const py = screenshot.borderTop + (row + y) * cellHeight;
+      let sampledCells = [];
 
-  return pixelColorAt(screenshot, px, py);
-}
+      if (cells.length > 0) {
+        const cols = Number.parseInt(style.getPropertyValue("--term-cols"), 10);
+        const rows = Number.parseInt(style.getPropertyValue("--term-rows"), 10);
+        const borderRight = (Number.parseFloat(style.borderRightWidth) || 0) * scaleX;
+        const borderBottom = (Number.parseFloat(style.borderBottomWidth) || 0) * scaleY;
+        const contentWidth = img.width - borderLeft - borderRight;
+        const contentHeight = img.height - borderTop - borderBottom;
+        const cellWidth = contentWidth / cols;
+        const cellHeight = contentHeight / rows;
 
-function pixelColorAtBorder(screenshot) {
-  const px = Math.max(0, screenshot.borderLeft / 2);
-  const py = screenshot.height / 2;
+        sampledCells = cells.map((sample) => {
+          const [row, col, x, y] = sample;
+          const px = borderLeft + (col + x) * cellWidth;
+          const py = borderTop + (row + y) * cellHeight;
+          return samplePixel(px, py);
+        });
+      }
 
-  return pixelColorAt(screenshot, px, py);
-}
+      let borderColor = null;
 
-function pixelColorAt(screenshot, x, y) {
-  const px = Math.max(0, Math.min(screenshot.width - 1, Math.floor(x)));
-  const py = Math.max(0, Math.min(screenshot.height - 1, Math.floor(y)));
-  const idx = (py * screenshot.width + px) * 4;
-  const r = screenshot.data[idx];
-  const g = screenshot.data[idx + 1];
-  const b = screenshot.data[idx + 2];
+      if (border) {
+        const px = Math.max(0, borderLeft / 2);
+        const py = img.height / 2;
+        borderColor = samplePixel(px, py);
+      }
 
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
-
-function toHex(value) {
-  return value.toString(16).padStart(2, "0");
+      return { cells: sampledCells, border: borderColor };
+    },
+    { dataUrl, cells, border },
+  );
 }
 
 function buildThemeSamples(theme) {
