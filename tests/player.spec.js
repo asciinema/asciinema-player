@@ -626,9 +626,9 @@ function buildThemeSamples(theme) {
   for (let color = 0; color < 16; color += 1) {
     for (let offset = 0; offset < 3; offset += 1) {
       const col = color * 3 + offset;
-      samples.push([0, col, 0.9, 0.1, theme.bg]);
+      samples.push([0, col, 0.8, 0.1, theme.bg]);
       samples.push([0, col, 0.5, 0.5, theme.palette[color]]);
-      samples.push([1, col, 0.9, 0.1, theme.palette[color]]);
+      samples.push([1, col, 0.8, 0.1, theme.palette[color]]);
       samples.push([1, col, 0.5, 0.5, theme.fg]);
     }
   }
