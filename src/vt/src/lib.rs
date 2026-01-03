@@ -360,6 +360,11 @@ fn is_standalone_char(ch: char, width: u16) -> bool {
 fn is_symbol(ch: char) -> bool {
     // Powerline triangles
     ('\u{e0b0}'..='\u{e0b3}').contains(&ch)
+        // Symbols for Legacy Computing: block diagonals + triangular blocks
+        || ('\u{1fb3c}'..='\u{1fb69}').contains(&ch)
+        || ('\u{1fb6a}'..='\u{1fb6c}').contains(&ch)
+        // Geometric Shapes: black triangles
+        || ('\u{25e2}'..='\u{25e5}').contains(&ch)
 }
 
 fn is_block(ch: char) -> bool {
