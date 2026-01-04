@@ -4,12 +4,6 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const BLOCK_H_RES = 8;
 const BLOCK_V_RES = 24;
 
-const SHADED_BLOCK_ALPHA = new Map([
-  [0x2591, 0.25],
-  [0x2592, 0.5],
-  [0x2593, 0.75],
-]);
-
 const BOLD_MASK = 1;
 const FAINT_MASK = 1 << 1;
 const ITALIC_MASK = 1 << 2;
@@ -314,17 +308,6 @@ export default (props) => {
       const codepoint = view.getUint32(i + 4, true);
       const color = getColor(view, i + 8, theme) || theme.fg;
       i += 12;
-
-      const alpha = SHADED_BLOCK_ALPHA.get(codepoint);
-
-      if (alpha !== undefined) {
-        blocksCanvasCtx.save();
-        blocksCanvasCtx.globalAlpha = alpha;
-        blocksCanvasCtx.fillStyle = color;
-        blocksCanvasCtx.fillRect(column * BLOCK_H_RES, y, BLOCK_H_RES, BLOCK_V_RES);
-        blocksCanvasCtx.restore();
-        continue;
-      }
 
       blocksCanvasCtx.fillStyle = color;
       drawBlockGlyph(blocksCanvasCtx, codepoint, column * BLOCK_H_RES, y);
@@ -732,6 +715,30 @@ function drawBlockGlyph(ctx, codepoint, x, y) {
     case 0x2590:
       // right half block (https://symbl.cc/en/2590/)
       ctx.fillRect(x + halfX, y, halfX, BLOCK_V_RES);
+      break;
+
+    case 0x2591:
+      // light shade (https://symbl.cc/en/2591/)
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      ctx.fillRect(x, y, BLOCK_H_RES, BLOCK_V_RES);
+      ctx.restore();
+      break;
+
+    case 0x2592:
+      // medium shade (https://symbl.cc/en/2592/)
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(x, y, BLOCK_H_RES, BLOCK_V_RES);
+      ctx.restore();
+      break;
+
+    case 0x2593:
+      // dark shade (https://symbl.cc/en/2593/)
+      ctx.save();
+      ctx.globalAlpha = 0.75;
+      ctx.fillRect(x, y, BLOCK_H_RES, BLOCK_V_RES);
+      ctx.restore();
       break;
 
     case 0x2594:
