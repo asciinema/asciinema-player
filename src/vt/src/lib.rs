@@ -26,8 +26,8 @@ pub struct Vt {
     bold_is_bright: bool,
     bg_spans: Vec<BgSpan>,
     text_spans: Vec<TextSpan>,
-    blocks: Vec<Block>,
-    symbols: Vec<Symbol>,
+    raster_symbols: Vec<RasterSymbol>,
+    vector_symbols: Vec<VectorSymbol>,
     codepoints: Vec<u32>,
 }
 
@@ -36,8 +36,8 @@ struct Line {
     bg: (usize, u16),
     text: (usize, u16),
     codepoints: (usize, u16),
-    blocks: (usize, u16),
-    symbols: (usize, u16),
+    raster_symbols: (usize, u16),
+    vector_symbols: (usize, u16),
 }
 
 #[derive(Clone, Default)]
@@ -58,14 +58,14 @@ struct TextSpan {
 }
 
 #[repr(C)]
-struct Block {
+struct RasterSymbol {
     column: u16,
     codepoint: u32,
     color: Color,
 }
 
 #[repr(C)]
-struct Symbol {
+struct VectorSymbol {
     column: u16,
     codepoint: u32,
     color: Color,
@@ -99,8 +99,8 @@ pub fn create(cols: usize, rows: usize, scrollback_limit: usize, bold_is_bright:
         bold_is_bright,
         bg_spans: Vec::with_capacity(cols),
         text_spans: Vec::with_capacity(cols),
-        blocks: Vec::with_capacity(cols),
-        symbols: Vec::with_capacity(cols),
+        raster_symbols: Vec::with_capacity(cols),
+        vector_symbols: Vec::with_capacity(cols),
         codepoints: Vec::with_capacity(cols),
     }
 }
@@ -132,8 +132,8 @@ impl Vt {
 
         self.bg_spans.clear();
         self.text_spans.clear();
-        self.blocks.clear();
-        self.symbols.clear();
+        self.raster_symbols.clear();
+        self.vector_symbols.clear();
         self.codepoints.clear();
 
         let cursor_column = {
@@ -190,18 +190,18 @@ impl Vt {
                 }
             }
 
-            // text spans, blocks and symbols
+            // text spans and symbols
 
-            if is_block(ch) {
-                self.blocks.push(Block {
+            if is_raster_symbol(ch) {
+                self.raster_symbols.push(RasterSymbol {
                     column,
                     codepoint: ch as u32,
                     color: fg_color.clone(),
                 });
 
                 ch = ' ';
-            } else if is_symbol(ch) {
-                self.symbols.push(Symbol {
+            } else if is_vector_symbol(ch) {
+                self.vector_symbols.push(VectorSymbol {
                     column,
                     codepoint: ch as u32,
                     color: fg_color.clone(),
@@ -262,8 +262,14 @@ impl Vt {
                 self.text_spans.as_ptr() as usize,
                 self.text_spans.len() as u16,
             ),
-            blocks: (self.blocks.as_ptr() as usize, self.blocks.len() as u16),
-            symbols: (self.symbols.as_ptr() as usize, self.symbols.len() as u16),
+            raster_symbols: (
+                self.raster_symbols.as_ptr() as usize,
+                self.raster_symbols.len() as u16,
+            ),
+            vector_symbols: (
+                self.vector_symbols.as_ptr() as usize,
+                self.vector_symbols.len() as u16,
+            ),
             codepoints: (
                 self.codepoints.as_ptr() as usize,
                 self.codepoints.len() as u16,
@@ -357,7 +363,7 @@ fn is_standalone_char(ch: char, width: u16) -> bool {
     NF_MATERIAL_DESIGN_ICONS.contains(&ch)
 }
 
-fn is_symbol(ch: char) -> bool {
+fn is_vector_symbol(ch: char) -> bool {
     // Powerline triangles
     ('\u{e0b0}'..='\u{e0b3}').contains(&ch)
         // Symbols for Legacy Computing: block diagonals + triangular blocks
@@ -367,7 +373,7 @@ fn is_symbol(ch: char) -> bool {
         || ('\u{25e2}'..='\u{25e5}').contains(&ch)
 }
 
-fn is_block(ch: char) -> bool {
+fn is_raster_symbol(ch: char) -> bool {
     // box drawing + block elements
     ('\u{2580}'..='\u{259f}').contains(&ch)
         // black square
@@ -513,11 +519,11 @@ const _: () = {
     assert!(size_of::<TextSpan>() == 12);
     assert!(align_of::<TextSpan>() == 2);
 
-    assert!(size_of::<Block>() == 12);
-    assert!(align_of::<Block>() == 4);
+    assert!(size_of::<RasterSymbol>() == 12);
+    assert!(align_of::<RasterSymbol>() == 4);
 
-    assert!(size_of::<Symbol>() == 16);
-    assert!(align_of::<Symbol>() == 4);
+    assert!(size_of::<VectorSymbol>() == 16);
+    assert!(align_of::<VectorSymbol>() == 4);
 
     assert!(size_of::<Color>() == 4);
     assert!(align_of::<Color>() == 1);

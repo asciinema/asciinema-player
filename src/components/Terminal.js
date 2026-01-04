@@ -14,9 +14,9 @@ const BLINK_MASK = 1 << 5;
 export default (props) => {
   const core = props.core;
   const textRowPool = [];
-  const symbolRowPool = [];
-  const symbolUsePool = [];
-  const symbolDefCache = new Set();
+  const vectorSymbolRowPool = [];
+  const vectorSymbolUsePool = [];
+  const vectorSymbolDefCache = new Set();
   const colorsCache = new Map();
   const attrClassCache = new Map();
 
@@ -59,9 +59,9 @@ export default (props) => {
   let blocksCanvasEl;
   let blocksCanvasCtx;
   let textEl;
-  let symbolsEl;
-  let symbolDefsEl;
-  let symbolRowsEl;
+  let vectorSymbolsEl;
+  let vectorSymbolDefsEl;
+  let vectorSymbolRowsEl;
   let frameRequestId;
   let blinkIntervalId;
   let cssTheme;
@@ -249,8 +249,8 @@ export default (props) => {
     const line = core.getLine(rowIndex, cursorOn);
 
     renderRowText(rowIndex, line.text, line.codepoints, theme);
-    renderRowBlocks(rowIndex, line.blocks, theme);
-    renderRowSymbols(rowIndex, line.symbols, theme);
+    renderRowRasterSymbols(rowIndex, line.raster_symbols, theme);
+    renderRowVectorSymbols(rowIndex, line.vector_symbols, theme);
     renderRowBg(rowIndex, line.bg, theme);
   }
 
@@ -294,9 +294,9 @@ export default (props) => {
     textEl.children[rowIndex].replaceChildren(frag);
   }
 
-  function renderRowBlocks(rowIndex, blocks, theme) {
-    // The memory layout of a Block must follow one defined in lib.rs (see the assertions at the bottom)
-    const view = core.getDataView(blocks, 12);
+  function renderRowRasterSymbols(rowIndex, symbols, theme) {
+    // The memory layout of a RasterSymbol must follow one defined in lib.rs (see the assertions at the bottom)
+    const view = core.getDataView(symbols, 12);
 
     const y = rowIndex * BLOCK_V_RES;
     const width = size().cols * BLOCK_H_RES;
@@ -314,12 +314,12 @@ export default (props) => {
     }
   }
 
-  function renderRowSymbols(rowIndex, symbols, theme) {
-    // The memory layout of a Symbol must follow one defined in lib.rs (see the assertions at the bottom)
+  function renderRowVectorSymbols(rowIndex, symbols, theme) {
+    // The memory layout of a VectorSymbol must follow one defined in lib.rs (see the assertions at the bottom)
     const view = core.getDataView(symbols, 16);
 
-    const symbolFrag = document.createDocumentFragment();
-    const symbolRow = symbolRowsEl.children[rowIndex];
+    const frag = document.createDocumentFragment();
+    const symbolRow = vectorSymbolRowsEl.children[rowIndex];
     let i = 0;
 
     while (i < view.byteLength) {
@@ -330,15 +330,15 @@ export default (props) => {
       i += 16;
 
       const blink = (attrs & BLINK_MASK) !== 0;
-      const el = createSymbolNode(codepoint, column, color, blink);
+      const el = createVectorSymbolNode(codepoint, column, color, blink);
 
       if (el) {
-        symbolFrag.appendChild(el);
+        frag.appendChild(el);
       }
     }
 
-    recycleSymbolUses(symbolRow);
-    symbolRow.replaceChildren(symbolFrag);
+    recycleVectorSymbolUses(symbolRow);
+    symbolRow.replaceChildren(frag);
   }
 
   function renderRowBg(rowIndex, spans, theme) {
@@ -451,7 +451,7 @@ export default (props) => {
   }
 
   function adjustSymbolRowNodeCount(rows) {
-    let r = symbolRowsEl.children.length;
+    let r = vectorSymbolRowsEl.children.length;
 
     if (r < rows) {
       const frag = document.createDocumentFragment();
@@ -463,13 +463,13 @@ export default (props) => {
         r += 1;
       }
 
-      symbolRowsEl.appendChild(frag);
+      vectorSymbolRowsEl.appendChild(frag);
     }
 
-    while (symbolRowsEl.children.length > rows) {
-      const row = symbolRowsEl.lastElementChild;
-      symbolRowsEl.removeChild(row);
-      symbolRowPool.push(row);
+    while (vectorSymbolRowsEl.children.length > rows) {
+      const row = vectorSymbolRowsEl.lastElementChild;
+      vectorSymbolRowsEl.removeChild(row);
+      vectorSymbolRowPool.push(row);
     }
   }
 
@@ -485,7 +485,7 @@ export default (props) => {
   }
 
   function getNewSymbolRow() {
-    let row = symbolRowPool.pop();
+    let row = vectorSymbolRowPool.pop();
 
     if (row === undefined) {
       row = document.createElementNS(SVG_NS, "g");
@@ -495,8 +495,8 @@ export default (props) => {
     return row;
   }
 
-  function createSymbolNode(codepoint, column, fg, blink) {
-    if (!ensureSymbolDef(codepoint)) {
+  function createVectorSymbolNode(codepoint, column, fg, blink) {
+    if (!ensureVectorSymbolDef(codepoint)) {
       return null;
     }
 
@@ -504,7 +504,7 @@ export default (props) => {
     const symbolX = isPowerline ? column - POWERLINE_SYMBOL_NUDGE : column;
     const symbolWidth = isPowerline ? 1 + POWERLINE_SYMBOL_NUDGE * 2 : 1;
 
-    const node = getSymbolUse();
+    const node = getVectorSymbolUse();
     node.setAttribute("href", `#sym-${codepoint}`);
     node.setAttribute("x", symbolX);
     node.setAttribute("y", 0);
@@ -526,16 +526,16 @@ export default (props) => {
     return node;
   }
 
-  function recycleSymbolUses(row) {
+  function recycleVectorSymbolUses(row) {
     while (row.firstChild) {
       const child = row.firstChild;
       row.removeChild(child);
-      symbolUsePool.push(child);
+      vectorSymbolUsePool.push(child);
     }
   }
 
-  function getSymbolUse() {
-    let node = symbolUsePool.pop();
+  function getVectorSymbolUse() {
+    let node = vectorSymbolUsePool.pop();
 
     if (node === undefined) {
       node = document.createElementNS(SVG_NS, "use");
@@ -544,14 +544,14 @@ export default (props) => {
     return node;
   }
 
-  function ensureSymbolDef(codepoint) {
-    const content = getSymbolDef(codepoint);
+  function ensureVectorSymbolDef(codepoint) {
+    const content = getVectorSymbolDef(codepoint);
 
     if (!content) {
       return false;
     }
 
-    if (symbolDefCache.has(codepoint)) {
+    if (vectorSymbolDefCache.has(codepoint)) {
       return true;
     }
 
@@ -562,8 +562,8 @@ export default (props) => {
     symbol.setAttribute("preserveAspectRatio", "none");
     symbol.setAttribute("overflow", "visible");
     symbol.innerHTML = content;
-    symbolDefsEl.appendChild(symbol);
-    symbolDefCache.add(codepoint);
+    vectorSymbolDefsEl.appendChild(symbol);
+    vectorSymbolDefCache.add(codepoint);
     return true;
   }
 
@@ -580,10 +580,10 @@ export default (props) => {
         height="100%"
         aria-hidden="true"
         classList={{ "ap-blink": blinkOn() }}
-        ref={symbolsEl}
+        ref={vectorSymbolsEl}
       >
-        <defs ref={symbolDefsEl}></defs>
-        <g ref={symbolRowsEl}></g>
+        <defs ref={vectorSymbolDefsEl}></defs>
+        <g ref={vectorSymbolRowsEl}></g>
       </svg>
       <pre
         class="ap-term-text"
@@ -1173,7 +1173,7 @@ function drawBlockGlyph(ctx, codepoint, x, y) {
 
 const SYMBOL_STROKE = 0.05;
 
-function getSymbolDef(codepoint) {
+function getVectorSymbolDef(codepoint) {
   const stroke = `stroke="currentColor" stroke-width="${SYMBOL_STROKE}" stroke-linejoin="miter" stroke-linecap="square"`;
   const strokeButt = `stroke="currentColor" stroke-width="${SYMBOL_STROKE}" stroke-linejoin="miter" stroke-linecap="butt"`;
   const stroked = (d) => `<path d="${d}" fill="none" ${stroke}/>`;
