@@ -364,13 +364,15 @@ fn is_standalone_char(ch: char, width: u16) -> bool {
 }
 
 fn is_vector_symbol(ch: char) -> bool {
+    // Geometric Shapes: black triangles
+    ('\u{25e2}'..='\u{25e5}').contains(&ch)
+    // digram for greater yin (⚏)
+    || ch == '\u{268f}'
     // Powerline triangles
-    ('\u{e0b0}'..='\u{e0b3}').contains(&ch)
-        // Symbols for Legacy Computing: block diagonals + triangular blocks
-        || ('\u{1fb3c}'..='\u{1fb69}').contains(&ch)
-        || ('\u{1fb6a}'..='\u{1fb6c}').contains(&ch)
-        // Geometric Shapes: black triangles
-        || ('\u{25e2}'..='\u{25e5}').contains(&ch)
+    || ('\u{e0b0}'..='\u{e0b3}').contains(&ch)
+    // Symbols for Legacy Computing: block diagonals + triangular blocks
+    || ('\u{1fb3c}'..='\u{1fb69}').contains(&ch)
+    || ('\u{1fb6a}'..='\u{1fb6c}').contains(&ch)
 }
 
 fn is_raster_symbol(ch: char) -> bool {

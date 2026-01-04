@@ -1172,6 +1172,7 @@ function drawBlockGlyph(ctx, codepoint, x, y) {
 }
 
 const SYMBOL_STROKE = 0.05;
+const CELL_RATIO = 9.0375 / 20;
 
 function getVectorSymbolDef(codepoint) {
   const stroke = `stroke="currentColor" stroke-width="${SYMBOL_STROKE}" stroke-linejoin="miter" stroke-linecap="square"`;
@@ -1196,6 +1197,26 @@ function getVectorSymbolDef(codepoint) {
     // ◥ - black upper right triangle (https://symbl.cc/en/25E5/)
     case 0x25e5:
       return '<path d="M1,0 L1,1 L0,0 Z" fill="currentColor"/>' + stroked("M1,0 L1,1 L0,0 Z");
+
+    case 0x268f: {
+      // ⚏ - digram for greater yin (https://symbl.cc/en/268F/)
+      const horizontalGap = 0.15;
+      const verticalGap = 0.2;
+      const lineHeight = 0.17;
+      const halfHorizontalGap = horizontalGap / 2;
+      const halfVerticalGap = verticalGap / 2;
+      const toViewBoxY = (offset) => 0.5 + offset * CELL_RATIO;
+      const leftX1 = 0.5 - halfHorizontalGap;
+      const rightX0 = 0.5 + halfHorizontalGap;
+      const rightX1 = 1 + 0.02; // slight overdraw
+      const topY0 = toViewBoxY(-halfVerticalGap - lineHeight);
+      const topY1 = toViewBoxY(-halfVerticalGap);
+      const bottomY0 = toViewBoxY(halfVerticalGap);
+      const bottomY1 = toViewBoxY(halfVerticalGap + lineHeight);
+      const rect = (x0, x1, y0, y1) => `M${x0},${y0} L${x1},${y0} L${x1},${y1} L${x0},${y1} Z`;
+
+      return `<path d="${rect(0, leftX1, topY0, topY1)} ${rect(rightX0, rightX1, topY0, topY1)} ${rect(0, leftX1, bottomY0, bottomY1)} ${rect(rightX0, rightX1, bottomY0, bottomY1)}" fill="currentColor"/>`;
+    }
 
     // 🬼 - lower left block diagonal lower middle left to lower centre (https://symbl.cc/en/1FB3C/)
     case 0x1fb3c:
