@@ -54,10 +54,8 @@ export default (props) => {
   };
 
   let el;
-  let bgCanvasEl;
-  let bgCanvasCtx;
-  let blocksCanvasEl;
-  let blocksCanvasCtx;
+  let canvasEl;
+  let canvasCtx;
   let textEl;
   let vectorSymbolsEl;
   let vectorSymbolDefsEl;
@@ -68,8 +66,7 @@ export default (props) => {
   let cursorHold = false;
 
   onMount(() => {
-    setupBgCanvas();
-    setupBlocksCanvas();
+    setupCanvas();
     setInitialTheme();
     adjustTextRowNodeCount(size().rows);
     adjustSymbolRowNodeCount(size().rows);
@@ -101,36 +98,20 @@ export default (props) => {
     }
   });
 
-  function setupBgCanvas() {
-    bgCanvasCtx = bgCanvasEl.getContext("2d");
-    if (!bgCanvasCtx) throw new Error("2D ctx not available");
+  function setupCanvas() {
+    canvasCtx = canvasEl.getContext("2d");
+    if (!canvasCtx) throw new Error("2D ctx not available");
     const { cols, rows } = size();
-    bgCanvasEl.width = cols;
-    bgCanvasEl.height = rows;
-    bgCanvasEl.style.imageRendering = "pixelated";
-    bgCanvasCtx.imageSmoothingEnabled = false;
-  }
-
-  function setupBlocksCanvas() {
-    blocksCanvasCtx = blocksCanvasEl.getContext("2d");
-    if (!blocksCanvasCtx) throw new Error("2D ctx not available");
-    const { cols, rows } = size();
-    blocksCanvasEl.width = cols * BLOCK_H_RES;
-    blocksCanvasEl.height = rows * BLOCK_V_RES;
-    blocksCanvasEl.style.imageRendering = "pixelated";
-    blocksCanvasCtx.imageSmoothingEnabled = false;
+    canvasEl.width = cols * BLOCK_H_RES;
+    canvasEl.height = rows * BLOCK_V_RES;
+    canvasEl.style.imageRendering = "pixelated";
+    canvasCtx.imageSmoothingEnabled = false;
   }
 
   function resizeCanvas({ cols, rows }) {
-    bgCanvasEl.width = cols;
-    bgCanvasEl.height = rows;
-    bgCanvasCtx.imageSmoothingEnabled = false;
-  }
-
-  function resizeBlocksCanvas({ cols, rows }) {
-    blocksCanvasEl.width = cols * BLOCK_H_RES;
-    blocksCanvasEl.height = rows * BLOCK_V_RES;
-    blocksCanvasCtx.imageSmoothingEnabled = false;
+    canvasEl.width = cols * BLOCK_H_RES;
+    canvasEl.height = rows * BLOCK_V_RES;
+    canvasCtx.imageSmoothingEnabled = false;
   }
 
   function setInitialTheme() {
@@ -214,7 +195,6 @@ export default (props) => {
     batch(function () {
       if (newSize !== undefined) {
         resizeCanvas(newSize);
-        resizeBlocksCanvas(newSize);
         adjustTextRowNodeCount(newSize.rows);
         adjustSymbolRowNodeCount(newSize.rows);
         setSize(newSize);
@@ -248,10 +228,78 @@ export default (props) => {
   function renderRow(rowIndex, theme, cursorOn) {
     const line = core.getLine(rowIndex, cursorOn);
 
-    renderRowText(rowIndex, line.text, line.codepoints, theme);
+    clearCanvasRow(rowIndex);
+    renderRowBg(rowIndex, line.bg, theme);
     renderRowRasterSymbols(rowIndex, line.raster_symbols, theme);
     renderRowVectorSymbols(rowIndex, line.vector_symbols, theme);
-    renderRowBg(rowIndex, line.bg, theme);
+    renderRowText(rowIndex, line.text, line.codepoints, theme);
+  }
+
+  function clearCanvasRow(rowIndex) {
+    canvasCtx.clearRect(0, rowIndex * BLOCK_V_RES, size().cols * BLOCK_H_RES, BLOCK_V_RES);
+  }
+
+  function renderRowBg(rowIndex, spans, theme) {
+    // The memory layout of a BgSpan must follow one defined in lib.rs (see the assertions at the bottom)
+    const view = core.getDataView(spans, 8);
+
+    const y = rowIndex * BLOCK_V_RES;
+    let i = 0;
+
+    while (i < view.byteLength) {
+      const column = view.getUint16(i + 0, true);
+      const width = view.getUint16(i + 2, true);
+      const color = getColor(view, i + 4, theme);
+      i += 8;
+
+      canvasCtx.fillStyle = color;
+      canvasCtx.fillRect(column * BLOCK_H_RES, y, width * BLOCK_H_RES, BLOCK_V_RES);
+    }
+  }
+
+  function renderRowRasterSymbols(rowIndex, symbols, theme) {
+    // The memory layout of a RasterSymbol must follow one defined in lib.rs (see the assertions at the bottom)
+    const view = core.getDataView(symbols, 12);
+
+    const y = rowIndex * BLOCK_V_RES;
+    let i = 0;
+
+    while (i < view.byteLength) {
+      const column = view.getUint16(i + 0, true);
+      const codepoint = view.getUint32(i + 4, true);
+      const color = getColor(view, i + 8, theme) || theme.fg;
+      i += 12;
+
+      canvasCtx.fillStyle = color;
+      drawBlockGlyph(canvasCtx, codepoint, column * BLOCK_H_RES, y);
+    }
+  }
+
+  function renderRowVectorSymbols(rowIndex, symbols, theme) {
+    // The memory layout of a VectorSymbol must follow one defined in lib.rs (see the assertions at the bottom)
+    const view = core.getDataView(symbols, 16);
+
+    const frag = document.createDocumentFragment();
+    const symbolRow = vectorSymbolRowsEl.children[rowIndex];
+    let i = 0;
+
+    while (i < view.byteLength) {
+      const column = view.getUint16(i + 0, true);
+      const codepoint = view.getUint32(i + 4, true);
+      const color = getColor(view, i + 8, theme);
+      const attrs = view.getUint8(i + 12);
+      i += 16;
+
+      const blink = (attrs & BLINK_MASK) !== 0;
+      const el = createVectorSymbolNode(codepoint, column, color, blink);
+
+      if (el) {
+        frag.appendChild(el);
+      }
+    }
+
+    recycleVectorSymbolUses(symbolRow);
+    symbolRow.replaceChildren(frag);
   }
 
   function renderRowText(rowIndex, spans, codepoints, theme) {
@@ -292,71 +340,6 @@ export default (props) => {
     }
 
     textEl.children[rowIndex].replaceChildren(frag);
-  }
-
-  function renderRowRasterSymbols(rowIndex, symbols, theme) {
-    // The memory layout of a RasterSymbol must follow one defined in lib.rs (see the assertions at the bottom)
-    const view = core.getDataView(symbols, 12);
-
-    const y = rowIndex * BLOCK_V_RES;
-    const width = size().cols * BLOCK_H_RES;
-    blocksCanvasCtx.clearRect(0, y, width, BLOCK_V_RES);
-    let i = 0;
-
-    while (i < view.byteLength) {
-      const column = view.getUint16(i + 0, true);
-      const codepoint = view.getUint32(i + 4, true);
-      const color = getColor(view, i + 8, theme) || theme.fg;
-      i += 12;
-
-      blocksCanvasCtx.fillStyle = color;
-      drawBlockGlyph(blocksCanvasCtx, codepoint, column * BLOCK_H_RES, y);
-    }
-  }
-
-  function renderRowVectorSymbols(rowIndex, symbols, theme) {
-    // The memory layout of a VectorSymbol must follow one defined in lib.rs (see the assertions at the bottom)
-    const view = core.getDataView(symbols, 16);
-
-    const frag = document.createDocumentFragment();
-    const symbolRow = vectorSymbolRowsEl.children[rowIndex];
-    let i = 0;
-
-    while (i < view.byteLength) {
-      const column = view.getUint16(i + 0, true);
-      const codepoint = view.getUint32(i + 4, true);
-      const color = getColor(view, i + 8, theme);
-      const attrs = view.getUint8(i + 12);
-      i += 16;
-
-      const blink = (attrs & BLINK_MASK) !== 0;
-      const el = createVectorSymbolNode(codepoint, column, color, blink);
-
-      if (el) {
-        frag.appendChild(el);
-      }
-    }
-
-    recycleVectorSymbolUses(symbolRow);
-    symbolRow.replaceChildren(frag);
-  }
-
-  function renderRowBg(rowIndex, spans, theme) {
-    // The memory layout of a BgSpan must follow one defined in lib.rs (see the assertions at the bottom)
-    const view = core.getDataView(spans, 8);
-
-    bgCanvasCtx.clearRect(0, rowIndex, size().cols, 1);
-    let i = 0;
-
-    while (i < view.byteLength) {
-      const column = view.getUint16(i + 0, true);
-      const width = view.getUint16(i + 2, true);
-      const color = getColor(view, i + 4, theme);
-      i += 8;
-
-      bgCanvasCtx.fillStyle = color;
-      bgCanvasCtx.fillRect(column, rowIndex, width, 1);
-    }
   }
 
   function getAttrClass(attrs) {
@@ -569,8 +552,7 @@ export default (props) => {
 
   return (
     <div class="ap-term" style={style()} ref={el}>
-      <canvas class="ap-term-bg" ref={bgCanvasEl} />
-      <canvas class="ap-term-blocks" ref={blocksCanvasEl} />
+      <canvas ref={canvasEl} />
       <svg
         class="ap-term-symbols"
         xmlns="http://www.w3.org/2000/svg"
