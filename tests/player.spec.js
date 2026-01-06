@@ -399,6 +399,37 @@ test("explicit theme", async ({ page }) => {
   }
 });
 
+test("poster - npt", async ({ page }) => {
+  await createPlayer(page, "/assets/long.cast", {
+    poster: "npt:7",
+  });
+
+  await page.waitForTimeout(500);
+
+  await expectTermText(page, ["start", "one", "six"]);
+});
+
+test("poster - data:text/plain", async ({ page }) => {
+  await createPlayer(page, "/assets/long.cast", {
+    poster: "data:text/plain,hello world",
+  });
+
+  await page.waitForTimeout(500);
+
+  await expectTermText(page, "hello world");
+});
+
+test("poster - data:text/plain - with preload", async ({ page }) => {
+  await createPlayer(page, "/assets/long.cast", {
+    poster: "data:text/plain,hello world",
+    preload: true,
+  });
+
+  await page.waitForTimeout(500);
+
+  await expectTermText(page, "hello world");
+});
+
 const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "input", "marker"];
 
 async function createPlayer(page, src, opts = {}) {
@@ -509,6 +540,22 @@ function expectTermSize(terminal, cols, rows) {
       });
     })
     .toEqual({ cols, rows });
+}
+
+async function expectTermText(page, fragments, timeout = 1000) {
+  const termText = page.locator(".ap-term-text");
+  await termText.waitFor();
+  const expected = Array.isArray(fragments) ? fragments : [fragments];
+
+  await expect
+    .poll(
+      async () => {
+        const text = await termText.innerText();
+        return expected.every((fragment) => text.includes(fragment));
+      },
+      { timeout },
+    )
+    .toBe(true);
 }
 
 async function clickProgressBar(page, position) {

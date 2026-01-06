@@ -345,6 +345,7 @@ class Core {
       this.play();
     } else if (this.poster.type === "text") {
       this._feed(this.poster.value);
+      this.needsClear = true;
     }
   }
 
@@ -508,8 +509,11 @@ class Core {
     this._initializeVt(this.cols, this.rows);
 
     if (meta.poster !== undefined) {
-      this.needsClear = true;
       meta.poster.forEach((text) => this.vt.feed(text));
+      this.needsClear = true;
+    } else if (this.poster.type === "text") {
+      this.vt.feed(this.poster.value);
+      this.needsClear = true;
     }
 
     this._dispatchEvent("metadata", {
@@ -579,7 +583,6 @@ class Core {
     this.vt = this.wasm.create(cols, rows, 100, this.boldIsBright);
     this.vt.cols = cols;
     this.vt.rows = rows;
-
   }
 
   _parsePoster(poster) {
