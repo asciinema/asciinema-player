@@ -9,7 +9,9 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-static STANDALONE_CHARS_LUT: [bool; 65536] = build_standalone_chars_lut();
+const STANDALONE_CHARS_LUT_BITS: usize = 65536;
+const STANDALONE_CHARS_LUT_SIZE: usize = STANDALONE_CHARS_LUT_BITS / 8;
+static STANDALONE_CHARS_LUT: [u8; STANDALONE_CHARS_LUT_SIZE] = build_standalone_chars_lut();
 const NF_MATERIAL_DESIGN_ICONS: RangeInclusive<char> = '\u{f0001}'..='\u{f1af0}';
 
 const BOLD_MASK: u8 = 1;
@@ -357,10 +359,27 @@ fn is_standalone_char(ch: char, width: u16) -> bool {
 
     // symbols with codepoints < 65536 - use lookup table
     if (ch as u32) & 0xffff0000 == 0 {
-        return STANDALONE_CHARS_LUT[ch as usize];
+        return standalone_chars_lut_contains(ch as u16);
     }
 
     NF_MATERIAL_DESIGN_ICONS.contains(&ch)
+}
+
+#[inline]
+fn standalone_chars_lut_contains(cp: u16) -> bool {
+    let (byte_idx, mask) = standalone_chars_lut_byte_and_mask(cp as u32);
+    let byte = STANDALONE_CHARS_LUT[byte_idx];
+
+    byte & mask != 0
+}
+
+#[inline(always)]
+const fn standalone_chars_lut_byte_and_mask(cp: u32) -> (usize, u8) {
+    let idx = cp as usize;
+    let byte_idx = idx >> 3;
+    let bit_mask = 1u8 << (idx & 7);
+
+    (byte_idx, bit_mask)
 }
 
 fn is_vector_symbol(ch: char) -> bool {
@@ -447,8 +466,8 @@ impl Serialize for Color {
     }
 }
 
-const fn build_standalone_chars_lut() -> [bool; 65536] {
-    let mut lut = [false; 65536];
+const fn build_standalone_chars_lut() -> [u8; STANDALONE_CHARS_LUT_SIZE] {
+    let mut lut = [0; STANDALONE_CHARS_LUT_SIZE];
 
     // box drawing
     fill_lut(&mut lut, 0x2500..=0x257f);
@@ -506,11 +525,12 @@ const fn build_standalone_chars_lut() -> [bool; 65536] {
     lut
 }
 
-const fn fill_lut(t: &mut [bool; 65536], range: RangeInclusive<u32>) {
+const fn fill_lut(t: &mut [u8; STANDALONE_CHARS_LUT_SIZE], range: RangeInclusive<u32>) {
     let mut cp = *range.start();
 
     while cp <= *range.end() {
-        t[cp as usize] = true;
+        let (byte_idx, bit_mask) = standalone_chars_lut_byte_and_mask(cp);
+        t[byte_idx] |= bit_mask;
         cp += 1;
     }
 }
@@ -536,3 +556,29 @@ const _: () = {
     assert!(size_of::<TextAttrs>() == 1);
     assert!(align_of::<TextAttrs>() == 1);
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn standalone_chars_lut_lookup_has_expected_values() {
+        assert!(standalone_chars_lut_contains(0x2500));
+        assert!(standalone_chars_lut_contains(0x257f));
+        assert!(standalone_chars_lut_contains(0x2800));
+        assert!(standalone_chars_lut_contains(0x28ff));
+        assert!(standalone_chars_lut_contains(0xe0b0));
+        assert!(standalone_chars_lut_contains(0xf533));
+        assert!(!standalone_chars_lut_contains(0x24ff));
+        assert!(!standalone_chars_lut_contains(0x2600));
+        assert!(!standalone_chars_lut_contains(0xffff));
+    }
+
+    #[test]
+    fn is_standalone_char_behavior_is_preserved_for_non_lut_paths() {
+        assert!(!is_standalone_char('A', 1));
+        assert!(is_standalone_char('中', 2));
+        assert!(is_standalone_char('\u{f0001}', 1));
+        assert!(!is_standalone_char('\u{1f600}', 1));
+    }
+}
