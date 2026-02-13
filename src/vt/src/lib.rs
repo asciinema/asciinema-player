@@ -500,6 +500,9 @@ const fn build_standalone_chars_lut() -> [bool; 65536] {
     // NF Codicons
     fill_lut(&mut lut, 0xea60..=0xec1e);
 
+    // Black Large Circle
+    fill_lut(&mut lut, 0x2b24..=0x2b24);
+
     lut
 }
 
