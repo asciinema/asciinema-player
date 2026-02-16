@@ -34,6 +34,12 @@ pub struct Vt {
 }
 
 #[derive(Serialize)]
+struct FeedResult {
+    lines: Vec<usize>,
+    scrolled: usize,
+}
+
+#[derive(Serialize)]
 struct Line {
     bg: (usize, u16),
     text: (usize, u16),
@@ -111,7 +117,13 @@ pub fn create(cols: usize, rows: usize, scrollback_limit: usize, bold_is_bright:
 impl Vt {
     pub fn feed(&mut self, s: &str) -> JsValue {
         let changes = self.vt.feed_str(s);
-        serde_wasm_bindgen::to_value(&changes.lines).unwrap()
+        let scrolled = changes.scrollback.count();
+
+        serde_wasm_bindgen::to_value(&FeedResult {
+            lines: changes.lines,
+            scrolled,
+        })
+        .unwrap()
     }
 
     pub fn resize(&mut self, cols: usize, rows: usize) -> JsValue {

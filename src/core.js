@@ -10,6 +10,8 @@ import eventsource from "./driver/eventsource";
 import parseAsciicast from "./parser/asciicast";
 import parseTypescript from "./parser/typescript";
 import parseTtyrec from "./parser/ttyrec";
+import ImageStore from "./image/store.js";
+import ImageInterceptor, { calculateImageRows } from "./image/interceptor.js";
 
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
@@ -164,7 +166,7 @@ class EndedState extends State {
     this.core._dispatchEvent("play");
 
     if (await this.driver.restart()) {
-      this.core._setState('playing');
+      this.core._setState("playing");
     }
   }
 
@@ -173,8 +175,8 @@ class EndedState extends State {
   }
 
   async seek(where) {
-    if (await this.driver.seek(where) === true) {
-      this.core._setState('idle');
+    if ((await this.driver.seek(where)) === true) {
+      this.core._setState("idle");
       return true;
     }
 
@@ -209,6 +211,8 @@ class Core {
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.audioUrl = opts.audioUrl;
     this.boldIsBright = opts.boldIsBright ?? false;
+    this.charW = null;
+    this.charH = null;
     this.commandQueue = Promise.resolve();
     this.needsClear = false;
 
@@ -229,6 +233,14 @@ class Core {
       ["seeked", []],
       ["vtUpdate", []],
     ]);
+
+    // Image support
+    this.imageStore = new ImageStore();
+    this.imageInterceptor = null; // Initialized after VT is ready
+
+    this.imageStore.onImageReady = () => {
+      this._dispatchEvent("vtUpdate", { imagesScrolled: true });
+    };
   }
 
   async init() {
@@ -251,10 +263,7 @@ class Core {
     const resize = this._resizeVt.bind(this);
     const setState = this._setState.bind(this);
 
-    const posterTime =
-      this.poster.type === "npt" && !this.autoPlay
-        ? this.poster.value
-        : undefined;
+    const posterTime = this.poster.type === "npt" && !this.autoPlay ? this.poster.value : undefined;
 
     this.driver = this.driver(
       {
@@ -487,8 +496,115 @@ class Core {
   }
 
   _feed(data) {
-    const changedRows = this.vt.feed(data);
-    this._dispatchEvent("vtUpdate", { changedRows });
+    const isReset = data.includes("\x1bc");
+    if (isReset) {
+      this.imageStore.clear();
+      if (this.imageInterceptor) {
+        this.imageInterceptor.reset();
+      }
+    }
+
+    if (!this.imageInterceptor) {
+      const result = this.vt.feed(data);
+      this._dispatchEvent("vtUpdate", { changedRows: result.lines });
+      return;
+    }
+
+    const { images, cleanedText } = this.imageInterceptor.parse(data);
+
+    if (images.length === 0) {
+      // Fast path: no images in this feed
+      const result = this.vt.feed(cleanedText);
+      const hadImages = this.imageStore.size > 0;
+
+      if (result.scrolled > 0 && hadImages) {
+        this._scrollImages(result.scrolled);
+      }
+
+      this._dispatchEvent("vtUpdate", {
+        changedRows: result.lines,
+        imagesCleared: isReset,
+        imagesScrolled: result.scrolled > 0 && hadImages,
+      });
+      return;
+    }
+
+    // Image path: split feed at image boundaries
+    images.sort((a, b) => a.textPosition - b.textPosition);
+
+    const allChangedRows = new Set();
+    const newImageIds = [];
+    let pos = 0;
+    let imagesScrolled = false;
+
+    for (const image of images) {
+      // Feed text before this image
+      const textBefore = cleanedText.slice(pos, image.textPosition);
+      if (textBefore.length > 0) {
+        const result = this.vt.feed(textBefore);
+        for (const r of result.lines) allChangedRows.add(r);
+        if (result.scrolled > 0 && this.imageStore.size > 0) {
+          this._scrollImages(result.scrolled);
+          imagesScrolled = true;
+        }
+      }
+
+      // Capture cursor position - this is where image goes
+      const cursor = this.getCursor();
+      const imageRow = cursor.row;
+      const imageCol = cursor.col;
+
+      // Calculate image display rows
+      const imageDisplayRows = calculateImageRows(image, this.vt.cols, this.charW, this.charH);
+      image.displayRows = imageDisplayRows;
+
+      // Feed newlines to advance cursor past image area
+      const newlines = "\n".repeat(imageDisplayRows);
+      const result = this.vt.feed(newlines);
+      for (const r of result.lines) allChangedRows.add(r);
+
+      // Scroll existing images (before adding the new one)
+      if (result.scrolled > 0 && this.imageStore.size > 0) {
+        this._scrollImages(result.scrolled);
+        imagesScrolled = true;
+      }
+
+      // Add image at scroll-adjusted position
+      const adjustedRow = imageRow - result.scrolled;
+      const id = this.imageStore.add(image, imageCol, adjustedRow);
+      newImageIds.push(id);
+
+      pos = image.textPosition;
+    }
+
+    // Feed remaining text after last image
+    const remaining = cleanedText.slice(pos);
+    if (remaining.length > 0) {
+      const result = this.vt.feed(remaining);
+      for (const r of result.lines) allChangedRows.add(r);
+      if (result.scrolled > 0 && this.imageStore.size > 0) {
+        this._scrollImages(result.scrolled);
+        imagesScrolled = true;
+      }
+    }
+
+    this._dispatchEvent("vtUpdate", {
+      changedRows: Array.from(allChangedRows),
+      newImages: newImageIds.length > 0 ? newImageIds : undefined,
+      imagesCleared: isReset,
+      imagesScrolled,
+    });
+  }
+
+  _scrollImages(scrollAmount) {
+    for (const image of this.imageStore.getAllImages()) {
+      const newRow = image.row - scrollAmount;
+      if (newRow + (image.displayRows || 1) <= 0) {
+        this.imageStore.remove(image.id);
+      } else {
+        this.imageStore.updateRow(image.id, newRow);
+      }
+    }
   }
 
   async _initializeDriver() {
@@ -533,7 +649,11 @@ class Core {
 
   _clearIfNeeded() {
     if (this.needsClear) {
-      this._feed('\x1bc');
+      this.imageStore.clear();
+      if (this.imageInterceptor) {
+        this.imageInterceptor.reset();
+      }
+      this._feed("\x1bc");
       this.needsClear = false;
     }
   }
@@ -543,6 +663,12 @@ class Core {
     this.cols = cols;
     this.rows = rows;
     this._initializeVt(cols, rows);
+
+    // Clear image store and reset interceptor on VT reset
+    this.imageStore.clear();
+    if (this.imageInterceptor) {
+      this.imageInterceptor.reset();
+    }
 
     if (init !== undefined && init !== "") {
       this.vt.feed(init);
@@ -579,10 +705,25 @@ class Core {
   }
 
   _initializeVt(cols, rows) {
-    this.logger.debug('vt init', { cols, rows });
-    this.vt = this.wasm.create(cols, rows, 100, this.boldIsBright);
+    this.logger.debug("vt init", { cols, rows });
+    this.vt = this.wasm.create(cols, rows, 0, this.boldIsBright);
     this.vt.cols = cols;
     this.vt.rows = rows;
+
+    this.imageInterceptor = new ImageInterceptor();
+  }
+
+  getAllImages() {
+    return this.imageStore.getAllImages();
+  }
+
+  getImageBlobUrl(id) {
+    return this.imageStore.getBlobUrl(id);
+  }
+
+  setCharMetrics(charW, charH) {
+    this.charW = charW;
+    this.charH = charH;
   }
 
   _parsePoster(poster) {

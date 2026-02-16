@@ -48,7 +48,8 @@ Notable features:
 * [starting playback at specific time](https://docs.asciinema.org/manual/player/options/#startat),
 * [API for programmatic control](https://docs.asciinema.org/manual/player/api/),
 * [keyboard shortcuts](https://docs.asciinema.org/manual/player/shortcuts/),
-* [support for other recording formats](https://docs.asciinema.org/manual/player/parsers/) like ttyrec, typescript.
+* [support for other recording formats](https://docs.asciinema.org/manual/player/parsers/) like ttyrec, typescript,
+* inline image rendering via the [iTerm2 Inline Images Protocol](https://iterm2.com/documentation-images.html) (OSC 1337), including PDF support (rendered via [pdf.js](https://mozilla.github.io/pdf.js/)).
 
 ## Building
 

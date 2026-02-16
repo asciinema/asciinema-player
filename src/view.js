@@ -3,6 +3,7 @@ import Player from "./components/Player";
 
 function mount(core, elem, opts = {}) {
   const metrics = measureTerminal(opts.terminalFontFamily, opts.terminalLineHeight);
+  core.setCharMetrics(metrics.charW, metrics.charH);
 
   const props = {
     core: core,

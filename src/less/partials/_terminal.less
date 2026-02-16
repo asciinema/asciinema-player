@@ -6,6 +6,18 @@ div.ap-term {
   border-style: solid;
   border-color: var(--term-color-background);
   box-sizing: content-box;
+
+  .ap-image-overlay {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1;
+
+    img {
+      position: absolute;
+    }
+  }
 }
 
 div.ap-term canvas {

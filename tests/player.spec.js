@@ -399,6 +399,27 @@ test("explicit theme", async ({ page }) => {
   }
 });
 
+test("renders inline images from iTerm2 OSC 1337 sequences", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/images-iterm2.cast", {
+    autoPlay: true,
+  });
+
+  await playerApi.events.waitFor("ended");
+
+  // Text labels should be visible (OSC sequences stripped)
+  await expectTermText(page, ["PNG:", "JPEG:", "WebP:", "BMP:", "GIF:", "SVG:", "PDF:", "done"]);
+
+  // Image overlay should contain rendered images with blob URLs.
+  // All 7 formats render directly except PDF, which requires CDN-loaded
+  // pdf.js — expect at least 6 (PDF may or may not load in CI).
+  const images = page.locator(".ap-image-overlay img");
+  const count = await images.count();
+  expect(count).toBeGreaterThanOrEqual(6);
+
+  const srcs = await images.evaluateAll((imgs) => imgs.map((img) => img.src));
+  expect(srcs.every((src) => src.startsWith("blob:"))).toBe(true);
+});
+
 test("poster - npt", async ({ page }) => {
   await createPlayer(page, "/assets/long.cast", {
     poster: "npt:7",

@@ -1,4 +1,5 @@
 import { batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import ImageOverlay from "./ImageOverlay.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const BLOCK_H_RES = 8;
@@ -29,6 +30,7 @@ export default (props) => {
   const lineHeight = () => props.lineHeight ?? 1.3333333333;
   const [blinkOn, setBlinkOn] = createSignal(true);
   const cursorOn = createMemo(() => blinkOn() || cursorHold);
+  const [imageUpdateCounter, setImageUpdateCounter] = createSignal(0);
 
   const style = createMemo(() => {
     return {
@@ -119,7 +121,7 @@ export default (props) => {
     pendingChanges.theme = cssTheme;
   }
 
-  function onVtUpdate({ size: newSize, theme, changedRows }) {
+  function onVtUpdate({ size: newSize, theme, changedRows, newImages, imagesCleared, imagesScrolled }) {
     let activity = false;
 
     if (changedRows !== undefined) {
@@ -128,6 +130,11 @@ export default (props) => {
         cursorHold = true;
         activity = true;
       }
+    }
+
+    // Trigger image overlay update when images change
+    if ((newImages !== undefined && newImages.length > 0) || imagesCleared || imagesScrolled) {
+      setImageUpdateCounter((c) => c + 1);
     }
 
     if (theme !== undefined && props.preferEmbeddedTheme) {
@@ -553,6 +560,13 @@ export default (props) => {
   return (
     <div class="ap-term" style={style()} ref={el}>
       <canvas ref={canvasEl} />
+      <ImageOverlay
+        core={core}
+        cols={size().cols}
+        rows={size().rows}
+        lineHeight={lineHeight()}
+        imageUpdateSignal={imageUpdateCounter}
+      />
       <svg
         class="ap-term-symbols"
         xmlns="http://www.w3.org/2000/svg"
