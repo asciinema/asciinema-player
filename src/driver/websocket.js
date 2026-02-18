@@ -27,15 +27,18 @@ function websocket(
   let successfulConnectionTimeout;
   let stop = false;
   let wasOnline = false;
+  let gotExitEvent = false;
+  let gotEotEvent = false;
   let initTimeout;
   let audioElement;
 
   function connect() {
     socket = new WebSocket(url, ["v1.alis", "v2.asciicast", "v3.asciicast", "raw"]);
     socket.binaryType = "arraybuffer";
+    let proto;
 
     socket.onopen = () => {
-      const proto = socket.protocol || "raw";
+      proto = socket.protocol || "raw";
 
       logger.info("opened");
       logger.info(`activating ${proto} protocol handler`);
@@ -59,16 +62,30 @@ function websocket(
       clearTimeout(initTimeout);
       stopBuffer();
 
-      if (stop || event.code === 1000 || event.code === 1005) {
+      if (stop) return;
+
+      let ended = false;
+      let endedMessage = "Stream ended";
+
+      if (proto === "v1.alis") {
+        if (gotEotEvent || (event.code >= 4000 && event.code <= 4100)) {
+          ended = true;
+          endedMessage = event.reason || endedMessage;
+        }
+      } else if (gotExitEvent || event.code === 1000 || event.code === 1005) {
+        ended = true;
+      }
+
+      if (ended) {
         logger.info("closed");
-        setState("ended", { message: "Stream ended" });
+        setState("ended", { message: endedMessage });
       } else if (event.code === 1002) {
         logger.debug(`close reason: ${event.reason}`);
         setState("ended", { message: "Err: Player not compatible with the server" });
       } else {
         clearTimeout(successfulConnectionTimeout);
         const delay = reconnectDelay(reconnectAttempt++);
-        logger.info(`unclean close, reconnecting in ${delay}...`);
+        logger.info(`unexpected close, reconnecting in ${delay}...`);
         setState("loading");
         setTimeout(connect, delay);
       }
@@ -87,6 +104,10 @@ function websocket(
         if (buf) {
           if (Array.isArray(result)) {
             buf.pushEvent(result);
+
+            if (result[1] === "x") {
+              gotExitEvent = true;
+            }
           } else if (typeof result === "string") {
             buf.pushText(result);
           } else if (typeof result === "object" && !Array.isArray(result)) {
@@ -95,6 +116,7 @@ function websocket(
           } else if (result === false) {
             // EOT
             onStreamEnd();
+            gotEotEvent = true;
           } else if (result !== undefined) {
             throw new Error(`unexpected value from protocol handler: ${result}`);
           }
@@ -139,6 +161,8 @@ function websocket(
     reset(cols, rows, init, theme);
     clock = new Clock();
     wasOnline = true;
+    gotExitEvent = false;
+    gotEotEvent = false;
 
     if (typeof time === "number") {
       clock.setTime(time);

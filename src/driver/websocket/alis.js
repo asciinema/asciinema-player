@@ -75,14 +75,16 @@ function alisHandler(logger) {
 
     if (type === 0x01) {
       return parseResetFrame(view, buffer);
-    } else if (type === 0x6f) {
+    } else if (type === 0x6f) { // "o"
       return parseOutputFrame(view, buffer);
-    } else if (type === 0x69) {
+    } else if (type === 0x69) { // "i"
       return parseInputFrame(view, buffer);
-    } else if (type === 0x72) {
+    } else if (type === 0x72) { // "r"
       return parseResizeFrame(view);
-    } else if (type === 0x6d) {
+    } else if (type === 0x6d) { // "m"
       return parseMarkerFrame(view, buffer);
+    } else if (type === 0x78) { // "x"
+      return parseExitFrame(view, buffer);
     } else if (type === 0x04) {
       // EOT
       handler = parseFirstFrame;
@@ -133,6 +135,15 @@ function alisHandler(logger) {
     const label = decoder.decode(new Uint8Array(buffer, view.offset, len));
 
     return [time, "m", { index, time, label}];
+  }
+
+  function parseExitFrame(view) {
+    let _id = view.decodeVarUint();
+    const relTime = view.decodeVarUint();
+    lastEventTime += relTime;
+    const status = view.decodeVarUint();
+
+    return [lastEventTime / ONE_SEC_IN_USEC, "x", { status }];
   }
 
   return function(buffer) {
