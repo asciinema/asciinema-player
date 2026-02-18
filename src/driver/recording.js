@@ -546,6 +546,26 @@ function recording(
     }
   }
 
+  function setSpeed(newSpeed) {
+    const currentPlaybackMs = eventTimeoutId
+      ? now() - startTime
+      : (pauseElapsedTime ?? 0);
+
+    if (eventTimeoutId) {
+      speed = newSpeed;
+      startTime = now() - currentPlaybackMs;
+      cancelNextEvent();
+      scheduleNextEvent();
+    } else {
+      speed = newSpeed;
+    }
+
+    if (audioElement) {
+      audioElement.currentTime = currentPlaybackMs / 1000 / newSpeed;
+      audioElement.playbackRate = newSpeed;
+    }
+  }
+
   return {
     init,
     play,
@@ -557,6 +577,7 @@ function recording(
     mute,
     unmute,
     getCurrentTime,
+    setSpeed,
   };
 }
 

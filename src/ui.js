@@ -18,6 +18,7 @@ function create(src, elem, workerUrl, opts = {}) {
     play: () => ready.then(core.play.bind(core)),
     pause: () => ready.then(core.pause.bind(core)),
     seek: (pos) => ready.then(() => core.seek(pos)),
+    setSpeed: (speed) => ready.then(() => core.setSpeed(speed)),
   };
 
   player.addEventListener = (name, callback) => {
@@ -102,6 +103,10 @@ class CoreWorkerProxy {
 
   getDuration() {
     return this._sendCommand('getDuration');
+  }
+
+  setSpeed(speed) {
+    return this._sendCommand('setSpeed', speed);
   }
 
   addEventListener(eventName, handler) {
