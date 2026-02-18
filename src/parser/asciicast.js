@@ -1,4 +1,5 @@
 import Stream from "../stream";
+import { normalizeTheme } from "../theme";
 
 async function parse(data) {
   if (data instanceof Response) {
@@ -106,21 +107,13 @@ function parseAsciicastV3(header, events) {
 }
 
 function parseTheme(theme) {
-  if (theme === undefined) return;
+  const palette = typeof theme?.palette === "string" ? theme.palette.split(":") : undefined;
 
-  const colorRegex = /^#[0-9A-Fa-f]{6}$/;
-  const paletteRegex = /^(#[0-9A-Fa-f]{6}:){7,}#[0-9A-Fa-f]{6}$/;
-  const fg = theme?.fg;
-  const bg = theme?.bg;
-  const palette = theme?.palette;
-
-  if (colorRegex.test(fg) && colorRegex.test(bg) && paletteRegex.test(palette)) {
-    return {
-      foreground: fg,
-      background: bg,
-      palette: palette.split(":"),
-    };
-  }
+  return normalizeTheme({
+    foreground: theme?.fg,
+    background: theme?.bg,
+    palette,
+  });
 }
 
 function unparseAsciicastV2(recording) {

@@ -1,3 +1,5 @@
+import { normalizeTheme } from "../../theme";
+
 function ascicastV3Handler() {
   let parse = parseHeader;
   let currentTime = 0;
@@ -19,11 +21,20 @@ function ascicastV3Handler() {
     };
 
     if (header.term.theme) {
-      term.theme = {
+      const palette =
+        typeof header.term.theme.palette === "string"
+          ? header.term.theme.palette.split(":")
+          : undefined;
+
+      const theme = normalizeTheme({
         foreground: header.term.theme.fg,
         background: header.term.theme.bg,
-        palette: header.term.theme.palette.split(":")
-      };
+        palette,
+      });
+
+      if (theme) {
+        term.theme = theme;
+      }
     }
 
     return { time: 0.0, term };

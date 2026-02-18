@@ -1,5 +1,5 @@
 import { batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
-import { hexToOklab, lerpOklab, oklabToHex } from "../colors.js";
+import { hexToOklab, lerpOklab, normalizeHexColor, oklabToHex } from "../colors.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const BLOCK_H_RES = 8;
@@ -589,14 +589,22 @@ function buildTheme(theme) {
 
 function getCssTheme(el) {
   const style = getComputedStyle(el);
-  const foreground = style.getPropertyValue("--term-color-foreground");
-  const background = style.getPropertyValue("--term-color-background");
+
+  const foreground = normalizeHexColor(
+    style.getPropertyValue("--term-color-foreground"),
+    FALLBACK_THEME.foreground,
+  );
+
+  const background = normalizeHexColor(
+    style.getPropertyValue("--term-color-background"),
+    FALLBACK_THEME.background,
+  );
+
   const palette = [];
 
   for (let i = 0; i < 16; i++) {
-    const c = style.getPropertyValue(`--term-color-${i}`);
-    if (c === undefined) throw new Error(`--term-color-${i} has not been defined`);
-    palette[i] = c;
+    const fallback = i >= 8 ? palette[i - 8] : FALLBACK_THEME.palette[i];
+    palette[i] = normalizeHexColor(style.getPropertyValue(`--term-color-${i}`), fallback);
   }
 
   return { foreground, background, palette };

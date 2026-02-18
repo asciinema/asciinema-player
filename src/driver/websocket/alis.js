@@ -1,3 +1,5 @@
+import { normalizeTheme } from "../../theme";
+
 const ONE_SEC_IN_USEC = 1000000;
 
 function alisHandler(logger) {
@@ -161,7 +163,7 @@ function parseTheme(arr) {
     palette.push(hexColor(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]));
   }
 
-  return { foreground, background, palette };
+  return normalizeTheme({ foreground, background, palette });
 }
 
 function hexColor(r, g, b) {
