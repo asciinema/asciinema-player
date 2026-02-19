@@ -12,6 +12,7 @@ function mount(core, elem, opts = {}) {
     fit: opts.fit,
     controls: opts.controls,
     autoPlay: opts.autoPlay,
+    adaptivePalette: opts.adaptivePalette,
     terminalFontSize: opts.terminalFontSize,
     terminalFontFamily: opts.terminalFontFamily,
     terminalLineHeight: opts.terminalLineHeight,

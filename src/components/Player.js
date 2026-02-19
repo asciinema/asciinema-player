@@ -468,6 +468,7 @@ export default (props) => {
           rows={terminalRows()}
           scale={terminalScale()}
           blinking={blinking()}
+          adaptivePalette={props.adaptivePalette}
           lineHeight={props.terminalLineHeight}
           preferEmbeddedTheme={preferEmbeddedTheme}
           core={core}

@@ -1,5 +1,5 @@
 import { batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
-import { hexToOklab, lerpOklab, normalizeHexColor, oklabToHex } from "../colors.js";
+import { hexToOklab, lerpOklab, normalizeHexColor, oklabToHex, rgbToHex } from "../colors.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const BLOCK_H_RES = 8;
@@ -26,7 +26,7 @@ export default (props) => {
     { equals: (newVal, oldVal) => newVal.cols === oldVal.cols && newVal.rows === oldVal.rows },
   );
 
-  const [theme, setTheme] = createSignal(buildTheme(FALLBACK_THEME));
+  const [theme, setTheme] = createSignal(buildTheme(FALLBACK_THEME, props.adaptivePalette));
   const lineHeight = () => props.lineHeight ?? 1.3333333333;
   const [blinkOn, setBlinkOn] = createSignal(true);
   const cursorOn = createMemo(() => blinkOn() || cursorHold);
@@ -203,9 +203,9 @@ export default (props) => {
 
       if (newTheme !== undefined) {
         if (newTheme === null) {
-          setTheme(buildTheme(cssTheme));
+          setTheme(buildTheme(cssTheme, props.adaptivePalette));
         } else {
-          setTheme(buildTheme(newTheme));
+          setTheme(buildTheme(newTheme, props.adaptivePalette));
         }
 
         colorsCache.clear();
@@ -579,11 +579,13 @@ export default (props) => {
   );
 };
 
-function buildTheme(theme) {
+function buildTheme(theme, adaptivePalette = false) {
   return {
     fg: theme.foreground,
     bg: theme.background,
-    palette: generate256Palette(theme.palette, theme.background, theme.foreground),
+    palette: adaptivePalette
+      ? generate256Palette(theme.palette, theme.background, theme.foreground)
+      : generateFixed256Palette(theme.palette),
   };
 }
 
@@ -648,6 +650,30 @@ function generate256Palette(base16, bg, fg) {
   for (let i = 0; i < 24; i += 1) {
     const t = (i + 1) / 25;
     palette.push(oklabToHex(lerpOklab(t, bgLab, fgLab)));
+  }
+
+  return palette;
+}
+
+function generateFixed256Palette(base16) {
+  const palette = [...base16];
+  const levels = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff];
+
+  // 216 color cube range
+
+  for (let r = 0; r < 6; r += 1) {
+    for (let g = 0; g < 6; g += 1) {
+      for (let b = 0; b < 6; b += 1) {
+        palette.push(rgbToHex(levels[r], levels[g], levels[b]));
+      }
+    }
+  }
+
+  // grayscale range
+
+  for (let i = 0; i < 24; i += 1) {
+    const level = 8 + i * 10;
+    palette.push(rgbToHex(level, level, level));
   }
 
   return palette;

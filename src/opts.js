@@ -19,6 +19,7 @@ const UI_OPTS = [
   'autoPlay',
   'autoplay',
   'cols',
+  'adaptivePalette',
   'controls',
   'fit',
   'rows',
@@ -45,6 +46,7 @@ function uiOpts(inputOpts, overrides = {}) {
   );
 
   opts.autoPlay ??= opts.autoplay;
+  opts.adaptivePalette ??= false;
   opts.controls ??= "auto";
 
   return { ...opts, ...overrides };

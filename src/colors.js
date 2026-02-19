@@ -87,13 +87,12 @@ function hexToSrgb(hex) {
   ];
 }
 
-function srgbToHex(rgb) {
-  const toHex = (value) => {
-    const byte = Math.round(clamp(value, 0, 1) * 255);
-    return byte.toString(16).padStart(2, "0");
-  };
+function rgbToHex(r, g, b) {
+  return `#${toHexByte(r)}${toHexByte(g)}${toHexByte(b)}`;
+}
 
-  return `#${toHex(rgb[0])}${toHex(rgb[1])}${toHex(rgb[2])}`;
+function srgbToHex(rgb) {
+  return rgbToHex(rgb[0] * 255, rgb[1] * 255, rgb[2] * 255);
 }
 
 function srgbToLinear(c) {
@@ -114,4 +113,9 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-export { normalizeHexColor, lerpOklab, hexToOklab, oklabToHex };
+function toHexByte(value) {
+  const byte = Math.round(clamp(value, 0, 255));
+  return byte.toString(16).padStart(2, "0");
+}
+
+export { normalizeHexColor, lerpOklab, hexToOklab, oklabToHex, rgbToHex };

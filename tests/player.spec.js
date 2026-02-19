@@ -354,9 +354,47 @@ test("automatic embedded theme", async ({ page }) => {
   }
 });
 
-test("generated 256 color palette", async ({ page }) => {
+test("fixed 256 color palette by default", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/theme-256.cast", {
     autoPlay: true,
+  });
+
+  await playerApi.events.waitFor("ended");
+
+  const expectedColors = [
+    "#000000", // 16
+    "#0000ff", // 21
+    "#00ff00", // 46
+    "#00ffff", // 51
+    "#ff0000", // 196
+    "#ff00ff", // 201
+    "#ffff00", // 226
+    "#ffffff", // 231
+    "#878787", // 102
+    "#afafaf", // 145
+    "#080808", // 232
+    "#767676", // 243
+    "#eeeeee", // 255
+  ];
+
+  const samples = [];
+
+  for (let col = 0; col < expectedColors.length; col += 1) {
+    samples.push([0, col, 0.5, 0.5, expectedColors[col]]);
+    samples.push([1, col, 0.5, 0.5, expectedColors[col]]);
+  }
+
+  const { cells } = await sampleTerminalPixels(page, { cells: samples });
+
+  for (let i = 0; i < samples.length; i += 1) {
+    expect(cells[i]).toBe(samples[i][4]);
+  }
+});
+
+test("generated 256 color palette with adaptivePalette enabled", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/theme-256.cast", {
+    autoPlay: true,
+    adaptivePalette: true,
   });
 
   await playerApi.events.waitFor("ended");
