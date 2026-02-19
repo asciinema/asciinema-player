@@ -18,6 +18,7 @@ function create(src, elem, opts = {}) {
     play: () => ready.then(core.play.bind(core)),
     pause: () => ready.then(core.pause.bind(core)),
     seek: (pos) => ready.then(() => core.seek(pos)),
+    setSpeed: (speed) => ready.then(() => core.setSpeed(speed)),
   };
 
   player.addEventListener = (name, callback) => {

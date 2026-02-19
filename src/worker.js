@@ -41,6 +41,8 @@ function invoke(method, params) {
       return core.seek(params);
     case "step":
       return core.step(params);
+    case "setSpeed":
+      return core.setSpeed(params);
     case "getCurrentTime":
       return core.getCurrentTime();
     case "getRemainingTime":

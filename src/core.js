@@ -390,6 +390,14 @@ class Core {
     return this._withState((state) => state.unmute());
   }
 
+  setSpeed(speed) {
+    this.speed = speed;
+
+    if (this.driver.setSpeed) {
+      this.driver.setSpeed(speed);
+    }
+  }
+
   getLine(n, cursorOn) {
     return this.vt.getLine(n, cursorOn);
   }
