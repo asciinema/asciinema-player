@@ -1,10 +1,18 @@
-const HEX_COLOR_REGEX = /^#[0-9a-f]{6}$/;
+const FULL_HEX_COLOR_REGEX = /^#[0-9a-f]{6}$/;
+const SHORT_HEX_COLOR_REGEX = /^#[0-9a-f]{3}$/;
 
 function normalizeHexColor(color, fallback = undefined) {
   if (typeof color !== "string") return fallback;
 
   const normalized = color.trim().toLowerCase();
-  if (HEX_COLOR_REGEX.test(normalized)) return normalized;
+
+  if (FULL_HEX_COLOR_REGEX.test(normalized)) {
+    return normalized;
+  }
+
+  if (SHORT_HEX_COLOR_REGEX.test(normalized)) {
+    return `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}`;
+  }
 
   return fallback;
 }
