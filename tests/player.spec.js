@@ -310,40 +310,8 @@ test("RGB color rendering", async ({ page }) => {
   expect(cells[5]).toBe("#fedcba");
 });
 
-test("box drawing vertical lines are raster-rendered with light/heavy widths", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/vertical-lines.cast", {
-    autoPlay: true,
-    theme: "dracula",
-  });
-
-  await playerApi.events.waitFor("ended");
-
-  const fg = "#f8f8f2";
-  const bg = "#282a36";
-
-  const { cells } = await sampleTerminalPixels(page, {
-    cells: [
-      [0, 0, 0.5625, 0.5], // light stroke pixel center (x = 4.5 / 8)
-      [0, 0, 0.4375, 0.5], // light left-adjacent pixel center (x = 3.5 / 8)
-      [0, 0, 0.3125, 0.5], // light side background
-      [0, 1, 0.5625, 0.5], // heavy right stroke pixel center (x = 4.5 / 8)
-      [0, 1, 0.4375, 0.5], // heavy left stroke pixel center (x = 3.5 / 8)
-      [0, 1, 0.3125, 0.5], // heavy side background
-    ],
-  });
-
-  expect(cells[0]).toBe(fg);
-  expect(cells[1]).toBe(bg);
-  expect(cells[2]).toBe(bg);
-  expect(cells[3]).toBe(fg);
-  expect(cells[4]).toBe(fg);
-  expect(cells[5]).toBe(bg);
-});
-
-test("box drawing vertical half lines are raster-rendered with direction and light/heavy widths", async ({
-  page,
-}) => {
-  const playerApi = await createPlayer(page, "/assets/vertical-half-lines.cast", {
+test("raster symbol groups render representative glyphs with expected pixels", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/raster-symbol-groups.cast", {
     autoPlay: true,
     theme: "dracula",
   });
@@ -357,33 +325,65 @@ test("box drawing vertical half lines are raster-rendered with direction and lig
 
   const { cells } = await sampleTerminalPixels(page, {
     cells: [
-      [0, 0, 0.5625, topY], // light up top stroke
-      [0, 0, 0.5625, bottomY], // light up bottom background
-      [0, 0, 0.4375, topY], // light up left-adjacent background
-      [0, 1, 0.5625, topY], // light down top background
-      [0, 1, 0.5625, bottomY], // light down bottom stroke
-      [0, 1, 0.4375, bottomY], // light down left-adjacent background
-      [0, 2, 0.5625, topY], // heavy up right stroke
-      [0, 2, 0.4375, topY], // heavy up left stroke
-      [0, 2, 0.5625, bottomY], // heavy up bottom background
-      [0, 3, 0.5625, topY], // heavy down top background
-      [0, 3, 0.5625, bottomY], // heavy down right stroke
-      [0, 3, 0.4375, bottomY], // heavy down left stroke
+      [0, 0, 0.5625, 0.5], // U+2502 light vertical: stroke
+      [0, 0, 0.4375, 0.5], // U+2502 light vertical: side background
+      [0, 1, 0.5625, 0.5], // U+2503 heavy vertical: right stroke
+      [0, 1, 0.4375, 0.5], // U+2503 heavy vertical: left stroke
+      [0, 1, 0.3125, 0.5], // U+2503 heavy vertical: side background
+      [0, 2, 0.5625, topY], // U+2575 light up: top stroke
+      [0, 2, 0.5625, bottomY], // U+2575 light up: bottom background
+      [0, 3, 0.5625, topY], // U+2577 light down: top background
+      [0, 3, 0.5625, bottomY], // U+2577 light down: bottom stroke
+      [0, 4, 0.4375, topY], // U+2579 heavy up: left top stroke
+      [0, 4, 0.5625, topY], // U+2579 heavy up: right top stroke
+      [0, 4, 0.5625, bottomY], // U+2579 heavy up: bottom background
+      [0, 5, 0.5625, topY], // U+257B heavy down: top background
+      [0, 5, 0.4375, bottomY], // U+257B heavy down: left bottom stroke
+      [0, 5, 0.5625, bottomY], // U+257B heavy down: right bottom stroke
+      [0, 6, 0.5, topY], // U+2580 upper half block: top fill
+      [0, 6, 0.5, bottomY], // U+2580 upper half block: bottom background
+      [0, 7, 0.25, 0.25], // U+259A quadrant: upper-left fill
+      [0, 7, 0.75, 0.25], // U+259A quadrant: upper-right background
+      [0, 7, 0.25, 0.75], // U+259A quadrant: lower-left background
+      [0, 7, 0.75, 0.75], // U+259A quadrant: lower-right fill
+      [0, 8, 0.5, 2.5 / 24], // U+25A0 black square: top background
+      [0, 8, 0.5, 11.5 / 24], // U+25A0 black square: middle fill
+      [0, 8, 0.5, 21.5 / 24], // U+25A0 black square: bottom background
+      [0, 9, 0.25, 4.5 / 24], // U+1FB00 sextant-1: top-left fill
+      [0, 9, 0.75, 4.5 / 24], // U+1FB00 sextant-1: top-right background
+      [0, 9, 0.25, 12.5 / 24], // U+1FB00 sextant-1: middle-left background
     ],
   });
 
-  expect(cells[0]).toBe(fg);
-  expect(cells[1]).toBe(bg);
-  expect(cells[2]).toBe(bg);
-  expect(cells[3]).toBe(bg);
-  expect(cells[4]).toBe(fg);
-  expect(cells[5]).toBe(bg);
-  expect(cells[6]).toBe(fg);
-  expect(cells[7]).toBe(fg);
-  expect(cells[8]).toBe(bg);
-  expect(cells[9]).toBe(bg);
-  expect(cells[10]).toBe(fg);
-  expect(cells[11]).toBe(fg);
+  expect(cells).toEqual([
+    fg,
+    bg,
+    fg,
+    fg,
+    bg,
+    fg,
+    bg,
+    bg,
+    fg,
+    fg,
+    fg,
+    bg,
+    bg,
+    fg,
+    fg,
+    fg,
+    bg,
+    fg,
+    bg,
+    bg,
+    fg,
+    bg,
+    fg,
+    bg,
+    fg,
+    bg,
+    bg,
+  ]);
 });
 
 test("automatic embedded theme", async ({ page }) => {
