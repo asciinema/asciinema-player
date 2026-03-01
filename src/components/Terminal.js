@@ -688,6 +688,36 @@ function drawBlockGlyph(ctx, codepoint, x, y) {
   const sextantY = BLOCK_V_RES / 3;
 
   switch (codepoint) {
+    case 0x2502:
+      // box drawings light vertical (https://symbl.cc/en/2502/)
+      ctx.fillRect(x + 4, y, 1, BLOCK_V_RES);
+      break;
+
+    case 0x2503:
+      // box drawings heavy vertical (https://symbl.cc/en/2503/)
+      ctx.fillRect(x + 3, y, 2, BLOCK_V_RES);
+      break;
+
+    case 0x2575:
+      // box drawings light up (https://symbl.cc/en/2575/)
+      ctx.fillRect(x + 4, y, 1, halfY);
+      break;
+
+    case 0x2577:
+      // box drawings light down (https://symbl.cc/en/2577/)
+      ctx.fillRect(x + 4, y + halfY, 1, halfY);
+      break;
+
+    case 0x2579:
+      // box drawings heavy up (https://symbl.cc/en/2579/)
+      ctx.fillRect(x + 3, y, 2, halfY);
+      break;
+
+    case 0x257b:
+      // box drawings heavy down (https://symbl.cc/en/257B/)
+      ctx.fillRect(x + 3, y + halfY, 2, halfY);
+      break;
+
     case 0x2580:
       // upper half block (https://symbl.cc/en/2580/)
       ctx.fillRect(x, y, BLOCK_H_RES, halfY);

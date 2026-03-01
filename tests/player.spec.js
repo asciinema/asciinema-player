@@ -310,6 +310,82 @@ test("RGB color rendering", async ({ page }) => {
   expect(cells[5]).toBe("#fedcba");
 });
 
+test("box drawing vertical lines are raster-rendered with light/heavy widths", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/vertical-lines.cast", {
+    autoPlay: true,
+    theme: "dracula",
+  });
+
+  await playerApi.events.waitFor("ended");
+
+  const fg = "#f8f8f2";
+  const bg = "#282a36";
+
+  const { cells } = await sampleTerminalPixels(page, {
+    cells: [
+      [0, 0, 0.5625, 0.5], // light stroke pixel center (x = 4.5 / 8)
+      [0, 0, 0.4375, 0.5], // light left-adjacent pixel center (x = 3.5 / 8)
+      [0, 0, 0.3125, 0.5], // light side background
+      [0, 1, 0.5625, 0.5], // heavy right stroke pixel center (x = 4.5 / 8)
+      [0, 1, 0.4375, 0.5], // heavy left stroke pixel center (x = 3.5 / 8)
+      [0, 1, 0.3125, 0.5], // heavy side background
+    ],
+  });
+
+  expect(cells[0]).toBe(fg);
+  expect(cells[1]).toBe(bg);
+  expect(cells[2]).toBe(bg);
+  expect(cells[3]).toBe(fg);
+  expect(cells[4]).toBe(fg);
+  expect(cells[5]).toBe(bg);
+});
+
+test("box drawing vertical half lines are raster-rendered with direction and light/heavy widths", async ({
+  page,
+}) => {
+  const playerApi = await createPlayer(page, "/assets/vertical-half-lines.cast", {
+    autoPlay: true,
+    theme: "dracula",
+  });
+
+  await playerApi.events.waitFor("ended");
+
+  const fg = "#f8f8f2";
+  const bg = "#282a36";
+  const topY = 5.5 / 24;
+  const bottomY = 18.5 / 24;
+
+  const { cells } = await sampleTerminalPixels(page, {
+    cells: [
+      [0, 0, 0.5625, topY], // light up top stroke
+      [0, 0, 0.5625, bottomY], // light up bottom background
+      [0, 0, 0.4375, topY], // light up left-adjacent background
+      [0, 1, 0.5625, topY], // light down top background
+      [0, 1, 0.5625, bottomY], // light down bottom stroke
+      [0, 1, 0.4375, bottomY], // light down left-adjacent background
+      [0, 2, 0.5625, topY], // heavy up right stroke
+      [0, 2, 0.4375, topY], // heavy up left stroke
+      [0, 2, 0.5625, bottomY], // heavy up bottom background
+      [0, 3, 0.5625, topY], // heavy down top background
+      [0, 3, 0.5625, bottomY], // heavy down right stroke
+      [0, 3, 0.4375, bottomY], // heavy down left stroke
+    ],
+  });
+
+  expect(cells[0]).toBe(fg);
+  expect(cells[1]).toBe(bg);
+  expect(cells[2]).toBe(bg);
+  expect(cells[3]).toBe(bg);
+  expect(cells[4]).toBe(fg);
+  expect(cells[5]).toBe(bg);
+  expect(cells[6]).toBe(fg);
+  expect(cells[7]).toBe(fg);
+  expect(cells[8]).toBe(bg);
+  expect(cells[9]).toBe(bg);
+  expect(cells[10]).toBe(fg);
+  expect(cells[11]).toBe(fg);
+});
+
 test("automatic embedded theme", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/theme.cast", {
     autoPlay: true,
