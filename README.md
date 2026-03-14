@@ -2,7 +2,7 @@
 
 [![Build status](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml/badge.svg)](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml)
 
-__asciinema player__ is a web player for terminal sessions recordings.
+__asciinema player__ is a web player for terminal session recordings.
 
 Unlike typical web _video_ players, which play heavyweight video files (`.mp4`,
 `.mov`), asciinema player plays lightweight terminal session recordings in the
