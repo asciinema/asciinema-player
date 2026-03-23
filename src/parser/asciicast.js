@@ -1,6 +1,9 @@
 import Stream from "../stream";
 import { normalizeTheme } from "../theme";
 
+const DEFAULT_COLS = 80;
+const DEFAULT_ROWS = 24;
+
 async function parse(data) {
   if (data instanceof Response) {
     const text = await data.text();
@@ -69,16 +72,16 @@ function parseAsciicastV1(data) {
   });
 
   return {
-    cols: data.width,
-    rows: data.height,
+    cols: data.width === 0 ? DEFAULT_COLS : data.width,
+    rows: data.height === 0 ? DEFAULT_ROWS : data.height,
     events,
   };
 }
 
 function parseAsciicastV2(header, events) {
   return {
-    cols: header.width,
-    rows: header.height,
+    cols: header.width === 0 ? DEFAULT_COLS : header.width,
+    rows: header.height === 0 ? DEFAULT_ROWS : header.height,
     theme: parseTheme(header.theme),
     events,
     idleTimeLimit: header.idle_time_limit,
@@ -98,8 +101,8 @@ function parseAsciicastV3(header, events) {
   });
 
   return {
-    cols: header.term.cols,
-    rows: header.term.rows,
+    cols: header.term.cols === 0 ? DEFAULT_COLS : header.term.cols,
+    rows: header.term.rows === 0 ? DEFAULT_ROWS : header.term.rows,
     theme: parseTheme(header.term?.theme),
     events,
     idleTimeLimit: header.idle_time_limit,

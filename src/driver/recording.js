@@ -3,13 +3,14 @@ import Stream from "../stream";
 
 function recording(
   src,
-  { feed, resize, onInput, onMarker, setState, logger },
+  { feed, reset, resize, logger, dispatch },
   {
     speed,
     idleTimeLimit,
     startAt,
+    preload,
     loop,
-    posterTime,
+    poster,
     markers: markers_,
     pauseOnMarkers,
     cols: initialCols,
@@ -36,17 +37,53 @@ function recording(
   let audioCtx;
   let audioElement;
   let audioSeekable = false;
+  let loaded;
 
-  async function init() {
+  function init() {
+    if (preload) {
+      ensureLoaded();
+    } else {
+      if (poster !== undefined) {
+        if (poster.type == "npt") {
+          ensureLoaded();
+        } else if (poster.type == "text") {
+          renderPoster();
+          poster = undefined;
+        }
+      }
+    }
+  }
+
+  function ensureLoaded() {
+    if (loaded === undefined) {
+      loaded = load();
+    }
+
+    return loaded;
+  }
+
+  function withLoaded(f) {
+    return async function (...args) {
+      await ensureLoaded();
+      return await f.apply(this, args);
+    };
+  }
+
+  async function load() {
     const timeout = setTimeout(() => {
-      setState("loading");
+      dispatch("loading");
     }, 3000);
 
     try {
       let metadata = loadRecording(src, logger, { idleTimeLimit, startAt, markers_ });
       const hasAudio = await loadAudio(audioUrl);
       metadata = await metadata;
-      return { ...metadata, hasAudio };
+      reset(metadata.size.cols, metadata.size.rows, undefined, metadata.theme);
+      renderPoster();
+      dispatch("metadata", { ...metadata, hasAudio });
+    } catch (e) {
+      dispatch("errored");
+      throw e;
     } finally {
       clearTimeout(timeout);
     }
@@ -74,10 +111,10 @@ function recording(
       dump(recording, dumpFilename);
     }
 
-    const poster = posterTime !== undefined ? getPoster(posterTime) : undefined;
+    const theme = recording.theme ?? null;
     markers = events.filter((e) => e[1] === "m").map((e) => [e[0], e[2].label]);
 
-    return { cols, rows, duration, theme: recording.theme, poster, markers };
+    return { size: { cols, rows }, duration, theme, markers };
   }
 
   async function loadAudio(audioUrl) {
@@ -141,6 +178,27 @@ function recording(
     return response;
   }
 
+  function renderPoster() {
+    if (poster !== undefined) {
+      if (poster.type == "npt") {
+        getPoster(poster.value).forEach(feed);
+      } else if (poster.type == "text") {
+        feed(poster.value);
+      }
+    }
+  }
+
+  function getPoster(time) {
+    return events.filter((e) => e[0] < time && e[1] === "o").map((e) => e[2]);
+  }
+
+  function clearPoster() {
+    if (poster !== undefined) {
+      feed("\x1bc");
+      poster = undefined;
+    }
+  }
+
   function scheduleNextEvent() {
     const nextEvent = events[nextEventIndex];
 
@@ -192,17 +250,18 @@ function recording(
     if (type === "o") {
       feed(data);
     } else if (type === "i") {
-      onInput(data);
+      dispatch("input", { data });
     } else if (type === "r") {
       const [cols, rows] = data.split("x");
       resize(cols, rows);
+      dispatch("metadata", { size: { cols, rows } });
     } else if (type === "m") {
-      onMarker(data);
+      dispatch("marker", data);
 
       if (pauseOnMarkers) {
         pause();
         pauseElapsedTime = time * 1000;
-        setState("idle", { reason: "paused" });
+        dispatch("pause");
 
         return true;
       }
@@ -227,7 +286,7 @@ function recording(
       }
     } else {
       pauseElapsedTime = duration * 1000;
-      setState("ended");
+      dispatch("ended");
 
       if (audioElement) {
         audioElement.pause();
@@ -236,14 +295,20 @@ function recording(
   }
 
   async function play() {
-    if (eventTimeoutId) throw new Error("already playing");
-    if (events[nextEventIndex] === undefined) throw new Error("already ended");
+    clearPoster();
+    dispatch("play");
+    await ensureLoaded();
 
-    if (effectiveStartAt !== null) {
-      seek(effectiveStartAt);
+    if (eventTimeoutId) return true;
+
+    if (events[nextEventIndex] === undefined) {
+      await doSeek(0);
+    } else if (effectiveStartAt !== null) {
+      await doSeek(effectiveStartAt);
     }
 
     await resume();
+    dispatch("playing");
 
     return true;
   }
@@ -257,10 +322,15 @@ function recording(
 
     if (!eventTimeoutId) return true;
 
-    cancelNextEvent();
-    pauseElapsedTime = now() - startTime;
+    doPause();
+    dispatch("pause");
 
     return true;
+  }
+
+  function doPause() {
+    cancelNextEvent();
+    pauseElapsedTime = now() - startTime;
   }
 
   async function resume() {
@@ -276,12 +346,26 @@ function recording(
   }
 
   async function seek(where) {
+    clearPoster();
+
+    if (await doSeek(where)) {
+      dispatch("seeked");
+      return true;
+    }
+
+    return false;
+  }
+
+  const doSeek = withLoaded(async function (where) {
     if (waitingForAudio) {
       return false;
     }
 
     const isPlaying = !!eventTimeoutId;
-    pause();
+
+    if (isPlaying) {
+      doPause();
+    }
 
     if (audioElement) {
       audioElement.pause();
@@ -357,7 +441,7 @@ function recording(
     }
 
     return true;
-  }
+  });
 
   function findMarkerTimeBefore(time) {
     if (markers.length == 0) return;
@@ -389,7 +473,11 @@ function recording(
     return firstMarkerTimeAfter;
   }
 
-  function step(n) {
+  const step = withLoaded(function (n) {
+    if (eventTimeoutId) return;
+
+    clearPoster();
+
     if (n === undefined) {
       n = 1;
     }
@@ -452,20 +540,10 @@ function recording(
     if (events[targetIndex + 1] === undefined) {
       onEnd();
     }
-  }
+  });
 
-  async function restart() {
-    if (eventTimeoutId) throw new Error("still playing");
-    if (events[nextEventIndex] !== undefined) throw new Error("not ended");
-
-    seek(0);
-    await resume();
-
-    return true;
-  }
-
-  function getPoster(time) {
-    return events.filter((e) => e[0] < time && e[1] === "o").map((e) => e[2]);
+  function getDuration() {
+    return duration;
   }
 
   function getCurrentTime() {
@@ -478,6 +556,7 @@ function recording(
 
   function resizeTerminalToInitialSize() {
     resize(initialCols, initialRows);
+    dispatch("metadata", { size: { cols: initialCols, rows: initialRows } });
   }
 
   function setupAudioCtx() {
@@ -506,7 +585,9 @@ function recording(
     logger.debug("audio buffering");
     waitingForAudio = true;
     shouldResumeOnAudioPlaying = !!eventTimeoutId;
-    waitingTimeout = setTimeout(() => setState("loading"), 1000);
+    waitingTimeout = setTimeout(() => {
+      dispatch("loading");
+    }, 1000);
 
     if (!eventTimeoutId) return true;
 
@@ -518,7 +599,7 @@ function recording(
   function onAudioPlaying() {
     logger.debug("audio resumed");
     clearTimeout(waitingTimeout);
-    setState("playing");
+    dispatch("playing");
 
     if (!waitingForAudio) return;
 
@@ -535,6 +616,7 @@ function recording(
   function mute() {
     if (audioElement) {
       audioElement.muted = true;
+      dispatch("muted", true);
       return true;
     }
   }
@@ -542,21 +624,51 @@ function recording(
   function unmute() {
     if (audioElement) {
       audioElement.muted = false;
+      dispatch("muted", false);
       return true;
     }
   }
 
+  let commandQueue = [];
+
+  async function processCommandQueue() {
+    while (commandQueue.length > 0) {
+      const [f, thiz, args, resolve] = commandQueue[0];
+      resolve(await f.apply(thiz, args));
+      commandQueue = commandQueue.slice(1);
+    }
+  }
+
+  function viaCommandQueue(f) {
+    return function (...args) {
+      let resolve;
+
+      const promise = new Promise((resolve_) => {
+        resolve = resolve_;
+      });
+
+      if (commandQueue.length === 0) {
+        commandQueue.push([f, this, args, resolve]);
+        processCommandQueue();
+      } else {
+        commandQueue.push([f, this, args, resolve]);
+      }
+
+      return promise;
+    };
+  }
+
   return {
     init,
-    play,
-    pause,
-    seek,
-    step,
-    restart,
     stop: pause,
-    mute,
-    unmute,
+    getDuration,
     getCurrentTime,
+    play: viaCommandQueue(play),
+    pause: viaCommandQueue(pause),
+    seek: viaCommandQueue(seek),
+    step: viaCommandQueue(step),
+    mute: viaCommandQueue(mute),
+    unmute: viaCommandQueue(unmute),
   };
 }
 

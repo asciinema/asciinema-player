@@ -92,6 +92,7 @@ export default (props) => {
     batch(() => {
       if (meta.duration !== undefined) {
         setDuration(meta.duration);
+        setState({ currentTime: 0, remainingTime: meta.duration, progress: 0 });
       }
 
       if (meta.markers !== undefined) {
@@ -125,7 +126,7 @@ export default (props) => {
     });
   };
 
-  const onCoreIdle = () => {
+  const onCorePause = () => {
     batch(() => {
       setIsPlaying(false);
       onStopped();
@@ -184,7 +185,7 @@ export default (props) => {
   core.addEventListener("metadata", onCoreMetadata);
   core.addEventListener("play", onCorePlay);
   core.addEventListener("playing", onCorePlaying);
-  core.addEventListener("idle", onCoreIdle);
+  core.addEventListener("pause", onCorePause);
   core.addEventListener("loading", onCoreLoading);
   core.addEventListener("offline", onCoreOffline);
   core.addEventListener("muted", onCoreMuted);
@@ -223,7 +224,7 @@ export default (props) => {
     core.removeEventListener("metadata", onCoreMetadata);
     core.removeEventListener("play", onCorePlay);
     core.removeEventListener("playing", onCorePlaying);
-    core.removeEventListener("idle", onCoreIdle);
+    core.removeEventListener("idle", onCorePause);
     core.removeEventListener("loading", onCoreLoading);
     core.removeEventListener("offline", onCoreOffline);
     core.removeEventListener("muted", onCoreMuted);
@@ -304,7 +305,7 @@ export default (props) => {
     }
 
     if (e.key == " ") {
-      core.togglePlay();
+      togglePlay();
     } else if (e.key == ",") {
       core.step(-1).then(updateTime);
     } else if (e.key == ".") {
@@ -425,7 +426,13 @@ export default (props) => {
   };
 
   const togglePlay = () => {
-    coreReady.then(() => core.togglePlay());
+    coreReady.then(() => {
+      if (isPlaying()) {
+        core.pause();
+      } else {
+        core.play();
+      }
+    });
   };
 
   const toggleMuted = () => {

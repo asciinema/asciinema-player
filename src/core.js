@@ -16,183 +16,9 @@ const DEFAULT_ROWS = 24;
 
 const vt = initVt({ module: vtWasmModule }); // trigger async loading of wasm
 
-class State {
-  constructor(core) {
-    this.core = core;
-    this.driver = core.driver;
-  }
-
-  onEnter(data) {}
-  init() {}
-  play() {}
-  pause() {}
-  togglePlay() {}
-
-  mute() {
-    if (this.driver && this.driver.mute()) {
-      this.core._dispatchEvent("muted", true);
-    }
-  }
-
-  unmute() {
-    if (this.driver && this.driver.unmute()) {
-      this.core._dispatchEvent("muted", false);
-    }
-  }
-
-  seek(where) {
-    return false;
-  }
-
-  step(n) {}
-
-  stop() {
-    this.driver.stop();
-  }
-}
-
-class UninitializedState extends State {
-  async init() {
-    try {
-      await this.core._initializeDriver();
-      return this.core._setState("idle");
-    } catch (e) {
-      this.core._setState("errored");
-      throw e;
-    }
-  }
-
-  async play() {
-    this.core._dispatchEvent("play");
-    const idleState = await this.init();
-    await idleState.doPlay();
-  }
-
-  async togglePlay() {
-    await this.play();
-  }
-
-  async seek(where) {
-    const idleState = await this.init();
-    return await idleState.seek(where);
-  }
-
-  async step(n) {
-    const idleState = await this.init();
-    await idleState.step(n);
-  }
-
-  stop() {}
-}
-
-class Idle extends State {
-  onEnter({ reason, message }) {
-    this.core._dispatchEvent("idle", { message });
-
-    if (reason === "paused") {
-      this.core._dispatchEvent("pause");
-    }
-  }
-
-  async play() {
-    this.core._dispatchEvent("play");
-    await this.doPlay();
-  }
-
-  async doPlay() {
-    const stop = await this.driver.play();
-
-    if (stop === true) {
-      this.core._setState("playing");
-    } else if (typeof stop === "function") {
-      this.core._setState("playing");
-      this.driver.stop = stop;
-    }
-  }
-
-  async togglePlay() {
-    await this.play();
-  }
-
-  seek(where) {
-    return this.driver.seek(where);
-  }
-
-  step(n) {
-    this.driver.step(n);
-  }
-}
-
-class PlayingState extends State {
-  onEnter() {
-    this.core._dispatchEvent("playing");
-  }
-
-  pause() {
-    if (this.driver.pause() === true) {
-      this.core._setState("idle", { reason: "paused" });
-    }
-  }
-
-  togglePlay() {
-    this.pause();
-  }
-
-  seek(where) {
-    return this.driver.seek(where);
-  }
-}
-
-class LoadingState extends State {
-  onEnter() {
-    this.core._dispatchEvent("loading");
-  }
-}
-
-class OfflineState extends State {
-  onEnter({ message }) {
-    this.core._dispatchEvent("offline", { message });
-  }
-}
-
-class EndedState extends State {
-  onEnter({ message }) {
-    this.core._dispatchEvent("ended", { message });
-  }
-
-  async play() {
-    this.core._dispatchEvent("play");
-
-    if (await this.driver.restart()) {
-      this.core._setState('playing');
-    }
-  }
-
-  async togglePlay() {
-    await this.play();
-  }
-
-  async seek(where) {
-    if (await this.driver.seek(where) === true) {
-      this.core._setState('idle');
-      return true;
-    }
-
-    return false;
-  }
-}
-
-class ErroredState extends State {
-  onEnter() {
-    this.core._dispatchEvent("errored");
-  }
-}
-
 class Core {
   constructor(src, opts) {
     this.logger = opts.logger;
-    this.state = new UninitializedState(this);
-    this.stateName = "uninitialized";
     this.driver = getDriver(src);
     this.changedLines = new Set();
     this.duration = undefined;
@@ -205,12 +31,10 @@ class Core {
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
     this.poster = this._parsePoster(opts.poster);
-    this.markers = this._normalizeMarkers(opts.markers);
+    this.markers = opts.markers;
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.audioUrl = opts.audioUrl;
     this.boldIsBright = opts.boldIsBright ?? false;
-    this.commandQueue = Promise.resolve();
-    this.needsClear = false;
 
     this.eventHandlers = new Map([
       ["ended", []],
@@ -237,33 +61,12 @@ class Core {
     this.memory = memory;
     this._initializeVt(this.cols ?? DEFAULT_COLS, this.rows ?? DEFAULT_ROWS);
 
-    const feed = this._feed.bind(this);
-
-    const onInput = (data) => {
-      this._dispatchEvent("input", { data });
-    };
-
-    const onMarker = ({ index, time, label }) => {
-      this._dispatchEvent("marker", { index, time, label });
-    };
-
-    const reset = this._resetVt.bind(this);
-    const resize = this._resizeVt.bind(this);
-    const setState = this._setState.bind(this);
-
-    const posterTime =
-      this.poster.type === "npt" && !this.autoPlay
-        ? this.poster.value
-        : undefined;
-
     this.driver = this.driver(
       {
-        feed,
-        onInput,
-        onMarker,
-        reset,
-        resize,
-        setState,
+        feed: this._feed.bind(this),
+        reset: this._resetVt.bind(this),
+        resize: this._resizeVt.bind(this),
+        dispatch: this._dispatchEvent.bind(this),
         logger: this.logger,
       },
       {
@@ -272,31 +75,22 @@ class Core {
         speed: this.speed,
         idleTimeLimit: this.idleTimeLimit,
         startAt: this.startAt,
+        preload: this.preload,
         loop: this.loop,
-        posterTime: posterTime,
+        poster: this.autoPlay ? undefined : this.poster,
         markers: this.markers,
         pauseOnMarkers: this.pauseOnMarkers,
         audioUrl: this.audioUrl,
       },
     );
 
-    if (typeof this.driver === "function") {
-      this.driver = { play: this.driver };
-    }
-
-    if (this.preload || posterTime !== undefined) {
-      this._withState((state) => state.init());
-    }
-
     const config = {
       isPausable: !!this.driver.pause,
       isSeekable: !!this.driver.seek,
     };
 
-    if (this.driver.init === undefined) {
-      this.driver.init = () => {
-        return {};
-      };
+    if (this.driver.stop === undefined) {
+      this.driver.stop = () => {};
     }
 
     if (this.driver.pause === undefined) {
@@ -311,20 +105,16 @@ class Core {
       this.driver.step = (n) => {};
     }
 
-    if (this.driver.stop === undefined) {
-      this.driver.stop = () => {};
-    }
-
-    if (this.driver.restart === undefined) {
-      this.driver.restart = () => {};
-    }
-
     if (this.driver.mute === undefined) {
       this.driver.mute = () => {};
     }
 
     if (this.driver.unmute === undefined) {
       this.driver.unmute = () => {};
+    }
+
+    if (this.driver.getDuration === undefined) {
+      this.driver.getDuration = () => {};
     }
 
     if (this.driver.getCurrentTime === undefined) {
@@ -339,55 +129,43 @@ class Core {
       this.driver.getCurrentTime = () => clock.getTime();
     }
 
-    this._dispatchEvent("ready", config);
+    if (this.driver.init) {
+      this.driver.init();
+    }
 
     if (this.autoPlay) {
       this.play();
-    } else if (this.poster.type === "text") {
-      this._feed(this.poster.value);
-      this.needsClear = true;
     }
+
+    this._dispatchEvent("ready", config);
   }
 
   play() {
-    this._clearIfNeeded();
-    return this._withState((state) => state.play());
+    return this.driver.play();
   }
 
   pause() {
-    return this._withState((state) => state.pause());
-  }
-
-  togglePlay() {
-    this._clearIfNeeded();
-    return this._withState((state) => state.togglePlay());
+    return this.driver.pause();
   }
 
   seek(where) {
-    this._clearIfNeeded();
-
-    return this._withState(async (state) => {
-      if (await state.seek(where)) {
-        this._dispatchEvent("seeked");
-      }
-    });
+    return this.driver.seek(where);
   }
 
   step(n) {
-    this._clearIfNeeded();
-    return this._withState((state) => state.step(n));
+    return this.driver.step(n);
   }
 
   stop() {
-    return this._withState((state) => state.stop());
+    return this.driver.stop();
   }
 
   mute() {
-    return this._withState((state) => state.mute());
+    return this.driver.mute();
   }
 
   unmute() {
-    return this._withState((state) => state.unmute());
+    return this.driver.unmute();
   }
 
   getLine(n, cursorOn) {
@@ -417,19 +195,23 @@ class Core {
   }
 
   getRemainingTime() {
-    if (typeof this.duration === "number") {
-      return this.duration - Math.min(this.getCurrentTime(), this.duration);
+    const duration = this.getDuration();
+
+    if (typeof duration === "number") {
+      return duration - Math.min(this.getCurrentTime(), duration);
     }
   }
 
   getProgress() {
-    if (typeof this.duration === "number") {
-      return Math.min(this.getCurrentTime(), this.duration) / this.duration;
+    const duration = this.getDuration();
+
+    if (typeof duration === "number") {
+      return Math.min(this.getCurrentTime(), duration) / duration;
     }
   }
 
   getDuration() {
-    return this.duration;
+    return this.driver.getDuration();
   }
 
   addEventListener(eventName, handler) {
@@ -451,91 +233,9 @@ class Core {
     }
   }
 
-  _withState(f) {
-    return this._enqueueCommand(() => f(this.state));
-  }
-
-  _enqueueCommand(f) {
-    this.commandQueue = this.commandQueue.then(f);
-
-    return this.commandQueue;
-  }
-
-  _setState(newState, data = {}) {
-    if (this.stateName === newState) return this.state;
-    this.stateName = newState;
-
-    if (newState === "playing") {
-      this.state = new PlayingState(this);
-    } else if (newState === "idle") {
-      this.state = new Idle(this);
-    } else if (newState === "loading") {
-      this.state = new LoadingState(this);
-    } else if (newState === "ended") {
-      this.state = new EndedState(this);
-    } else if (newState === "offline") {
-      this.state = new OfflineState(this);
-    } else if (newState === "errored") {
-      this.state = new ErroredState(this);
-    } else {
-      throw new Error(`invalid state: ${newState}`);
-    }
-
-    this.state.onEnter(data);
-
-    return this.state;
-  }
-
   _feed(data) {
     const changedRows = this.vt.feed(data);
     this._dispatchEvent("vtUpdate", { changedRows });
-  }
-
-  async _initializeDriver() {
-    const meta = await this.driver.init();
-    this.cols = this.cols ?? meta.cols ?? DEFAULT_COLS;
-    this.rows = this.rows ?? meta.rows ?? DEFAULT_ROWS;
-    this.duration = this.duration ?? meta.duration;
-    this.markers = this._normalizeMarkers(meta.markers) ?? this.markers ?? [];
-
-    if (this.cols === 0) {
-      this.cols = DEFAULT_COLS;
-    }
-
-    if (this.rows === 0) {
-      this.rows = DEFAULT_ROWS;
-    }
-
-    this._initializeVt(this.cols, this.rows);
-
-    if (meta.poster !== undefined) {
-      meta.poster.forEach((text) => this.vt.feed(text));
-      this.needsClear = true;
-    } else if (this.poster.type === "text") {
-      this.vt.feed(this.poster.value);
-      this.needsClear = true;
-    }
-
-    this._dispatchEvent("metadata", {
-      size: { cols: this.cols, rows: this.rows },
-      theme: meta.theme ?? null,
-      duration: this.duration,
-      markers: this.markers,
-      hasAudio: meta.hasAudio,
-    });
-
-    this._dispatchEvent("vtUpdate", {
-      size: { cols: this.cols, rows: this.rows },
-      theme: meta.theme ?? null,
-      changedRows: Array.from({ length: this.rows }, (_, i) => i),
-    });
-  }
-
-  _clearIfNeeded() {
-    if (this.needsClear) {
-      this._feed('\x1bc');
-      this.needsClear = false;
-    }
   }
 
   _resetVt(cols, rows, init = undefined, theme = undefined) {
@@ -547,11 +247,6 @@ class Core {
     if (init !== undefined && init !== "") {
       this.vt.feed(init);
     }
-
-    this._dispatchEvent("metadata", {
-      size: { cols, rows },
-      theme: theme ?? null,
-    });
 
     this._dispatchEvent("vtUpdate", {
       size: { cols, rows },
@@ -567,10 +262,6 @@ class Core {
     this.vt.cols = cols;
     this.vt.rows = rows;
     this.logger.debug(`core: vt resize (${cols}x${rows})`);
-
-    this._dispatchEvent("metadata", {
-      size: { cols, rows },
-    });
 
     this._dispatchEvent("vtUpdate", {
       size: { cols, rows },
@@ -595,12 +286,6 @@ class Core {
     }
 
     return {};
-  }
-
-  _normalizeMarkers(markers) {
-    if (Array.isArray(markers)) {
-      return markers.map((m) => (typeof m === "number" ? [m, ""] : m));
-    }
   }
 }
 

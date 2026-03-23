@@ -16,7 +16,7 @@ function exponentialDelay(attempt) {
 
 function websocket(
   { url, bufferTime, reconnectDelay = exponentialDelay, minFrameTime },
-  { feed, reset, resize, onInput, onMarker, setState, logger },
+  { feed, reset, resize, dispatch, logger },
   { audioUrl },
 ) {
   logger = new PrefixedLogger(logger, "websocket: ");
@@ -78,15 +78,15 @@ function websocket(
 
       if (ended) {
         logger.info("closed");
-        setState("ended", { message: endedMessage });
+        dispatch("ended", { message: endedMessage });
       } else if (event.code === 1002) {
         logger.debug(`close reason: ${event.reason}`);
-        setState("ended", { message: "Err: Player not compatible with the server" });
+        dispatch("ended", { message: "Err: Player not compatible with the server" });
       } else {
         clearTimeout(successfulConnectionTimeout);
         const delay = reconnectDelay(reconnectAttempt++);
         logger.info(`unexpected close, reconnecting in ${delay}...`);
-        setState("loading");
+        dispatch("loading");
         setTimeout(connect, delay);
       }
     };
@@ -143,15 +143,17 @@ function websocket(
     const { size, init, theme } = term;
     const { cols, rows } = size;
     logger.info(`stream reset (${cols}x${rows} @${time})`);
-    setState("playing");
     stopBuffer();
 
     buf = getBuffer(
       bufferTime,
       feed,
-      resize,
-      onInput,
-      onMarker,
+      (cols, rows) => {
+        resize(cols, rows);
+        dispatch("metadata", { size: { cols, rows } });
+      },
+      (data) => dispatch("input", { data }),
+      (marker) => dispatch("marker", marker),
       (t) => clock.setTime(t),
       time,
       minFrameTime,
@@ -167,6 +169,9 @@ function websocket(
     if (typeof time === "number") {
       clock.setTime(time);
     }
+
+    dispatch("metadata", { size, theme: theme ?? null });
+    dispatch("playing");
   }
 
   function onStreamEnd() {
@@ -174,10 +179,10 @@ function websocket(
 
     if (wasOnline) {
       logger.info("stream ended");
-      setState("offline", { message: "Stream ended" });
+      dispatch("offline", { message: "Stream ended" });
     } else {
       logger.info("stream offline");
-      setState("offline", { message: "Stream offline" });
+      dispatch("offline", { message: "Stream offline" });
     }
 
     clock = new NullClock();
@@ -220,12 +225,17 @@ function websocket(
 
   return {
     init: () => {
-      return { hasAudio: !!audioUrl };
+      dispatch("metadata", { hasAudio: !!audioUrl });
     },
 
     play: () => {
+      if (socket) return true;
+
+      dispatch("play");
       connect();
       startAudio();
+
+      return true;
     },
 
     stop: () => {

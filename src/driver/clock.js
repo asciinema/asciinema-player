@@ -1,6 +1,6 @@
 function clock(
   { hourColor = 3, minuteColor = 4, separatorColor = 9 },
-  { feed },
+  { feed, reset, dispatch },
   { cols = 5, rows = 1 },
 ) {
   const middleRow = Math.floor(rows / 2);
@@ -45,13 +45,21 @@ function clock(
 
   return {
     init: () => {
-      const duration = 24 * 60;
-      const poster = [setupCursor].concat(getCurrentTime());
+      reset(cols, rows);
+      feed(setupCursor);
+      updateTime();
 
-      return { cols, rows, duration, poster };
+      dispatch("metadata", {
+        size: { cols, rows },
+        duration: 24 * 60,
+      });
     },
 
     play: () => {
+      if (intervalId !== undefined) return true;
+
+      dispatch("play");
+      dispatch("playing");
       feed(setupCursor);
       updateTime();
       intervalId = setInterval(updateTime, 1000);

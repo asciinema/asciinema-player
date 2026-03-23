@@ -33,8 +33,6 @@ function invoke(method, params) {
       return core.play();
     case "pause":
       return core.pause();
-    case "togglePlay":
-      return core.togglePlay();
     case "stop":
       return core.stop();
     case "seek":

@@ -2,10 +2,7 @@ import getBuffer from "../buffer";
 import { Clock, NullClock } from "../clock";
 import { PrefixedLogger } from "../logging";
 
-function eventsource(
-  { url, bufferTime, minFrameTime },
-  { feed, reset, resize, onInput, onMarker, setState, logger },
-) {
+function eventsource({ url, bufferTime, minFrameTime }, { feed, reset, resize, dispatch, logger }) {
   logger = new PrefixedLogger(logger, "eventsource: ");
   let es;
   let buf;
@@ -18,8 +15,8 @@ function eventsource(
       bufferTime,
       feed,
       resize,
-      onInput,
-      onMarker,
+      (data) => dispatch("input", { data }),
+      (marker) => dispatch("marker", marker),
       (t) => clock.setTime(t),
       baseStreamTime,
       minFrameTime,
@@ -39,7 +36,7 @@ function eventsource(
       es.addEventListener("error", (e) => {
         logger.info("errored");
         logger.debug({ e });
-        setState("loading");
+        dispatch("loading");
       });
 
       es.addEventListener("message", (event) => {
@@ -51,7 +48,6 @@ function eventsource(
           const cols = e.cols ?? e.width;
           const rows = e.rows ?? e.height;
           logger.debug(`vt reset (${cols}x${rows})`);
-          setState("playing");
           initBuffer(e.time);
           reset(cols, rows, e.init ?? undefined);
           clock = new Clock();
@@ -59,9 +55,12 @@ function eventsource(
           if (typeof e.time === "number") {
             clock.setTime(e.time);
           }
+
+          dispatch("metadata", { size });
+          dispatch("playing");
         } else if (e.state === "offline") {
           logger.info("stream offline");
-          setState("offline", { message: "Stream offline" });
+          dispatch("offline", { message: "Stream offline" });
           clock = new NullClock();
         }
       });
@@ -69,7 +68,7 @@ function eventsource(
       es.addEventListener("done", () => {
         logger.info("closed");
         es.close();
-        setState("ended", { message: "Stream ended" });
+        dispatch("ended", { message: "Stream ended" });
       });
     },
 

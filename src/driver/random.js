@@ -1,4 +1,4 @@
-function random(src, { feed }, { speed }) {
+function random(src, { feed, dispatch }, { speed, autoPlay }) {
   const base = " ".charCodeAt(0);
   const range = "~".charCodeAt(0) - base;
   let timeoutId;
@@ -14,10 +14,18 @@ function random(src, { feed }, { speed }) {
     feed(char);
   };
 
-  return () => {
-    schedule();
+  return {
+    play() {
+      if (timeoutId !== undefined) return true;
 
-    return () => clearInterval(timeoutId);
+      dispatch("play");
+      dispatch("playing");
+      schedule();
+    },
+
+    stop() {
+      clearInterval(timeoutId);
+    },
   };
 }
 
