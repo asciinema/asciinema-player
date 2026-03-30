@@ -224,7 +224,7 @@ export default (props) => {
     core.removeEventListener("metadata", onCoreMetadata);
     core.removeEventListener("play", onCorePlay);
     core.removeEventListener("playing", onCorePlaying);
-    core.removeEventListener("idle", onCorePause);
+    core.removeEventListener("pause", onCorePause);
     core.removeEventListener("loading", onCoreLoading);
     core.removeEventListener("offline", onCoreOffline);
     core.removeEventListener("muted", onCoreMuted);

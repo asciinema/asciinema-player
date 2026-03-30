@@ -36,7 +36,6 @@ class CoreWorkerProxy {
     this.eventHandlers = new Map([
       ["ended", []],
       ["errored", []],
-      ["idle", []],
       ["input", []],
       ["loading", []],
       ["marker", []],
