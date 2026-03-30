@@ -19,8 +19,8 @@ const vt = initVt({ module: vtWasmModule }); // trigger async loading of wasm
 class Core {
   constructor(src, opts) {
     this.logger = opts.logger;
-    this.driver = getDriver(src);
-    this.changedLines = new Set();
+    this.driverFactory = getDriver(src);
+    this.driver = null;
     this.duration = undefined;
     this.cols = opts.cols;
     this.rows = opts.rows;
@@ -35,6 +35,8 @@ class Core {
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.audioUrl = opts.audioUrl;
     this.boldIsBright = opts.boldIsBright ?? false;
+    this.initPromise = null;
+    this.commandQueue = Promise.resolve();
 
     this.eventHandlers = new Map([
       ["ended", []],
@@ -54,13 +56,21 @@ class Core {
     ]);
   }
 
-  async init() {
+  init() {
+    if (this.initPromise === null) {
+      this.initPromise = this._init();
+    }
+
+    return this.initPromise;
+  }
+
+  async _init() {
     this.wasm = await vt;
     const { memory } = await this.wasm.default();
     this.memory = memory;
     this._initializeVt(this.cols ?? DEFAULT_COLS, this.rows ?? DEFAULT_ROWS);
 
-    this.driver = this.driver(
+    this.driver = this.driverFactory(
       {
         feed: this._feed.bind(this),
         reset: this._resetVt.bind(this),
@@ -88,6 +98,20 @@ class Core {
       isSeekable: !!this.driver.seek,
     };
 
+    this._installDriverDefaults();
+
+    if (this.driver.init) {
+      await this.driver.init();
+    }
+
+    if (this.autoPlay) {
+      await this.driver.play();
+    }
+
+    this._dispatchEvent("ready", config);
+  }
+
+  _installDriverDefaults() {
     if (this.driver.stop === undefined) {
       this.driver.stop = () => {};
     }
@@ -97,11 +121,11 @@ class Core {
     }
 
     if (this.driver.seek === undefined) {
-      this.driver.seek = (where) => false;
+      this.driver.seek = (_where) => false;
     }
 
     if (this.driver.step === undefined) {
-      this.driver.step = (n) => {};
+      this.driver.step = (_n) => {};
     }
 
     if (this.driver.mute === undefined) {
@@ -127,44 +151,60 @@ class Core {
 
       this.driver.getCurrentTime = () => clock.getTime();
     }
+  }
 
-    if (this.driver.init) {
-      this.driver.init();
-    }
+  _enqueue(command) {
+    const run = async () => {
+      await this.init();
+      return command.call(this);
+    };
 
-    if (this.autoPlay) {
-      this.play();
-    }
+    const result = this.commandQueue.then(run, run);
+    this.commandQueue = result.catch(() => {});
 
-    this._dispatchEvent("ready", config);
+    return result;
   }
 
   play() {
-    return this.driver.play();
+    return this._enqueue(function () {
+      return this.driver.play();
+    });
   }
 
   pause() {
-    return this.driver.pause();
+    return this._enqueue(function () {
+      return this.driver.pause();
+    });
   }
 
   seek(where) {
-    return this.driver.seek(where);
+    return this._enqueue(function () {
+      return this.driver.seek(where);
+    });
   }
 
   step(n) {
-    return this.driver.step(n);
+    return this._enqueue(function () {
+      return this.driver.step(n);
+    });
   }
 
   stop() {
-    return this.driver.stop();
+    return this._enqueue(function () {
+      return this.driver.stop();
+    });
   }
 
   mute() {
-    return this.driver.mute();
+    return this._enqueue(function () {
+      return this.driver.mute();
+    });
   }
 
   unmute() {
-    return this.driver.unmute();
+    return this._enqueue(function () {
+      return this.driver.unmute();
+    });
   }
 
   getLine(n, cursorOn) {
@@ -190,6 +230,10 @@ class Core {
   }
 
   getCurrentTime() {
+    if (!this.driver) {
+      return 0;
+    }
+
     return this.driver.getCurrentTime();
   }
 
@@ -210,6 +254,10 @@ class Core {
   }
 
   getDuration() {
+    if (!this.driver) {
+      return this.duration;
+    }
+
     return this.driver.getDuration();
   }
 
@@ -227,6 +275,10 @@ class Core {
   }
 
   _dispatchEvent(eventName, data = {}) {
+    if (eventName === "metadata" && data.duration !== undefined) {
+      this.duration = data.duration;
+    }
+
     for (const h of this.eventHandlers.get(eventName)) {
       h(data);
     }

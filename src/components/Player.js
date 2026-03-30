@@ -77,15 +77,8 @@ export default (props) => {
     updateTime();
   }
 
-  let resolveCoreReady;
-
-  const coreReady = new Promise((resolve) => {
-    resolveCoreReady = resolve;
-  });
-
   const onCoreReady = ({ isPausable, isSeekable }) => {
     setState({ isPausable, isSeekable });
-    resolveCoreReady();
   };
 
   const onCoreMetadata = (meta) => {
@@ -422,31 +415,27 @@ export default (props) => {
   };
 
   const play = () => {
-    coreReady.then(() => core.play());
+    core.play();
   };
 
   const togglePlay = () => {
-    coreReady.then(() => {
-      if (isPlaying()) {
-        core.pause();
-      } else {
-        core.play();
-      }
-    });
+    if (isPlaying()) {
+      core.pause();
+    } else {
+      core.play();
+    }
   };
 
   const toggleMuted = () => {
-    coreReady.then(() => {
-      if (isMuted() === true) {
-        core.unmute();
-      } else {
-        core.mute();
-      }
-    });
+    if (isMuted() === true) {
+      core.unmute();
+    } else {
+      core.mute();
+    }
   };
 
   const seek = (pos) => {
-    coreReady.then(() => core.seek(pos));
+    core.seek(pos);
   };
 
   const playerClass = () => `ap-player ap-default-term-ff asciinema-player-theme-${themeName}`;

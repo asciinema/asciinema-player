@@ -629,46 +629,17 @@ function recording(
     }
   }
 
-  let commandQueue = [];
-
-  async function processCommandQueue() {
-    while (commandQueue.length > 0) {
-      const [f, thiz, args, resolve] = commandQueue[0];
-      resolve(await f.apply(thiz, args));
-      commandQueue = commandQueue.slice(1);
-    }
-  }
-
-  function viaCommandQueue(f) {
-    return function (...args) {
-      let resolve;
-
-      const promise = new Promise((resolve_) => {
-        resolve = resolve_;
-      });
-
-      if (commandQueue.length === 0) {
-        commandQueue.push([f, this, args, resolve]);
-        processCommandQueue();
-      } else {
-        commandQueue.push([f, this, args, resolve]);
-      }
-
-      return promise;
-    };
-  }
-
   return {
     init,
     stop: pause,
     getDuration,
     getCurrentTime,
-    play: viaCommandQueue(play),
-    pause: viaCommandQueue(pause),
-    seek: viaCommandQueue(seek),
-    step: viaCommandQueue(step),
-    mute: viaCommandQueue(mute),
-    unmute: viaCommandQueue(unmute),
+    play,
+    pause,
+    seek,
+    step,
+    mute,
+    unmute,
   };
 }
 
