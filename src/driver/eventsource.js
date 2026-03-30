@@ -56,7 +56,7 @@ function eventsource({ url, bufferTime, minFrameTime }, { feed, reset, resize, d
             clock.setTime(e.time);
           }
 
-          dispatch("metadata", { size });
+          dispatch("metadata", { size: { cols, rows } });
           dispatch("playing");
         } else if (e.state === "offline") {
           logger.info("stream offline");
