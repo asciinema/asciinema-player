@@ -26,6 +26,10 @@ function eventsource({ url, bufferTime, minFrameTime }, { feed, reset, resize, d
 
   return {
     play: () => {
+      if (es) return true;
+
+      dispatch("play");
+
       es = new EventSource(url);
 
       es.addEventListener("open", () => {
@@ -70,6 +74,8 @@ function eventsource({ url, bufferTime, minFrameTime }, { feed, reset, resize, d
         es.close();
         dispatch("ended", { message: "Stream ended" });
       });
+
+      return true;
     },
 
     stop: () => {
