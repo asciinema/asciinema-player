@@ -48,11 +48,7 @@ function clock(
       reset(cols, rows);
       feed(setupCursor);
       updateTime();
-
-      dispatch("metadata", {
-        size: { cols, rows },
-        duration: 24 * 60,
-      });
+      dispatch("metadata", { size: { cols, rows } });
     },
 
     play: () => {
