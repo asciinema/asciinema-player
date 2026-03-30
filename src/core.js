@@ -286,8 +286,6 @@ class Core {
 
   _resetVt(cols, rows, init = undefined, theme = undefined) {
     this.logger.debug(`core: vt reset (${cols}x${rows})`);
-    this.cols = cols;
-    this.rows = rows;
     this._initializeVt(cols, rows);
 
     if (init !== undefined && init !== "") {
