@@ -21,7 +21,6 @@ class Core {
     this.logger = opts.logger;
     this.driverFactory = getDriver(src);
     this.driver = null;
-    this.duration = undefined;
     this.cols = opts.cols;
     this.rows = opts.rows;
     this.speed = opts.speed;
@@ -255,7 +254,7 @@ class Core {
 
   getDuration() {
     if (!this.driver) {
-      return this.duration;
+      return undefined;
     }
 
     return this.driver.getDuration();
@@ -275,10 +274,6 @@ class Core {
   }
 
   _dispatchEvent(eventName, data = {}) {
-    if (eventName === "metadata" && data.duration !== undefined) {
-      this.duration = data.duration;
-    }
-
     for (const h of this.eventHandlers.get(eventName)) {
       h(data);
     }
