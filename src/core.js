@@ -286,6 +286,8 @@ class Core {
 
   _resetVt(cols, rows, init = undefined, theme = undefined) {
     this.logger.debug(`core: vt reset (${cols}x${rows})`);
+    this.cols = cols;
+    this.rows = rows;
     this._initializeVt(cols, rows);
 
     if (init !== undefined && init !== "") {
@@ -300,11 +302,11 @@ class Core {
   }
 
   _resizeVt(cols, rows) {
-    if (cols === this.cols && rows === this.rows) return;
+    if (cols === this.vt.cols && rows === this.vt.rows) return;
 
     const changedRows = this.vt.resize(cols, rows);
-    this.cols = cols;
-    this.rows = rows;
+    this.vt.cols = cols;
+    this.vt.rows = rows;
     this.logger.debug(`core: vt resize (${cols}x${rows})`);
 
     this._dispatchEvent("vtUpdate", {
@@ -316,8 +318,8 @@ class Core {
   _initializeVt(cols, rows) {
     this.logger.debug('vt init', { cols, rows });
     this.vt = this.wasm.create(cols, rows, 100, this.boldIsBright);
-    this.cols = cols;
-    this.rows = rows;
+    this.vt.cols = cols;
+    this.vt.rows = rows;
   }
 
   _parsePoster(poster) {
