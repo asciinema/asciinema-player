@@ -397,12 +397,9 @@ fn is_vector_symbol(ch: char) -> bool {
 fn is_raster_symbol(ch: char) -> bool {
     // box drawing + block elements
     ('\u{2580}'..='\u{259f}').contains(&ch)
-        // box drawing light/heavy vertical
-        || ch == '\u{2502}'
+        // box drawing heavy vertical
         || ch == '\u{2503}'
-        // box drawing light/heavy vertical half lines
-        || ch == '\u{2575}'
-        || ch == '\u{2577}'
+        // box drawing heavy vertical half lines
         || ch == '\u{2579}'
         || ch == '\u{257b}'
         // black square

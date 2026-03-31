@@ -325,46 +325,34 @@ test("raster symbol groups render representative glyphs with expected pixels", a
 
   const { cells } = await sampleTerminalPixels(page, {
     cells: [
-      [0, 0, 0.5625, 0.5], // U+2502 light vertical: stroke
-      [0, 0, 0.4375, 0.5], // U+2502 light vertical: side background
-      [0, 1, 0.5625, 0.5], // U+2503 heavy vertical: right stroke
-      [0, 1, 0.4375, 0.5], // U+2503 heavy vertical: left stroke
-      [0, 1, 0.3125, 0.5], // U+2503 heavy vertical: side background
-      [0, 2, 0.5625, topY], // U+2575 light up: top stroke
-      [0, 2, 0.5625, bottomY], // U+2575 light up: bottom background
-      [0, 3, 0.5625, topY], // U+2577 light down: top background
-      [0, 3, 0.5625, bottomY], // U+2577 light down: bottom stroke
-      [0, 4, 0.4375, topY], // U+2579 heavy up: left top stroke
-      [0, 4, 0.5625, topY], // U+2579 heavy up: right top stroke
-      [0, 4, 0.5625, bottomY], // U+2579 heavy up: bottom background
-      [0, 5, 0.5625, topY], // U+257B heavy down: top background
-      [0, 5, 0.4375, bottomY], // U+257B heavy down: left bottom stroke
-      [0, 5, 0.5625, bottomY], // U+257B heavy down: right bottom stroke
-      [0, 6, 0.5, topY], // U+2580 upper half block: top fill
-      [0, 6, 0.5, bottomY], // U+2580 upper half block: bottom background
-      [0, 7, 0.25, 0.25], // U+259A quadrant: upper-left fill
-      [0, 7, 0.75, 0.25], // U+259A quadrant: upper-right background
-      [0, 7, 0.25, 0.75], // U+259A quadrant: lower-left background
-      [0, 7, 0.75, 0.75], // U+259A quadrant: lower-right fill
-      [0, 8, 0.5, 2.5 / 24], // U+25A0 black square: top background
-      [0, 8, 0.5, 11.5 / 24], // U+25A0 black square: middle fill
-      [0, 8, 0.5, 21.5 / 24], // U+25A0 black square: bottom background
-      [0, 9, 0.25, 4.5 / 24], // U+1FB00 sextant-1: top-left fill
-      [0, 9, 0.75, 4.5 / 24], // U+1FB00 sextant-1: top-right background
-      [0, 9, 0.25, 12.5 / 24], // U+1FB00 sextant-1: middle-left background
+      [0, 0, 0.5625, 0.5], // U+2503 heavy vertical: right stroke
+      [0, 0, 0.4375, 0.5], // U+2503 heavy vertical: left stroke
+      [0, 0, 0.3125, 0.5], // U+2503 heavy vertical: side background
+      [0, 1, 0.4375, topY], // U+2579 heavy up: left top stroke
+      [0, 1, 0.5625, topY], // U+2579 heavy up: right top stroke
+      [0, 1, 0.5625, bottomY], // U+2579 heavy up: bottom background
+      [0, 2, 0.5625, topY], // U+257B heavy down: top background
+      [0, 2, 0.4375, bottomY], // U+257B heavy down: left bottom stroke
+      [0, 2, 0.5625, bottomY], // U+257B heavy down: right bottom stroke
+      [0, 3, 0.5, topY], // U+2580 upper half block: top fill
+      [0, 3, 0.5, bottomY], // U+2580 upper half block: bottom background
+      [0, 4, 0.25, 0.25], // U+259A quadrant: upper-left fill
+      [0, 4, 0.75, 0.25], // U+259A quadrant: upper-right background
+      [0, 4, 0.25, 0.75], // U+259A quadrant: lower-left background
+      [0, 4, 0.75, 0.75], // U+259A quadrant: lower-right fill
+      [0, 5, 0.5, 2.5 / 24], // U+25A0 black square: top background
+      [0, 5, 0.5, 11.5 / 24], // U+25A0 black square: middle fill
+      [0, 5, 0.5, 21.5 / 24], // U+25A0 black square: bottom background
+      [0, 6, 0.25, 4.5 / 24], // U+1FB00 sextant-1: top-left fill
+      [0, 6, 0.75, 4.5 / 24], // U+1FB00 sextant-1: top-right background
+      [0, 6, 0.25, 12.5 / 24], // U+1FB00 sextant-1: middle-left background
     ],
   });
 
   expect(cells).toEqual([
     fg,
-    bg,
-    fg,
     fg,
     bg,
-    fg,
-    bg,
-    bg,
-    fg,
     fg,
     fg,
     bg,
