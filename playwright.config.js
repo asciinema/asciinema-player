@@ -17,15 +17,21 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: 'tests/driver/**',
       use: {
         ...devices['Desktop Chrome'],
       },
     },
     {
       name: 'firefox',
+      testIgnore: 'tests/driver/**',
       use: {
         ...devices['Desktop Firefox'],
       },
+    },
+    {
+      name: 'driver',
+      testMatch: 'tests/driver/**/*.spec.js',
     },
   ],
 

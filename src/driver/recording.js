@@ -501,6 +501,7 @@ function recording(
 
         if (nextEvent !== undefined && nextEvent[1] === "o") {
           targetIndex = index;
+          nextEvent = events[++index];
         }
       }
     } else {
