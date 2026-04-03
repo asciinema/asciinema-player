@@ -124,6 +124,24 @@ test("preload exposes duration before playback", async ({ page }) => {
   await expectDuration(playerApi).toBeGreaterThan(0);
 });
 
+test("invalid audioUrl rejects playback and emits errored", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/simple.cast", {
+    audioUrl: "/assets/missing.mp3",
+  });
+
+  const error = await page.evaluate(async () => {
+    try {
+      await window.player.play();
+      return null;
+    } catch (e) {
+      return e?.message ?? String(e);
+    }
+  });
+
+  expect(error).toContain("failed loading audio from /assets/missing.mp3");
+  await playerApi.events.waitFor("errored");
+});
+
 test("startAt begins playback near the requested offset", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/simple.cast", { startAt: 1 });
 
@@ -569,7 +587,7 @@ test("poster - data:text/plain - with preload", async ({ page }) => {
   await expectTermText(page, "hello world");
 });
 
-const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "input", "marker"];
+const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "errored", "input", "marker"];
 
 async function createPlayer(page, src, opts = {}) {
   await page.goto("/index.html");
