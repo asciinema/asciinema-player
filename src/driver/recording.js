@@ -32,6 +32,7 @@ function recording(
   let playCount = 0;
   let waitingForAudio = false;
   let waitingTimeout;
+  let loadingTimeout;
   let shouldResumeOnAudioPlaying = false;
   let now = () => performance.now() * speed;
   let audioCtx;
@@ -72,7 +73,7 @@ function recording(
   }
 
   async function load() {
-    const timeout = setTimeout(() => {
+    loadingTimeout = setTimeout(() => {
       dispatch("loading");
     }, 3000);
 
@@ -87,7 +88,8 @@ function recording(
       dispatch("errored");
       throw e;
     } finally {
-      clearTimeout(timeout);
+      clearTimeout(loadingTimeout);
+      loadingTimeout = null;
     }
   }
 
@@ -248,6 +250,24 @@ function recording(
   function cancelNextEvent() {
     clearTimeout(eventTimeoutId);
     eventTimeoutId = null;
+  }
+
+  async function teardownAudio() {
+    clearTimeout(waitingTimeout);
+
+    if (audioElement) {
+      audioElement.removeEventListener("playing", onAudioPlaying);
+      audioElement.removeEventListener("waiting", onAudioWaiting);
+      audioElement.pause();
+      audioElement.src = "";
+      audioElement.load();
+      audioElement = undefined;
+    }
+
+    if (audioCtx) {
+      await audioCtx.close();
+      audioCtx = undefined;
+    }
   }
 
   function executeEvent(event) {
@@ -591,6 +611,7 @@ function recording(
     logger.debug("audio buffering");
     waitingForAudio = true;
     shouldResumeOnAudioPlaying = !!eventTimeoutId;
+    clearTimeout(waitingTimeout);
     waitingTimeout = setTimeout(() => {
       dispatch("loading");
     }, 1000);
@@ -605,6 +626,7 @@ function recording(
   function onAudioPlaying() {
     logger.debug("audio resumed");
     clearTimeout(waitingTimeout);
+    waitingTimeout = null;
 
     if (!waitingForAudio) return;
 
@@ -635,9 +657,15 @@ function recording(
     }
   }
 
+  async function stop() {
+    clearTimeout(loadingTimeout);
+    cancelNextEvent();
+    await teardownAudio();
+  }
+
   return {
     init,
-    stop: pause,
+    stop,
     getDuration,
     getCurrentTime,
     play,
