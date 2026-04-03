@@ -321,7 +321,7 @@ class Core {
   }
 
   _parsePoster(poster) {
-    if (typeof poster !== "string") return {};
+    if (typeof poster !== "string") return;
 
     if (poster.substring(0, 16) == "data:text/plain,") {
       return { type: "text", value: poster.substring(16) };
@@ -329,7 +329,7 @@ class Core {
       return { type: "npt", value: parseNpt(poster.substring(4)) };
     }
 
-    return {};
+    return;
   }
 }
 

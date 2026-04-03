@@ -38,6 +38,8 @@ function recording(
   let audioElement;
   let audioSeekable = false;
   let loaded;
+  let posterVisible = false;
+  let posterRenderableAfterLoad = poster !== undefined;
 
   function init() {
     if (preload) {
@@ -48,7 +50,7 @@ function recording(
           ensureLoaded();
         } else if (poster.type == "text") {
           renderPoster();
-          poster = undefined;
+          posterRenderableAfterLoad = false;
         }
       }
     }
@@ -179,13 +181,15 @@ function recording(
   }
 
   function renderPoster() {
-    if (poster !== undefined) {
-      if (poster.type == "npt") {
-        getPoster(poster.value).forEach(feed);
-      } else if (poster.type == "text") {
-        feed(poster.value);
-      }
+    if (!posterRenderableAfterLoad) return;
+
+    if (poster.type == "npt") {
+      getPoster(poster.value).forEach(feed);
+    } else if (poster.type == "text") {
+      feed(poster.value);
     }
+
+    posterVisible = true;
   }
 
   function getPoster(time) {
@@ -193,10 +197,12 @@ function recording(
   }
 
   function clearPoster() {
-    if (poster !== undefined) {
+    if (posterVisible) {
       feed("\x1bc");
-      poster = undefined;
     }
+
+    posterVisible = false;
+    posterRenderableAfterLoad = false;
   }
 
   function scheduleNextEvent() {

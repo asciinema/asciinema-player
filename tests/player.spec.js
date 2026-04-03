@@ -610,6 +610,25 @@ test("poster - data:text/plain", async ({ page }) => {
   await expectTermText(page, "hello world");
 });
 
+test("poster - data:text/plain - clears when playback starts", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/long.cast", {
+    poster: "data:text/plain,hello world",
+  });
+
+  await expectTermText(page, "hello world");
+
+  await playerApi.play();
+  await playerApi.events.waitFor("playing");
+  await expectTermText(page, "start");
+
+  await expect
+    .poll(async () => {
+      const text = await page.locator(".ap-term-text").innerText();
+      return text.includes("hello world");
+    })
+    .toBe(false);
+});
+
 test("poster - data:text/plain - with preload", async ({ page }) => {
   await createPlayer(page, "/assets/long.cast", {
     poster: "data:text/plain,hello world",
