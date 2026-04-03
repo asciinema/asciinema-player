@@ -78,7 +78,7 @@ function recording(
 
     try {
       const parsedRecording = loadRecording(src);
-      const hasAudio = await loadAudio(audioUrl);
+      const audioLoaded = loadAudio(audioUrl);
 
       const recording = prepareRecording(await parsedRecording, logger, {
         idleTimeLimit,
@@ -87,6 +87,8 @@ function recording(
         minFrameTime: src.minFrameTime,
         inputOffset: src.inputOffset,
       });
+
+      const hasAudio = await audioLoaded;
 
       ({ cols, rows, events, duration, effectiveStartAt } = recording);
       initialCols = initialCols ?? cols;
