@@ -1,4 +1,3 @@
-import { unparseAsciicastV2 } from "../parser/asciicast";
 import Stream from "../stream";
 
 function recording(
@@ -78,10 +77,26 @@ function recording(
     }, 3000);
 
     try {
-      let metadata = loadRecording(src, logger, { idleTimeLimit, startAt, markers_ });
+      const parsedRecording = loadRecording(src);
       const hasAudio = await loadAudio(audioUrl);
-      metadata = await metadata;
-      reset(metadata.size.cols, metadata.size.rows, undefined, metadata.theme);
+
+      const recording = prepareRecording(await parsedRecording, logger, {
+        idleTimeLimit,
+        startAt,
+        markers: markers_,
+        minFrameTime: src.minFrameTime,
+        inputOffset: src.inputOffset,
+      });
+
+      ({ cols, rows, events, duration, effectiveStartAt } = recording);
+      initialCols = initialCols ?? cols;
+      initialRows = initialRows ?? rows;
+
+      const theme = recording.theme ?? null;
+      markers = events.filter((e) => e[1] === "m").map((e) => [e[0], e[2].label]);
+      const metadata = { size: { cols, rows }, duration, theme, markers };
+
+      reset(cols, rows, undefined, theme);
       renderPoster();
       dispatch("metadata", { ...metadata, hasAudio });
     } catch (e) {
@@ -91,34 +106,6 @@ function recording(
       clearTimeout(loadingTimeout);
       loadingTimeout = null;
     }
-  }
-
-  async function loadRecording(src, logger, opts) {
-    const { parser, minFrameTime, inputOffset, dumpFilename, encoding = "utf-8" } = src;
-    const data = await doFetch(src);
-
-    const recording = prepare(await parser(data, { encoding }), logger, {
-      ...opts,
-      minFrameTime,
-      inputOffset,
-    });
-
-    ({ cols, rows, events, duration, effectiveStartAt } = recording);
-    initialCols = initialCols ?? cols;
-    initialRows = initialRows ?? rows;
-
-    if (events.length === 0) {
-      throw new Error("recording is missing events");
-    }
-
-    if (dumpFilename !== undefined) {
-      dump(recording, dumpFilename);
-    }
-
-    const theme = recording.theme ?? null;
-    markers = events.filter((e) => e[1] === "m").map((e) => [e[0], e[2].label]);
-
-    return { size: { cols, rows }, duration, theme, markers };
   }
 
   async function loadAudio(audioUrl) {
@@ -142,44 +129,6 @@ function recording(
     }
 
     return true;
-  }
-
-  async function doFetch({ url, data, fetchOpts = {} }) {
-    if (typeof url === "string") {
-      return await doFetchOne(url, fetchOpts);
-    } else if (Array.isArray(url)) {
-      return await Promise.all(url.map((url) => doFetchOne(url, fetchOpts)));
-    } else if (data !== undefined) {
-      if (typeof data === "function") {
-        data = data();
-      }
-
-      if (!(data instanceof Promise)) {
-        data = Promise.resolve(data);
-      }
-
-      const value = await data;
-
-      if (typeof value === "string" || value instanceof ArrayBuffer) {
-        return new Response(value);
-      } else {
-        return value;
-      }
-    } else {
-      throw new Error("failed fetching recording file: url/data missing in src");
-    }
-  }
-
-  async function doFetchOne(url, fetchOpts) {
-    const response = await fetch(url, fetchOpts);
-
-    if (!response.ok) {
-      throw new Error(
-        `failed fetching recording from ${url}: ${response.status} ${response.statusText}`,
-      );
-    }
-
-    return response;
   }
 
   function renderPoster() {
@@ -677,6 +626,51 @@ function recording(
   };
 }
 
+async function loadRecording(src) {
+  const { parser, encoding = "utf-8" } = src;
+  const data = await doFetch(src);
+
+  return await parser(data, { encoding });
+}
+
+async function doFetch({ url, data, fetchOpts = {} }) {
+  if (typeof url === "string") {
+    return await doFetchOne(url, fetchOpts);
+  } else if (Array.isArray(url)) {
+    return await Promise.all(url.map((url) => doFetchOne(url, fetchOpts)));
+  } else if (data !== undefined) {
+    if (typeof data === "function") {
+      data = data();
+    }
+
+    if (!(data instanceof Promise)) {
+      data = Promise.resolve(data);
+    }
+
+    const value = await data;
+
+    if (typeof value === "string" || value instanceof ArrayBuffer) {
+      return new Response(value);
+    } else {
+      return value;
+    }
+  } else {
+    throw new Error("failed fetching recording file: url/data missing in src");
+  }
+}
+
+async function doFetchOne(url, fetchOpts) {
+  const response = await fetch(url, fetchOpts);
+
+  if (!response.ok) {
+    throw new Error(
+      `failed fetching recording from ${url}: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return response;
+}
+
 function batcher(logger, minFrameTime = 1.0 / 60) {
   let prevEvent;
 
@@ -714,10 +708,10 @@ function batcher(logger, minFrameTime = 1.0 / 60) {
   };
 }
 
-function prepare(
+function prepareRecording(
   recording,
   logger,
-  { startAt = 0, idleTimeLimit, minFrameTime, inputOffset, markers_ },
+  { startAt = 0, idleTimeLimit, minFrameTime, inputOffset, markers },
 ) {
   let { events } = recording;
 
@@ -733,12 +727,12 @@ function prepare(
     .map(timeLimiter(idleTimeLimit, startAt, limiterOutput))
     .map(markerWrapper());
 
-  if (markers_ !== undefined) {
-    markers_ = new Stream(markers_).map(normalizeMarker);
+  if (markers !== undefined) {
+    markers = new Stream(markers).map(normalizeMarker);
 
     events = events
       .filter((e) => e[1] !== "m")
-      .multiplex(markers_, (a, b) => a[0] < b[0])
+      .multiplex(markers, (a, b) => a[0] < b[0])
       .map(markerWrapper());
   }
 
@@ -747,6 +741,10 @@ function prepare(
   if (inputOffset !== undefined) {
     events = events.map((e) => (e[1] === "i" ? [e[0] + inputOffset, e[1], e[2]] : e));
     events.sort((a, b) => a[0] - b[0]);
+  }
+
+  if (events.length === 0) {
+    throw new Error("recording is missing events");
   }
 
   const duration = events[events.length - 1][0];
@@ -790,15 +788,6 @@ function markerWrapper() {
       return e;
     }
   };
-}
-
-function dump(recording, filename) {
-  const link = document.createElement("a");
-  const events = recording.events.map((e) => (e[1] === "m" ? [e[0], e[1], e[2].label] : e));
-  const asciicast = unparseAsciicastV2({ ...recording, events });
-  link.href = URL.createObjectURL(new Blob([asciicast], { type: "text/plain" }));
-  link.download = filename;
-  link.click();
 }
 
 async function createAudioElement(src) {
@@ -847,3 +836,4 @@ async function createAudioElement(src) {
 }
 
 export default recording;
+export { loadRecording, prepareRecording };
