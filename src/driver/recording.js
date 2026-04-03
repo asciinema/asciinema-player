@@ -598,11 +598,11 @@ function recording(
   function onAudioPlaying() {
     logger.debug("audio resumed");
     clearTimeout(waitingTimeout);
-    dispatch("playing");
 
     if (!waitingForAudio) return;
 
     waitingForAudio = false;
+    dispatch("playing");
 
     if (shouldResumeOnAudioPlaying) {
       logger.debug("resuming session playback");

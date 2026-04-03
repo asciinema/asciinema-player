@@ -351,6 +351,7 @@ export default (props) => {
   };
 
   const startTimeUpdates = () => {
+    clearInterval(timeUpdateIntervalId);
     timeUpdateIntervalId = setInterval(updateTime, 100);
   };
 

@@ -142,6 +142,40 @@ test("invalid audioUrl rejects playback and emits errored", async ({ page }) => 
   await playerApi.events.waitFor("errored");
 });
 
+test("audio playback emits playing once on start and once after buffering recovery", async ({
+  page,
+}) => {
+  await installFakeAudio(page);
+
+  const playerApi = await createPlayer(page, "/assets/simple.cast", {
+    audioUrl: "/assets/fake.mp3",
+  });
+
+  await playerApi.play();
+  await playerApi.events.expectNext("play");
+  await playerApi.events.expectNext("playing");
+  await page.waitForTimeout(50);
+
+  let playingEvents = await page.evaluate(() => {
+    return window.__events.filter((event) => event.name === "playing").length;
+  });
+
+  expect(playingEvents).toBe(1);
+
+  await page.evaluate(() => {
+    window.__dispatchAudioEvent("waiting");
+    window.__dispatchAudioEvent("playing");
+  });
+
+  await playerApi.events.expectNext("playing");
+
+  playingEvents = await page.evaluate(() => {
+    return window.__events.filter((event) => event.name === "playing").length;
+  });
+
+  expect(playingEvents).toBe(2);
+});
+
 test("startAt begins playback near the requested offset", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/simple.cast", { startAt: 1 });
 
@@ -588,6 +622,75 @@ test("poster - data:text/plain - with preload", async ({ page }) => {
 });
 
 const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "errored", "input", "marker"];
+
+async function installFakeAudio(page) {
+  await page.addInitScript(() => {
+    class FakeAudio {
+      constructor() {
+        this.currentTime = 0;
+        this.duration = 10;
+        this.loop = false;
+        this.preload = "metadata";
+        this.crossOrigin = "anonymous";
+        this.muted = false;
+        this.seekable = { length: 1, end: () => this.duration };
+        this.listeners = new Map();
+        window.__lastAudio = this;
+      }
+
+      addEventListener(name, handler) {
+        const handlers = this.listeners.get(name) ?? [];
+        handlers.push(handler);
+        this.listeners.set(name, handlers);
+      }
+
+      removeEventListener(name, handler) {
+        const handlers = this.listeners.get(name) ?? [];
+        this.listeners.set(
+          name,
+          handlers.filter((h) => h !== handler),
+        );
+      }
+
+      dispatch(name) {
+        for (const handler of this.listeners.get(name) ?? []) {
+          handler();
+        }
+      }
+
+      load() {
+        setTimeout(() => this.dispatch("canplay"), 0);
+      }
+
+      play() {
+        setTimeout(() => this.dispatch("playing"), 0);
+        return Promise.resolve();
+      }
+
+      pause() {}
+    }
+
+    class FakeAudioContext {
+      constructor() {
+        this.destination = {};
+      }
+
+      createMediaElementSource() {
+        return { connect() {} };
+      }
+
+      getOutputTimestamp() {
+        const time = performance.now();
+
+        return { contextTime: time / 1000, performanceTime: time };
+      }
+    }
+
+    window.Audio = FakeAudio;
+    window.AudioContext = FakeAudioContext;
+    window.__dispatchAudioEvent = (name) => window.__lastAudio.dispatch(name);
+  });
+}
 
 async function createPlayer(page, src, opts = {}) {
   await page.goto("/index.html");
