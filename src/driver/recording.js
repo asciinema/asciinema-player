@@ -261,7 +261,6 @@ function recording(
       if (pauseOnMarkers) {
         pause();
         pauseElapsedTime = time * 1000;
-        dispatch("pause");
 
         return true;
       }
