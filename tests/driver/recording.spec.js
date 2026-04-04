@@ -36,6 +36,33 @@ test("step advances across multiple output frames", async () => {
   expect(output.join("")).not.toContain("two");
 });
 
+test("resize events dispatch numeric terminal dimensions", async () => {
+  const events = [];
+
+  const driver = recording(
+    {
+      data: {
+        cols: 80,
+        rows: 24,
+        events: [[0.1, "r", "100x30"]],
+      },
+      parser: (data) => data,
+    },
+    {
+      logger: stubLogger(),
+      dispatch: (name, payload) => events.push({ name, payload }),
+    },
+    { speed: 1 },
+  );
+
+  await driver.seek(1);
+
+  expect(events).toContainEqual({
+    name: "resize",
+    payload: { cols: 100, rows: 30 },
+  });
+});
+
 test("stop tears down audio resources and pending waiting state", async () => {
   const restoreAudio = installFakeAudio();
   const events = [];

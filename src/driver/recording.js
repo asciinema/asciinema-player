@@ -228,7 +228,7 @@ function recording(
     } else if (type === "i") {
       dispatch("input", { data });
     } else if (type === "r") {
-      const [cols, rows] = data.split("x");
+      const [cols, rows] = data.split("x").map((n) => Number.parseInt(n, 10));
       dispatch("resize", { cols, rows });
     } else if (type === "m") {
       dispatch("marker", data);
