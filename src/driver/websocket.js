@@ -16,7 +16,7 @@ function exponentialDelay(attempt) {
 
 function websocket(
   { url, bufferTime, reconnectDelay = exponentialDelay, minFrameTime },
-  { feed, reset, resize, dispatch, logger },
+  { dispatch, logger },
   { audioUrl },
 ) {
   logger = new PrefixedLogger(logger, "websocket: ");
@@ -145,22 +145,9 @@ function websocket(
     logger.info(`stream reset (${cols}x${rows} @${time})`);
     stopBuffer();
 
-    buf = getBuffer(
-      bufferTime,
-      feed,
-      (cols, rows) => {
-        resize(cols, rows);
-        dispatch("metadata", { size: { cols, rows } });
-      },
-      (data) => dispatch("input", { data }),
-      (marker) => dispatch("marker", marker),
-      (t) => clock.setTime(t),
-      time,
-      minFrameTime,
-      logger,
-    );
+    buf = getBuffer(bufferTime, dispatch, (t) => clock.setTime(t), time, minFrameTime, logger);
 
-    reset(cols, rows, init, theme);
+    dispatch("reset", { size: { cols, rows }, init, theme: theme ?? null });
     clock = new Clock();
     wasOnline = true;
     gotExitEvent = false;
@@ -170,7 +157,6 @@ function websocket(
       clock.setTime(time);
     }
 
-    dispatch("metadata", { size, theme: theme ?? null });
     dispatch("playing");
   }
 

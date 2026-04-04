@@ -95,15 +95,21 @@ export default (props) => {
       if (meta.hasAudio !== undefined) {
         setIsMuted(meta.hasAudio ? false : undefined);
       }
+    });
+  };
 
-      if (meta.size !== undefined) {
-        setTerminalSize(meta.size);
-      }
+  const onCoreReset = ({ size, theme }) => {
+    batch(() => {
+      setTerminalSize(size);
 
-      if (meta.theme !== undefined) {
-        setOriginalTheme(meta.theme);
+      if (theme !== undefined) {
+        setOriginalTheme(theme);
       }
     });
+  };
+
+  const onCoreResize = (size) => {
+    setTerminalSize(size);
   };
 
   const onCorePlay = () => {
@@ -185,6 +191,8 @@ export default (props) => {
   core.addEventListener("ended", onCoreEnded);
   core.addEventListener("errored", onCoreErrored);
   core.addEventListener("seeked", onCoreSeeked);
+  core.addEventListener("reset", onCoreReset);
+  core.addEventListener("resize", onCoreResize);
 
   const setupResizeObserver = () => {
     resizeObserver = new ResizeObserver(
@@ -224,6 +232,8 @@ export default (props) => {
     core.removeEventListener("ended", onCoreEnded);
     core.removeEventListener("errored", onCoreErrored);
     core.removeEventListener("seeked", onCoreSeeked);
+    core.removeEventListener("reset", onCoreReset);
+    core.removeEventListener("resize", onCoreResize);
     core.stop();
     stopTimeUpdates();
     resizeObserver.disconnect();
@@ -465,10 +475,13 @@ export default (props) => {
           rows={terminalRows()}
           scale={terminalScale()}
           blinking={blinking()}
+          boldIsBright={props.boldIsBright}
           adaptivePalette={props.adaptivePalette}
           lineHeight={props.terminalLineHeight}
           preferEmbeddedTheme={preferEmbeddedTheme}
           core={core}
+          logger={logger}
+          onReady={props.onTerminalReady}
           stats={stats.terminal}
         />
         <Show when={props.controls !== false}>

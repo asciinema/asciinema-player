@@ -2,7 +2,6 @@ const CORE_OPTS = [
   'audioUrl',
   'autoPlay',
   'autoplay',
-  'boldIsBright',
   'cols',
   'idleTimeLimit',
   'loop',
@@ -18,6 +17,7 @@ const CORE_OPTS = [
 const UI_OPTS = [
   'autoPlay',
   'autoplay',
+  'boldIsBright',
   'cols',
   'adaptivePalette',
   'controls',

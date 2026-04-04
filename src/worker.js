@@ -29,6 +29,8 @@ function invoke(method, params) {
       return;
     case "init":
       return core.init();
+    case "terminalReady":
+      return core.terminalReady();
     case "play":
       return core.play();
     case "pause":

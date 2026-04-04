@@ -1,4 +1,3 @@
-import { init as initVt, module as vtWasmModule } from "./vt/Cargo.toml?custom";
 import { parseNpt } from "./util";
 import { Clock, NullClock } from "./clock";
 import recording from "./driver/recording";
@@ -10,11 +9,6 @@ import eventsource from "./driver/eventsource";
 import parseAsciicast from "./parser/asciicast";
 import parseTypescript from "./parser/typescript";
 import parseTtyrec from "./parser/ttyrec";
-
-const DEFAULT_COLS = 80;
-const DEFAULT_ROWS = 24;
-
-const vt = initVt({ module: vtWasmModule }); // trigger async loading of wasm
 
 class Core {
   constructor(src, opts) {
@@ -33,9 +27,12 @@ class Core {
     this.markers = opts.markers;
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.audioUrl = opts.audioUrl;
-    this.boldIsBright = opts.boldIsBright ?? false;
     this.initPromise = null;
     this.commandQueue = Promise.resolve();
+
+    this.startupPromise = new Promise((resolve) => {
+      this.resolveStartup = resolve;
+    });
 
     this.eventHandlers = new Map([
       ["ended", []],
@@ -46,12 +43,14 @@ class Core {
       ["metadata", []],
       ["muted", []],
       ["offline", []],
+      ["output", []],
       ["pause", []],
       ["play", []],
       ["playing", []],
+      ["reset", []],
+      ["resize", []],
       ["ready", []],
       ["seeked", []],
-      ["vtUpdate", []],
     ]);
   }
 
@@ -63,17 +62,16 @@ class Core {
     return this.initPromise;
   }
 
+  terminalReady() {
+    this.resolveStartup();
+  }
+
   async _init() {
-    this.wasm = await vt;
-    const { memory } = await this.wasm.default();
-    this.memory = memory;
-    this._initializeVt(this.cols ?? DEFAULT_COLS, this.rows ?? DEFAULT_ROWS);
+    // Wait until Terminal has installed VT event listeners before drivers start dispatching.
+    await this.startupPromise;
 
     this.driver = this.driverFactory(
       {
-        feed: this._feed.bind(this),
-        reset: this._resetVt.bind(this),
-        resize: this._resizeVt.bind(this),
         dispatch: this._dispatchEvent.bind(this),
         logger: this.logger,
       },
@@ -206,28 +204,6 @@ class Core {
     });
   }
 
-  getLine(n, cursorOn) {
-    return this.vt.getLine(n, cursorOn);
-  }
-
-  getDataView([ptr, len], size) {
-    return new DataView(this.memory.buffer, ptr, len * size);
-  }
-
-  getUint32Array([ptr, len]) {
-    return new Uint32Array(this.memory.buffer, ptr, len);
-  }
-
-  getCursor() {
-    const cursor = this.vt.getCursor();
-
-    if (cursor) {
-      return { col: cursor[0], row: cursor[1], visible: true };
-    }
-
-    return { col: 0, row: 0, visible: false };
-  }
-
   getCurrentTime() {
     if (!this.driver) {
       return 0;
@@ -277,47 +253,6 @@ class Core {
     for (const h of this.eventHandlers.get(eventName)) {
       h(data);
     }
-  }
-
-  _feed(data) {
-    const changedRows = this.vt.feed(data);
-    this._dispatchEvent("vtUpdate", { changedRows });
-  }
-
-  _resetVt(cols, rows, init = undefined, theme = undefined) {
-    this.logger.debug(`core: vt reset (${cols}x${rows})`);
-    this._initializeVt(cols, rows);
-
-    if (init !== undefined && init !== "") {
-      this.vt.feed(init);
-    }
-
-    this._dispatchEvent("vtUpdate", {
-      size: { cols, rows },
-      theme: theme ?? null,
-      changedRows: Array.from({ length: rows }, (_, i) => i),
-    });
-  }
-
-  _resizeVt(cols, rows) {
-    if (cols === this.vt.cols && rows === this.vt.rows) return;
-
-    const changedRows = this.vt.resize(cols, rows);
-    this.vt.cols = cols;
-    this.vt.rows = rows;
-    this.logger.debug(`core: vt resize (${cols}x${rows})`);
-
-    this._dispatchEvent("vtUpdate", {
-      size: { cols, rows },
-      changedRows,
-    });
-  }
-
-  _initializeVt(cols, rows) {
-    this.logger.debug('vt init', { cols, rows });
-    this.vt = this.wasm.create(cols, rows, 100, this.boldIsBright);
-    this.vt.cols = cols;
-    this.vt.rows = rows;
   }
 
   _parsePoster(poster) {

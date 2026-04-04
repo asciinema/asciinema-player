@@ -18,11 +18,12 @@ test("step advances across multiple output frames", async () => {
       parser: (data) => data,
     },
     {
-      feed: (data) => output.push(data),
-      reset: () => {},
-      resize: () => {},
       logger: stubLogger(),
-      dispatch: () => {},
+      dispatch: (name, payload) => {
+        if (name === "output") {
+          output.push(payload);
+        }
+      },
     },
     { speed: 1 },
   );
@@ -50,9 +51,6 @@ test("stop tears down audio resources and pending waiting state", async () => {
         parser: async (data) => data,
       },
       {
-        feed: () => {},
-        reset: () => {},
-        resize: () => {},
         logger: stubLogger(),
         dispatch: (name, payload) => events.push({ name, payload }),
       },

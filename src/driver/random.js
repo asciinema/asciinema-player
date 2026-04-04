@@ -1,4 +1,4 @@
-function random(src, { feed, dispatch }, { speed, autoPlay }) {
+function random(_src, { dispatch }, { speed }) {
   const base = " ".charCodeAt(0);
   const range = "~".charCodeAt(0) - base;
   let timeoutId;
@@ -11,7 +11,7 @@ function random(src, { feed, dispatch }, { speed, autoPlay }) {
   const print = () => {
     schedule();
     const char = String.fromCharCode(base + Math.floor(Math.random() * range));
-    feed(char);
+    dispatch("output", char);
   };
 
   return {

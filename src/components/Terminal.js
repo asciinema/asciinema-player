@@ -1,5 +1,6 @@
 import { batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { hexToOklab, lerpOklab, normalizeHexColor, oklabToHex, rgbToHex } from "../colors.js";
+import { Vt } from "../vt";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const BLOCK_H_RES = 8;
@@ -20,6 +21,8 @@ export default (props) => {
   const vectorSymbolDefCache = new Set();
   const colorsCache = new Map();
   const attrClassCache = new Map();
+  const vtReady = Vt.build(props.cols, props.rows, props.boldIsBright, props.logger);
+  let vt;
 
   const [size, setSize] = createSignal(
     { cols: props.cols, rows: props.rows },
@@ -71,11 +74,20 @@ export default (props) => {
     setInitialTheme();
     adjustTextRowNodeCount(size().rows);
     adjustSymbolRowNodeCount(size().rows);
-    core.addEventListener("vtUpdate", onVtUpdate);
+
+    vtReady.then((vt_) => {
+      vt = vt_;
+      core.addEventListener("reset", onVtReset);
+      core.addEventListener("resize", onVtResize);
+      core.addEventListener("output", onVtOutput);
+      props.onReady?.();
+    });
   });
 
   onCleanup(() => {
-    core.removeEventListener("vtUpdate", onVtUpdate);
+    core.removeEventListener("reset", onVtReset);
+    core.removeEventListener("resize", onVtResize);
+    core.removeEventListener("output", onVtOutput);
     clearInterval(blinkIntervalId);
     cancelAnimationFrame(frameRequestId);
   });
@@ -120,6 +132,22 @@ export default (props) => {
     pendingChanges.theme = cssTheme;
   }
 
+  function onVtReset({ size, theme, init }) {
+    const changedRows = vt.reset(size.cols, size.rows, init);
+    onVtUpdate({ size, theme, changedRows });
+  }
+
+  function onVtResize(size) {
+    const changedRows = vt.resize(size.cols, size.rows);
+    if (changedRows === undefined) return;
+    onVtUpdate({ size, changedRows });
+  }
+
+  function onVtOutput(data) {
+    const changedRows = vt.feed(data);
+    onVtUpdate({ changedRows });
+  }
+
   function onVtUpdate({ size: newSize, theme, changedRows }) {
     let activity = false;
 
@@ -139,7 +167,7 @@ export default (props) => {
       }
     }
 
-    const newCursor = core.getCursor();
+    const newCursor = vt.getCursor();
 
     if (
       newCursor.visible != cursor.visible ||
@@ -227,7 +255,7 @@ export default (props) => {
   }
 
   function renderRow(rowIndex, theme, cursorOn) {
-    const line = core.getLine(rowIndex, cursorOn);
+    const line = vt.getLine(rowIndex, cursorOn);
 
     clearCanvasRow(rowIndex);
     renderRowBg(rowIndex, line.bg, theme);
@@ -242,7 +270,7 @@ export default (props) => {
 
   function renderRowBg(rowIndex, spans, theme) {
     // The memory layout of a BgSpan must follow one defined in lib.rs (see the assertions at the bottom)
-    const view = core.getDataView(spans, 8);
+    const view = vt.getDataView(spans, 8);
 
     const y = rowIndex * BLOCK_V_RES;
     let i = 0;
@@ -260,7 +288,7 @@ export default (props) => {
 
   function renderRowRasterSymbols(rowIndex, symbols, theme) {
     // The memory layout of a RasterSymbol must follow one defined in lib.rs (see the assertions at the bottom)
-    const view = core.getDataView(symbols, 12);
+    const view = vt.getDataView(symbols, 12);
 
     const y = rowIndex * BLOCK_V_RES;
     let i = 0;
@@ -278,7 +306,7 @@ export default (props) => {
 
   function renderRowVectorSymbols(rowIndex, symbols, theme) {
     // The memory layout of a VectorSymbol must follow one defined in lib.rs (see the assertions at the bottom)
-    const view = core.getDataView(symbols, 16);
+    const view = vt.getDataView(symbols, 16);
 
     const frag = document.createDocumentFragment();
     const symbolRow = vectorSymbolRowsEl.children[rowIndex];
@@ -305,9 +333,9 @@ export default (props) => {
 
   function renderRowText(rowIndex, spans, codepoints, theme) {
     // The memory layout of a TextSpan must follow one defined in lib.rs (see the assertions at the bottom)
-    const spansView = core.getDataView(spans, 12);
+    const spansView = vt.getDataView(spans, 12);
 
-    const codepointsView = core.getUint32Array(codepoints);
+    const codepointsView = vt.getUint32Array(codepoints);
     const frag = document.createDocumentFragment();
     let i = 0;
 

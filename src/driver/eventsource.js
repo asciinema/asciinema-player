@@ -2,7 +2,7 @@ import getBuffer from "../buffer";
 import { Clock, NullClock } from "../clock";
 import { PrefixedLogger } from "../logging";
 
-function eventsource({ url, bufferTime, minFrameTime }, { feed, reset, resize, dispatch, logger }) {
+function eventsource({ url, bufferTime, minFrameTime }, { dispatch, logger }) {
   logger = new PrefixedLogger(logger, "eventsource: ");
   let es;
   let buf;
@@ -13,10 +13,7 @@ function eventsource({ url, bufferTime, minFrameTime }, { feed, reset, resize, d
 
     buf = getBuffer(
       bufferTime,
-      feed,
-      resize,
-      (data) => dispatch("input", { data }),
-      (marker) => dispatch("marker", marker),
+      dispatch,
       (t) => clock.setTime(t),
       baseStreamTime,
       minFrameTime,
@@ -53,14 +50,13 @@ function eventsource({ url, bufferTime, minFrameTime }, { feed, reset, resize, d
           const rows = e.rows ?? e.height;
           logger.debug(`vt reset (${cols}x${rows})`);
           initBuffer(e.time);
-          reset(cols, rows, e.init ?? undefined);
+          dispatch("reset", { size: { cols, rows }, init: e.init ?? undefined });
           clock = new Clock();
 
           if (typeof e.time === "number") {
             clock.setTime(e.time);
           }
 
-          dispatch("metadata", { size: { cols, rows } });
           dispatch("playing");
         } else if (e.state === "offline") {
           logger.info("stream offline");

@@ -6,7 +6,14 @@ function create(src, elem, workerUrl, opts = {}) {
   const coreLogger = opts.logger === console ? true : undefined;
   const core = new CoreWorkerProxy(workerUrl, src, coreOpts(opts, { logger: coreLogger }));
   const uiLogger = opts.logger ?? new DummyLogger();
-  const { el, dispose } =  mount(core, elem, uiOpts(opts, { logger: uiLogger }));
+  const { el, dispose } = mount(
+    core,
+    elem,
+    uiOpts(opts, {
+      logger: uiLogger,
+      onTerminalReady: () => core.terminalReady(),
+    }),
+  );
 
   const ready = core.init();
 
@@ -41,6 +48,7 @@ class CoreWorkerProxy {
       ["marker", []],
       ["metadata", []],
       ["offline", []],
+      ["output", []],
       ["pause", []],
       ["play", []],
       ["playing", []],
@@ -48,7 +56,6 @@ class CoreWorkerProxy {
       ["reset", []],
       ["resize", []],
       ["seeked", []],
-      ["vtUpdate", []],
     ]);
 
     this.resolves = new Map();
@@ -81,6 +88,10 @@ class CoreWorkerProxy {
 
   stop() {
     return this._sendCommand('stop');
+  }
+
+  terminalReady() {
+    this._sendNotification("terminalReady");
   }
 
   getChanges() {

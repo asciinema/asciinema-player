@@ -1,6 +1,6 @@
 import parseAsciicast from "../parser/asciicast";
 
-function benchmark({ url, iterations = 10 }, { feed, setState }) {
+function benchmark({ url, iterations = 10 }, { dispatch }) {
   let data;
   let byteCount = 0;
 
@@ -27,10 +27,10 @@ function benchmark({ url, iterations = 10 }, { feed, setState }) {
 
       for (let i = 0; i < iterations; i++) {
         for (const [_, text] of data) {
-          feed(text);
+          dispatch("output", text);
         }
 
-        feed("\x1bc"); // reset terminal
+        dispatch("output", "\x1bc"); // reset terminal
       }
 
       const endTime = performance.now();
@@ -47,7 +47,7 @@ function benchmark({ url, iterations = 10 }, { feed, setState }) {
       });
 
       setTimeout(() => {
-        setState("stopped", { reason: "ended" });
+        dispatch("ended");
       }, 0);
 
       return true;

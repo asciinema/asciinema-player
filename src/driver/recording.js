@@ -2,7 +2,7 @@ import Stream from "../stream";
 
 function recording(
   src,
-  { feed, reset, resize, logger, dispatch },
+  { dispatch, logger },
   {
     speed,
     idleTimeLimit,
@@ -96,11 +96,10 @@ function recording(
 
       const theme = recording.theme ?? null;
       markers = events.filter((e) => e[1] === "m").map((e) => [e[0], e[2].label]);
-      const metadata = { size: { cols, rows }, duration, theme, markers };
 
-      reset(cols, rows, undefined, theme);
+      dispatch("metadata", { duration, markers, hasAudio });
+      dispatch("reset", { size: { cols, rows }, theme });
       renderPoster();
-      dispatch("metadata", { ...metadata, hasAudio });
     } catch (e) {
       dispatch("errored");
       throw e;
@@ -230,8 +229,7 @@ function recording(
       dispatch("input", { data });
     } else if (type === "r") {
       const [cols, rows] = data.split("x");
-      resize(cols, rows);
-      dispatch("metadata", { size: { cols, rows } });
+      dispatch("resize", { cols, rows });
     } else if (type === "m") {
       dispatch("marker", data);
 
@@ -532,8 +530,7 @@ function recording(
   }
 
   function resizeTerminalToInitialSize() {
-    resize(initialCols, initialRows);
-    dispatch("metadata", { size: { cols: initialCols, rows: initialRows } });
+    dispatch("resize", { cols: initialCols, rows: initialRows });
   }
 
   function setupAudioCtx() {
@@ -612,6 +609,10 @@ function recording(
     clearTimeout(loadingTimeout);
     cancelNextEvent();
     await teardownAudio();
+  }
+
+  function feed(data) {
+    dispatch("output", data);
   }
 
   return {

@@ -1,7 +1,7 @@
 import Queue from "./queue";
 
-function getBuffer(bufferTime, feed, resize, onInput, onMarker, setTime, baseStreamTime, minFrameTime, logger) {
-  const execute = executeEvent(feed, resize, onInput, onMarker);
+function getBuffer(bufferTime, dispatch, setTime, baseStreamTime, minFrameTime, logger) {
+  const execute = executeEvent(dispatch);
 
   if (bufferTime === 0) {
     logger.debug("using no buffer");
@@ -39,16 +39,16 @@ function nullBuffer(execute) {
   };
 }
 
-function executeEvent(feed, resize, onInput, onMarker) {
+function executeEvent(dispatch) {
   return function(code, data) {
     if (code === "o") {
-      feed(data);
+      dispatch("output", data);
     } else if (code === "i") {
-      onInput(data);
+      dispatch("input", { data });
     } else if (code === "r") {
-      resize(data.cols, data.rows);
+      dispatch("resize", data);
     } else if (code === "m") {
-      onMarker(data);
+      dispatch("marker", data);
     }
   }
 }

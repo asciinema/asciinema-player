@@ -6,7 +6,8 @@ import { DummyLogger } from "./logging";
 function create(src, elem, opts = {}) {
   const logger = opts.logger ?? new DummyLogger();
   const core = new Core(src, coreOpts(opts, { logger }));
-  const { el, dispose } = mount(core, elem, uiOpts(opts, { logger }));
+  const onTerminalReady = () => core.terminalReady();
+  const { el, dispose } = mount(core, elem, uiOpts(opts, { logger, onTerminalReady }));
   void core.init();
 
   const player = {
