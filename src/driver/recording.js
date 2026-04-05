@@ -725,19 +725,19 @@ function prepareRecording(
   idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
   const limiterOutput = { offset: 0 };
 
-  events = events
-    .transform(batcher(logger, minFrameTime))
-    .map(timeLimiter(idleTimeLimit, startAt, limiterOutput))
-    .map(markerWrapper());
+  events = events.transform(batcher(logger, minFrameTime));
 
   if (markers !== undefined) {
     markers = new Stream(markers).map(normalizeMarker);
 
     events = events
       .filter((e) => e[1] !== "m")
-      .multiplex(markers, (a, b) => a[0] < b[0])
-      .map(markerWrapper());
+      .multiplex(markers, (a, b) => a[0] < b[0]);
   }
+
+  events = events
+    .map(timeLimiter(idleTimeLimit, startAt, limiterOutput))
+    .map(markerWrapper());
 
   events = events.toArray();
 

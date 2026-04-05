@@ -305,6 +305,64 @@ test("prepareRecording wraps embedded markers and can replace them with override
   ]);
 });
 
+test("prepareRecording applies idleTimeLimit to embedded markers", () => {
+  const recording = prepareRecording(
+    {
+      cols: 80,
+      rows: 24,
+      events: [
+        [1, "o", "a"],
+        [8, "m", "chapter"],
+        [10, "o", "b"],
+      ],
+    },
+    stubLogger(),
+    { idleTimeLimit: 2 },
+  );
+
+  expect(recording.events).toEqual([
+    [1, "o", "a"],
+    [3, "m", { index: 0, time: 3, label: "chapter" }],
+    [5, "o", "b"],
+  ]);
+
+  expect(recording.duration).toBe(5);
+});
+
+test("prepareRecording applies idleTimeLimit to override markers", () => {
+  const recording = prepareRecording(
+    {
+      cols: 80,
+      rows: 24,
+      events: [
+        [1, "o", "a"],
+        [10, "o", "b"],
+        [20, "o", "c"],
+      ],
+    },
+    stubLogger(),
+    {
+      idleTimeLimit: 2,
+      markers: [
+        [8, "chapter 1"],
+        [15, "chapter 2"],
+        [18, "chapter 3"],
+      ],
+    },
+  );
+
+  expect(recording.events).toEqual([
+    [1, "o", "a"],
+    [3, "m", { index: 0, time: 3, label: "chapter 1" }],
+    [5, "o", "b"],
+    [7, "m", { index: 1, time: 7, label: "chapter 2" }],
+    [9, "m", { index: 2, time: 9, label: "chapter 3" }],
+    [11, "o", "c"],
+  ]);
+
+  expect(recording.duration).toBe(11);
+});
+
 test("prepareRecording computes effectiveStartAt after idle time compression", () => {
   const recording = prepareRecording(
     {
