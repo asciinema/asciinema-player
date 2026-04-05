@@ -36,7 +36,7 @@ class Core {
 
     this.eventHandlers = new Map([
       ["ended", []],
-      ["errored", []],
+      ["error", []],
       ["input", []],
       ["loading", []],
       ["marker", []],

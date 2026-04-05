@@ -1,4 +1,5 @@
 import Stream from "../stream";
+import { toErrorPayload } from "../error";
 
 function recording(
   src,
@@ -43,11 +44,11 @@ function recording(
 
   function init() {
     if (preload) {
-      ensureLoaded();
+      return ensureLoaded();
     } else {
       if (poster !== undefined) {
         if (poster.type == "npt") {
-          ensureLoaded();
+          return ensureLoaded();
         } else if (poster.type == "text") {
           renderPoster();
           posterRenderableAfterLoad = false;
@@ -59,6 +60,7 @@ function recording(
   function ensureLoaded() {
     if (loaded === undefined) {
       loaded = load();
+      void loaded.catch(() => {});
     }
 
     return loaded;
@@ -79,6 +81,7 @@ function recording(
     try {
       const parsedRecording = loadRecording(src);
       const audioLoaded = loadAudio(audioUrl);
+      void audioLoaded.catch(() => {});
 
       const recording = prepareRecording(await parsedRecording, logger, {
         idleTimeLimit,
@@ -101,7 +104,7 @@ function recording(
       dispatch("reset", { size: { cols, rows }, theme });
       renderPoster();
     } catch (e) {
-      dispatch("errored");
+      dispatch("error", toErrorPayload(e));
       throw e;
     } finally {
       clearTimeout(loadingTimeout);

@@ -8,7 +8,8 @@ function create(src, elem, opts = {}) {
   const core = new Core(src, coreOpts(opts, { logger }));
   const onTerminalReady = () => core.terminalReady();
   const { el, dispose } = mount(core, elem, uiOpts(opts, { logger, onTerminalReady }));
-  void core.init();
+  const ready = core.init();
+  void ready.catch(() => {});
 
   const player = {
     el,

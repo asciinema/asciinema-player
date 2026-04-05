@@ -172,7 +172,7 @@ export default (props) => {
     logger.debug("stats", stats.terminal);
   };
 
-  const onCoreErrored = () => {
+  const onCoreError = () => {
     setOverlay("error");
   };
 
@@ -189,7 +189,7 @@ export default (props) => {
   core.addEventListener("offline", onCoreOffline);
   core.addEventListener("muted", onCoreMuted);
   core.addEventListener("ended", onCoreEnded);
-  core.addEventListener("errored", onCoreErrored);
+  core.addEventListener("error", onCoreError);
   core.addEventListener("seeked", onCoreSeeked);
   core.addEventListener("reset", onCoreReset);
   core.addEventListener("resize", onCoreResize);
@@ -230,7 +230,7 @@ export default (props) => {
     core.removeEventListener("offline", onCoreOffline);
     core.removeEventListener("muted", onCoreMuted);
     core.removeEventListener("ended", onCoreEnded);
-    core.removeEventListener("errored", onCoreErrored);
+    core.removeEventListener("error", onCoreError);
     core.removeEventListener("seeked", onCoreSeeked);
     core.removeEventListener("reset", onCoreReset);
     core.removeEventListener("resize", onCoreResize);

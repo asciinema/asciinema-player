@@ -1,6 +1,7 @@
 import { mount } from "./view";
 import { coreOpts, uiOpts } from "./opts";
 import { DummyLogger } from "./logging";
+import { fromErrorPayload } from "./error";
 
 function create(src, elem, workerUrl, opts = {}) {
   const coreLogger = opts.logger === console ? true : undefined;
@@ -16,6 +17,7 @@ function create(src, elem, workerUrl, opts = {}) {
   );
 
   const ready = core.init();
+  void ready.catch(() => {});
 
   const player = {
     el,
@@ -42,7 +44,7 @@ class CoreWorkerProxy {
 
     this.eventHandlers = new Map([
       ["ended", []],
-      ["errored", []],
+      ["error", []],
       ["input", []],
       ["loading", []],
       ["marker", []],
@@ -58,7 +60,7 @@ class CoreWorkerProxy {
       ["seeked", []],
     ]);
 
-    this.resolves = new Map();
+    this.pending = new Map();
     this._sendCommand("new", [src, opts]);
   }
 
@@ -132,12 +134,14 @@ class CoreWorkerProxy {
 
   _sendCommand(name, args) {
     let resolve_;
+    let reject_;
 
-    const promise = new Promise((resolve) => {
+    const promise = new Promise((resolve, reject) => {
       resolve_ = resolve;
+      reject_ = reject;
     });
 
-    this.resolves.set(this.nextId, resolve_);
+    this.pending.set(this.nextId, { resolve: resolve_, reject: reject_ });
     this.worker.postMessage({ method: name, params: args, id: this.nextId });
     this.nextId++;
 
@@ -150,8 +154,17 @@ class CoreWorkerProxy {
 
   _onMessage(e) {
     if (e.data.id !== undefined) {
-      this.resolves.get(e.data.id)(e.data.result);
-      this.resolves.delete(e.data.id);
+      const pending = this.pending.get(e.data.id);
+
+      if (pending) {
+        if (e.data.error !== undefined) {
+          pending.reject(fromErrorPayload(e.data.error));
+        } else {
+          pending.resolve(e.data.result);
+        }
+
+        this.pending.delete(e.data.id);
+      }
     } else if (e.data.method === "onEvent") {
       this._dispatchEvent(e.data.params.name, e.data.params.event);
     }

@@ -124,7 +124,7 @@ test("preload exposes duration before playback", async ({ page }) => {
   await expectDuration(playerApi).toBeGreaterThan(0);
 });
 
-test("invalid audioUrl rejects playback and emits errored", async ({ page }) => {
+test("invalid audioUrl rejects playback and emits error", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/simple.cast", {
     audioUrl: "/assets/missing.mp3",
   });
@@ -139,7 +139,24 @@ test("invalid audioUrl rejects playback and emits errored", async ({ page }) => 
   });
 
   expect(error).toContain("failed loading audio from /assets/missing.mp3");
-  await playerApi.events.waitFor("errored");
+
+  const event = await playerApi.events.waitFor("error");
+
+  expect(event.payload).toEqual({
+    name: "Error",
+    message: "failed loading audio from /assets/missing.mp3",
+  });
+});
+
+test("invalid preload data emits error without an unhandled rejection", async ({ page }) => {
+  const playerApi = await createPlayer(page, { data: {} }, { preload: true });
+
+  const event = await playerApi.events.waitFor("error");
+
+  expect(event.payload).toEqual({
+    name: "Error",
+    message: "invalid data",
+  });
 });
 
 test("audio playback emits playing once on start and once after buffering recovery", async ({
@@ -640,7 +657,7 @@ test("poster - data:text/plain - with preload", async ({ page }) => {
   await expectTermText(page, "hello world");
 });
 
-const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "errored", "input", "marker"];
+const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "error", "input", "marker"];
 
 async function installFakeAudio(page) {
   await page.addInitScript(() => {

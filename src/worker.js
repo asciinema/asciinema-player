@@ -1,15 +1,20 @@
 import Core from "./core";
 import { DummyLogger } from "./logging";
+import { toErrorPayload } from "./error";
 
 let logger = new DummyLogger();
 let core;
 
 onmessage = async function(e) {
-  const promise = invoke(e.data.method, e.data.params);
-
   if (e.data.id !== undefined) {
-    const result = await promise;
-    postMessage({ result, id: e.data.id });
+    try {
+      const result = await invoke(e.data.method, e.data.params);
+      postMessage({ result, id: e.data.id });
+    } catch (error) {
+      postMessage({ error: toErrorPayload(error), id: e.data.id });
+    }
+  } else {
+    await invoke(e.data.method, e.data.params);
   }
 };
 
