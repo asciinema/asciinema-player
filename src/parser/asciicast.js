@@ -119,17 +119,5 @@ function parseTheme(theme) {
   });
 }
 
-function unparseAsciicastV2(recording) {
-  const header = JSON.stringify({
-    version: 2,
-    width: recording.cols,
-    height: recording.rows,
-  });
-
-  const events = recording.events.map(JSON.stringify).join("\n");
-
-  return `${header}\n${events}\n`;
-}
-
 export default parse;
-export { parse, unparseAsciicastV2 };
+export { parse };
