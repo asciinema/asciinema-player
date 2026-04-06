@@ -1,5 +1,4 @@
 import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch } from "solid-js";
-import { createStore } from "solid-js/store";
 import { Transition } from "solid-transition-group";
 import { debounce } from "../util";
 import Terminal from "./Terminal";
@@ -24,31 +23,22 @@ export default (props) => {
   const preferEmbeddedTheme = themeOption.slice(0, 5) === "auto/";
   const themeName = preferEmbeddedTheme ? themeOption.slice(5) : themeOption;
 
-  const [state, setState] = createStore({
-    containerW: 0,
-    containerH: 0,
-    isPausable: true,
-    isSeekable: true,
-    isFullscreen: false,
-    currentTime: null,
-    remainingTime: null,
-    progress: null,
-  });
-
+  const [terminalSize, setTerminalSize] = createTerminalSizeSignal(props.cols, props.rows);
+  const [containerSize, setContainerSize] = createContainerSizeSignal();
+  const [isPausable, setIsPausable] = createSignal(true);
+  const [isSeekable, setIsSeekable] = createSignal(true);
+  const [isFullscreen, setIsFullscreen] = createSignal(false);
+  const [currentTime, setCurrentTime] = createSignal(null);
+  const [remainingTime, setRemainingTime] = createSignal(null);
+  const [progress, setProgress] = createSignal(null);
   const [isPlaying, setIsPlaying] = createSignal(false);
   const [isMuted, setIsMuted] = createSignal(undefined);
   const [wasPlaying, setWasPlaying] = createSignal(false);
   const [overlay, setOverlay] = createSignal(!autoPlay ? "start" : null);
   const [infoMessage, setInfoMessage] = createSignal(null);
   const [blinking, setBlinking] = createSignal(false);
-
-  const [terminalSize, setTerminalSize] = createSignal(
-    { cols: props.cols, rows: props.rows },
-    { equals: (newVal, oldVal) => newVal.cols === oldVal.cols && newVal.rows === oldVal.rows },
-  );
-
   const [duration, setDuration] = createSignal(null);
-  const [markers, setMarkers] = createStore([]);
+  const [markers, setMarkers] = createSignal([]);
   const [userActive, setUserActive] = createSignal(false);
   const [isHelpVisible, setIsHelpVisible] = createSignal(false);
   const [originalTheme, setOriginalTheme] = createSignal(null);
@@ -78,14 +68,19 @@ export default (props) => {
   }
 
   const onCoreReady = ({ isPausable, isSeekable }) => {
-    setState({ isPausable, isSeekable });
+    batch(() => {
+      setIsPausable(isPausable);
+      setIsSeekable(isSeekable);
+    });
   };
 
   const onCoreMetadata = (meta) => {
     batch(() => {
       if (meta.duration !== undefined) {
         setDuration(meta.duration);
-        setState({ currentTime: 0, remainingTime: meta.duration, progress: 0 });
+        setCurrentTime(0);
+        setRemainingTime(meta.duration);
+        setProgress(0);
       }
 
       if (meta.markers !== undefined) {
@@ -197,11 +192,7 @@ export default (props) => {
   const setupResizeObserver = () => {
     resizeObserver = new ResizeObserver(
       debounce((_entries) => {
-        setState({
-          containerW: wrapperRef.offsetWidth,
-          containerH: wrapperRef.offsetHeight,
-        });
-
+        setContainerSize({ width: wrapperRef.offsetWidth, height: wrapperRef.offsetHeight });
         wrapperRef.dispatchEvent(new CustomEvent("resize", { detail: { el: playerRef } }));
       }, 10),
     );
@@ -213,11 +204,7 @@ export default (props) => {
     logger.info("view: mounted");
     logger.debug("view: font measurements", { charW, charH });
     setupResizeObserver();
-
-    setState({
-      containerW: wrapperRef.offsetWidth,
-      containerH: wrapperRef.offsetHeight,
-    });
+    setContainerSize({ width: wrapperRef.offsetWidth, height: wrapperRef.offsetHeight });
   });
 
   onCleanup(() => {
@@ -245,8 +232,12 @@ export default (props) => {
 
     let fit = props.fit ?? "width";
 
-    if (fit === "both" || state.isFullscreen) {
-      const containerRatio = state.containerW / (state.containerH - controlBarHeight());
+    const currentContainerSize = containerSize();
+
+    if (fit === "both" || isFullscreen()) {
+      const containerRatio =
+        currentContainerSize.width / (currentContainerSize.height - controlBarHeight());
+
       const terminalRatio = terminalW / terminalH;
 
       if (containerRatio > terminalRatio) {
@@ -259,20 +250,20 @@ export default (props) => {
     if (fit === false || fit === "none") {
       return {};
     } else if (fit === "width") {
-      const scale = state.containerW / terminalW;
+      const scale = currentContainerSize.width / terminalW;
 
       return {
         scale: scale,
-        width: state.containerW,
+        width: currentContainerSize.width,
         height: terminalH * scale + controlBarHeight(),
       };
     } else if (fit === "height") {
-      const scale = (state.containerH - controlBarHeight()) / terminalH;
+      const scale = (currentContainerSize.height - controlBarHeight()) / terminalH;
 
       return {
         scale: scale,
         width: terminalW * scale,
-        height: state.containerH,
+        height: currentContainerSize.height,
       };
     } else {
       throw new Error(`unsupported fit mode: ${fit}`);
@@ -280,11 +271,11 @@ export default (props) => {
   });
 
   const onFullscreenChange = () => {
-    setState("isFullscreen", document.fullscreenElement ?? document.webkitFullscreenElement);
+    setIsFullscreen(document.fullscreenElement ?? document.webkitFullscreenElement);
   };
 
   const toggleFullscreen = () => {
-    if (state.isFullscreen) {
+    if (isFullscreen()) {
       (document.exitFullscreen ?? document.webkitExitFullscreen ?? (() => {})).apply(document);
     } else {
       (wrapperRef.requestFullscreen ?? wrapperRef.webkitRequestFullscreen ?? (() => {})).apply(
@@ -349,13 +340,13 @@ export default (props) => {
   };
 
   const wrapperOnMouseMove = () => {
-    if (state.isFullscreen) {
+    if (isFullscreen()) {
       onUserActive(true);
     }
   };
 
   const playerOnMouseLeave = () => {
-    if (!state.isFullscreen) {
+    if (!isFullscreen()) {
       onUserActive(false);
     }
   };
@@ -370,11 +361,15 @@ export default (props) => {
   };
 
   const updateTime = async () => {
-    const currentTime = await core.getCurrentTime();
-    const remainingTime = await core.getRemainingTime();
-    const progress = await core.getProgress();
+    const newCurrentTime = await core.getCurrentTime();
+    const newRemainingTime = await core.getRemainingTime();
+    const newProgress = await core.getProgress();
 
-    setState({ currentTime, remainingTime, progress });
+    batch(() => {
+      setCurrentTime(newCurrentTime);
+      setRemainingTime(newRemainingTime);
+      setProgress(newProgress);
+    });
   };
 
   const onUserActive = (show) => {
@@ -487,13 +482,13 @@ export default (props) => {
         <Show when={props.controls !== false}>
           <ControlBar
             duration={duration()}
-            currentTime={state.currentTime}
-            remainingTime={state.remainingTime}
-            progress={state.progress}
-            markers={markers}
+            currentTime={currentTime()}
+            remainingTime={remainingTime()}
+            progress={progress()}
+            markers={markers()}
             isPlaying={isPlaying() || overlay() == "loader"}
-            isPausable={state.isPausable}
-            isSeekable={state.isSeekable}
+            isPausable={isPausable()}
+            isSeekable={isSeekable()}
             isMuted={isMuted()}
             onPlayClick={togglePlay}
             onFullscreenClick={toggleFullscreen}
@@ -522,8 +517,8 @@ export default (props) => {
         <Show when={isHelpVisible()}>
           <HelpOverlay
             onClose={() => setIsHelpVisible(false)}
-            isPausable={state.isPausable}
-            isSeekable={state.isSeekable}
+            isPausable={isPausable()}
+            isSeekable={isSeekable()}
             hasAudio={isMuted() !== undefined}
           />
         </Show>
@@ -533,3 +528,19 @@ export default (props) => {
 
   return el;
 };
+
+function createTerminalSizeSignal(cols, rows) {
+  return createSignal(
+    { cols, rows },
+    { equals: (newVal, oldVal) => newVal.cols === oldVal.cols && newVal.rows === oldVal.rows },
+  );
+}
+
+function createContainerSizeSignal() {
+  return createSignal(
+    { width: 0, height: 0 },
+    {
+      equals: (newVal, oldVal) => newVal.width === oldVal.width && newVal.height === oldVal.height,
+    },
+  );
+}
