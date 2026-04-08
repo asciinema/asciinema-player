@@ -144,7 +144,20 @@ export default (props) => {
   }
 
   function onVtOutput(data) {
-    const changedRows = vt.feed(data);
+    let changedRows;
+
+    if (Array.isArray(data)) {
+      changedRows = new Set();
+
+      for (const d of data) {
+        for (const row of vt.feed(d)) {
+          changedRows.add(row);
+        }
+      }
+    } else {
+      changedRows = vt.feed(data);
+    }
+
     onVtUpdate({ changedRows });
   }
 

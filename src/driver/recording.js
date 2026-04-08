@@ -139,7 +139,7 @@ function recording(
     if (!posterRenderableAfterLoad) return;
 
     if (poster.type == "npt") {
-      getPoster(poster.value).forEach(feed);
+      feed(getPoster(poster.value));
     } else if (poster.type == "text") {
       feed(poster.value);
     }
