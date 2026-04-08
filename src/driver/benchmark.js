@@ -13,13 +13,11 @@ function benchmark({ url, iterations = 10 }, { dispatch }) {
         .filter(([_time, type, _text]) => type === "o")
         .map(([time, _type, text]) => [time, text]);
 
-      const duration = data[data.length - 1][0];
-
       for (const [_, text] of data) {
         byteCount += new Blob([text]).size;
       }
 
-      return { cols, rows, duration };
+      dispatch("reset", { size: { cols, rows } });
     },
 
     play() {
