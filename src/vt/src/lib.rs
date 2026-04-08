@@ -4,10 +4,9 @@ use std::ops::RangeInclusive;
 use serde::{ser::Serializer, Serialize};
 use wasm_bindgen::prelude::*;
 
-// Use `wee_alloc` as the global allocator for smaller binary size
-#[cfg(feature = "wee_alloc")]
+#[cfg(all(not(target_feature = "atomics"), target_family = "wasm"))]
 #[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+static TALC: talc::wasm::WasmDynamicTalc = talc::wasm::new_wasm_dynamic_allocator();
 
 const STANDALONE_CHARS_LUT_BITS: usize = 65536;
 const STANDALONE_CHARS_LUT_SIZE: usize = STANDALONE_CHARS_LUT_BITS / 8;
