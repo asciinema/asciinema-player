@@ -233,29 +233,38 @@ test("loadRecording rejects on missing source, fetch failure and parser failure"
   ).rejects.toThrow("parser boom");
 });
 
-test("prepareRecording batches adjacent output events", () => {
-  const recording = prepareRecording(
+test("play batches adjacent output events at runtime", async () => {
+  const outputs = [];
+
+  const driver = recording(
     {
-      cols: 80,
-      rows: 24,
-      events: [
-        [0.1, "o", "hel"],
-        [0.1005, "o", "lo"],
-        [0.2, "i", "a"],
-        [0.2005, "o", "!"],
-      ],
+      data: {
+        cols: 80,
+        rows: 24,
+        events: [
+          [0.001, "o", "hel"],
+          [0.006, "o", "lo"],
+          [0.011, "o", "!"],
+          [0.03, "o", "?"],
+        ],
+      },
+      parser: (data) => data,
     },
-    stubLogger(),
-    {},
+    {
+      logger: stubLogger(),
+      dispatch: (name, payload) => {
+        if (name === "output") {
+          outputs.push(payload);
+        }
+      },
+    },
+    { speed: 1 },
   );
 
-  expect(recording.events).toEqual([
-    [0.1, "o", "hello"],
-    [0.2, "i", "a"],
-    [0.2005, "o", "!"],
-  ]);
+  await driver.play();
+  await wait(50);
 
-  expect(recording.duration).toBeCloseTo(0.2005);
+  expect(outputs).toEqual([["hel", "lo", "!"], ["?"]]);
 });
 
 test("prepareRecording applies idleTimeLimit from recording or options", () => {
@@ -269,12 +278,12 @@ test("prepareRecording applies idleTimeLimit from recording or options", () => {
     ],
   };
 
-  const withHeaderLimit = prepareRecording(base, stubLogger(), {});
+  const withHeaderLimit = prepareRecording(base, {});
 
   expect(withHeaderLimit.events.map((e) => e[0])).toEqual([1, 3]);
   expect(withHeaderLimit.duration).toBe(3);
 
-  const withOverride = prepareRecording(base, stubLogger(), { idleTimeLimit: 4 });
+  const withOverride = prepareRecording(base, { idleTimeLimit: 4 });
 
   expect(withOverride.events.map((e) => e[0])).toEqual([1, 5]);
   expect(withOverride.duration).toBe(5);
@@ -291,11 +300,11 @@ test("prepareRecording wraps embedded markers and can replace them with override
     ],
   };
 
-  const embedded = prepareRecording(base, stubLogger(), {});
+  const embedded = prepareRecording(base, {});
 
   expect(embedded.events[1]).toEqual([2, "m", { index: 0, time: 2, label: "embedded" }]);
 
-  const overridden = prepareRecording(base, stubLogger(), {
+  const overridden = prepareRecording(base, {
     markers: [1.5, [2.5, "override"]],
   });
 
@@ -316,7 +325,6 @@ test("prepareRecording applies idleTimeLimit to embedded markers", () => {
         [10, "o", "b"],
       ],
     },
-    stubLogger(),
     { idleTimeLimit: 2 },
   );
 
@@ -340,7 +348,6 @@ test("prepareRecording applies idleTimeLimit to override markers", () => {
         [20, "o", "c"],
       ],
     },
-    stubLogger(),
     {
       idleTimeLimit: 2,
       markers: [
@@ -374,7 +381,6 @@ test("prepareRecording computes effectiveStartAt after idle time compression", (
         [12, "o", "c"],
       ],
     },
-    stubLogger(),
     { idleTimeLimit: 2, startAt: 11 },
   );
 
@@ -390,7 +396,6 @@ test("prepareRecording rejects recordings with no events", () => {
         rows: 24,
         events: [],
       },
-      stubLogger(),
       {},
     ),
   ).toThrow("recording is missing events");

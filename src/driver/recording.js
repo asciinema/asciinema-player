@@ -18,6 +18,7 @@ function recording(
     audioUrl,
   },
 ) {
+  const outputBatchWindow = src.minFrameTime ?? 1 / 60;
   let cols;
   let rows;
   let events;
@@ -83,11 +84,10 @@ function recording(
       const audioLoaded = loadAudio(audioUrl);
       void audioLoaded.catch(() => {});
 
-      const recording = prepareRecording(await parsedRecording, logger, {
+      const recording = prepareRecording(await parsedRecording, {
         idleTimeLimit,
         startAt,
         markers: markers_,
-        minFrameTime: src.minFrameTime,
         inputOffset: src.inputOffset,
       });
 
@@ -181,13 +181,8 @@ function recording(
   }
 
   function runNextEvent() {
-    let event = events[nextEventIndex];
-
-    while (event !== undefined) {
-      lastEventTime = event[0];
-      nextEventIndex++;
-
-      if (executeEvent(event)) {
+    while (events[nextEventIndex] !== undefined) {
+      if (executeNextEventChunk()) {
         return;
       }
 
@@ -202,11 +197,39 @@ function recording(
       if (elapsedWallTime <= nextEvent[0] * 1000) {
         break;
       }
-
-      event = nextEvent;
     }
 
     scheduleNextEvent();
+  }
+
+  function executeNextEventChunk() {
+    const event = events[nextEventIndex];
+
+    if (event[1] === "o") {
+      executeOutputGroup();
+      return false;
+    }
+
+    lastEventTime = event[0];
+    nextEventIndex++;
+
+    return executeEvent(event);
+  }
+
+  function executeOutputGroup() {
+    const firstEvent = events[nextEventIndex];
+    const batchDeadline = firstEvent[0] + outputBatchWindow;
+    const output = [];
+    let event = firstEvent;
+
+    while (event !== undefined && event[1] === "o" && event[0] < batchDeadline) {
+      output.push(event[2]);
+      lastEventTime = event[0];
+      nextEventIndex++;
+      event = events[nextEventIndex];
+    }
+
+    feed(output);
   }
 
   function cancelNextEvent() {
@@ -403,9 +426,17 @@ function recording(
     }
 
     let event = events[nextEventIndex];
+    let output = [];
 
     while (event && event[0] <= targetTime) {
-      if (event[1] === "o" || event[1] === "r") {
+      if (event[1] === "o") {
+        output.push(event[2]);
+      } else if (event[1] === "r") {
+        if (output.length > 0) {
+          feed(output);
+          output = [];
+        }
+
         executeEvent(event);
       }
 
@@ -413,6 +444,9 @@ function recording(
       event = events[++nextEventIndex];
     }
 
+    if (output.length > 0) {
+      feed(output);
+    }
     pauseElapsedTime = targetTime * 1000;
     effectiveStartAt = null;
 
@@ -508,14 +542,26 @@ function recording(
 
     if (targetIndex === undefined) return;
 
+    let output = [];
+
     while (nextEventIndex <= targetIndex) {
       nextEvent = events[nextEventIndex++];
 
-      if (nextEvent[1] === "o" || nextEvent[1] === "r") {
+      if (nextEvent[1] === "o") {
+        output.push(nextEvent[2]);
+      } else if (nextEvent[1] === "r") {
+        if (output.length > 0) {
+          feed(output);
+          output = [];
+        }
+
         executeEvent(nextEvent);
       }
     }
 
+    if (output.length > 0) {
+      feed(output);
+    }
     lastEventTime = nextEvent[0];
     pauseElapsedTime = lastEventTime * 1000;
     effectiveStartAt = null;
@@ -686,48 +732,7 @@ async function doFetchOne(url, fetchOpts) {
   return response;
 }
 
-function batcher(logger, minFrameTime = 1.0 / 60) {
-  let prevEvent;
-
-  return (emit) => {
-    let ic = 0;
-    let oc = 0;
-
-    return {
-      step: (event) => {
-        ic++;
-
-        if (prevEvent === undefined) {
-          prevEvent = event;
-          return;
-        }
-
-        if (event[1] === "o" && prevEvent[1] === "o" && event[0] - prevEvent[0] < minFrameTime) {
-          prevEvent[2] += event[2];
-        } else {
-          emit(prevEvent);
-          prevEvent = event;
-          oc++;
-        }
-      },
-
-      flush: () => {
-        if (prevEvent !== undefined) {
-          emit(prevEvent);
-          oc++;
-        }
-
-        logger.debug(`batched ${ic} frames to ${oc} frames`);
-      },
-    };
-  };
-}
-
-function prepareRecording(
-  recording,
-  logger,
-  { startAt = 0, idleTimeLimit, minFrameTime, inputOffset, markers },
-) {
+function prepareRecording(recording, { startAt = 0, idleTimeLimit, inputOffset, markers }) {
   let { events } = recording;
 
   if (!(events instanceof Stream)) {
@@ -736,8 +741,6 @@ function prepareRecording(
 
   idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
   const limiterOutput = { offset: 0 };
-
-  events = events.transform(batcher(logger, minFrameTime));
 
   if (markers !== undefined) {
     markers = new Stream(markers).map(normalizeMarker);
