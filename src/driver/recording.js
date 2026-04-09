@@ -182,20 +182,29 @@ function recording(
 
   function runNextEvent() {
     let event = events[nextEventIndex];
-    let elapsedWallTime;
 
-    do {
+    while (event !== undefined) {
       lastEventTime = event[0];
       nextEventIndex++;
-      const stop = executeEvent(event);
 
-      if (stop) {
+      if (executeEvent(event)) {
         return;
       }
 
-      event = events[nextEventIndex];
-      elapsedWallTime = now() - startTime;
-    } while (event && elapsedWallTime > event[0] * 1000);
+      const nextEvent = events[nextEventIndex];
+
+      if (nextEvent === undefined) {
+        break;
+      }
+
+      const elapsedWallTime = now() - startTime;
+
+      if (elapsedWallTime <= nextEvent[0] * 1000) {
+        break;
+      }
+
+      event = nextEvent;
+    }
 
     scheduleNextEvent();
   }
