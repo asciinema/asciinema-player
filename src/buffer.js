@@ -1,5 +1,3 @@
-import Queue from "./queue";
-
 function getBuffer(bufferTime, dispatch, setTime, baseStreamTime, minFrameTime, logger) {
   const execute = executeEvent(dispatch);
 
@@ -54,43 +52,97 @@ function executeEvent(dispatch) {
 }
 
 function buffer(getBufferTime, execute, setTime, logger, baseStreamTime, minFrameTime = 1.0 / 60) {
+  const outputBatchWindow = minFrameTime * 1000;
   let epoch = performance.now() - baseStreamTime * 1000;
   let bufferTime = getBufferTime(0);
-  const queue = new Queue();
-  minFrameTime *= 1000;
-  let prevElapsedStreamTime = -minFrameTime;
+  let queue = [];
+  let onPush;
+  let prevElapsedStreamTime = -outputBatchWindow;
   let stop = false;
 
   function elapsedWallTime() {
     return performance.now() - epoch;
   }
 
-  setTimeout(async () => {
+  function push(item) {
+    queue.push(item);
+
+    if (onPush !== undefined) {
+      onPush(popAll());
+      onPush = undefined;
+    }
+  }
+
+  function popAll() {
+    if (queue.length > 0) {
+      const items = queue;
+      queue = [];
+      return items;
+    } else {
+      return new Promise((resolve) => {
+        onPush = resolve;
+      });
+    }
+  }
+
+  async function run() {
     while (!stop) {
-      const events = await queue.popAll();
+      const events = await popAll();
       if (stop) return;
 
-      for (const event of events) {
-        const elapsedStreamTime = event[3];
+      let nextEventIndex = 0;
 
-        if (elapsedStreamTime - prevElapsedStreamTime < minFrameTime) {
-          execute(event[1], event[2]);
-          continue;
-        }
-
-        const delay = elapsedStreamTime - elapsedWallTime();
-
-        if (delay > 0) {
-          await sleep(delay);
-          if (stop) return;
-        }
-
-        setTime(event[0]);
-        execute(event[1], event[2]);
-        prevElapsedStreamTime = elapsedStreamTime;
+      while (nextEventIndex < events.length) {
+        nextEventIndex = await executeNextEventChunk(events, nextEventIndex);
       }
     }
-  }, 0);
+  }
+
+  queueMicrotask(run);
+
+  async function executeNextEventChunk(events, nextEventIndex) {
+    const event = events[nextEventIndex];
+    const elapsedStreamTime = event[3];
+
+    if (elapsedStreamTime - prevElapsedStreamTime >= outputBatchWindow) {
+      const delay = elapsedStreamTime - elapsedWallTime();
+
+      if (delay > 0) {
+        await sleep(delay);
+
+        if (stop) {
+          return events.length;
+        }
+      }
+
+      setTime(event[0]);
+      prevElapsedStreamTime = elapsedStreamTime;
+    }
+
+    if (event[1] === "o") {
+      return executeOutputGroup(events, nextEventIndex);
+    }
+
+    execute(event[1], event[2]);
+
+    return nextEventIndex + 1;
+  }
+
+  function executeOutputGroup(events, nextEventIndex) {
+    const firstEvent = events[nextEventIndex];
+    const batchDeadline = firstEvent[0] * 1000 + outputBatchWindow;
+    const output = [];
+    let event = firstEvent;
+
+    while (event !== undefined && event[1] === "o" && event[0] * 1000 < batchDeadline) {
+      output.push(event[2]);
+      event = events[++nextEventIndex];
+    }
+
+    execute("o", output);
+
+    return nextEventIndex;
+  }
 
   return {
     pushEvent(event) {
@@ -103,17 +155,21 @@ function buffer(getBufferTime, execute, setTime, logger, baseStreamTime, minFram
       }
 
       bufferTime = getBufferTime(latency);
-      queue.push([event[0], event[1], event[2], event[0] * 1000 + bufferTime]);
+      push([event[0], event[1], event[2], event[0] * 1000 + bufferTime]);
     },
 
     pushText(text) {
       const time = elapsedWallTime() / 1000;
-      queue.push([time, "o", text, time * 1000 + bufferTime]);
+      push([time, "o", text, time * 1000 + bufferTime]);
     },
 
     stop() {
       stop = true;
-      queue.push(undefined);
+
+      if (onPush !== undefined) {
+        onPush([]);
+        onPush = undefined;
+      }
     },
   };
 }

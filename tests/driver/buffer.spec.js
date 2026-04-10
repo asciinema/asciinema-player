@@ -1,6 +1,96 @@
 import { test, expect } from "@playwright/test";
 import getBuffer from "../../src/buffer.js";
 
+test("buffer groups consecutive output events within minFrameTime", async () => {
+  const events = [];
+
+  const buf = createBuffer({
+    dispatch: (name, payload) => events.push({ name, payload }),
+  });
+
+  const baseTime = performance.now() / 1000;
+
+  try {
+    buf.pushEvent([baseTime, "o", "a"]);
+    buf.pushEvent([baseTime + 0.005, "o", "b"]);
+
+    await expect.poll(() => events).toEqual([{ name: "output", payload: ["a", "b"] }]);
+  } finally {
+    buf.stop();
+  }
+});
+
+test("buffer flushes output before non-output events", async () => {
+  const events = [];
+
+  const buf = createBuffer({
+    dispatch: (name, payload) => events.push({ name, payload }),
+  });
+
+  const baseTime = performance.now() / 1000;
+
+  try {
+    buf.pushEvent([baseTime, "o", "a"]);
+    buf.pushEvent([baseTime + 0.001, "r", { cols: 100, rows: 30 }]);
+    buf.pushEvent([baseTime + 0.002, "o", "b"]);
+
+    await expect
+      .poll(() => events)
+      .toEqual([
+        { name: "output", payload: ["a"] },
+        { name: "resize", payload: { cols: 100, rows: 30 } },
+        { name: "output", payload: ["b"] },
+      ]);
+  } finally {
+    buf.stop();
+  }
+});
+
+test("buffer splits output groups outside the anchored window", async () => {
+  const events = [];
+
+  const buf = createBuffer({
+    dispatch: (name, payload) => events.push({ name, payload }),
+    minFrameTime: 0.01,
+  });
+
+  const baseTime = performance.now() / 1000;
+
+  try {
+    buf.pushEvent([baseTime, "o", "a"]);
+    buf.pushEvent([baseTime + 0.005, "o", "b"]);
+    buf.pushEvent([baseTime + 0.012, "o", "c"]);
+
+    await expect
+      .poll(() => events)
+      .toEqual([
+        { name: "output", payload: ["a", "b"] },
+        { name: "output", payload: ["c"] },
+      ]);
+  } finally {
+    buf.stop();
+  }
+});
+
+test("buffer groups pushText output with output events", async () => {
+  const events = [];
+  const baseTime = performance.now() / 1000;
+
+  const buf = createBuffer({
+    dispatch: (name, payload) => events.push({ name, payload }),
+    baseStreamTime: baseTime,
+  });
+
+  try {
+    buf.pushEvent([baseTime, "o", "a"]);
+    buf.pushText("b");
+
+    await expect.poll(() => events).toEqual([{ name: "output", payload: ["a", "b"] }]);
+  } finally {
+    buf.stop();
+  }
+});
+
 test("buffer keeps earlier events on their original schedule when buffer time increases", async () => {
   await withFakeTime(async ({ advanceBy, now }) => {
     const events = [];
@@ -22,14 +112,14 @@ test("buffer keeps earlier events on their original schedule when buffer time in
     expect(setTimeCalls).toEqual([]);
 
     await advanceBy(1);
-    expect(events).toEqual([{ name: "output", payload: "A", at: 20 }]);
+    expect(events).toEqual([{ name: "output", payload: ["A"], at: 20 }]);
     expect(setTimeCalls).toEqual([{ time: 0, at: 20 }]);
 
     await advanceBy(185);
 
     expect(events).toEqual([
-      { name: "output", payload: "A", at: 20 },
-      { name: "output", payload: "B", at: 205 },
+      { name: "output", payload: ["A"], at: 20 },
+      { name: "output", payload: ["B"], at: 205 },
     ]);
 
     expect(setTimeCalls).toEqual([
@@ -63,14 +153,35 @@ test("buffer keeps earlier events delayed when buffer time drops", async () => {
 
     await advanceBy(1);
 
-    expect(events).toEqual([
-      { name: "output", payload: "A", at: 200 },
-      { name: "output", payload: "B", at: 200 },
-    ]);
-    expect(setTimeCalls).toEqual([{ time: 0, at: 200 }]);
+    await expect
+      .poll(() => ({ events, setTimeCalls }))
+      .toEqual({
+        events: [
+          { name: "output", payload: ["A"], at: 200 },
+          { name: "output", payload: ["B"], at: 200 },
+        ],
+        setTimeCalls: [{ time: 0, at: 200 }],
+      });
 
     buf.stop();
   });
+});
+
+test("null buffer emits individual output strings", () => {
+  const events = [];
+
+  const buf = createBuffer({
+    bufferTime: 0,
+    dispatch: (name, payload) => events.push({ name, payload }),
+  });
+
+  buf.pushEvent([0, "o", "a"]);
+  buf.pushEvent([0.001, "o", "b"]);
+
+  expect(events).toEqual([
+    { name: "output", payload: "a" },
+    { name: "output", payload: "b" },
+  ]);
 });
 
 function createBuffer({
