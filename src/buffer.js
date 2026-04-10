@@ -71,7 +71,7 @@ function buffer(getBufferTime, execute, setTime, logger, baseStreamTime, minFram
       if (stop) return;
 
       for (const event of events) {
-        const elapsedStreamTime = event[0] * 1000 + bufferTime;
+        const elapsedStreamTime = event[3];
 
         if (elapsedStreamTime - prevElapsedStreamTime < minFrameTime) {
           execute(event[1], event[2]);
@@ -103,11 +103,12 @@ function buffer(getBufferTime, execute, setTime, logger, baseStreamTime, minFram
       }
 
       bufferTime = getBufferTime(latency);
-      queue.push(event);
+      queue.push([event[0], event[1], event[2], event[0] * 1000 + bufferTime]);
     },
 
     pushText(text) {
-      queue.push([elapsedWallTime() / 1000, "o", text]);
+      const time = elapsedWallTime() / 1000;
+      queue.push([time, "o", text, time * 1000 + bufferTime]);
     },
 
     stop() {
