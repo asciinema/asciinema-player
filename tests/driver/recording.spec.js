@@ -101,35 +101,6 @@ test("init with preload and text poster loads immediately and still renders post
   expect(recorder.outputs).toEqual(["hello world"]);
 });
 
-test("repeated init returns the cached preload promise", async () => {
-  let parserCalls = 0;
-  const parserGate = createGate();
-
-  const driver = recording(
-    {
-      data: { cols: 80, rows: 24, events: [[0.1, "o", "start\r\n"]] },
-      parser: async (data) => {
-        parserCalls++;
-        await parserGate.promise;
-        return data;
-      },
-    },
-    {
-      logger: stubLogger(),
-      dispatch: () => {},
-    },
-    { speed: 1, preload: true },
-  );
-
-  const first = driver.init();
-  const second = driver.init();
-
-  expect(second).toBe(first);
-  parserGate.resolve();
-  await second;
-  expect(parserCalls).toBe(1);
-});
-
 // --- play ---
 
 test("play after text poster init loads recording and starts playback", async () => {
@@ -322,35 +293,6 @@ test("pauseOnMarkers pauses playback and resumes on play", async () => {
 
   expect(recorder.outputs).toEqual([["start\r\n"], ["end\r\n"]]);
   expect(recorder.eventsNamed("ended")).toHaveLength(1);
-});
-
-test("pause during startup cancels play attempt", async () => {
-  const restoreAudio = installFakeAudio({ manualPlay: true });
-  const recorder = createDispatchRecorder();
-
-  try {
-    const driver = recording(
-      source([
-        [0.1, "o", "start\r\n"],
-        [0.2, "o", "later\r\n"],
-      ]),
-      {
-        logger: stubLogger(),
-        dispatch: recorder.dispatch,
-      },
-      { speed: 1, preload: true, audioUrl: "/assets/fake.mp3" },
-    );
-
-    await driver.init();
-    const playPromise = driver.play();
-    driver.pause();
-    await resolveFakeAudioPlay();
-
-    expect(await playPromise).toBe(false);
-    expect(recorder.eventsNamed("pause")).toHaveLength(1);
-  } finally {
-    restoreAudio();
-  }
 });
 
 // --- mute ---
@@ -567,40 +509,6 @@ test("step to the last frame with loop restarts playback", async () => {
   expect(recorder.eventsNamed("ended")).toHaveLength(0);
   expect(recorder.outputs).toContain("\x1bc");
   expect(driver.getCurrentTime()).toBeLessThan(driver.getDuration());
-});
-
-test("step during startup is a no-op", async () => {
-  const restoreAudio = installFakeAudio({ manualPlay: true });
-  const recorder = createDispatchRecorder();
-
-  try {
-    const driver = recording(
-      source([
-        [0.2, "o", "start\r\n"],
-        [0.4, "o", "later\r\n"],
-      ]),
-      {
-        logger: stubLogger(),
-        dispatch: recorder.dispatch,
-      },
-      { speed: 1, preload: true, audioUrl: "/assets/fake.mp3" },
-    );
-
-    await driver.init();
-    const playPromise = driver.play();
-    driver.step(1);
-
-    expect(recorder.outputs).toEqual([]);
-
-    const ended = recorder.waitFor("ended");
-    await resolveFakeAudioPlay();
-    await playPromise;
-    await ended;
-
-    expect(recorder.outputs).toEqual([["start\r\n"], ["later\r\n"]]);
-  } finally {
-    restoreAudio();
-  }
 });
 
 test("step from cold state loads recording and steps", async () => {

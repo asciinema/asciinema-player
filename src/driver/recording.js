@@ -18,64 +18,558 @@ function recording(
     audioUrl,
   },
 ) {
+  const STATE = {
+    COLD: "cold",
+    LOADING: "loading",
+    READY_PRISTINE: "ready.pristine",
+    READY_PAUSED: "ready.paused",
+    READY_STARTING: "ready.starting",
+    READY_PLAYING: "ready.playing",
+    READY_BUFFERING_PAUSED: "ready.buffering.paused",
+    READY_BUFFERING_PLAYING: "ready.buffering.playing",
+    READY_ENDED: "ready.ended",
+    FAILED: "failed",
+    STOPPED: "stopped",
+  };
+
+  const EVENT = {
+    INIT_REQUESTED: "initRequested",
+    PLAY_REQUESTED: "playRequested",
+    PLAY_AFTER_LOAD: "playAfterLoad",
+    PAUSE_REQUESTED: "pauseRequested",
+    SEEK_REQUESTED: "seekRequested",
+    STEP_REQUESTED: "stepRequested",
+    STOP_REQUESTED: "stopRequested",
+    LOAD_SUCCEEDED: "loadSucceeded",
+    LOAD_FAILED: "loadFailed",
+    PLAYBACK_START_CONFIRMED: "playbackStartConfirmed",
+    SEEK_PLAYBACK_START_CONFIRMED: "seekPlaybackStartConfirmed",
+    PLAYBACK_START_FAILED: "playbackStartFailed",
+    END_REACHED: "endReached",
+    AUDIO_WAITING: "audioWaiting",
+    AUDIO_PLAYING: "audioPlaying",
+    MARKER_REACHED: "markerReached",
+  };
+
   const outputBatchWindow = src.minFrameTime ?? 1 / 60;
-  let cols;
-  let rows;
-  let events;
-  let markers;
-  let duration;
-  let effectiveStartAt;
-  let eventTimeoutId;
-  let nextEventIndex = 0;
-  let lastEventTime = 0;
-  let startTime;
-  let pauseElapsedTime;
-  let playCount = 0;
-  let waitingForAudio = false;
-  let waitingTimeout;
-  let loadingTimeout;
-  let shouldResumeOnAudioPlaying = false;
   let now = () => performance.now() * speed;
-  let audioCtx;
-  let audioElement;
-  let audioSeekable = false;
-  let loaded;
-  let posterVisible = false;
-  let posterRenderableAfterLoad = poster !== undefined;
+  let state = STATE.COLD;
+  let queuedEvents = [];
+  let processingEvents = false;
+
+  const ctx = {
+    cols: undefined,
+    rows: undefined,
+    events: undefined,
+    markers: undefined,
+    duration: undefined,
+    effectiveStartAt: undefined,
+    eventTimeoutId: undefined,
+    nextEventIndex: 0,
+    lastEventTime: 0,
+    startTime: undefined,
+    pauseElapsedTime: undefined,
+    playCount: 0,
+    waitingTimeout: undefined,
+    loadingTimeout: undefined,
+    audioCtx: undefined,
+    audioElement: undefined,
+    audioSeekable: false,
+    loaded: undefined,
+    posterVisible: false,
+    posterRenderableAfterLoad: poster !== undefined,
+    failureError: null,
+  };
+
+  function isPlayingState(value = state) {
+    return value === STATE.READY_PLAYING;
+  }
+
+  function isBufferingState(value = state) {
+    return value === STATE.READY_BUFFERING_PAUSED || value === STATE.READY_BUFFERING_PLAYING;
+  }
+
+  function canLoopPlayback() {
+    return loop === true || (typeof loop === "number" && ctx.playCount < loop);
+  }
+
+  function loadPromise() {
+    if (ctx.loaded === undefined) {
+      ctx.loaded = load();
+      void ctx.loaded.catch(() => {});
+    }
+
+    return ctx.loaded;
+  }
+
+  // Public command events (INIT_REQUESTED, PLAY_REQUESTED, PAUSE_REQUESTED,
+  // SEEK_REQUESTED, STEP_REQUESTED, STOP_REQUESTED) are serialized by Core.
+  //
+  // Primary non-stale state transitions:
+  // COLD -> [INIT_REQUESTED] -> LOADING
+  // COLD -> [PLAY_REQUESTED | SEEK_REQUESTED | STEP_REQUESTED] -> LOADING
+  // LOADING -> [LOAD_SUCCEEDED] -> READY_PRISTINE
+  // LOADING -> [LOAD_FAILED] -> FAILED
+  // READY_PRISTINE -> [PLAY_REQUESTED | PLAY_AFTER_LOAD] -> READY_STARTING
+  // READY_PRISTINE -> [SEEK_REQUESTED | STEP_REQUESTED] -> READY_PAUSED
+  // READY_PAUSED -> [PLAY_REQUESTED] -> READY_STARTING
+  // READY_PAUSED -> [SEEK_REQUESTED | STEP_REQUESTED] -> READY_PAUSED
+  // READY_ENDED -> [PLAY_REQUESTED] -> READY_STARTING
+  // READY_ENDED -> [SEEK_REQUESTED | STEP_REQUESTED] -> READY_PAUSED
+  // READY_STARTING -> [PLAYBACK_START_CONFIRMED | SEEK_PLAYBACK_START_CONFIRMED]
+  //   -> READY_PLAYING
+  // READY_STARTING -> [PLAYBACK_START_FAILED] -> READY_PAUSED
+  // READY_PLAYING -> [PAUSE_REQUESTED] -> READY_PAUSED
+  // READY_PLAYING -> [SEEK_REQUESTED] -> READY_STARTING
+  // READY_PLAYING -> [AUDIO_WAITING] -> READY_BUFFERING_PLAYING
+  // READY_PLAYING -> [MARKER_REACHED] -> READY_PAUSED (pauseOnMarkers)
+  // READY_BUFFERING_PLAYING -> [PAUSE_REQUESTED] -> READY_BUFFERING_PAUSED
+  // READY_BUFFERING_PLAYING -> [AUDIO_PLAYING] -> READY_PLAYING
+  // READY_BUFFERING_PAUSED -> [PLAY_REQUESTED] -> READY_BUFFERING_PLAYING
+  // READY_BUFFERING_PAUSED -> [AUDIO_PLAYING] -> READY_PAUSED
+  // READY_BUFFERING_PLAYING -> [PLAYBACK_START_FAILED] -> READY_BUFFERING_PAUSED
+  // READY_PLAYING | READY_PRISTINE | READY_PAUSED
+  //   -> [END_REACHED] -> READY_ENDED | READY_PLAYING (loop)
+  // COLD | READY_PRISTINE | READY_PAUSED | READY_PLAYING
+  //   | READY_BUFFERING_PAUSED | READY_BUFFERING_PLAYING | READY_ENDED
+  //   -> [STOP_REQUESTED] -> STOPPED
+  function transition(currentState, event, payload = {}) {
+    switch (event) {
+      case EVENT.INIT_REQUESTED:
+        if (currentState === STATE.COLD) {
+          if (preload || poster?.type == "npt") {
+            return { nextState: STATE.LOADING, action: () => loadPromise() };
+          }
+
+          if (poster?.type == "text") {
+            return { nextState: currentState, action: () => renderTextPoster() };
+          }
+        }
+
+        return { nextState: currentState };
+
+      case EVENT.LOAD_SUCCEEDED:
+        if (currentState !== STATE.LOADING) {
+          return { nextState: currentState };
+        }
+
+        return {
+          nextState: STATE.READY_PRISTINE,
+          action: () => {
+            dispatch("metadata", {
+              duration: ctx.duration,
+              markers: ctx.markers,
+              hasAudio: payload.hasAudio,
+            });
+            dispatch("reset", {
+              size: { cols: ctx.cols, rows: ctx.rows },
+              theme: payload.theme,
+            });
+            renderPoster();
+          },
+        };
+
+      case EVENT.LOAD_FAILED:
+        if (currentState !== STATE.LOADING) {
+          return { nextState: currentState };
+        }
+
+        return {
+          nextState: STATE.FAILED,
+          action: () => {
+            ctx.failureError = payload.error;
+            dispatch("error", toErrorPayload(payload.error));
+          },
+        };
+
+      case EVENT.PLAY_REQUESTED:
+        if (currentState === STATE.COLD) {
+          return {
+            nextState: STATE.LOADING,
+            action: () => {
+              clearPoster();
+              dispatch("play");
+              return loadPromise().then(() => sendEvent(EVENT.PLAY_AFTER_LOAD));
+            },
+          };
+        }
+
+        if (
+          currentState === STATE.READY_PRISTINE ||
+          currentState === STATE.READY_PAUSED ||
+          currentState === STATE.READY_ENDED
+        ) {
+          return {
+            nextState: STATE.READY_STARTING,
+            action: () => {
+              dispatch("play");
+              clearPoster();
+              return startPlayback(EVENT.PLAYBACK_START_CONFIRMED);
+            },
+          };
+        }
+
+        if (currentState === STATE.READY_BUFFERING_PAUSED) {
+          return {
+            nextState: STATE.READY_BUFFERING_PLAYING,
+            action: () => {
+              dispatch("play");
+              if (ctx.audioElement) {
+                return ctx.audioElement.play().catch((error) => {
+                  sendEvent(EVENT.PLAYBACK_START_FAILED);
+                  throw error;
+                });
+              }
+
+              return true;
+            },
+          };
+        }
+
+        if (
+          currentState === STATE.READY_BUFFERING_PLAYING ||
+          currentState === STATE.READY_PLAYING
+        ) {
+          return {
+            nextState: currentState,
+            action: () => {
+              dispatch("play");
+              return true;
+            },
+          };
+        }
+
+        return { nextState: currentState };
+
+      case EVENT.PLAY_AFTER_LOAD:
+        if (currentState === STATE.READY_PRISTINE) {
+          return {
+            nextState: STATE.READY_STARTING,
+            action: () => {
+              clearPoster();
+              return startPlayback(EVENT.PLAYBACK_START_CONFIRMED);
+            },
+          };
+        }
+
+        return { nextState: currentState };
+
+      case EVENT.PLAYBACK_START_CONFIRMED:
+        if (currentState !== STATE.READY_STARTING) {
+          return { nextState: currentState };
+        }
+
+        return {
+          nextState: STATE.READY_PLAYING,
+          action: () => {
+            confirmPlaybackClockStart();
+            dispatch("playing");
+            return true;
+          },
+        };
+
+      case EVENT.SEEK_PLAYBACK_START_CONFIRMED:
+        if (currentState !== STATE.READY_STARTING) {
+          return { nextState: currentState };
+        }
+
+        return {
+          nextState: STATE.READY_PLAYING,
+          action: () => {
+            confirmPlaybackClockStart();
+            dispatch("seeked");
+            return true;
+          },
+        };
+
+      case EVENT.PLAYBACK_START_FAILED:
+        if (currentState === STATE.READY_STARTING) {
+          return {
+            nextState: STATE.READY_PAUSED,
+          };
+        }
+
+        if (currentState === STATE.READY_BUFFERING_PLAYING) {
+          return {
+            nextState: STATE.READY_BUFFERING_PAUSED,
+          };
+        }
+
+        return { nextState: currentState };
+
+      case EVENT.END_REACHED:
+        if (
+          currentState !== STATE.READY_PLAYING &&
+          currentState !== STATE.READY_PRISTINE &&
+          currentState !== STATE.READY_PAUSED &&
+          currentState !== STATE.READY_ENDED
+        ) {
+          return { nextState: currentState };
+        }
+
+        if (canLoopPlayback()) {
+          return {
+            nextState: STATE.READY_PLAYING,
+            action: restartLoop,
+          };
+        }
+
+        return {
+          nextState: STATE.READY_ENDED,
+          action: finishPlayback,
+        };
+
+      case EVENT.AUDIO_WAITING:
+        if (currentState === STATE.READY_PLAYING) {
+          return {
+            nextState: STATE.READY_BUFFERING_PLAYING,
+            action: () => {
+              logger.debug("pausing session playback");
+              pausePlaybackClock();
+              restartWaitingTimeout();
+            },
+          };
+        }
+
+        if (
+          currentState === STATE.READY_BUFFERING_PAUSED ||
+          currentState === STATE.READY_BUFFERING_PLAYING
+        ) {
+          return {
+            nextState: currentState,
+            action: restartWaitingTimeout,
+          };
+        }
+
+        return { nextState: currentState };
+
+      case EVENT.AUDIO_PLAYING:
+        if (currentState === STATE.READY_BUFFERING_PLAYING) {
+          return {
+            nextState: STATE.READY_PLAYING,
+            action: () => {
+              logger.debug("resuming session playback");
+              clearWaitingTimeout();
+              confirmPlaybackClockStart();
+              dispatch("playing");
+            },
+          };
+        }
+
+        if (currentState === STATE.READY_BUFFERING_PAUSED) {
+          return {
+            nextState: STATE.READY_PAUSED,
+            action: () => {
+              clearWaitingTimeout();
+              // The media element may report recovery after the user has already paused.
+              // Clear buffering bookkeeping, but do not announce resumed playback.
+            },
+          };
+        }
+
+        // Media events are delivered asynchronously and may arrive after the
+        // driver has already moved on to another state, so treat them as stale.
+        return { nextState: currentState };
+
+      case EVENT.PAUSE_REQUESTED:
+        if (currentState === STATE.READY_PLAYING) {
+          return { nextState: STATE.READY_PAUSED, action: performPause };
+        }
+
+        if (currentState === STATE.READY_BUFFERING_PLAYING) {
+          return {
+            nextState: STATE.READY_BUFFERING_PAUSED,
+            action: () => {
+              if (ctx.audioElement) {
+                ctx.audioElement.pause();
+              }
+
+              return true;
+            },
+          };
+        }
+
+        return { nextState: currentState, action: () => true };
+
+      case EVENT.SEEK_REQUESTED: {
+        if (currentState === STATE.COLD) {
+          return {
+            nextState: STATE.LOADING,
+            action: () => loadThenReplay(EVENT.SEEK_REQUESTED, payload),
+          };
+        }
+
+        if (isBufferingState(currentState)) {
+          return { nextState: currentState, action: () => false };
+        }
+
+        if (
+          currentState !== STATE.READY_PRISTINE &&
+          currentState !== STATE.READY_PAUSED &&
+          currentState !== STATE.READY_ENDED &&
+          currentState !== STATE.READY_PLAYING
+        ) {
+          return { nextState: currentState };
+        }
+
+        const seek = describeSeek(currentState, payload.where);
+
+        if (seek.noOp) {
+          return { nextState: currentState, action: () => false };
+        }
+
+        return {
+          nextState: seek.reachedEnd
+            ? currentState
+            : currentState === STATE.READY_PLAYING
+              ? STATE.READY_STARTING
+              : STATE.READY_PAUSED,
+          action: () => {
+            clearPoster();
+            return performSeek(seek, currentState);
+          },
+        };
+      }
+
+      case EVENT.STEP_REQUESTED: {
+        if (currentState === STATE.COLD) {
+          return {
+            nextState: STATE.LOADING,
+            action: () => loadThenReplay(EVENT.STEP_REQUESTED, payload),
+          };
+        }
+
+        if (currentState === STATE.READY_PLAYING || isBufferingState(currentState)) {
+          // Stepping is only defined for paused/idle states. During active
+          // playback or buffering, keep the old no-op behavior.
+          return { nextState: currentState };
+        }
+
+        if (
+          currentState !== STATE.READY_PRISTINE &&
+          currentState !== STATE.READY_PAUSED &&
+          currentState !== STATE.READY_ENDED
+        ) {
+          return { nextState: currentState };
+        }
+
+        const step = describeStep(payload.n);
+
+        return {
+          nextState:
+            step.targetIndex === undefined
+              ? currentState
+              : step.reachedEnd
+                ? currentState
+                : STATE.READY_PAUSED,
+          action: () => {
+            clearPoster();
+            return performStep(step);
+          },
+        };
+      }
+
+      case EVENT.MARKER_REACHED:
+        if (currentState !== STATE.READY_PLAYING) {
+          return { nextState: currentState };
+        }
+
+        if (pauseOnMarkers) {
+          return {
+            nextState: STATE.READY_PAUSED,
+            action: () => {
+              dispatch("marker", payload.data);
+              return performPauseAtMarker(payload.time);
+            },
+          };
+        }
+
+        return {
+          nextState: currentState,
+          action: () => dispatch("marker", payload.data),
+        };
+
+      case EVENT.STOP_REQUESTED:
+        return { nextState: STATE.STOPPED, action: teardown };
+
+      default:
+        return { nextState: currentState };
+    }
+  }
+
+  function enqueueEvent(event, payload = {}) {
+    queuedEvents.push({ event, payload });
+  }
+
+  function processEvent(event, payload = {}) {
+    const previousState = state;
+    const { nextState, action } = transition(previousState, event, payload);
+
+    if (nextState !== state) {
+      state = nextState;
+    }
+
+    return action?.();
+  }
+
+  function failDriver(error) {
+    queuedEvents.length = 0;
+    ctx.failureError = error;
+    state = STATE.FAILED;
+    dispatch("error", toErrorPayload(error));
+  }
+
+  function sendCommand(event, payload = {}) {
+    if (ctx.failureError) {
+      throw ctx.failureError;
+    }
+
+    if (state === STATE.STOPPED) {
+      throw new Error("driver has been stopped");
+    }
+
+    return sendEvent(event, payload);
+  }
+
+  function sendEvent(event, payload = {}) {
+    if (ctx.failureError || state === STATE.STOPPED) {
+      // After a fatal failure or stop(), only public commands are expected to
+      // observe that state. Late async facts are ignored.
+      return;
+    }
+
+    if (processingEvents) {
+      // Core serializes public commands, so re-entry here means the driver was
+      // called directly in an unsupported way.
+      throw new Error("re-entrant sendEvent() is not allowed during queue processing");
+    }
+
+    processingEvents = true;
+
+    try {
+      const result = processEvent(event, payload);
+
+      while (queuedEvents.length > 0) {
+        const queuedEvent = queuedEvents.shift();
+        processEvent(queuedEvent.event, queuedEvent.payload);
+      }
+
+      return result;
+    } catch (error) {
+      failDriver(error);
+      throw error;
+    } finally {
+      processingEvents = false;
+      queuedEvents.length = 0;
+    }
+  }
 
   function init() {
-    if (preload) {
-      return ensureLoaded();
-    } else {
-      if (poster !== undefined) {
-        if (poster.type == "npt") {
-          return ensureLoaded();
-        } else if (poster.type == "text") {
-          renderPoster();
-          posterRenderableAfterLoad = false;
-        }
-      }
-    }
-  }
-
-  function ensureLoaded() {
-    if (loaded === undefined) {
-      loaded = load();
-      void loaded.catch(() => {});
-    }
-
-    return loaded;
-  }
-
-  function withLoaded(f) {
-    return async function (...args) {
-      await ensureLoaded();
-      return await f.apply(this, args);
-    };
+    return sendCommand(EVENT.INIT_REQUESTED);
   }
 
   async function load() {
-    loadingTimeout = setTimeout(() => {
+    ctx.loadingTimeout = setTimeout(() => {
       dispatch("loading");
     }, 3000);
 
@@ -93,42 +587,48 @@ function recording(
 
       const hasAudio = await audioLoaded;
 
-      ({ cols, rows, events, duration, effectiveStartAt } = recording);
-      initialCols = initialCols ?? cols;
-      initialRows = initialRows ?? rows;
+      ({
+        cols: ctx.cols,
+        rows: ctx.rows,
+        events: ctx.events,
+        duration: ctx.duration,
+        effectiveStartAt: ctx.effectiveStartAt,
+      } = recording);
+
+      initialCols = initialCols ?? ctx.cols;
+      initialRows = initialRows ?? ctx.rows;
 
       const theme = recording.theme ?? null;
-      markers = events.filter((e) => e[1] === "m").map((e) => [e[0], e[2].label]);
+      ctx.markers = ctx.events.filter((e) => e[1] === "m").map((e) => [e[0], e[2].label]);
 
-      dispatch("metadata", { duration, markers, hasAudio });
-      dispatch("reset", { size: { cols, rows }, theme });
-      renderPoster();
+      sendEvent(EVENT.LOAD_SUCCEEDED, { hasAudio, theme });
     } catch (e) {
-      dispatch("error", toErrorPayload(e));
+      sendEvent(EVENT.LOAD_FAILED, { error: e });
       throw e;
     } finally {
-      clearTimeout(loadingTimeout);
-      loadingTimeout = null;
+      clearTimeout(ctx.loadingTimeout);
+      ctx.loadingTimeout = null;
     }
   }
 
   async function loadAudio(audioUrl) {
     if (!audioUrl) return false;
 
-    audioElement = await createAudioElement(audioUrl);
+    ctx.audioElement = await createAudioElement(audioUrl);
 
-    audioSeekable =
-      !Number.isNaN(audioElement.duration) &&
-      audioElement.duration !== Infinity &&
-      audioElement.seekable.length > 0 &&
-      audioElement.seekable.end(audioElement.seekable.length - 1) === audioElement.duration;
+    ctx.audioSeekable =
+      !Number.isNaN(ctx.audioElement.duration) &&
+      ctx.audioElement.duration !== Infinity &&
+      ctx.audioElement.seekable.length > 0 &&
+      ctx.audioElement.seekable.end(ctx.audioElement.seekable.length - 1) ===
+        ctx.audioElement.duration;
 
-    if (audioSeekable) {
-      audioElement.addEventListener("playing", onAudioPlaying);
-      audioElement.addEventListener("waiting", onAudioWaiting);
+    if (ctx.audioSeekable) {
+      ctx.audioElement.addEventListener("playing", onAudioPlaying);
+      ctx.audioElement.addEventListener("waiting", onAudioWaiting);
     } else {
       logger.warn(
-        `audio is not seekable - you must enable range request support on the server providing ${audioElement.src} for audio seeking to work`,
+        `audio is not seekable - you must enable range request support on the server providing ${ctx.audioElement.src} for audio seeking to work`,
       );
     }
 
@@ -136,7 +636,7 @@ function recording(
   }
 
   function renderPoster() {
-    if (!posterRenderableAfterLoad) return;
+    if (!ctx.posterRenderableAfterLoad) return;
 
     if (poster.type == "npt") {
       feed(getPoster(poster.value));
@@ -144,34 +644,38 @@ function recording(
       feed(poster.value);
     }
 
-    posterVisible = true;
+    ctx.posterVisible = true;
   }
 
   function getPoster(time) {
-    return events.filter((e) => e[0] < time && e[1] === "o").map((e) => e[2]);
+    return ctx.events.filter((e) => e[0] < time && e[1] === "o").map((e) => e[2]);
   }
 
   function clearPoster() {
-    if (posterVisible) {
+    if (ctx.posterVisible) {
       feed("\x1bc");
     }
 
-    posterVisible = false;
-    posterRenderableAfterLoad = false;
+    ctx.posterVisible = false;
+    ctx.posterRenderableAfterLoad = false;
   }
 
   function scheduleNextEvent() {
-    const nextEvent = events[nextEventIndex];
+    const nextEvent = ctx.events[ctx.nextEventIndex];
 
     if (nextEvent) {
-      eventTimeoutId = scheduleAt(runNextEvent, nextEvent[0]);
+      ctx.eventTimeoutId = scheduleAt(runNextEvent, nextEvent[0]);
     } else {
-      onEnd();
+      if (processingEvents) {
+        enqueueEvent(EVENT.END_REACHED);
+      } else {
+        sendEvent(EVENT.END_REACHED);
+      }
     }
   }
 
   function scheduleAt(f, targetTime) {
-    let timeout = (targetTime * 1000 - (now() - startTime)) / speed;
+    let timeout = (targetTime * 1000 - (now() - ctx.startTime)) / speed;
 
     if (timeout < 0) {
       timeout = 0;
@@ -181,18 +685,18 @@ function recording(
   }
 
   function runNextEvent() {
-    while (events[nextEventIndex] !== undefined) {
+    while (ctx.events[ctx.nextEventIndex] !== undefined) {
       if (executeNextEventChunk()) {
         return;
       }
 
-      const nextEvent = events[nextEventIndex];
+      const nextEvent = ctx.events[ctx.nextEventIndex];
 
       if (nextEvent === undefined) {
         break;
       }
 
-      const elapsedWallTime = now() - startTime;
+      const elapsedWallTime = now() - ctx.startTime;
 
       if (elapsedWallTime <= nextEvent[0] * 1000) {
         break;
@@ -203,55 +707,55 @@ function recording(
   }
 
   function executeNextEventChunk() {
-    const event = events[nextEventIndex];
+    const event = ctx.events[ctx.nextEventIndex];
 
     if (event[1] === "o") {
       executeOutputGroup();
       return false;
     }
 
-    lastEventTime = event[0];
-    nextEventIndex++;
+    ctx.lastEventTime = event[0];
+    ctx.nextEventIndex++;
 
     return executeEvent(event);
   }
 
   function executeOutputGroup() {
-    const firstEvent = events[nextEventIndex];
+    const firstEvent = ctx.events[ctx.nextEventIndex];
     const batchDeadline = firstEvent[0] + outputBatchWindow;
     const output = [];
     let event = firstEvent;
 
     while (event !== undefined && event[1] === "o" && event[0] < batchDeadline) {
       output.push(event[2]);
-      lastEventTime = event[0];
-      nextEventIndex++;
-      event = events[nextEventIndex];
+      ctx.lastEventTime = event[0];
+      ctx.nextEventIndex++;
+      event = ctx.events[ctx.nextEventIndex];
     }
 
     feed(output);
   }
 
   function cancelNextEvent() {
-    clearTimeout(eventTimeoutId);
-    eventTimeoutId = null;
+    clearTimeout(ctx.eventTimeoutId);
+    ctx.eventTimeoutId = null;
   }
 
   async function teardownAudio() {
-    clearTimeout(waitingTimeout);
+    clearTimeout(ctx.waitingTimeout);
 
-    if (audioElement) {
-      audioElement.removeEventListener("playing", onAudioPlaying);
-      audioElement.removeEventListener("waiting", onAudioWaiting);
-      audioElement.pause();
-      audioElement.src = "";
-      audioElement.load();
-      audioElement = undefined;
+    if (ctx.audioElement) {
+      ctx.audioElement.removeEventListener("playing", onAudioPlaying);
+      ctx.audioElement.removeEventListener("waiting", onAudioWaiting);
+      ctx.audioElement.pause();
+      ctx.audioElement.src = "";
+      ctx.audioElement.load();
+      ctx.audioElement = undefined;
     }
 
-    if (audioCtx) {
-      await audioCtx.close();
-      audioCtx = undefined;
+    if (ctx.audioCtx) {
+      await ctx.audioCtx.close();
+      ctx.audioCtx = undefined;
     }
   }
 
@@ -266,166 +770,256 @@ function recording(
       const [cols, rows] = data.split("x").map((n) => Number.parseInt(n, 10));
       dispatch("resize", { cols, rows });
     } else if (type === "m") {
-      dispatch("marker", data);
-
-      if (pauseOnMarkers) {
-        pause();
-        pauseElapsedTime = time * 1000;
-
-        return true;
-      }
+      return sendEvent(EVENT.MARKER_REACHED, { data, time }) === true;
     }
 
     return false;
   }
 
-  function onEnd() {
-    cancelNextEvent();
-    playCount++;
-
-    if (loop === true || (typeof loop === "number" && playCount < loop)) {
-      nextEventIndex = 0;
-      startTime = now();
-      feed("\x1bc"); // reset terminal
-      resizeTerminalToInitialSize();
-      scheduleNextEvent();
-
-      if (audioElement) {
-        audioElement.currentTime = 0;
-      }
-    } else {
-      pauseElapsedTime = duration * 1000;
-      dispatch("ended");
-
-      if (audioElement) {
-        audioElement.pause();
-      }
-    }
-  }
-
-  async function play() {
-    clearPoster();
-    dispatch("play");
-    await ensureLoaded();
-
-    if (eventTimeoutId) return true;
-
-    if (events[nextEventIndex] === undefined) {
-      await doSeek(0);
-    } else if (effectiveStartAt !== null) {
-      await doSeek(effectiveStartAt);
-    }
-
-    await resume();
-    dispatch("playing");
-
-    return true;
+  function play() {
+    return sendCommand(EVENT.PLAY_REQUESTED);
   }
 
   function pause() {
-    shouldResumeOnAudioPlaying = false;
-
-    if (audioElement) {
-      audioElement.pause();
-    }
-
-    if (!eventTimeoutId) return true;
-
-    doPause();
-    dispatch("pause");
-
-    return true;
+    return sendCommand(EVENT.PAUSE_REQUESTED);
   }
 
-  function doPause() {
+  function pausePlaybackClock() {
     cancelNextEvent();
-    pauseElapsedTime = now() - startTime;
+    ctx.pauseElapsedTime = now() - ctx.startTime;
   }
 
-  async function resume() {
-    if (audioElement && !audioCtx) setupAudioCtx();
+  function preparePlaybackClock() {
+    if (ctx.audioElement && !ctx.audioCtx) setupAudioCtx();
+  }
 
-    startTime = now() - pauseElapsedTime;
-    pauseElapsedTime = null;
+  function confirmPlaybackClockStart() {
+    ctx.startTime = now() - ctx.pauseElapsedTime;
+    ctx.pauseElapsedTime = null;
     scheduleNextEvent();
+  }
 
-    if (audioElement) {
-      await audioElement.play();
+  function seek(where) {
+    return sendCommand(EVENT.SEEK_REQUESTED, { where });
+  }
+
+  function findMarkerTimeBefore(time) {
+    if (ctx.markers.length == 0) return;
+
+    let i = 0;
+    let marker = ctx.markers[i];
+    let lastMarkerTimeBefore;
+
+    while (marker && marker[0] < time) {
+      lastMarkerTimeBefore = marker[0];
+      marker = ctx.markers[++i];
+    }
+
+    return lastMarkerTimeBefore;
+  }
+
+  function findMarkerTimeAfter(time) {
+    if (ctx.markers.length == 0) return;
+
+    let i = ctx.markers.length - 1;
+    let marker = ctx.markers[i];
+    let firstMarkerTimeAfter;
+
+    while (marker && marker[0] > time) {
+      firstMarkerTimeAfter = marker[0];
+      marker = ctx.markers[--i];
+    }
+
+    return firstMarkerTimeAfter;
+  }
+
+  function step(n) {
+    return sendCommand(EVENT.STEP_REQUESTED, { n });
+  }
+
+  function getDuration() {
+    return ctx.duration;
+  }
+
+  function getCurrentTime() {
+    if (isPlayingState()) {
+      return (now() - ctx.startTime) / 1000;
+    } else {
+      return (ctx.pauseElapsedTime ?? 0) / 1000;
     }
   }
 
-  async function seek(where) {
-    clearPoster();
+  function resizeTerminalToInitialSize() {
+    dispatch("resize", { cols: initialCols, rows: initialRows });
+  }
 
-    if (await doSeek(where)) {
-      dispatch("seeked");
+  function setupAudioCtx() {
+    ctx.audioCtx = new AudioContext({ latencyHint: "interactive" });
+    const src = ctx.audioCtx.createMediaElementSource(ctx.audioElement);
+    src.connect(ctx.audioCtx.destination);
+    now = audioNow;
+  }
+
+  function audioNow() {
+    if (!ctx.audioCtx) throw new Error("audio context not started - can't tell time!");
+
+    const { contextTime, performanceTime } = ctx.audioCtx.getOutputTimestamp();
+
+    // The check below is needed for Chrome,
+    // which returns 0 for first several dozen millis,
+    // completely ruining the timing (the clock jumps backwards once),
+    // therefore we initially ignore performanceTime in our calculation.
+
+    return performanceTime === 0
+      ? contextTime * 1000
+      : contextTime * 1000 + (performance.now() - performanceTime);
+  }
+
+  function onAudioWaiting() {
+    logger.debug("audio buffering");
+    sendEvent(EVENT.AUDIO_WAITING);
+  }
+
+  function onAudioPlaying() {
+    logger.debug("audio resumed");
+    sendEvent(EVENT.AUDIO_PLAYING);
+  }
+
+  function mute() {
+    if (ctx.audioElement) {
+      ctx.audioElement.muted = true;
+      dispatch("muted", true);
       return true;
     }
-
-    return false;
   }
 
-  const doSeek = withLoaded(async function (where) {
-    if (waitingForAudio) {
-      return false;
+  function unmute() {
+    if (ctx.audioElement) {
+      ctx.audioElement.muted = false;
+      dispatch("muted", false);
+      return true;
     }
+  }
 
-    const isPlaying = !!eventTimeoutId;
+  function stop() {
+    return sendCommand(EVENT.STOP_REQUESTED);
+  }
 
-    if (isPlaying) {
-      doPause();
-    }
+  function feed(data) {
+    dispatch("output", data);
+  }
 
-    if (audioElement) {
-      audioElement.pause();
-    }
+  function renderTextPoster() {
+    renderPoster();
+    ctx.posterRenderableAfterLoad = false;
+  }
 
-    const currentTime = (pauseElapsedTime ?? 0) / 1000;
+  function loadThenReplay(event, payload) {
+    return loadPromise().then(() => {
+      return sendCommand(event, payload);
+    });
+  }
 
-    if (typeof where === "string") {
-      if (where === "<<") {
-        where = currentTime - 5;
-      } else if (where === ">>") {
-        where = currentTime + 5;
-      } else if (where === "<<<") {
-        where = currentTime - 0.1 * duration;
-      } else if (where === ">>>") {
-        where = currentTime + 0.1 * duration;
-      } else if (where[where.length - 1] === "%") {
-        where = (parseFloat(where.substring(0, where.length - 1)) / 100) * duration;
+  function describeSeek(currentState, where) {
+    const currentTime = getCurrentTime();
+    const isPlaying = currentState === STATE.READY_PLAYING;
+    let target = where;
+
+    if (typeof target === "string") {
+      if (target === "<<") {
+        target = currentTime - 5;
+      } else if (target === ">>") {
+        target = currentTime + 5;
+      } else if (target === "<<<") {
+        target = currentTime - 0.1 * ctx.duration;
+      } else if (target === ">>>") {
+        target = currentTime + 0.1 * ctx.duration;
+      } else if (target[target.length - 1] === "%") {
+        target = (parseFloat(target.substring(0, target.length - 1)) / 100) * ctx.duration;
       }
-    } else if (typeof where === "object") {
-      if (where.marker === "prev") {
-        where = findMarkerTimeBefore(currentTime) ?? 0;
+    } else if (typeof target === "object") {
+      if (target.marker === "prev") {
+        target = findMarkerTimeBefore(currentTime) ?? 0;
 
-        if (isPlaying && currentTime - where < 1) {
-          where = findMarkerTimeBefore(where) ?? 0;
+        if (isPlaying && currentTime - target < 1) {
+          target = findMarkerTimeBefore(target) ?? 0;
         }
-      } else if (where.marker === "next") {
-        where = findMarkerTimeAfter(currentTime) ?? duration;
-      } else if (typeof where.marker === "number") {
-        const marker = markers[where.marker];
+      } else if (target.marker === "next") {
+        target = findMarkerTimeAfter(currentTime) ?? ctx.duration;
+      } else if (typeof target.marker === "number") {
+        const marker = ctx.markers[target.marker];
 
         if (marker === undefined) {
-          throw new Error(`invalid marker index: ${where.marker}`);
-        } else {
-          where = marker[0];
+          throw new Error(`invalid marker index: ${target.marker}`);
+        }
+
+        target = marker[0];
+      }
+    }
+
+    const targetTime = Math.min(Math.max(target, 0), ctx.duration);
+
+    return {
+      targetTime,
+      reachedEnd: targetTime >= ctx.duration,
+      noOp: targetTime * 1000 === ctx.pauseElapsedTime,
+    };
+  }
+
+  function describeStep(n = 1) {
+    let nextEvent;
+    let targetIndex;
+
+    if (n > 0) {
+      let index = ctx.nextEventIndex;
+      nextEvent = ctx.events[index];
+
+      for (let i = 0; i < n; i++) {
+        while (nextEvent !== undefined && nextEvent[1] !== "o") {
+          nextEvent = ctx.events[++index];
+        }
+
+        if (nextEvent !== undefined && nextEvent[1] === "o") {
+          targetIndex = index;
+          nextEvent = ctx.events[++index];
+        }
+      }
+    } else {
+      let index = Math.max(ctx.nextEventIndex - 2, 0);
+      nextEvent = ctx.events[index];
+
+      for (let i = n; i < 0; i++) {
+        while (nextEvent !== undefined && nextEvent[1] !== "o") {
+          nextEvent = ctx.events[--index];
+        }
+
+        if (nextEvent !== undefined && nextEvent[1] === "o") {
+          targetIndex = index;
+          nextEvent = ctx.events[--index];
         }
       }
     }
 
-    const targetTime = Math.min(Math.max(where, 0), duration);
+    return {
+      n,
+      targetIndex,
+      reachedEnd: targetIndex !== undefined && ctx.events[targetIndex + 1] === undefined,
+    };
+  }
 
-    if (targetTime * 1000 === pauseElapsedTime) return false;
+  function resetTerminal() {
+    feed("\x1bc");
+    resizeTerminalToInitialSize();
+  }
 
-    if (targetTime < lastEventTime) {
-      feed("\x1bc"); // reset terminal
-      resizeTerminalToInitialSize();
-      nextEventIndex = 0;
-      lastEventTime = 0;
+  function syncToTime(targetTime) {
+    if (targetTime < ctx.lastEventTime) {
+      resetTerminal();
+      ctx.nextEventIndex = 0;
+      ctx.lastEventTime = 0;
     }
 
-    let event = events[nextEventIndex];
+    let event = ctx.events[ctx.nextEventIndex];
     let output = [];
 
     while (event && event[0] <= targetTime) {
@@ -440,113 +1034,94 @@ function recording(
         executeEvent(event);
       }
 
-      lastEventTime = event[0];
-      event = events[++nextEventIndex];
+      ctx.lastEventTime = event[0];
+      event = ctx.events[++ctx.nextEventIndex];
     }
 
     if (output.length > 0) {
       feed(output);
     }
-    pauseElapsedTime = targetTime * 1000;
-    effectiveStartAt = null;
 
-    if (audioElement && audioSeekable) {
-      audioElement.currentTime = targetTime / speed;
+    ctx.pauseElapsedTime = targetTime * 1000;
+    ctx.effectiveStartAt = null;
+
+    if (ctx.audioElement && ctx.audioSeekable) {
+      ctx.audioElement.currentTime = targetTime / speed;
+    }
+  }
+
+  function startPlayback(confirmedEvent) {
+    if (ctx.events[ctx.nextEventIndex] === undefined) {
+      syncToTime(0);
+    } else if (ctx.effectiveStartAt !== null) {
+      syncToTime(ctx.effectiveStartAt);
     }
 
-    if (isPlaying) {
-      await resume();
-    } else if (events[nextEventIndex] === undefined) {
-      onEnd();
+    preparePlaybackClock();
+
+    if (ctx.audioElement) {
+      return ctx.audioElement.play().then(
+        () => sendEvent(confirmedEvent),
+        (error) => {
+          sendEvent(EVENT.PLAYBACK_START_FAILED);
+          throw error;
+        },
+      );
     }
+
+    enqueueEvent(confirmedEvent);
+    return true;
+  }
+
+  function performPause() {
+    if (ctx.audioElement) {
+      ctx.audioElement.pause();
+    }
+
+    pausePlaybackClock();
+    dispatch("pause");
 
     return true;
-  });
-
-  function findMarkerTimeBefore(time) {
-    if (markers.length == 0) return;
-
-    let i = 0;
-    let marker = markers[i];
-    let lastMarkerTimeBefore;
-
-    while (marker && marker[0] < time) {
-      lastMarkerTimeBefore = marker[0];
-      marker = markers[++i];
-    }
-
-    return lastMarkerTimeBefore;
   }
 
-  function findMarkerTimeAfter(time) {
-    if (markers.length == 0) return;
+  function performSeek(seek, previousState) {
+    const wasPlaying = previousState === STATE.READY_PLAYING;
 
-    let i = markers.length - 1;
-    let marker = markers[i];
-    let firstMarkerTimeAfter;
-
-    while (marker && marker[0] > time) {
-      firstMarkerTimeAfter = marker[0];
-      marker = markers[--i];
+    if (wasPlaying) {
+      pausePlaybackClock();
     }
 
-    return firstMarkerTimeAfter;
+    if (ctx.audioElement) {
+      ctx.audioElement.pause();
+    }
+
+    syncToTime(seek.targetTime);
+
+    if (seek.reachedEnd) {
+      enqueueEvent(EVENT.END_REACHED);
+    } else if (wasPlaying) {
+      return startPlayback(EVENT.SEEK_PLAYBACK_START_CONFIRMED);
+    }
+
+    dispatch("seeked");
+
+    return true;
   }
 
-  const step = withLoaded(function (n) {
-    if (eventTimeoutId) return;
+  function performStep(step) {
+    if (step.targetIndex === undefined) return;
 
-    clearPoster();
-
-    if (n === undefined) {
-      n = 1;
+    if (step.n < 0) {
+      resetTerminal();
+      ctx.nextEventIndex = 0;
+      ctx.lastEventTime = 0;
     }
 
     let nextEvent;
-    let targetIndex;
-
-    if (n > 0) {
-      let index = nextEventIndex;
-      nextEvent = events[index];
-
-      for (let i = 0; i < n; i++) {
-        while (nextEvent !== undefined && nextEvent[1] !== "o") {
-          nextEvent = events[++index];
-        }
-
-        if (nextEvent !== undefined && nextEvent[1] === "o") {
-          targetIndex = index;
-          nextEvent = events[++index];
-        }
-      }
-    } else {
-      let index = Math.max(nextEventIndex - 2, 0);
-      nextEvent = events[index];
-
-      for (let i = n; i < 0; i++) {
-        while (nextEvent !== undefined && nextEvent[1] !== "o") {
-          nextEvent = events[--index];
-        }
-
-        if (nextEvent !== undefined && nextEvent[1] === "o") {
-          targetIndex = index;
-          nextEvent = events[--index];
-        }
-      }
-
-      if (targetIndex !== undefined) {
-        feed("\x1bc"); // reset terminal
-        resizeTerminalToInitialSize();
-        nextEventIndex = 0;
-      }
-    }
-
-    if (targetIndex === undefined) return;
-
     let output = [];
 
-    while (nextEventIndex <= targetIndex) {
-      nextEvent = events[nextEventIndex++];
+    while (ctx.nextEventIndex <= step.targetIndex) {
+      nextEvent = ctx.events[ctx.nextEventIndex++];
 
       if (nextEvent[1] === "o") {
         output.push(nextEvent[2]);
@@ -563,115 +1138,79 @@ function recording(
     if (output.length > 0) {
       feed(output);
     }
-    lastEventTime = nextEvent[0];
-    pauseElapsedTime = lastEventTime * 1000;
-    effectiveStartAt = null;
 
-    if (audioElement && audioSeekable) {
-      audioElement.currentTime = lastEventTime / speed;
+    ctx.lastEventTime = nextEvent[0];
+    ctx.pauseElapsedTime = ctx.lastEventTime * 1000;
+    ctx.effectiveStartAt = null;
+
+    if (ctx.audioElement && ctx.audioSeekable) {
+      ctx.audioElement.currentTime = ctx.lastEventTime / speed;
     }
 
-    if (events[targetIndex + 1] === undefined) {
-      onEnd();
-    }
-  });
-
-  function getDuration() {
-    return duration;
-  }
-
-  function getCurrentTime() {
-    if (eventTimeoutId) {
-      return (now() - startTime) / 1000;
-    } else {
-      return (pauseElapsedTime ?? 0) / 1000;
+    if (step.reachedEnd) {
+      enqueueEvent(EVENT.END_REACHED);
     }
   }
 
-  function resizeTerminalToInitialSize() {
-    dispatch("resize", { cols: initialCols, rows: initialRows });
-  }
+  function restartWaitingTimeout() {
+    clearTimeout(ctx.waitingTimeout);
 
-  function setupAudioCtx() {
-    audioCtx = new AudioContext({ latencyHint: "interactive" });
-    const src = audioCtx.createMediaElementSource(audioElement);
-    src.connect(audioCtx.destination);
-    now = audioNow;
-  }
-
-  function audioNow() {
-    if (!audioCtx) throw new Error("audio context not started - can't tell time!");
-
-    const { contextTime, performanceTime } = audioCtx.getOutputTimestamp();
-
-    // The check below is needed for Chrome,
-    // which returns 0 for first several dozen millis,
-    // completely ruining the timing (the clock jumps backwards once),
-    // therefore we initially ignore performanceTime in our calculation.
-
-    return performanceTime === 0
-      ? contextTime * 1000
-      : contextTime * 1000 + (performance.now() - performanceTime);
-  }
-
-  function onAudioWaiting() {
-    logger.debug("audio buffering");
-    waitingForAudio = true;
-    shouldResumeOnAudioPlaying = !!eventTimeoutId;
-    clearTimeout(waitingTimeout);
-    waitingTimeout = setTimeout(() => {
+    ctx.waitingTimeout = setTimeout(() => {
       dispatch("loading");
     }, 1000);
+  }
 
-    if (!eventTimeoutId) return true;
+  function clearWaitingTimeout() {
+    clearTimeout(ctx.waitingTimeout);
+    ctx.waitingTimeout = null;
+  }
 
-    logger.debug("pausing session playback");
+  function restartLoop() {
     cancelNextEvent();
-    pauseElapsedTime = now() - startTime;
-  }
+    ctx.playCount++;
+    ctx.nextEventIndex = 0;
+    ctx.startTime = now();
+    ctx.pauseElapsedTime = null;
+    resetTerminal();
 
-  function onAudioPlaying() {
-    logger.debug("audio resumed");
-    clearTimeout(waitingTimeout);
-    waitingTimeout = null;
-
-    if (!waitingForAudio) return;
-
-    waitingForAudio = false;
-    dispatch("playing");
-
-    if (shouldResumeOnAudioPlaying) {
-      logger.debug("resuming session playback");
-      startTime = now() - pauseElapsedTime;
-      pauseElapsedTime = null;
-      scheduleNextEvent();
+    if (ctx.audioElement && ctx.audioSeekable) {
+      ctx.audioElement.currentTime = 0;
     }
+
+    scheduleNextEvent();
   }
 
-  function mute() {
-    if (audioElement) {
-      audioElement.muted = true;
-      dispatch("muted", true);
-      return true;
-    }
-  }
-
-  function unmute() {
-    if (audioElement) {
-      audioElement.muted = false;
-      dispatch("muted", false);
-      return true;
-    }
-  }
-
-  async function stop() {
-    clearTimeout(loadingTimeout);
+  function finishPlayback() {
     cancelNextEvent();
-    await teardownAudio();
+    ctx.playCount++;
+    ctx.pauseElapsedTime = ctx.duration * 1000;
+
+    if (ctx.audioElement) {
+      ctx.audioElement.pause();
+    }
+
+    dispatch("ended");
   }
 
-  function feed(data) {
-    dispatch("output", data);
+  function performPauseAtMarker(time) {
+    if (ctx.audioElement) {
+      ctx.audioElement.pause();
+    }
+
+    pausePlaybackClock();
+    ctx.pauseElapsedTime = time * 1000;
+    dispatch("pause");
+
+    return true;
+  }
+
+  function teardown() {
+    clearTimeout(ctx.loadingTimeout);
+    ctx.loadingTimeout = null;
+    clearWaitingTimeout();
+    cancelNextEvent();
+
+    return teardownAudio();
   }
 
   return {
