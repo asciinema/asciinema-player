@@ -1,8 +1,42 @@
 import { test, expect } from "@playwright/test";
 import recording, { loadRecording, prepareRecording } from "../../src/driver/recording.js";
 
-test("step advances across multiple output frames", async () => {
-  const output = [];
+// --- init ---
+
+test("init with text poster renders poster without loading recording", async () => {
+  const recorder = createDispatchRecorder();
+  let parserCalls = 0;
+
+  const driver = recording(
+    {
+      data: { cols: 80, rows: 24, events: [[0.1, "o", "start\r\n"]] },
+      parser: async (data) => {
+        parserCalls++;
+        return data;
+      },
+    },
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    {
+      speed: 1,
+      preload: false,
+      poster: { type: "text", value: "hello world" },
+    },
+  );
+
+  await driver.init();
+
+  expect(parserCalls).toBe(0);
+  expect(recorder.outputs).toEqual(["hello world"]);
+  expect(recorder.eventsNamed("metadata")).toHaveLength(0);
+  expect(recorder.eventsNamed("reset")).toHaveLength(0);
+});
+
+test("init with npt poster loads recording and renders poster frame", async () => {
+  const recorder = createDispatchRecorder();
+  let parserCalls = 0;
 
   const driver = recording(
     {
@@ -12,18 +46,470 @@ test("step advances across multiple output frames", async () => {
         events: [
           [0.1, "o", "start\r\n"],
           [1.0, "o", "one\r\n"],
-          [2.0, "o", "two\r\n"],
         ],
       },
-      parser: (data) => data,
+      parser: async (data) => {
+        parserCalls++;
+        return data;
+      },
     },
     {
       logger: stubLogger(),
-      dispatch: (name, payload) => {
-        if (name === "output") {
-          output.push(payload);
-        }
+      dispatch: recorder.dispatch,
+    },
+    {
+      speed: 1,
+      preload: false,
+      poster: { type: "npt", value: 0.5 },
+    },
+  );
+
+  await driver.init();
+
+  expect(parserCalls).toBe(1);
+  expect(recorder.eventNames()).toEqual(["metadata", "reset", "output"]);
+  expect(recorder.outputs).toEqual([["start\r\n"]]);
+});
+
+test("init with preload and text poster loads immediately and still renders poster", async () => {
+  const recorder = createDispatchRecorder();
+  let parserCalls = 0;
+
+  const driver = recording(
+    {
+      data: { cols: 80, rows: 24, events: [[0.1, "o", "start\r\n"]] },
+      parser: async (data) => {
+        parserCalls++;
+        return data;
       },
+    },
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    {
+      speed: 1,
+      preload: true,
+      poster: { type: "text", value: "hello world" },
+    },
+  );
+
+  await driver.init();
+
+  expect(parserCalls).toBe(1);
+  expect(recorder.eventNames()).toEqual(["metadata", "reset", "output"]);
+  expect(recorder.outputs).toEqual(["hello world"]);
+});
+
+test("repeated init returns the cached preload promise", async () => {
+  let parserCalls = 0;
+  const parserGate = createGate();
+
+  const driver = recording(
+    {
+      data: { cols: 80, rows: 24, events: [[0.1, "o", "start\r\n"]] },
+      parser: async (data) => {
+        parserCalls++;
+        await parserGate.promise;
+        return data;
+      },
+    },
+    {
+      logger: stubLogger(),
+      dispatch: () => {},
+    },
+    { speed: 1, preload: true },
+  );
+
+  const first = driver.init();
+  const second = driver.init();
+
+  expect(second).toBe(first);
+  parserGate.resolve();
+  await second;
+  expect(parserCalls).toBe(1);
+});
+
+// --- play ---
+
+test("play after text poster init loads recording and starts playback", async () => {
+  const recorder = createDispatchRecorder();
+  let parserCalls = 0;
+
+  const driver = recording(
+    {
+      data: { cols: 80, rows: 24, events: [[0.01, "o", "start\r\n"]] },
+      parser: async (data) => {
+        parserCalls++;
+        return data;
+      },
+    },
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    {
+      speed: 1,
+      preload: false,
+      poster: { type: "text", value: "hello world" },
+    },
+  );
+
+  await driver.init();
+  expect(parserCalls).toBe(0);
+
+  const ended = recorder.waitFor("ended");
+  await driver.play();
+  await ended;
+
+  expect(parserCalls).toBe(1);
+  expect(recorder.eventNames()).toEqual([
+    "output",
+    "output",
+    "play",
+    "metadata",
+    "reset",
+    "playing",
+    "output",
+    "ended",
+  ]);
+  expect(recorder.outputs[0]).toBe("hello world");
+  expect(recorder.outputs[1]).toBe("\x1bc");
+  expect(recorder.outputs[2]).toEqual(["start\r\n"]);
+});
+
+test("first play applies startAt before playback starts", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.1, "o", "zero\r\n"],
+      [0.2, "o", "one\r\n"],
+      [0.4, "o", "two\r\n"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    {
+      speed: 1,
+      startAt: 0.25,
+    },
+  );
+
+  await driver.play();
+
+  expect(recorder.outputs).toEqual([["zero\r\n", "one\r\n"]]);
+  expect(driver.getCurrentTime()).toBeGreaterThanOrEqual(0.25);
+  expect(driver.getCurrentTime()).toBeLessThan(0.4);
+});
+
+test("play after ended restarts from beginning", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.01, "o", "start\r\n"],
+      [0.03, "o", "end\r\n"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1 },
+  );
+
+  let ended = recorder.waitFor("ended");
+  await driver.play();
+  await ended;
+
+  const firstRunOutputCount = recorder.outputs.length;
+  expect(recorder.eventsNamed("ended")).toHaveLength(1);
+
+  ended = recorder.waitFor("ended");
+  await driver.play();
+  await ended;
+
+  expect(recorder.eventsNamed("play")).toHaveLength(2);
+  expect(recorder.eventsNamed("playing")).toHaveLength(2);
+  expect(recorder.eventsNamed("ended")).toHaveLength(2);
+  expect(recorder.outputs.slice(firstRunOutputCount)).toEqual([
+    "\x1bc",
+    ["start\r\n"],
+    ["end\r\n"],
+  ]);
+});
+
+test("numeric loop plays exactly N times then ends", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.01, "o", "start\r\n"],
+      [0.02, "o", "end\r\n"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1, loop: 2 },
+  );
+
+  const ended = recorder.waitFor("ended");
+  await driver.play();
+  await ended;
+
+  expect(recorder.eventsNamed("ended")).toHaveLength(1);
+  expect(recorder.outputs.filter((o) => o === "\x1bc")).toHaveLength(2);
+});
+
+test("play batches adjacent output events at runtime", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.001, "o", "hel"],
+      [0.006, "o", "lo"],
+      [0.011, "o", "!"],
+      [0.03, "o", "?"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1 },
+  );
+
+  const ended = recorder.waitFor("ended");
+  await driver.play();
+  await ended;
+
+  expect(recorder.outputs).toEqual([["hel", "lo", "!"], ["?"]]);
+});
+
+// --- pause & markers ---
+
+test("pauseOnMarkers pauses playback and resumes on play", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.01, "o", "start\r\n"],
+      [0.02, "m", "chapter"],
+      [0.04, "o", "end\r\n"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1, pauseOnMarkers: true },
+  );
+
+  const paused = recorder.waitFor("pause");
+  await driver.play();
+  await paused;
+
+  expect(recorder.eventsNamed("marker")).toEqual([
+    { name: "marker", payload: { index: 0, time: 0.02, label: "chapter" } },
+  ]);
+  expect(recorder.eventsNamed("pause")).toHaveLength(1);
+  expect(driver.getCurrentTime()).toBeCloseTo(0.02, 2);
+  expect(recorder.outputs).toEqual([["start\r\n"]]);
+
+  const ended = recorder.waitFor("ended");
+  await driver.play();
+  await ended;
+
+  expect(recorder.outputs).toEqual([["start\r\n"], ["end\r\n"]]);
+  expect(recorder.eventsNamed("ended")).toHaveLength(1);
+});
+
+test("pause during startup cancels play attempt", async () => {
+  const restoreAudio = installFakeAudio({ manualPlay: true });
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      source([
+        [0.1, "o", "start\r\n"],
+        [0.2, "o", "later\r\n"],
+      ]),
+      {
+        logger: stubLogger(),
+        dispatch: recorder.dispatch,
+      },
+      { speed: 1, preload: true, audioUrl: "/assets/fake.mp3" },
+    );
+
+    await driver.init();
+    const playPromise = driver.play();
+    driver.pause();
+    await resolveFakeAudioPlay();
+
+    expect(await playPromise).toBe(false);
+    expect(recorder.eventsNamed("pause")).toHaveLength(1);
+  } finally {
+    restoreAudio();
+  }
+});
+
+// --- mute ---
+
+test("mute and unmute toggle audio and dispatch events", async () => {
+  const restoreAudio = installFakeAudio();
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      source([[0.1, "o", "start\r\n"]]),
+      {
+        logger: stubLogger(),
+        dispatch: recorder.dispatch,
+      },
+      { speed: 1, preload: true, audioUrl: "/assets/fake.mp3" },
+    );
+
+    await driver.init();
+
+    expect(driver.mute()).toBe(true);
+    expect(driver.unmute()).toBe(true);
+    expect(recorder.eventsNamed("muted")).toEqual([
+      { name: "muted", payload: true },
+      { name: "muted", payload: false },
+    ]);
+  } finally {
+    restoreAudio();
+  }
+});
+
+test("mute and unmute are no-ops without audio", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([[0.1, "o", "start\r\n"]]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1 },
+  );
+
+  await driver.init();
+
+  expect(driver.mute()).toBeUndefined();
+  expect(driver.unmute()).toBeUndefined();
+  expect(recorder.eventsNamed("muted")).toHaveLength(0);
+});
+
+// --- seek ---
+
+test("seek to duration emits ended and pins current time", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.1, "o", "start\r\n"],
+      [0.2, "o", "end\r\n"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1 },
+  );
+
+  await driver.seek(999);
+
+  expect(driver.getCurrentTime()).toBe(driver.getDuration());
+  expect(recorder.eventsNamed("ended")).toHaveLength(1);
+  expect(recorder.eventsNamed("seeked")).toHaveLength(1);
+});
+
+test("seek to duration with loop restarts playback", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.01, "o", "start\r\n"],
+      [0.2, "o", "end\r\n"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1, loop: true },
+  );
+
+  await driver.seek(999);
+
+  expect(recorder.eventsNamed("ended")).toHaveLength(0);
+  expect(recorder.eventsNamed("seeked")).toHaveLength(1);
+  expect(recorder.outputs).toContain("\x1bc");
+  expect(driver.getCurrentTime()).toBeLessThan(driver.getDuration());
+});
+
+test("seek to duration during playback emits ended and pins current time", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.01, "o", "start\r\n"],
+      [0.2, "o", "end\r\n"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1 },
+  );
+
+  const playing = recorder.waitFor("playing");
+  await driver.play();
+  await playing;
+  await driver.seek(999);
+
+  expect(driver.getCurrentTime()).toBe(driver.getDuration());
+  expect(recorder.eventsNamed("ended")).toHaveLength(1);
+  expect(recorder.eventsNamed("seeked")).toHaveLength(1);
+});
+
+test("seek from cold state loads recording and seeks", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.1, "o", "start\r\n"],
+      [1.0, "o", "one\r\n"],
+      [2.0, "o", "two\r\n"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1 },
+  );
+
+  await driver.seek(0.5);
+
+  expect(recorder.eventsNamed("seeked")).toHaveLength(1);
+  expect(recorder.outputs).toEqual([["start\r\n"]]);
+  expect(driver.getCurrentTime()).toBeCloseTo(0.5);
+});
+
+// --- step ---
+
+test("step advances across multiple output frames", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.1, "o", "start\r\n"],
+      [1.0, "o", "one\r\n"],
+      [2.0, "o", "two\r\n"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
     },
     { speed: 1 },
   );
@@ -31,103 +517,187 @@ test("step advances across multiple output frames", async () => {
   await driver.step(2);
 
   expect(driver.getCurrentTime()).toBeCloseTo(1.0);
-  expect(output.join("")).toContain("start");
-  expect(output.join("")).toContain("one");
-  expect(output.join("")).not.toContain("two");
+  expect(recorder.outputs.join("")).toContain("start");
+  expect(recorder.outputs.join("")).toContain("one");
+  expect(recorder.outputs.join("")).not.toContain("two");
 });
 
 test("step reverses across multiple output frames", async () => {
-  const output = [];
+  const recorder = createDispatchRecorder();
 
   const driver = recording(
-    {
-      data: {
-        cols: 80,
-        rows: 24,
-        events: [
-          [0.1, "o", "start\r\n"],
-          [1.0, "o", "one\r\n"],
-          [2.0, "o", "two\r\n"],
-        ],
-      },
-      parser: (data) => data,
-    },
+    source([
+      [0.1, "o", "start\r\n"],
+      [1.0, "o", "one\r\n"],
+      [2.0, "o", "two\r\n"],
+    ]),
     {
       logger: stubLogger(),
-      dispatch: (name, payload) => {
-        if (name === "output") {
-          output.push(payload);
-        }
-      },
+      dispatch: recorder.dispatch,
     },
     { speed: 1 },
   );
 
   await driver.step(3);
-  output.length = 0;
+  recorder.outputs.length = 0;
 
   await driver.step(-2);
 
   expect(driver.getCurrentTime()).toBeCloseTo(0.1);
-  expect(output).toEqual(["\x1bc", ["start\r\n"]]);
+  expect(recorder.outputs).toEqual(["\x1bc", ["start\r\n"]]);
 });
 
-test("resize events dispatch numeric terminal dimensions", async () => {
-  const events = [];
+test("step to the last frame with loop restarts playback", async () => {
+  const recorder = createDispatchRecorder();
 
   const driver = recording(
-    {
-      data: {
-        cols: 80,
-        rows: 24,
-        events: [[0.1, "r", "100x30"]],
-      },
-      parser: (data) => data,
-    },
+    source([
+      [0.01, "o", "start\r\n"],
+      [0.2, "o", "end\r\n"],
+    ]),
     {
       logger: stubLogger(),
-      dispatch: (name, payload) => events.push({ name, payload }),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1, loop: true },
+  );
+
+  await driver.step(2);
+
+  expect(recorder.eventsNamed("ended")).toHaveLength(0);
+  expect(recorder.outputs).toContain("\x1bc");
+  expect(driver.getCurrentTime()).toBeLessThan(driver.getDuration());
+});
+
+test("step during startup is a no-op", async () => {
+  const restoreAudio = installFakeAudio({ manualPlay: true });
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      source([
+        [0.2, "o", "start\r\n"],
+        [0.4, "o", "later\r\n"],
+      ]),
+      {
+        logger: stubLogger(),
+        dispatch: recorder.dispatch,
+      },
+      { speed: 1, preload: true, audioUrl: "/assets/fake.mp3" },
+    );
+
+    await driver.init();
+    const playPromise = driver.play();
+    driver.step(1);
+
+    expect(recorder.outputs).toEqual([]);
+
+    const ended = recorder.waitFor("ended");
+    await resolveFakeAudioPlay();
+    await playPromise;
+    await ended;
+
+    expect(recorder.outputs).toEqual([["start\r\n"], ["later\r\n"]]);
+  } finally {
+    restoreAudio();
+  }
+});
+
+test("step from cold state loads recording and steps", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.1, "o", "start\r\n"],
+      [1.0, "o", "one\r\n"],
+      [2.0, "o", "two\r\n"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1 },
+  );
+
+  await driver.step(2);
+
+  expect(recorder.outputs).toEqual([["start\r\n", "one\r\n"]]);
+  expect(driver.getCurrentTime()).toBeCloseTo(1.0);
+});
+
+// --- resize ---
+
+test("resize events dispatch numeric terminal dimensions", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([[0.1, "r", "100x30"]]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
     },
     { speed: 1 },
   );
 
   await driver.seek(1);
 
-  expect(events).toContainEqual({
+  expect(recorder.events).toContainEqual({
     name: "resize",
     payload: { cols: 100, rows: 30 },
   });
 });
 
+// --- stop ---
+
+test("stop during playback cancels scheduled progression", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.01, "m", "start"],
+      [0.2, "m", "later"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1 },
+  );
+
+  const marker = recorder.waitFor("marker");
+  await driver.play();
+  await marker;
+  await driver.stop();
+
+  await wait(250);
+  expect(recorder.eventsNamed("marker")).toEqual([
+    { name: "marker", payload: { index: 0, time: 0.01, label: "start" } },
+  ]);
+  expect(recorder.eventsNamed("ended")).toHaveLength(0);
+});
+
 test("stop tears down audio resources and pending waiting state", async () => {
   const restoreAudio = installFakeAudio();
-  const events = [];
+  const recorder = createDispatchRecorder();
 
   try {
     const driver = recording(
-      {
-        data: {
-          cols: 80,
-          rows: 24,
-          events: [[0.1, "o", "start\r\n"]],
-        },
-        parser: async (data) => data,
-      },
+      source([[0.1, "o", "start\r\n"]]),
       {
         logger: stubLogger(),
-        dispatch: (name, payload) => events.push({ name, payload }),
+        dispatch: recorder.dispatch,
       },
       { speed: 1, audioUrl: "/assets/fake.mp3" },
     );
 
     await driver.play();
-    expect(events.filter((event) => event.name === "playing")).toHaveLength(1);
+    expect(recorder.eventsNamed("playing")).toHaveLength(1);
 
     fakeAudioState.lastAudio.dispatch("waiting");
     await driver.stop();
     await wait(1100);
 
-    expect(events.filter((event) => event.name === "loading")).toHaveLength(0);
+    expect(recorder.eventsNamed("loading")).toHaveLength(0);
     expect(fakeAudioState.lastAudio.pauseCalls).toBeGreaterThan(0);
     expect(fakeAudioState.lastAudio.listeners.get("playing") ?? []).toHaveLength(0);
     expect(fakeAudioState.lastAudio.listeners.get("waiting") ?? []).toHaveLength(0);
@@ -137,6 +707,171 @@ test("stop tears down audio resources and pending waiting state", async () => {
     restoreAudio();
   }
 });
+
+// --- audio buffering ---
+
+test("audio waiting during playback emits loading and resumes on playing", async () => {
+  const restoreAudio = installFakeAudio();
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      source([
+        [0.01, "m", "start"],
+        [0.2, "m", "later"],
+      ]),
+      {
+        logger: stubLogger(),
+        dispatch: recorder.dispatch,
+      },
+      { speed: 1, audioUrl: "/assets/fake.mp3" },
+    );
+
+    const marker = recorder.waitFor("marker");
+    await driver.play();
+    await marker;
+
+    const loading = recorder.waitFor("loading");
+    fakeAudioState.lastAudio.dispatch("waiting");
+    await loading;
+    const ended = recorder.waitFor("ended");
+    fakeAudioState.lastAudio.dispatch("playing");
+    await ended;
+
+    expect(recorder.eventsNamed("loading")).toHaveLength(1);
+    expect(recorder.eventsNamed("playing")).toHaveLength(2);
+    expect(recorder.eventsNamed("marker")).toEqual([
+      { name: "marker", payload: { index: 0, time: 0.01, label: "start" } },
+      { name: "marker", payload: { index: 1, time: 0.2, label: "later" } },
+    ]);
+  } finally {
+    restoreAudio();
+  }
+});
+
+test("seek while buffering returns false and does not emit seeked", async () => {
+  const restoreAudio = installFakeAudio();
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      source([
+        [0.01, "m", "start"],
+        [0.2, "m", "later"],
+      ]),
+      {
+        logger: stubLogger(),
+        dispatch: recorder.dispatch,
+      },
+      { speed: 1, audioUrl: "/assets/fake.mp3" },
+    );
+
+    await driver.play();
+    await recorder.waitFor("marker");
+
+    const loading = recorder.waitFor("loading");
+    fakeAudioState.lastAudio.dispatch("waiting");
+    await loading;
+
+    const bufferedTime = driver.getCurrentTime();
+    const seekedCount = recorder.eventsNamed("seeked").length;
+    const result = await driver.seek(0.15);
+
+    expect(result).toBe(false);
+    expect(recorder.eventsNamed("seeked")).toHaveLength(seekedCount);
+    expect(driver.getCurrentTime()).toBeCloseTo(bufferedTime, 2);
+  } finally {
+    restoreAudio();
+  }
+});
+
+test("pause while buffering prevents automatic resume", async () => {
+  const restoreAudio = installFakeAudio();
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      source([
+        [0.01, "m", "start"],
+        [0.2, "m", "later"],
+      ]),
+      {
+        logger: stubLogger(),
+        dispatch: recorder.dispatch,
+      },
+      { speed: 1, audioUrl: "/assets/fake.mp3" },
+    );
+
+    const marker = recorder.waitFor("marker");
+    await driver.play();
+    await marker;
+
+    const loading = recorder.waitFor("loading");
+    fakeAudioState.lastAudio.dispatch("waiting");
+    await loading;
+
+    const pausedTime = driver.getCurrentTime();
+    const playingCount = recorder.eventsNamed("playing").length;
+    driver.pause();
+    fakeAudioState.lastAudio.dispatch("playing");
+
+    expect(recorder.eventsNamed("playing")).toHaveLength(playingCount);
+    expect(recorder.eventsNamed("marker")).toEqual([
+      { name: "marker", payload: { index: 0, time: 0.01, label: "start" } },
+    ]);
+    expect(driver.getCurrentTime()).toBeCloseTo(pausedTime, 2);
+
+    const ended = recorder.waitFor("ended");
+    await driver.play();
+    await ended;
+
+    expect(recorder.eventsNamed("marker")).toEqual([
+      { name: "marker", payload: { index: 0, time: 0.01, label: "start" } },
+      { name: "marker", payload: { index: 1, time: 0.2, label: "later" } },
+    ]);
+  } finally {
+    restoreAudio();
+  }
+});
+
+test("play during buffering keeps recovery event and clears waiting timeout", async () => {
+  const restoreAudio = installFakeAudio();
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      source([
+        [0.01, "m", "start"],
+        [0.2, "m", "later"],
+      ]),
+      {
+        logger: stubLogger(),
+        dispatch: recorder.dispatch,
+      },
+      { speed: 1, audioUrl: "/assets/fake.mp3" },
+    );
+
+    const marker = recorder.waitFor("marker");
+    await driver.play();
+    await marker;
+    fakeAudioState.lastAudio.dispatch("waiting");
+
+    driver.pause();
+    await driver.play();
+    const playing = recorder.waitFor("playing");
+    fakeAudioState.lastAudio.dispatch("playing");
+    await playing;
+    await wait(1100);
+
+    expect(recorder.eventsNamed("play")).toHaveLength(2);
+    expect(recorder.eventsNamed("playing")).toHaveLength(2);
+    expect(recorder.eventsNamed("loading")).toHaveLength(0);
+  } finally {
+    restoreAudio();
+  }
+});
+
+// --- loadRecording ---
 
 test("loadRecording fetches a single URL and passes Response to parser", async () => {
   const restoreFetch = stubFetch(() => new Response("hello"));
@@ -269,39 +1004,7 @@ test("loadRecording rejects on missing source, fetch failure and parser failure"
   ).rejects.toThrow("parser boom");
 });
 
-test("play batches adjacent output events at runtime", async () => {
-  const outputs = [];
-
-  const driver = recording(
-    {
-      data: {
-        cols: 80,
-        rows: 24,
-        events: [
-          [0.001, "o", "hel"],
-          [0.006, "o", "lo"],
-          [0.011, "o", "!"],
-          [0.03, "o", "?"],
-        ],
-      },
-      parser: (data) => data,
-    },
-    {
-      logger: stubLogger(),
-      dispatch: (name, payload) => {
-        if (name === "output") {
-          outputs.push(payload);
-        }
-      },
-    },
-    { speed: 1 },
-  );
-
-  await driver.play();
-  await wait(50);
-
-  expect(outputs).toEqual([["hel", "lo", "!"], ["?"]]);
-});
+// --- prepareRecording ---
 
 test("prepareRecording applies idleTimeLimit from recording or options", () => {
   const base = {
@@ -437,16 +1140,20 @@ test("prepareRecording rejects recordings with no events", () => {
   ).toThrow("recording is missing events");
 });
 
+// --- helpers ---
+
 const fakeAudioState = {
   closedContexts: 0,
   lastAudio: undefined,
+  pendingPlay: null,
 };
 
-function installFakeAudio() {
+function installFakeAudio({ manualPlay = false } = {}) {
   const originalAudio = globalThis.Audio;
   const originalAudioContext = globalThis.AudioContext;
   fakeAudioState.closedContexts = 0;
   fakeAudioState.lastAudio = undefined;
+  fakeAudioState.pendingPlay = null;
 
   class FakeAudio {
     constructor() {
@@ -492,6 +1199,16 @@ function installFakeAudio() {
     }
 
     play() {
+      if (manualPlay) {
+        const gate = createGate();
+        fakeAudioState.pendingPlay = gate;
+
+        return gate.promise.then(() => {
+          fakeAudioState.pendingPlay = null;
+          this.dispatch("playing");
+        });
+      }
+
       setTimeout(() => this.dispatch("playing"), 0);
       return Promise.resolve();
     }
@@ -531,6 +1248,64 @@ function installFakeAudio() {
   };
 }
 
+async function resolveFakeAudioPlay() {
+  for (let i = 0; i < 20; i++) {
+    if (fakeAudioState.pendingPlay) {
+      fakeAudioState.pendingPlay.resolve();
+      return;
+    }
+
+    await wait(0);
+  }
+
+  throw new Error("timed out waiting for fake audio play");
+}
+
+function source(events) {
+  return {
+    data: { cols: 80, rows: 24, events },
+    parser: (data) => data,
+  };
+}
+
+function createDispatchRecorder() {
+  const events = [];
+  const outputs = [];
+  let waiter = null;
+
+  return {
+    events,
+    outputs,
+    dispatch(name, payload) {
+      events.push({ name, payload });
+
+      if (name === "output") {
+        outputs.push(payload);
+      }
+
+      if (waiter?.name === name) {
+        waiter.resolve({ name, payload });
+        waiter = null;
+      }
+    },
+    eventNames() {
+      return events.map((event) => event.name);
+    },
+    eventsNamed(name) {
+      return events.filter((event) => event.name === name);
+    },
+    waitFor(name) {
+      if (waiter) {
+        throw new Error(`already waiting for ${waiter.name}`);
+      }
+
+      return new Promise((resolve) => {
+        waiter = { name, resolve };
+      });
+    },
+  };
+}
+
 function stubLogger() {
   return {
     debug() {},
@@ -551,4 +1326,14 @@ function wait(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function createGate() {
+  let resolve;
+
+  const promise = new Promise((resolve_) => {
+    resolve = resolve_;
+  });
+
+  return { promise, resolve };
 }
