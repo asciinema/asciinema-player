@@ -231,7 +231,7 @@ impl Vt {
                                 && span.is_underline() == pen.is_underline()
                                 && span.is_strikethrough() == pen.is_strikethrough()) =>
                     // spaces with the same underline/strike-through values can be safely merged
-                    // into the previous span regardles of their other attr values (color, bold,
+                    // into the previous span regardless of their other attr values (color, bold,
                     // italic etc), reducing the overall number of text spans representing a row
                     {
                         span.text_len += 1;
