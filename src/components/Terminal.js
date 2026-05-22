@@ -1684,12 +1684,42 @@ function getVectorSymbolDef(codepoint) {
     case 0xe0b3:
       return '<path d="M1,0 L0,0.5 L1,1" fill="none" stroke="currentColor" stroke-width="0.07" stroke-linejoin="miter"/>';
 
+    // nf-ple-lower_left_triangle (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0b8:
+      return '<path d="M0,1 L0,0 L1,1 Z" fill="currentColor"/>';
+
+    // nf-ple-backslash_separator (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0b9:
+    // nf-ple-backslash_separator_redundant (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0bf:
+      return '<path d="M0,0 L1,1" fill="none" stroke="currentColor" stroke-width="0.07"/>';
+
+    // nf-ple-lower_right_triangle (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0ba:
+      return '<path d="M1,1 L1,0 L0,1 Z" fill="currentColor"/>';
+
+    // nf-ple-forwardslash_separator (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0bb:
+    // nf-ple-forwardslash_separator_redundant (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0bd:
+      return '<path d="M0,1 L1,0" fill="none" stroke="currentColor" stroke-width="0.07"/>';
+
+    // nf-ple-upper_left_triangle (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0bc:
+      return '<path d="M0,0 L1,0 L0,1 Z" fill="currentColor"/>';
+
+    // nf-ple-upper_right_triangle (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0be:
+      return '<path d="M1,0 L1,1 L0,0 Z" fill="currentColor"/>';
+
     default:
       return null;
   }
 }
 
-const POWERLINE_SYMBOLS = new Set([0xe0b0, 0xe0b1, 0xe0b2, 0xe0b3]);
+const POWERLINE_SYMBOLS = new Set([
+  0xe0b0, 0xe0b1, 0xe0b2, 0xe0b3, 0xe0b8, 0xe0b9, 0xe0ba, 0xe0bb, 0xe0bc, 0xe0bd, 0xe0be, 0xe0bf,
+]);
 const POWERLINE_SYMBOL_NUDGE = 0.02;
 
 const FALLBACK_THEME = {

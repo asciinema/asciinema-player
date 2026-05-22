@@ -379,6 +379,46 @@ test("RGB color rendering", async ({ page }) => {
   expect(cells[5]).toBe("#fedcba");
 });
 
+test("powerline extra symbols render as SVG symbols", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/powerline-extra-symbols.cast", {
+    autoPlay: true,
+  });
+
+  await playerApi.events.waitFor("ended");
+
+  const expectedCodepoints = [0xe0b8, 0xe0b9, 0xe0ba, 0xe0bb, 0xe0bc, 0xe0bd, 0xe0be, 0xe0bf];
+
+  const renderedSymbols = await page.locator(".ap-term-symbols").evaluate((node) => {
+    return {
+      defs: [...node.querySelectorAll("symbol")].map((symbol) => symbol.id),
+      uses: [...node.querySelectorAll("use")].map((use) => use.getAttribute("href")),
+    };
+  });
+
+  for (const codepoint of expectedCodepoints) {
+    expect(renderedSymbols.defs).toContain(`sym-${codepoint}`);
+    expect(renderedSymbols.uses).toContain(`#sym-${codepoint}`);
+  }
+
+  const fg = "#123456";
+  const bg = "#fedcba";
+
+  const { cells } = await sampleTerminalPixels(page, {
+    cells: [
+      [0, 0, 0.25, 0.75], // U+E0B8 lower-left triangle: fill
+      [0, 0, 0.75, 0.25], // U+E0B8 lower-left triangle: background
+      [0, 2, 0.75, 0.75], // U+E0BA lower-right triangle: fill
+      [0, 2, 0.25, 0.25], // U+E0BA lower-right triangle: background
+      [0, 4, 0.25, 0.25], // U+E0BC upper-left triangle: fill
+      [0, 4, 0.75, 0.75], // U+E0BC upper-left triangle: background
+      [0, 6, 0.75, 0.25], // U+E0BE upper-right triangle: fill
+      [0, 6, 0.25, 0.75], // U+E0BE upper-right triangle: background
+    ],
+  });
+
+  expect(cells).toEqual([fg, bg, fg, bg, fg, bg, fg, bg]);
+});
+
 test("raster symbol groups render representative glyphs with expected pixels", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/raster-symbol-groups.cast", {
     autoPlay: true,
