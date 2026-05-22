@@ -573,8 +573,11 @@ function recording(
 
     try {
       const parsedRecording = loadRecording(src);
-      const audioLoaded = loadAudio(audioUrl);
-      void audioLoaded.catch(() => {});
+
+      const audioLoaded = loadAudio(audioUrl).catch((error) => {
+        logger.warn(`audio load failed: ${error.message}`);
+        return false;
+      });
 
       const recording = prepareRecording(await parsedRecording, {
         idleTimeLimit,

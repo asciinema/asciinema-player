@@ -124,28 +124,26 @@ test("preload exposes duration before playback", async ({ page }) => {
   await expectDuration(playerApi).toBeGreaterThan(0);
 });
 
-test("invalid audioUrl rejects playback and emits error", async ({ page }) => {
+test("invalid audioUrl falls back to playback without audio", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/simple.cast", {
     audioUrl: "/assets/missing.mp3",
   });
 
-  const error = await page.evaluate(async () => {
-    try {
-      await window.player.play();
-      return null;
-    } catch (e) {
-      return e?.message ?? String(e);
-    }
+  await page.evaluate(() => {
+    window.player.addEventListener("metadata", (payload) => {
+      window.__pushEvent({ name: "metadata", payload: payload ?? null });
+    });
   });
 
-  expect(error).toContain("failed loading audio from /assets/missing.mp3");
+  await playerApi.play();
 
-  const event = await playerApi.events.waitFor("error");
+  const metadata = await playerApi.events.waitFor("metadata");
 
-  expect(event.payload).toEqual({
-    name: "Error",
-    message: "failed loading audio from /assets/missing.mp3",
-  });
+  expect(metadata.payload).toEqual(expect.objectContaining({
+    hasAudio: false,
+  }));
+
+  await playerApi.events.waitFor("playing");
 });
 
 test("invalid preload data emits error without an unhandled rejection", async ({ page }) => {
