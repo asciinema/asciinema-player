@@ -1684,6 +1684,22 @@ function getVectorSymbolDef(codepoint) {
     case 0xe0b3:
       return '<path d="M1,0 L0,0.5 L1,1" fill="none" stroke="currentColor" stroke-width="0.07" stroke-linejoin="miter"/>';
 
+    // nf-ple-right_half_circle_thick (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0b4:
+      return '<path d="M0,0 A1,0.5 0 0 1 0,1 Z" fill="currentColor"/>';
+
+    // nf-ple-right_half_circle_thin (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0b5:
+      return '<path d="M0,0 A1,0.5 0 0 1 0,1" fill="none" stroke="currentColor" stroke-width="0.07"/>';
+
+    // nf-ple-left_half_circle_thick (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0b6:
+      return '<path d="M1,0 A1,0.5 0 0 0 1,1 Z" fill="currentColor"/>';
+
+    // nf-ple-left_half_circle_thin (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0b7:
+      return '<path d="M1,0 A1,0.5 0 0 0 1,1" fill="none" stroke="currentColor" stroke-width="0.07"/>';
+
     // nf-ple-lower_left_triangle (https://www.nerdfonts.com/cheat-sheet)
     case 0xe0b8:
       return '<path d="M0,1 L0,0 L1,1 Z" fill="currentColor"/>';
@@ -1718,7 +1734,8 @@ function getVectorSymbolDef(codepoint) {
 }
 
 const POWERLINE_SYMBOLS = new Set([
-  0xe0b0, 0xe0b1, 0xe0b2, 0xe0b3, 0xe0b8, 0xe0b9, 0xe0ba, 0xe0bb, 0xe0bc, 0xe0bd, 0xe0be, 0xe0bf,
+  0xe0b0, 0xe0b1, 0xe0b2, 0xe0b3, 0xe0b4, 0xe0b5, 0xe0b6, 0xe0b7, 0xe0b8, 0xe0b9, 0xe0ba, 0xe0bb,
+  0xe0bc, 0xe0bd, 0xe0be, 0xe0bf,
 ]);
 const POWERLINE_SYMBOL_NUDGE = 0.02;
 

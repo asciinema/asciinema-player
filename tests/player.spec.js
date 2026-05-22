@@ -379,6 +379,42 @@ test("RGB color rendering", async ({ page }) => {
   expect(cells[5]).toBe("#fedcba");
 });
 
+test("powerline rounded symbols render as SVG symbols", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/powerline-rounded-symbols.cast", {
+    autoPlay: true,
+  });
+
+  await playerApi.events.waitFor("ended");
+
+  const expectedCodepoints = [0xe0b4, 0xe0b5, 0xe0b6, 0xe0b7];
+
+  const renderedSymbols = await page.locator(".ap-term-symbols").evaluate((node) => {
+    return {
+      defs: [...node.querySelectorAll("symbol")].map((symbol) => symbol.id),
+      uses: [...node.querySelectorAll("use")].map((use) => use.getAttribute("href")),
+    };
+  });
+
+  for (const codepoint of expectedCodepoints) {
+    expect(renderedSymbols.defs).toContain(`sym-${codepoint}`);
+    expect(renderedSymbols.uses).toContain(`#sym-${codepoint}`);
+  }
+
+  const fg = "#123456";
+  const bg = "#fedcba";
+
+  const { cells } = await sampleTerminalPixels(page, {
+    cells: [
+      [0, 0, 0.75, 0.5], // U+E0B4 right rounded cap: fill
+      [0, 0, 0.9, 0.05], // U+E0B4 right rounded cap: background
+      [0, 2, 0.25, 0.5], // U+E0B6 left rounded cap: fill
+      [0, 2, 0.1, 0.05], // U+E0B6 left rounded cap: background
+    ],
+  });
+
+  expect(cells).toEqual([fg, bg, fg, bg]);
+});
+
 test("powerline extra symbols render as SVG symbols", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/powerline-extra-symbols.cast", {
     autoPlay: true,

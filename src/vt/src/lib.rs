@@ -388,6 +388,7 @@ fn is_vector_symbol(ch: char) -> bool {
     || ch == '\u{268f}'
     // Powerline triangles
     || ('\u{e0b0}'..='\u{e0b3}').contains(&ch)
+    || ('\u{e0b4}'..='\u{e0b7}').contains(&ch)
     || ('\u{e0b8}'..='\u{e0bf}').contains(&ch)
     // Symbols for Legacy Computing: block diagonals + triangular blocks
     || ('\u{1fb3c}'..='\u{1fb69}').contains(&ch)
@@ -580,7 +581,9 @@ mod tests {
     }
 
     #[test]
-    fn powerline_extra_triangles_are_vector_symbols() {
+    fn powerline_extra_symbols_are_vector_symbols() {
+        assert!(is_vector_symbol('\u{e0b4}'));
+        assert!(is_vector_symbol('\u{e0b7}'));
         assert!(is_vector_symbol('\u{e0b8}'));
         assert!(is_vector_symbol('\u{e0bf}'));
     }
