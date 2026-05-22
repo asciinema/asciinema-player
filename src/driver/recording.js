@@ -45,7 +45,7 @@ function recording(
     PLAYBACK_START_CONFIRMED: "playbackStartConfirmed",
     SEEK_PLAYBACK_START_CONFIRMED: "seekPlaybackStartConfirmed",
     PLAYBACK_START_FAILED: "playbackStartFailed",
-    END_REACHED: "endReached",
+    PLAYBACK_ENDED: "playbackEnded",
     AUDIO_WAITING: "audioWaiting",
     AUDIO_PLAYING: "audioPlaying",
     MARKER_REACHED: "markerReached",
@@ -128,8 +128,7 @@ function recording(
   // READY_BUFFERING_PAUSED -> [PLAY_REQUESTED] -> READY_BUFFERING_PLAYING
   // READY_BUFFERING_PAUSED -> [AUDIO_PLAYING] -> READY_PAUSED
   // READY_BUFFERING_PLAYING -> [PLAYBACK_START_FAILED] -> READY_BUFFERING_PAUSED
-  // READY_PLAYING | READY_PRISTINE | READY_PAUSED
-  //   -> [END_REACHED] -> READY_ENDED | READY_PLAYING (loop)
+  // READY_PLAYING -> [PLAYBACK_ENDED] -> READY_ENDED | READY_PLAYING (loop)
   // COLD | READY_PRISTINE | READY_PAUSED | READY_PLAYING
   //   | READY_BUFFERING_PAUSED | READY_BUFFERING_PLAYING | READY_ENDED
   //   -> [STOP_REQUESTED] -> STOPPED
@@ -297,13 +296,8 @@ function recording(
 
         return { nextState: currentState };
 
-      case EVENT.END_REACHED:
-        if (
-          currentState !== STATE.READY_PLAYING &&
-          currentState !== STATE.READY_PRISTINE &&
-          currentState !== STATE.READY_PAUSED &&
-          currentState !== STATE.READY_ENDED
-        ) {
+      case EVENT.PLAYBACK_ENDED:
+        if (currentState !== STATE.READY_PLAYING) {
           return { nextState: currentState };
         }
 
@@ -420,7 +414,7 @@ function recording(
 
         return {
           nextState: seekOperation.reachedEnd
-            ? currentState
+            ? STATE.READY_ENDED
             : currentState === STATE.READY_PLAYING
               ? STATE.READY_STARTING
               : STATE.READY_PAUSED,
@@ -460,7 +454,7 @@ function recording(
             step.targetIndex === undefined
               ? currentState
               : step.reachedEnd
-                ? currentState
+                ? STATE.READY_ENDED
                 : STATE.READY_PAUSED,
           action: () => {
             clearPoster();
@@ -671,9 +665,9 @@ function recording(
       ctx.eventTimeoutId = scheduleAt(runNextEvent, nextEvent[0]);
     } else {
       if (processingEvents) {
-        enqueueEvent(EVENT.END_REACHED);
+        enqueueEvent(EVENT.PLAYBACK_ENDED);
       } else {
-        sendEvent(EVENT.END_REACHED);
+        sendEvent(EVENT.PLAYBACK_ENDED);
       }
     }
   }
@@ -1141,8 +1135,12 @@ function recording(
     syncToTime(seekOperation.targetTime);
 
     if (seekOperation.reachedEnd) {
-      enqueueEvent(EVENT.END_REACHED);
-    } else if (wasPlaying) {
+      dispatch("seeked");
+      dispatch("ended");
+      return true;
+    }
+
+    if (wasPlaying) {
       return startPlayback(EVENT.SEEK_PLAYBACK_START_CONFIRMED);
     }
 
@@ -1191,7 +1189,7 @@ function recording(
     }
 
     if (step.reachedEnd) {
-      enqueueEvent(EVENT.END_REACHED);
+      dispatch("ended");
     }
   }
 

@@ -367,7 +367,7 @@ test("seek to duration emits ended and pins current time", async () => {
   expect(recorder.eventsNamed("seeked")).toHaveLength(1);
 });
 
-test("seek to duration with loop restarts playback", async () => {
+test("seek to duration with loop emits ended and pins current time", async () => {
   const recorder = createDispatchRecorder();
 
   const driver = recording(
@@ -384,10 +384,9 @@ test("seek to duration with loop restarts playback", async () => {
 
   await driver.seek(999);
 
-  expect(recorder.eventsNamed("ended")).toHaveLength(0);
+  expect(driver.getCurrentTime()).toBe(driver.getDuration());
+  expect(recorder.eventsNamed("ended")).toHaveLength(1);
   expect(recorder.eventsNamed("seeked")).toHaveLength(1);
-  expect(recorder.outputs).toContain("\x1bc");
-  expect(driver.getCurrentTime()).toBeLessThan(driver.getDuration());
 });
 
 test("seek to duration during playback emits ended and pins current time", async () => {
@@ -535,7 +534,7 @@ test("step reverses across multiple output frames", async () => {
   expect(recorder.outputs).toEqual(["\x1bc", ["start\r\n"]]);
 });
 
-test("step to the last frame with loop restarts playback", async () => {
+test("step to the last frame with loop emits ended and pins current time", async () => {
   const recorder = createDispatchRecorder();
 
   const driver = recording(
@@ -552,9 +551,8 @@ test("step to the last frame with loop restarts playback", async () => {
 
   await driver.step(2);
 
-  expect(recorder.eventsNamed("ended")).toHaveLength(0);
-  expect(recorder.outputs).toContain("\x1bc");
-  expect(driver.getCurrentTime()).toBeLessThan(driver.getDuration());
+  expect(driver.getCurrentTime()).toBe(driver.getDuration());
+  expect(recorder.eventsNamed("ended")).toHaveLength(1);
 });
 
 test("step from cold state loads recording and steps", async () => {
