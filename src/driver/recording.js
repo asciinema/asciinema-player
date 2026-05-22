@@ -395,7 +395,7 @@ function recording(
         if (currentState === STATE.COLD) {
           return {
             nextState: STATE.LOADING,
-            action: () => loadThenReplay(EVENT.SEEK_REQUESTED, payload),
+            action: () => loadPromise().then(() => seek(payload.where)),
           };
         }
 
@@ -412,21 +412,21 @@ function recording(
           return { nextState: currentState };
         }
 
-        const seek = describeSeek(currentState, payload.where);
+        const seekOperation = payload.seekOperation;
 
-        if (seek.noOp) {
+        if (seekOperation.noOp) {
           return { nextState: currentState, action: () => false };
         }
 
         return {
-          nextState: seek.reachedEnd
+          nextState: seekOperation.reachedEnd
             ? currentState
             : currentState === STATE.READY_PLAYING
               ? STATE.READY_STARTING
               : STATE.READY_PAUSED,
           action: () => {
             clearPoster();
-            return performSeek(seek, currentState);
+            return performSeek(seekOperation, currentState);
           },
         };
       }
@@ -519,7 +519,7 @@ function recording(
     dispatch("error", toErrorPayload(error));
   }
 
-  function sendCommand(event, payload = {}) {
+  function assertCommandAllowed() {
     if (ctx.failureError) {
       throw ctx.failureError;
     }
@@ -527,6 +527,10 @@ function recording(
     if (state === STATE.STOPPED) {
       throw new Error("driver has been stopped");
     }
+  }
+
+  function sendCommand(event, payload = {}) {
+    assertCommandAllowed();
 
     return sendEvent(event, payload);
   }
@@ -800,7 +804,14 @@ function recording(
   }
 
   function seek(where) {
-    return sendCommand(EVENT.SEEK_REQUESTED, { where });
+    assertCommandAllowed();
+    validateSeekInput(where);
+
+    if (state === STATE.COLD) {
+      return sendEvent(EVENT.SEEK_REQUESTED, { where });
+    }
+
+    return sendEvent(EVENT.SEEK_REQUESTED, { seekOperation: resolveSeek(state, where) });
   }
 
   function findMarkerTimeBefore(time) {
@@ -920,7 +931,39 @@ function recording(
     });
   }
 
-  function describeSeek(currentState, where) {
+  function validateSeekInput(where) {
+    if (typeof where === "number") {
+      if (Number.isFinite(where)) return;
+    } else if (typeof where === "string") {
+      if (isRelativeSeek(where) || parseSeekPercentage(where) !== undefined) return;
+    } else if (typeof where === "object" && where !== null) {
+      if (
+        where.marker === "prev" ||
+        where.marker === "next" ||
+        (Number.isInteger(where.marker) && where.marker >= 0)
+      ) {
+        return;
+      }
+    }
+
+    throw new Error(`invalid seek target: ${JSON.stringify(where)}`);
+  }
+
+  function isRelativeSeek(where) {
+    return where === "<<" || where === ">>" || where === "<<<" || where === ">>>";
+  }
+
+  function parseSeekPercentage(where) {
+    if (!where.endsWith("%")) return;
+
+    const percentage = Number(where.slice(0, -1));
+
+    if (Number.isFinite(percentage)) {
+      return percentage;
+    }
+  }
+
+  function resolveSeek(currentState, where) {
     const currentTime = getCurrentTime();
     const isPlaying = currentState === STATE.READY_PLAYING;
     let target = where;
@@ -935,7 +978,7 @@ function recording(
       } else if (target === ">>>") {
         target = currentTime + 0.1 * ctx.duration;
       } else if (target[target.length - 1] === "%") {
-        target = (parseFloat(target.substring(0, target.length - 1)) / 100) * ctx.duration;
+        target = (parseSeekPercentage(target) / 100) * ctx.duration;
       }
     } else if (typeof target === "object") {
       if (target.marker === "prev") {
@@ -1084,7 +1127,7 @@ function recording(
     return true;
   }
 
-  function performSeek(seek, previousState) {
+  function performSeek(seekOperation, previousState) {
     const wasPlaying = previousState === STATE.READY_PLAYING;
 
     if (wasPlaying) {
@@ -1095,9 +1138,9 @@ function recording(
       ctx.audioElement.pause();
     }
 
-    syncToTime(seek.targetTime);
+    syncToTime(seekOperation.targetTime);
 
-    if (seek.reachedEnd) {
+    if (seekOperation.reachedEnd) {
       enqueueEvent(EVENT.END_REACHED);
     } else if (wasPlaying) {
       return startPlayback(EVENT.SEEK_PLAYBACK_START_CONFIRMED);

@@ -438,6 +438,52 @@ test("seek from cold state loads recording and seeks", async () => {
   expect(driver.getCurrentTime()).toBeCloseTo(0.5);
 });
 
+test("invalid seek target throws without failing the driver", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([[0.01, "o", "start\r\n"]]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1 },
+  );
+
+  expect(() => driver.seek("wat")).toThrow('invalid seek target: "wat"');
+
+  const ended = recorder.waitFor("ended");
+  await driver.play();
+  await ended;
+
+  expect(recorder.eventsNamed("error")).toHaveLength(0);
+  expect(recorder.eventsNamed("ended")).toHaveLength(1);
+});
+
+test("invalid marker seek rejects without failing the driver", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [0.1, "o", "start\r\n"],
+      [0.2, "m", "chapter"],
+    ]),
+    {
+      logger: stubLogger(),
+      dispatch: recorder.dispatch,
+    },
+    { speed: 1 },
+  );
+
+  await expect(driver.seek({ marker: 1 })).rejects.toThrow("invalid marker index: 1");
+
+  await driver.seek({ marker: 0 });
+
+  expect(recorder.eventsNamed("error")).toHaveLength(0);
+  expect(recorder.eventsNamed("seeked")).toHaveLength(1);
+  expect(driver.getCurrentTime()).toBeCloseTo(0.2);
+});
+
 // --- step ---
 
 test("step advances across multiple output frames", async () => {
