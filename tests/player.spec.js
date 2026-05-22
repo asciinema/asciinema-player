@@ -353,7 +353,7 @@ test("bold+inverse keeps indexed fg when boldIsBright=false", async ({ page }) =
   expect(cells[0]).toBe("#4e9a06");
 });
 
-test("RGB color rendering", async ({ page }) => {
+test("RGB colors apply across text, raster, and SVG layers", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/rgb.cast", {
     autoPlay: true,
   });
@@ -379,7 +379,64 @@ test("RGB color rendering", async ({ page }) => {
   expect(cells[5]).toBe("#fedcba");
 });
 
-test("powerline rounded symbols render as SVG symbols", async ({ page }) => {
+test("text layer renders text with foreground and background colors", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/text-layer.cast", {
+    autoPlay: true,
+  });
+
+  await playerApi.events.waitFor("ended");
+  await expectTermText(page, "H");
+
+  const fg = "#123456";
+  const bg = "#fedcba";
+
+  const { cells } = await sampleTerminalPixels(page, {
+    cells: [
+      [0, 0, 0.2, 0.5], // H stem: foreground text
+      [0, 0, 0.5, 0.35], // H counter: background
+      [0, 1, 0.5, 0.5], // styled space: background
+    ],
+  });
+
+  expect(cells[0]).toBe(fg);
+  expect(cells[1]).toBe(bg);
+  expect(cells[2]).toBe(bg);
+});
+
+test("basic Powerline symbols render as SVG shapes", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/powerline-basic-symbols.cast", {
+    autoPlay: true,
+  });
+
+  await playerApi.events.waitFor("ended");
+
+  const fg = "#123456";
+  const bg = "#fedcba";
+
+  const { cells } = await sampleTerminalPixels(page, {
+    cells: [
+      [0, 0, 0.25, 0.5], // U+E0B0 right triangle: fill
+      [0, 0, 0.75, 0.1], // U+E0B0 right triangle: background
+      [0, 1, 0.5, 0.25], // U+E0B1 right bracket: stroke
+      [0, 1, 0.5, 0.5], // U+E0B1 right bracket: background
+      [0, 2, 0.75, 0.5], // U+E0B2 left triangle: fill
+      [0, 2, 0.25, 0.1], // U+E0B2 left triangle: background
+      [0, 3, 0.5, 0.25], // U+E0B3 left bracket: stroke
+      [0, 3, 0.5, 0.5], // U+E0B3 left bracket: background
+    ],
+  });
+
+  expect(cells[0]).toBe(fg);
+  expect(cells[1]).toBe(bg);
+  expect(cells[2]).not.toBe(bg);
+  expect(cells[3]).toBe(bg);
+  expect(cells[4]).toBe(fg);
+  expect(cells[5]).toBe(bg);
+  expect(cells[6]).not.toBe(bg);
+  expect(cells[7]).toBe(bg);
+});
+
+test("powerline rounded symbols render as SVG shapes", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/powerline-rounded-symbols.cast", {
     autoPlay: true,
   });
@@ -407,15 +464,24 @@ test("powerline rounded symbols render as SVG symbols", async ({ page }) => {
     cells: [
       [0, 0, 0.75, 0.5], // U+E0B4 right rounded cap: fill
       [0, 0, 0.9, 0.05], // U+E0B4 right rounded cap: background
+      [0, 1, 0.99, 0.5], // U+E0B5 right rounded cap: stroke
+      [0, 1, 0.5, 0.5], // U+E0B5 right rounded cap: background
       [0, 2, 0.25, 0.5], // U+E0B6 left rounded cap: fill
       [0, 2, 0.1, 0.05], // U+E0B6 left rounded cap: background
+      [0, 3, 0.5, 0.5], // U+E0B7 left rounded cap: background
     ],
   });
 
-  expect(cells).toEqual([fg, bg, fg, bg]);
+  expect(cells[0]).toBe(fg);
+  expect(cells[1]).toBe(bg);
+  expect(cells[2]).not.toBe(bg);
+  expect(cells[3]).toBe(bg);
+  expect(cells[4]).toBe(fg);
+  expect(cells[5]).toBe(bg);
+  expect(cells[6]).toBe(bg);
 });
 
-test("powerline extra symbols render as SVG symbols", async ({ page }) => {
+test("powerline extra symbols render as SVG shapes", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/powerline-extra-symbols.cast", {
     autoPlay: true,
   });
@@ -443,16 +509,31 @@ test("powerline extra symbols render as SVG symbols", async ({ page }) => {
     cells: [
       [0, 0, 0.25, 0.75], // U+E0B8 lower-left triangle: fill
       [0, 0, 0.75, 0.25], // U+E0B8 lower-left triangle: background
+      [0, 1, 0.5, 0.5], // U+E0B9 backslash separator: stroke
       [0, 2, 0.75, 0.75], // U+E0BA lower-right triangle: fill
       [0, 2, 0.25, 0.25], // U+E0BA lower-right triangle: background
+      [0, 3, 0.5, 0.5], // U+E0BB forwardslash separator: stroke
       [0, 4, 0.25, 0.25], // U+E0BC upper-left triangle: fill
       [0, 4, 0.75, 0.75], // U+E0BC upper-left triangle: background
+      [0, 5, 0.5, 0.5], // U+E0BD forwardslash separator: stroke
       [0, 6, 0.75, 0.25], // U+E0BE upper-right triangle: fill
       [0, 6, 0.25, 0.75], // U+E0BE upper-right triangle: background
+      [0, 7, 0.5, 0.5], // U+E0BF backslash separator: stroke
     ],
   });
 
-  expect(cells).toEqual([fg, bg, fg, bg, fg, bg, fg, bg]);
+  expect(cells[0]).toBe(fg);
+  expect(cells[1]).toBe(bg);
+  expect(cells[2]).not.toBe(bg);
+  expect(cells[3]).toBe(fg);
+  expect(cells[4]).toBe(bg);
+  expect(cells[5]).not.toBe(bg);
+  expect(cells[6]).toBe(fg);
+  expect(cells[7]).toBe(bg);
+  expect(cells[8]).not.toBe(bg);
+  expect(cells[9]).toBe(fg);
+  expect(cells[10]).toBe(bg);
+  expect(cells[11]).not.toBe(bg);
 });
 
 test("raster symbol groups render representative glyphs with expected pixels", async ({ page }) => {
