@@ -1,5 +1,6 @@
 import { normalizeTheme } from "../../theme";
 
+const ONE_MS_IN_USEC = 1000;
 const ONE_SEC_IN_USEC = 1000000;
 
 function alisHandler(logger) {
@@ -32,7 +33,7 @@ function alisHandler(logger) {
     let _lastId = view.decodeVarUint();
     let time = view.decodeVarUint();
     lastEventTime = time;
-    time = time / ONE_SEC_IN_USEC;
+    time = time / ONE_MS_IN_USEC;
     markerIndex = 0;
     const cols = view.decodeVarUint();
     const rows = view.decodeVarUint();
@@ -103,7 +104,7 @@ function alisHandler(logger) {
     const len = view.decodeVarUint();
     const text = outputDecoder.decode(new Uint8Array(buffer, view.offset, len));
 
-    return [lastEventTime / ONE_SEC_IN_USEC, "o", text];
+    return [lastEventTime / ONE_MS_IN_USEC, "o", text];
   }
 
   function parseInputFrame(view, buffer) {
@@ -113,7 +114,7 @@ function alisHandler(logger) {
     const len = view.decodeVarUint();
     const text = inputDecoder.decode(new Uint8Array(buffer, view.offset, len));
 
-    return [lastEventTime / ONE_SEC_IN_USEC, "i", text];
+    return [lastEventTime / ONE_MS_IN_USEC, "i", text];
   }
 
   function parseResizeFrame(view) {
@@ -123,7 +124,7 @@ function alisHandler(logger) {
     const cols = view.decodeVarUint();
     const rows = view.decodeVarUint();
 
-    return [lastEventTime / ONE_SEC_IN_USEC, "r", { cols, rows }];
+    return [lastEventTime / ONE_MS_IN_USEC, "r", { cols, rows }];
   }
 
   function parseMarkerFrame(view, buffer) {
@@ -133,10 +134,11 @@ function alisHandler(logger) {
     const len = view.decodeVarUint();
     const decoder = new TextDecoder();
     const index = markerIndex++;
-    const time = lastEventTime / ONE_SEC_IN_USEC;
+    const time = lastEventTime / ONE_MS_IN_USEC;
+    const markerTime = lastEventTime / ONE_SEC_IN_USEC;
     const label = decoder.decode(new Uint8Array(buffer, view.offset, len));
 
-    return [time, "m", { index, time, label}];
+    return [time, "m", { index, time: markerTime, label }];
   }
 
   function parseExitFrame(view) {
@@ -145,7 +147,7 @@ function alisHandler(logger) {
     lastEventTime += relTime;
     const status = view.decodeVarUint();
 
-    return [lastEventTime / ONE_SEC_IN_USEC, "x", { status }];
+    return [lastEventTime / ONE_MS_IN_USEC, "x", { status }];
   }
 
   return function(buffer) {

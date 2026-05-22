@@ -5,11 +5,11 @@ class Clock {
   }
 
   getTime() {
-    return (this.speed * (performance.now() - this.startTime)) / 1000.0;
+    return this.speed * (performance.now() - this.startTime);
   }
 
   setTime(time) {
-    this.startTime = performance.now() - (time / this.speed) * 1000.0;
+    this.startTime = performance.now() - time / this.speed;
   }
 }
 

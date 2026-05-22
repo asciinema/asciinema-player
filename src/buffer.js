@@ -19,7 +19,7 @@ function getBuffer(bufferTime, dispatch, setTime, baseStreamTime, minFrameTime, 
       getBufferTime = adaptiveBufferTimeProvider({ logger }, bufferTime);
     }
 
-    return buffer(getBufferTime, execute, setTime, logger, baseStreamTime ?? 0.0, minFrameTime);
+    return buffer(getBufferTime, execute, setTime, logger, baseStreamTime ?? 0, minFrameTime);
   }
 }
 
@@ -53,7 +53,7 @@ function executeEvent(dispatch) {
 
 function buffer(getBufferTime, execute, setTime, logger, baseStreamTime, minFrameTime = 1.0 / 60) {
   const outputBatchWindow = minFrameTime * 1000;
-  let epoch = performance.now() - baseStreamTime * 1000;
+  let epoch = performance.now() - baseStreamTime;
   let bufferTime = getBufferTime(0);
   let queue = [];
   let onPush;
@@ -130,11 +130,11 @@ function buffer(getBufferTime, execute, setTime, logger, baseStreamTime, minFram
 
   function executeOutputGroup(events, nextEventIndex) {
     const firstEvent = events[nextEventIndex];
-    const batchDeadline = firstEvent[0] * 1000 + outputBatchWindow;
+    const batchDeadline = firstEvent[0] + outputBatchWindow;
     const output = [];
     let event = firstEvent;
 
-    while (event !== undefined && event[1] === "o" && event[0] * 1000 < batchDeadline) {
+    while (event !== undefined && event[1] === "o" && event[0] < batchDeadline) {
       output.push(event[2]);
       event = events[++nextEventIndex];
     }
@@ -146,7 +146,7 @@ function buffer(getBufferTime, execute, setTime, logger, baseStreamTime, minFram
 
   return {
     pushEvent(event) {
-      let latency = elapsedWallTime() - event[0] * 1000;
+      let latency = elapsedWallTime() - event[0];
 
       if (latency < 0) {
         logger.debug(`correcting epoch by ${latency} ms`);
@@ -155,12 +155,12 @@ function buffer(getBufferTime, execute, setTime, logger, baseStreamTime, minFram
       }
 
       bufferTime = getBufferTime(latency);
-      push([event[0], event[1], event[2], event[0] * 1000 + bufferTime]);
+      push([event[0], event[1], event[2], event[0] + bufferTime]);
     },
 
     pushText(text) {
-      const time = elapsedWallTime() / 1000;
-      push([time, "o", text, time * 1000 + bufferTime]);
+      const time = elapsedWallTime();
+      push([time, "o", text, time + bufferTime]);
     },
 
     stop() {

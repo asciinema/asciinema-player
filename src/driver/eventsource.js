@@ -44,17 +44,18 @@ function eventsource({ url, bufferTime, minFrameTime }, { dispatch, logger }) {
         const e = JSON.parse(event.data);
 
         if (Array.isArray(e)) {
-          buf.pushEvent(e);
+          buf.pushEvent([e[0] * 1000, e[1], e[2]]);
         } else if (e.cols !== undefined || e.width !== undefined) {
           const cols = e.cols ?? e.width;
           const rows = e.rows ?? e.height;
+          const time = typeof e.time === "number" ? e.time * 1000 : undefined;
           logger.debug(`vt reset (${cols}x${rows})`);
-          initBuffer(e.time);
+          initBuffer(time);
           dispatch("reset", { size: { cols, rows }, init: e.init ?? undefined });
           clock = new Clock();
 
-          if (typeof e.time === "number") {
-            clock.setTime(e.time);
+          if (time !== undefined) {
+            clock.setTime(time);
           }
 
           dispatch("playing");
@@ -79,7 +80,10 @@ function eventsource({ url, bufferTime, minFrameTime }, { dispatch, logger }) {
       if (es !== undefined) es.close();
     },
 
-    getCurrentTime: () => clock.getTime(),
+    getCurrentTime: () => {
+      const t = clock.getTime();
+      return typeof t === "number" ? t / 1000 : t;
+    },
   };
 }
 

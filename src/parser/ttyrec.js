@@ -19,7 +19,7 @@ async function parse(response, { encoding }) {
   let frame = parseFrame(array);
 
   while (frame !== undefined) {
-    const time = frame.time - baseTime;
+    const time = (frame.time - baseTime) * 1000;
     const text = textDecoder.decode(frame.data);
     events.push([time, "o", text]);
     cursor += frame.len;

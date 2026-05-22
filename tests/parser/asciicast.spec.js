@@ -26,8 +26,8 @@ test("parses asciicast v1 full object input", async () => {
   expect(recording.rows).toBe(30);
 
   expect(Array.from(recording.events)).toEqual([
-    [1, "o", "hello "],
-    [1.5, "o", "world"],
+    [1000, "o", "hello "],
+    [1500, "o", "world"],
   ]);
 });
 
@@ -68,8 +68,8 @@ test("parses asciicast v2 full direct input", async () => {
   expect(recording.theme.palette).toHaveLength(16);
 
   expect(Array.from(recording.events)).toEqual([
-    [1, "o", "hello"],
-    [2, "m", "chapter"],
+    [1000, "o", "hello"],
+    [2000, "m", "chapter"],
   ]);
 });
 
@@ -113,9 +113,9 @@ test("parses asciicast v3 full direct input", async () => {
   expect(recording.theme.palette).toHaveLength(16);
 
   expect(Array.from(recording.events)).toEqual([
-    [1, "o", "hello"],
-    [1.5, "i", "a"],
-    [1.75, "m", "marker"],
+    [1000, "o", "hello"],
+    [1500, "i", "a"],
+    [1750, "m", "marker"],
   ]);
 });
 

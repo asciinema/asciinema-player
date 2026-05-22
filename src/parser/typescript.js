@@ -36,7 +36,7 @@ async function parse(responses, { encoding }) {
   let time = 0;
 
   for (const entry of timing) {
-    time += parseFloat(entry[1]);
+    time += parseFloat(entry[1]) * 1000;
 
     if (entry[0] === "O") {
       const count = parseInt(entry[2], 10);

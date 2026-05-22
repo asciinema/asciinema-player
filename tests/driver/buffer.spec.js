@@ -8,11 +8,11 @@ test("buffer groups consecutive output events within minFrameTime", async () => 
     dispatch: (name, payload) => events.push({ name, payload }),
   });
 
-  const baseTime = performance.now() / 1000;
+  const baseTime = performance.now();
 
   try {
     buf.pushEvent([baseTime, "o", "a"]);
-    buf.pushEvent([baseTime + 0.005, "o", "b"]);
+    buf.pushEvent([baseTime + 5, "o", "b"]);
 
     await expect.poll(() => events).toEqual([{ name: "output", payload: ["a", "b"] }]);
   } finally {
@@ -27,12 +27,12 @@ test("buffer flushes output before non-output events", async () => {
     dispatch: (name, payload) => events.push({ name, payload }),
   });
 
-  const baseTime = performance.now() / 1000;
+  const baseTime = performance.now();
 
   try {
     buf.pushEvent([baseTime, "o", "a"]);
-    buf.pushEvent([baseTime + 0.001, "r", { cols: 100, rows: 30 }]);
-    buf.pushEvent([baseTime + 0.002, "o", "b"]);
+    buf.pushEvent([baseTime + 1, "r", { cols: 100, rows: 30 }]);
+    buf.pushEvent([baseTime + 2, "o", "b"]);
 
     await expect
       .poll(() => events)
@@ -54,12 +54,12 @@ test("buffer splits output groups outside the anchored window", async () => {
     minFrameTime: 0.01,
   });
 
-  const baseTime = performance.now() / 1000;
+  const baseTime = performance.now();
 
   try {
     buf.pushEvent([baseTime, "o", "a"]);
-    buf.pushEvent([baseTime + 0.005, "o", "b"]);
-    buf.pushEvent([baseTime + 0.012, "o", "c"]);
+    buf.pushEvent([baseTime + 5, "o", "b"]);
+    buf.pushEvent([baseTime + 12, "o", "c"]);
 
     await expect
       .poll(() => events)
@@ -74,7 +74,7 @@ test("buffer splits output groups outside the anchored window", async () => {
 
 test("buffer groups pushText output with output events", async () => {
   const events = [];
-  const baseTime = performance.now() / 1000;
+  const baseTime = performance.now();
 
   const buf = createBuffer({
     dispatch: (name, payload) => events.push({ name, payload }),
@@ -105,7 +105,7 @@ test("buffer keeps earlier events on their original schedule when buffer time in
 
     buf.pushEvent([0, "o", "A"]);
     await advanceBy(5);
-    buf.pushEvent([0.005, "o", "B"]);
+    buf.pushEvent([5, "o", "B"]);
 
     await advanceBy(14);
     expect(events).toEqual([]);
@@ -124,7 +124,7 @@ test("buffer keeps earlier events on their original schedule when buffer time in
 
     expect(setTimeCalls).toEqual([
       { time: 0, at: 20 },
-      { time: 0.005, at: 205 },
+      { time: 5, at: 205 },
     ]);
 
     buf.stop();
@@ -145,7 +145,7 @@ test("buffer keeps earlier events delayed when buffer time drops", async () => {
 
     buf.pushEvent([0, "o", "A"]);
     await advanceBy(50);
-    buf.pushEvent([0.005, "o", "B"]);
+    buf.pushEvent([5, "o", "B"]);
 
     await advanceBy(149);
     expect(events).toEqual([]);
@@ -176,7 +176,7 @@ test("null buffer emits individual output strings", () => {
   });
 
   buf.pushEvent([0, "o", "a"]);
-  buf.pushEvent([0.001, "o", "b"]);
+  buf.pushEvent([1, "o", "b"]);
 
   expect(events).toEqual([
     { name: "output", payload: "a" },
@@ -188,7 +188,7 @@ function createBuffer({
   bufferTime = 1,
   dispatch = () => {},
   setTime = () => {},
-  baseStreamTime = performance.now() / 1000,
+  baseStreamTime = performance.now(),
   minFrameTime = 1 / 60,
 } = {}) {
   return getBuffer(bufferTime, dispatch, setTime, baseStreamTime, minFrameTime, stubLogger());

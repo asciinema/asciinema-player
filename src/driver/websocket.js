@@ -234,7 +234,10 @@ function websocket(
     mute,
     unmute,
 
-    getCurrentTime: () => clock.getTime(),
+    getCurrentTime: () => {
+      const t = clock.getTime();
+      return typeof t === "number" ? t / 1000 : t;
+    },
   };
 }
 

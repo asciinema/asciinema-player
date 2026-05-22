@@ -9,7 +9,7 @@ test("init with text poster renders poster without loading recording", async () 
 
   const driver = recording(
     {
-      data: { cols: 80, rows: 24, events: [[0.1, "o", "start\r\n"]] },
+      data: { cols: 80, rows: 24, events: [[100, "o", "start\r\n"]] },
       parser: async (data) => {
         parserCalls++;
         return data;
@@ -44,8 +44,8 @@ test("init with npt poster loads recording and renders poster frame", async () =
         cols: 80,
         rows: 24,
         events: [
-          [0.1, "o", "start\r\n"],
-          [1.0, "o", "one\r\n"],
+          [100, "o", "start\r\n"],
+          [1000, "o", "one\r\n"],
         ],
       },
       parser: async (data) => {
@@ -77,7 +77,7 @@ test("init with preload and text poster loads immediately and still renders post
 
   const driver = recording(
     {
-      data: { cols: 80, rows: 24, events: [[0.1, "o", "start\r\n"]] },
+      data: { cols: 80, rows: 24, events: [[100, "o", "start\r\n"]] },
       parser: async (data) => {
         parserCalls++;
         return data;
@@ -109,7 +109,7 @@ test("play after text poster init loads recording and starts playback", async ()
 
   const driver = recording(
     {
-      data: { cols: 80, rows: 24, events: [[0.01, "o", "start\r\n"]] },
+      data: { cols: 80, rows: 24, events: [[10, "o", "start\r\n"]] },
       parser: async (data) => {
         parserCalls++;
         return data;
@@ -154,9 +154,9 @@ test("first play applies startAt before playback starts", async () => {
 
   const driver = recording(
     source([
-      [0.1, "o", "zero\r\n"],
-      [0.2, "o", "one\r\n"],
-      [0.4, "o", "two\r\n"],
+      [100, "o", "zero\r\n"],
+      [200, "o", "one\r\n"],
+      [400, "o", "two\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -180,8 +180,8 @@ test("play after ended restarts from beginning", async () => {
 
   const driver = recording(
     source([
-      [0.01, "o", "start\r\n"],
-      [0.03, "o", "end\r\n"],
+      [10, "o", "start\r\n"],
+      [30, "o", "end\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -216,8 +216,8 @@ test("numeric loop plays exactly N times then ends", async () => {
 
   const driver = recording(
     source([
-      [0.01, "o", "start\r\n"],
-      [0.02, "o", "end\r\n"],
+      [10, "o", "start\r\n"],
+      [20, "o", "end\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -239,10 +239,10 @@ test("play batches adjacent output events at runtime", async () => {
 
   const driver = recording(
     source([
-      [0.001, "o", "hel"],
-      [0.006, "o", "lo"],
-      [0.011, "o", "!"],
-      [0.03, "o", "?"],
+      [1, "o", "hel"],
+      [6, "o", "lo"],
+      [11, "o", "!"],
+      [30, "o", "?"],
     ]),
     {
       logger: stubLogger(),
@@ -265,9 +265,9 @@ test("pauseOnMarkers pauses playback and resumes on play", async () => {
 
   const driver = recording(
     source([
-      [0.01, "o", "start\r\n"],
-      [0.02, "m", "chapter"],
-      [0.04, "o", "end\r\n"],
+      [10, "o", "start\r\n"],
+      [20, "m", "chapter"],
+      [40, "o", "end\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -303,7 +303,7 @@ test("mute and unmute toggle audio and dispatch events", async () => {
 
   try {
     const driver = recording(
-      source([[0.1, "o", "start\r\n"]]),
+      source([[100, "o", "start\r\n"]]),
       {
         logger: stubLogger(),
         dispatch: recorder.dispatch,
@@ -328,7 +328,7 @@ test("mute and unmute are no-ops without audio", async () => {
   const recorder = createDispatchRecorder();
 
   const driver = recording(
-    source([[0.1, "o", "start\r\n"]]),
+    source([[100, "o", "start\r\n"]]),
     {
       logger: stubLogger(),
       dispatch: recorder.dispatch,
@@ -350,8 +350,8 @@ test("seek to duration emits ended and pins current time", async () => {
 
   const driver = recording(
     source([
-      [0.1, "o", "start\r\n"],
-      [0.2, "o", "end\r\n"],
+      [100, "o", "start\r\n"],
+      [200, "o", "end\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -372,8 +372,8 @@ test("seek to duration with loop emits ended and pins current time", async () =>
 
   const driver = recording(
     source([
-      [0.01, "o", "start\r\n"],
-      [0.2, "o", "end\r\n"],
+      [10, "o", "start\r\n"],
+      [200, "o", "end\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -394,8 +394,8 @@ test("seek to duration during playback emits ended and pins current time", async
 
   const driver = recording(
     source([
-      [0.01, "o", "start\r\n"],
-      [0.2, "o", "end\r\n"],
+      [10, "o", "start\r\n"],
+      [200, "o", "end\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -419,9 +419,9 @@ test("seek from cold state loads recording and seeks", async () => {
 
   const driver = recording(
     source([
-      [0.1, "o", "start\r\n"],
-      [1.0, "o", "one\r\n"],
-      [2.0, "o", "two\r\n"],
+      [100, "o", "start\r\n"],
+      [1000, "o", "one\r\n"],
+      [2000, "o", "two\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -441,7 +441,7 @@ test("invalid seek target throws without failing the driver", async () => {
   const recorder = createDispatchRecorder();
 
   const driver = recording(
-    source([[0.01, "o", "start\r\n"]]),
+    source([[10, "o", "start\r\n"]]),
     {
       logger: stubLogger(),
       dispatch: recorder.dispatch,
@@ -464,8 +464,8 @@ test("invalid marker seek rejects without failing the driver", async () => {
 
   const driver = recording(
     source([
-      [0.1, "o", "start\r\n"],
-      [0.2, "m", "chapter"],
+      [100, "o", "start\r\n"],
+      [200, "m", "chapter"],
     ]),
     {
       logger: stubLogger(),
@@ -490,9 +490,9 @@ test("step advances across multiple output frames", async () => {
 
   const driver = recording(
     source([
-      [0.1, "o", "start\r\n"],
-      [1.0, "o", "one\r\n"],
-      [2.0, "o", "two\r\n"],
+      [100, "o", "start\r\n"],
+      [1000, "o", "one\r\n"],
+      [2000, "o", "two\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -514,9 +514,9 @@ test("step reverses across multiple output frames", async () => {
 
   const driver = recording(
     source([
-      [0.1, "o", "start\r\n"],
-      [1.0, "o", "one\r\n"],
-      [2.0, "o", "two\r\n"],
+      [100, "o", "start\r\n"],
+      [1000, "o", "one\r\n"],
+      [2000, "o", "two\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -539,8 +539,8 @@ test("step to the last frame with loop emits ended and pins current time", async
 
   const driver = recording(
     source([
-      [0.01, "o", "start\r\n"],
-      [0.2, "o", "end\r\n"],
+      [10, "o", "start\r\n"],
+      [200, "o", "end\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -560,9 +560,9 @@ test("step from cold state loads recording and steps", async () => {
 
   const driver = recording(
     source([
-      [0.1, "o", "start\r\n"],
-      [1.0, "o", "one\r\n"],
-      [2.0, "o", "two\r\n"],
+      [100, "o", "start\r\n"],
+      [1000, "o", "one\r\n"],
+      [2000, "o", "two\r\n"],
     ]),
     {
       logger: stubLogger(),
@@ -583,7 +583,7 @@ test("resize events dispatch numeric terminal dimensions", async () => {
   const recorder = createDispatchRecorder();
 
   const driver = recording(
-    source([[0.1, "r", "100x30"]]),
+    source([[100, "r", "100x30"]]),
     {
       logger: stubLogger(),
       dispatch: recorder.dispatch,
@@ -606,8 +606,8 @@ test("stop during playback cancels scheduled progression", async () => {
 
   const driver = recording(
     source([
-      [0.01, "m", "start"],
-      [0.2, "m", "later"],
+      [10, "m", "start"],
+      [200, "m", "later"],
     ]),
     {
       logger: stubLogger(),
@@ -634,7 +634,7 @@ test("stop tears down audio resources and pending waiting state", async () => {
 
   try {
     const driver = recording(
-      source([[0.1, "o", "start\r\n"]]),
+      source([[100, "o", "start\r\n"]]),
       {
         logger: stubLogger(),
         dispatch: recorder.dispatch,
@@ -669,8 +669,8 @@ test("audio waiting during playback emits loading and resumes on playing", async
   try {
     const driver = recording(
       source([
-        [0.01, "m", "start"],
-        [0.2, "m", "later"],
+        [10, "m", "start"],
+        [200, "m", "later"],
       ]),
       {
         logger: stubLogger(),
@@ -708,8 +708,8 @@ test("seek while buffering returns false and does not emit seeked", async () => 
   try {
     const driver = recording(
       source([
-        [0.01, "m", "start"],
-        [0.2, "m", "later"],
+        [10, "m", "start"],
+        [200, "m", "later"],
       ]),
       {
         logger: stubLogger(),
@@ -744,8 +744,8 @@ test("pause while buffering prevents automatic resume", async () => {
   try {
     const driver = recording(
       source([
-        [0.01, "m", "start"],
-        [0.2, "m", "later"],
+        [10, "m", "start"],
+        [200, "m", "later"],
       ]),
       {
         logger: stubLogger(),
@@ -793,8 +793,8 @@ test("play during buffering keeps recovery event and clears waiting timeout", as
   try {
     const driver = recording(
       source([
-        [0.01, "m", "start"],
-        [0.2, "m", "later"],
+        [10, "m", "start"],
+        [200, "m", "later"],
       ]),
       {
         logger: stubLogger(),
@@ -964,20 +964,20 @@ test("prepareRecording applies idleTimeLimit from recording or options", () => {
     rows: 24,
     idleTimeLimit: 2,
     events: [
-      [1, "o", "a"],
-      [10, "o", "b"],
+      [1000, "o", "a"],
+      [10000, "o", "b"],
     ],
   };
 
   const withHeaderLimit = prepareRecording(base, {});
 
-  expect(withHeaderLimit.events.map((e) => e[0])).toEqual([1, 3]);
-  expect(withHeaderLimit.duration).toBe(3);
+  expect(withHeaderLimit.events.map((e) => e[0])).toEqual([1000, 3000]);
+  expect(withHeaderLimit.duration).toBe(3000);
 
   const withOverride = prepareRecording(base, { idleTimeLimit: 4 });
 
-  expect(withOverride.events.map((e) => e[0])).toEqual([1, 5]);
-  expect(withOverride.duration).toBe(5);
+  expect(withOverride.events.map((e) => e[0])).toEqual([1000, 5000]);
+  expect(withOverride.duration).toBe(5000);
 });
 
 test("prepareRecording wraps embedded markers and can replace them with override markers", () => {
@@ -985,23 +985,23 @@ test("prepareRecording wraps embedded markers and can replace them with override
     cols: 80,
     rows: 24,
     events: [
-      [1, "o", "a"],
-      [2, "m", "embedded"],
-      [3, "o", "b"],
+      [1000, "o", "a"],
+      [2000, "m", "embedded"],
+      [3000, "o", "b"],
     ],
   };
 
   const embedded = prepareRecording(base, {});
 
-  expect(embedded.events[1]).toEqual([2, "m", { index: 0, time: 2, label: "embedded" }]);
+  expect(embedded.events[1]).toEqual([2000, "m", { index: 0, time: 2000, label: "embedded" }]);
 
   const overridden = prepareRecording(base, {
     markers: [1.5, [2.5, "override"]],
   });
 
   expect(overridden.events.filter((e) => e[1] === "m")).toEqual([
-    [1.5, "m", { index: 0, time: 1.5, label: "" }],
-    [2.5, "m", { index: 1, time: 2.5, label: "override" }],
+    [1500, "m", { index: 0, time: 1500, label: "" }],
+    [2500, "m", { index: 1, time: 2500, label: "override" }],
   ]);
 });
 
@@ -1011,21 +1011,21 @@ test("prepareRecording applies idleTimeLimit to embedded markers", () => {
       cols: 80,
       rows: 24,
       events: [
-        [1, "o", "a"],
-        [8, "m", "chapter"],
-        [10, "o", "b"],
+        [1000, "o", "a"],
+        [8000, "m", "chapter"],
+        [10000, "o", "b"],
       ],
     },
     { idleTimeLimit: 2 },
   );
 
   expect(recording.events).toEqual([
-    [1, "o", "a"],
-    [3, "m", { index: 0, time: 3, label: "chapter" }],
-    [5, "o", "b"],
+    [1000, "o", "a"],
+    [3000, "m", { index: 0, time: 3000, label: "chapter" }],
+    [5000, "o", "b"],
   ]);
 
-  expect(recording.duration).toBe(5);
+  expect(recording.duration).toBe(5000);
 });
 
 test("prepareRecording applies idleTimeLimit to override markers", () => {
@@ -1034,9 +1034,9 @@ test("prepareRecording applies idleTimeLimit to override markers", () => {
       cols: 80,
       rows: 24,
       events: [
-        [1, "o", "a"],
-        [10, "o", "b"],
-        [20, "o", "c"],
+        [1000, "o", "a"],
+        [10000, "o", "b"],
+        [20000, "o", "c"],
       ],
     },
     {
@@ -1050,15 +1050,15 @@ test("prepareRecording applies idleTimeLimit to override markers", () => {
   );
 
   expect(recording.events).toEqual([
-    [1, "o", "a"],
-    [3, "m", { index: 0, time: 3, label: "chapter 1" }],
-    [5, "o", "b"],
-    [7, "m", { index: 1, time: 7, label: "chapter 2" }],
-    [9, "m", { index: 2, time: 9, label: "chapter 3" }],
-    [11, "o", "c"],
+    [1000, "o", "a"],
+    [3000, "m", { index: 0, time: 3000, label: "chapter 1" }],
+    [5000, "o", "b"],
+    [7000, "m", { index: 1, time: 7000, label: "chapter 2" }],
+    [9000, "m", { index: 2, time: 9000, label: "chapter 3" }],
+    [11000, "o", "c"],
   ]);
 
-  expect(recording.duration).toBe(11);
+  expect(recording.duration).toBe(11000);
 });
 
 test("prepareRecording computes effectiveStartAt after idle time compression", () => {
@@ -1067,16 +1067,16 @@ test("prepareRecording computes effectiveStartAt after idle time compression", (
       cols: 80,
       rows: 24,
       events: [
-        [1, "o", "a"],
-        [10, "o", "b"],
-        [12, "o", "c"],
+        [1000, "o", "a"],
+        [10000, "o", "b"],
+        [12000, "o", "c"],
       ],
     },
     { idleTimeLimit: 2, startAt: 11 },
   );
 
-  expect(recording.events.map((e) => e[0])).toEqual([1, 3, 5]);
-  expect(recording.effectiveStartAt).toBe(4);
+  expect(recording.events.map((e) => e[0])).toEqual([1000, 3000, 5000]);
+  expect(recording.effectiveStartAt).toBe(4000);
 });
 
 test("prepareRecording rejects recordings with no events", () => {

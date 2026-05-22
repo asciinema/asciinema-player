@@ -146,7 +146,10 @@ class Core {
         return play();
       };
 
-      this.driver.getCurrentTime = () => clock.getTime();
+      this.driver.getCurrentTime = () => {
+        const t = clock.getTime();
+        return typeof t === "number" ? t / 1000 : t;
+      };
     }
   }
 

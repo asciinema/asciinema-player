@@ -43,7 +43,7 @@ function ascicastV3Handler() {
   function parseEvent(buffer) {
     const event = JSON.parse(buffer);
     const [interval, eventType, data] = event;
-    currentTime += interval;
+    currentTime += interval * 1000;
 
     if (eventType === "r") {
       const [cols, rows] = data.split("x");

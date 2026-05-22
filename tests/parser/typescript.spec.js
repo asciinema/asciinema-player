@@ -13,8 +13,8 @@ test("parses classic typescript timing and data files", async () => {
   expect(recording.rows).toBe(30);
 
   expect(recording.events).toEqual([
-    [0.5, "o", "hello"],
-    [0.7, "o", " żółć"],
+    [500, "o", "hello"],
+    [700, "o", " żółć"],
   ]);
 });
 
@@ -42,9 +42,9 @@ test("parses advanced typescript format with input and resize events", async () 
   expect(recording.rows).toBe(40);
 
   expect(recording.events).toEqual([
-    [0.5, "o", "żółć"],
-    [0.7, "i", "a"],
-    [1.0, "r", "120x50"],
-    [1.1, "o", "!"],
+    [500, "o", "żółć"],
+    [700, "i", "a"],
+    [1000, "r", "120x50"],
+    [1100, "o", "!"],
   ]);
 });

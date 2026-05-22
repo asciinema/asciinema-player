@@ -67,7 +67,7 @@ function parseAsciicastV1(data) {
   let time = 0;
 
   const events = new Stream(data.stdout).map((e) => {
-    time += e[0];
+    time += e[0] * 1000;
     return [time, "o", e[1]];
   });
 
@@ -79,6 +79,12 @@ function parseAsciicastV1(data) {
 }
 
 function parseAsciicastV2(header, events) {
+  if (!(events instanceof Stream)) {
+    events = new Stream(events);
+  }
+
+  events = events.map((e) => [e[0] * 1000, e[1], e[2]]);
+
   return {
     cols: header.width === 0 ? DEFAULT_COLS : header.width,
     rows: header.height === 0 ? DEFAULT_ROWS : header.height,
@@ -96,7 +102,7 @@ function parseAsciicastV3(header, events) {
   let time = 0;
 
   events = events.map((e) => {
-    time += e[0];
+    time += e[0] * 1000;
     return [time, e[1], e[2]];
   });
 

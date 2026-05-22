@@ -11,7 +11,7 @@ test("parses ttyrec frames and terminal size", async () => {
 
   expect(recording.events).toEqual([
     [0, "o", "\x1b[8;30;100t"],
-    [0.5, "o", "żółć"],
+    [500, "o", "żółć"],
   ]);
 });
 

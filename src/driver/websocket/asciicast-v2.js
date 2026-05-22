@@ -23,12 +23,13 @@ function ascicastV2Handler() {
 
   function parseEvent(buffer) {
     const event = JSON.parse(buffer);
+    const time = event[0] * 1000;
 
     if (event[1] === "r") {
       const [cols, rows] = event[2].split("x");
-      return [event[0], "r", { cols: parseInt(cols, 10), rows: parseInt(rows, 10) }];
+      return [time, "r", { cols: parseInt(cols, 10), rows: parseInt(rows, 10) }];
     } else {
-      return event;
+      return [time, event[1], event[2]];
     }
   }
 

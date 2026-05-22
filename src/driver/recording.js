@@ -51,7 +51,7 @@ function recording(
     MARKER_REACHED: "markerReached",
   };
 
-  const outputBatchWindow = src.minFrameTime ?? 1 / 60;
+  const outputBatchWindow = (src.minFrameTime ?? 1 / 60) * 1000;
   let now = () => performance.now() * speed;
   let state = STATE.COLD;
   let queuedEvents = [];
@@ -156,8 +156,8 @@ function recording(
           nextState: STATE.READY_PRISTINE,
           action: () => {
             dispatch("metadata", {
-              duration: ctx.duration,
-              markers: ctx.markers,
+              duration: ctx.duration / 1000,
+              markers: ctx.markers.map(([t, label]) => [t / 1000, label]),
               hasAudio: payload.hasAudio,
             });
             dispatch("reset", {
@@ -472,7 +472,7 @@ function recording(
           return {
             nextState: STATE.READY_PAUSED,
             action: () => {
-              dispatch("marker", payload.data);
+              dispatchMarker(payload.data);
               return performPauseAtMarker(payload.time);
             },
           };
@@ -480,7 +480,7 @@ function recording(
 
         return {
           nextState: currentState,
-          action: () => dispatch("marker", payload.data),
+          action: () => dispatchMarker(payload.data),
         };
 
       case EVENT.STOP_REQUESTED:
@@ -646,7 +646,8 @@ function recording(
   }
 
   function getPoster(time) {
-    return ctx.events.filter((e) => e[0] < time && e[1] === "o").map((e) => e[2]);
+    const timeMs = time * 1000;
+    return ctx.events.filter((e) => e[0] < timeMs && e[1] === "o").map((e) => e[2]);
   }
 
   function clearPoster() {
@@ -673,7 +674,7 @@ function recording(
   }
 
   function scheduleAt(f, targetTime) {
-    let timeout = (targetTime * 1000 - (now() - ctx.startTime)) / speed;
+    let timeout = (targetTime - (now() - ctx.startTime)) / speed;
 
     if (timeout < 0) {
       timeout = 0;
@@ -696,7 +697,7 @@ function recording(
 
       const elapsedWallTime = now() - ctx.startTime;
 
-      if (elapsedWallTime <= nextEvent[0] * 1000) {
+      if (elapsedWallTime <= nextEvent[0]) {
         break;
       }
     }
@@ -843,15 +844,19 @@ function recording(
   }
 
   function getDuration() {
-    return ctx.duration;
+    return ctx.duration === undefined ? undefined : ctx.duration / 1000;
+  }
+
+  function getCurrentTimeMs() {
+    if (isPlayingState()) {
+      return now() - ctx.startTime;
+    } else {
+      return ctx.pauseElapsedTime ?? 0;
+    }
   }
 
   function getCurrentTime() {
-    if (isPlayingState()) {
-      return (now() - ctx.startTime) / 1000;
-    } else {
-      return (ctx.pauseElapsedTime ?? 0) / 1000;
-    }
+    return getCurrentTimeMs() / 1000;
   }
 
   function resizeTerminalToInitialSize() {
@@ -914,6 +919,10 @@ function recording(
     dispatch("output", data);
   }
 
+  function dispatchMarker(data) {
+    dispatch("marker", { ...data, time: data.time / 1000 });
+  }
+
   function renderTextPoster() {
     renderPoster();
     ctx.posterRenderableAfterLoad = false;
@@ -958,15 +967,17 @@ function recording(
   }
 
   function resolveSeek(currentState, where) {
-    const currentTime = getCurrentTime();
+    const currentTime = getCurrentTimeMs();
     const isPlaying = currentState === STATE.READY_PLAYING;
     let target = where;
 
-    if (typeof target === "string") {
+    if (typeof target === "number") {
+      target = target * 1000;
+    } else if (typeof target === "string") {
       if (target === "<<") {
-        target = currentTime - 5;
+        target = currentTime - 5000;
       } else if (target === ">>") {
-        target = currentTime + 5;
+        target = currentTime + 5000;
       } else if (target === "<<<") {
         target = currentTime - 0.1 * ctx.duration;
       } else if (target === ">>>") {
@@ -978,7 +989,7 @@ function recording(
       if (target.marker === "prev") {
         target = findMarkerTimeBefore(currentTime) ?? 0;
 
-        if (isPlaying && currentTime - target < 1) {
+        if (isPlaying && currentTime - target < 1000) {
           target = findMarkerTimeBefore(target) ?? 0;
         }
       } else if (target.marker === "next") {
@@ -999,7 +1010,7 @@ function recording(
     return {
       targetTime,
       reachedEnd: targetTime >= ctx.duration,
-      noOp: targetTime * 1000 === ctx.pauseElapsedTime,
+      noOp: targetTime === ctx.pauseElapsedTime,
     };
   }
 
@@ -1079,11 +1090,11 @@ function recording(
       feed(output);
     }
 
-    ctx.pauseElapsedTime = targetTime * 1000;
+    ctx.pauseElapsedTime = targetTime;
     ctx.effectiveStartAt = null;
 
     if (ctx.audioElement && ctx.audioSeekable) {
-      ctx.audioElement.currentTime = targetTime / speed;
+      ctx.audioElement.currentTime = targetTime / 1000 / speed;
     }
   }
 
@@ -1181,11 +1192,11 @@ function recording(
     }
 
     ctx.lastEventTime = nextEvent[0];
-    ctx.pauseElapsedTime = ctx.lastEventTime * 1000;
+    ctx.pauseElapsedTime = ctx.lastEventTime;
     ctx.effectiveStartAt = null;
 
     if (ctx.audioElement && ctx.audioSeekable) {
-      ctx.audioElement.currentTime = ctx.lastEventTime / speed;
+      ctx.audioElement.currentTime = ctx.lastEventTime / 1000 / speed;
     }
 
     if (step.reachedEnd) {
@@ -1224,7 +1235,7 @@ function recording(
   function finishPlayback() {
     cancelNextEvent();
     ctx.playCount++;
-    ctx.pauseElapsedTime = ctx.duration * 1000;
+    ctx.pauseElapsedTime = ctx.duration;
 
     if (ctx.audioElement) {
       ctx.audioElement.pause();
@@ -1239,7 +1250,7 @@ function recording(
     }
 
     pausePlaybackClock();
-    ctx.pauseElapsedTime = time * 1000;
+    ctx.pauseElapsedTime = time;
     dispatch("pause");
 
     return true;
@@ -1320,7 +1331,10 @@ function prepareRecording(recording, { startAt = 0, idleTimeLimit, inputOffset, 
     events = new Stream(events);
   }
 
-  idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit ?? Infinity;
+  startAt = startAt * 1000;
+  idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit;
+  idleTimeLimit = idleTimeLimit !== undefined ? idleTimeLimit * 1000 : Infinity;
+  inputOffset = inputOffset !== undefined ? inputOffset * 1000 : undefined;
   const limiterOutput = { offset: 0 };
 
   if (markers !== undefined) {
@@ -1347,7 +1361,7 @@ function prepareRecording(recording, { startAt = 0, idleTimeLimit, inputOffset, 
 }
 
 function normalizeMarker(m) {
-  return typeof m === "number" ? [m, "m", ""] : [m[0], "m", m[1]];
+  return typeof m === "number" ? [m * 1000, "m", ""] : [m[0] * 1000, "m", m[1]];
 }
 
 function timeLimiter(idleTimeLimit, startAt, output) {
