@@ -250,8 +250,20 @@ class Core {
   }
 
   _dispatchEvent(eventName, data = {}) {
-    for (const h of this.eventHandlers.get(eventName)) {
-      h(data);
+    for (const handler of [...this.eventHandlers.get(eventName)]) {
+      try {
+        handler(data);
+      } catch (error) {
+        this.logger.error(`event handler for "${eventName}" failed`, error);
+
+        if (typeof globalThis.reportError === "function") {
+          globalThis.reportError(error);
+        } else {
+          setTimeout(() => {
+            throw error;
+          }, 0);
+        }
+      }
     }
   }
 

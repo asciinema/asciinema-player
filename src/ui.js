@@ -5,8 +5,8 @@ import { fromErrorPayload } from "./error";
 
 function create(src, elem, workerUrl, opts = {}) {
   const coreLogger = opts.logger === console ? true : undefined;
-  const core = new CoreWorkerProxy(workerUrl, src, coreOpts(opts, { logger: coreLogger }));
   const uiLogger = opts.logger ?? new DummyLogger();
+  const core = new CoreWorkerProxy(workerUrl, src, coreOpts(opts, { logger: coreLogger }), uiLogger);
   const { el, dispose } = mount(
     core,
     elem,
@@ -37,9 +37,10 @@ function create(src, elem, workerUrl, opts = {}) {
 }
 
 class CoreWorkerProxy {
-  constructor(workerUrl, src, opts) {
+  constructor(workerUrl, src, opts, logger) {
     this.worker = new Worker(workerUrl);
     this.worker.onmessage = this._onMessage.bind(this);
+    this.logger = logger;
     this.nextId = 1;
 
     this.eventHandlers = new Map([
@@ -127,8 +128,20 @@ class CoreWorkerProxy {
   }
 
   _dispatchEvent(eventName, data = {}) {
-    for (const h of this.eventHandlers.get(eventName)) {
-      h(data);
+    for (const handler of [...this.eventHandlers.get(eventName)]) {
+      try {
+        handler(data);
+      } catch (error) {
+        this.logger.error(`event handler for "${eventName}" failed`, error);
+
+        if (typeof globalThis.reportError === "function") {
+          globalThis.reportError(error);
+        } else {
+          setTimeout(() => {
+            throw error;
+          }, 0);
+        }
+      }
     }
   }
 
