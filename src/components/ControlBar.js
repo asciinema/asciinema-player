@@ -126,7 +126,7 @@ export default (props) => {
         </span>
       </Show>
 
-      <span class="ap-timer" aria-readonly="true" role="textbox" tabindex="0">
+      <span class="ap-timer">
         <span class="ap-time-elapsed">{currentTime()}</span>
         <span class="ap-time-remaining">{remainingTime()}</span>
       </span>
