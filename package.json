@@ -10,8 +10,13 @@
   },
   "license": "Apache-2.0",
   "main": "dist/index.js",
+  "types": "./index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
     "./ui.js": "./dist/ui.js",
     "./dist/bundle/asciinema-player.css": "./dist/bundle/asciinema-player.css",
     "./dist/bundle/asciinema-player.min.js": "./dist/bundle/asciinema-player.min.js",
@@ -19,7 +24,8 @@
     "./dist/bundle/asciinema-player-worker.min.js": "./dist/bundle/asciinema-player-worker.min.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "index.d.ts"
   ],
   "type": "module",
   "scripts": {
