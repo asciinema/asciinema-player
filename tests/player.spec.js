@@ -116,6 +116,15 @@ test("shows keystroke overlay when enabled", async ({ page }) => {
   await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(/^(a|Ret)$/);
 });
 
+test("formats control keystrokes", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/ctrl-input.cast", { hideKeystroke: false });
+
+  await playerApi.play();
+  await playerApi.events.waitFor("input");
+
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("C-p");
+});
+
 test("emits marker events during playback", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/markers.cast");
 

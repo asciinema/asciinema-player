@@ -2,38 +2,23 @@ import { createSignal } from "solid-js";
 
 const [isFading, setisFading] = createSignal(false);
 
+const controlSeqs = Object.fromEntries(
+  Array.from({ length: 26 }, (_, i) => {
+    const char = String.fromCharCode(i + 1);
+    const rep = JSON.stringify(char).slice(1, -1);
+    const key = String.fromCharCode(97 + i);
+
+    return [rep, `C-${key}`];
+  }),
+);
+
 const basic_seqs = {
+  ...controlSeqs,
   "\\r": "Ret",
   "\\t": "Tab",
   "\\u001b": "Esc",
+  [String.fromCharCode(127)]: "Back",
   "^?": "Back",
-  "\\u000b": "Beep",
-  "\\u0001": "C-a",
-  "\\u0002": "C-b",
-  "\\u0003": "C-c",
-  "\\u0004": "C-d",
-  "\\u0005": "C-e",
-  "\\u0006": "C-f",
-  "\\u0007": "C-g",
-  "\\u0008": "C-h",
-  "\\u0009": "C-i",
-  "\\u0010": "C-j",
-  "\\u0011": "C-k",
-  "\\u0012": "C-l",
-  "\\u0013": "C-m",
-  "\\u0014": "C-n",
-  "\\u0015": "C-o",
-  "\\u0016": "C-p",
-  "\\u0017": "C-q",
-  "\\u0018": "C-r",
-  "\\u0019": "C-s",
-  "\\u0020": "C-t",
-  "\\u0021": "C-u",
-  "\\u0022": "C-v",
-  "\\u0023": "C-w",
-  "\\u0024": "C-x",
-  "\\u0025": "C-y",
-  "\\u0026": "C-z",
 };
 
 const singles = {
