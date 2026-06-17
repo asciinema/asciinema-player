@@ -174,6 +174,17 @@ test("formats backspace keystrokes", async ({ page }) => {
   await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("Back");
 });
 
+test("formats alt-backspace keystrokes", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/alt-backspace-input.cast", {
+    hideKeystroke: false,
+  });
+
+  await playerApi.play();
+  await playerApi.events.waitFor("input");
+
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("A-Back");
+});
+
 test("does not render unsupported keystrokes", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/unknown-input.cast", {
     hideKeystroke: false,

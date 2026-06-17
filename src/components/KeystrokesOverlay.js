@@ -199,6 +199,10 @@ function formatEscapeSequence(data) {
   const seq = data.slice(1);
 
   if (seq.length === 1) {
+    if (seq in basic_seqs) {
+      return "A-" + basic_seqs[seq];
+    }
+
     return seq in singles ? "A-" + singles[seq] : "A-" + seq;
   }
 
