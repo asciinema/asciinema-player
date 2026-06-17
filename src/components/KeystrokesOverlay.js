@@ -3,19 +3,18 @@ import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-j
 const controlSeqs = Object.fromEntries(
   Array.from({ length: 26 }, (_, i) => {
     const char = String.fromCharCode(i + 1);
-    const rep = JSON.stringify(char).slice(1, -1);
     const key = String.fromCharCode(97 + i);
 
-    return [rep, `C-${key}`];
+    return [char, `C-${key}`];
   }),
 );
 
 const basic_seqs = {
   ...controlSeqs,
-  "\\b": "Back",
-  "\\r": "Ret",
-  "\\t": "Tab",
-  "\\u001b": "Esc",
+  "\b": "Back",
+  "\r": "Ret",
+  "\t": "Tab",
+  "\u001b": "Esc",
   [String.fromCharCode(127)]: "Back",
   "^?": "Back",
 };
@@ -104,33 +103,137 @@ const unicode_seq = {
   "[27u": "Esc",
 };
 
+const csiFinalKeys = {
+  A: "Up",
+  B: "Down",
+  C: "Right",
+  D: "Left",
+  F: "End",
+  H: "Home",
+  P: "F1",
+  Q: "F2",
+  R: "F3",
+  S: "F4",
+};
+
+const csiTildeKeys = {
+  3: "Supr",
+  5: "PgUp",
+  6: "PgDn",
+  15: "F5",
+  17: "F6",
+  18: "F7",
+  19: "F8",
+  20: "F9",
+  21: "F10",
+  23: "F11",
+  24: "F12",
+};
+
+function addModifierPrefix(key, modifier) {
+  const mod = Number.parseInt(modifier.split(":")[0], 10);
+
+  if (!Number.isFinite(mod) || mod <= 1) {
+    return key;
+  }
+
+  const bits = mod - 1;
+  const parts = [];
+
+  if (bits & 4) parts.push("C");
+  if (bits & 2) parts.push("A");
+  if (bits & 1) parts.push("S");
+
+  return parts.length === 0 ? key : `${parts.join("-")}-${key}`;
+}
+
+function codepointToKey(codepoint) {
+  const char = String.fromCodePoint(codepoint);
+
+  if (char in basic_seqs) {
+    return basic_seqs[char];
+  }
+
+  if (char in singles) {
+    return singles[char];
+  }
+
+  return char;
+}
+
+function formatCsiSequence(seq) {
+  if (seq in unicode_seq) {
+    return unicode_seq[seq];
+  }
+
+  const csiU = seq.match(/^(\d+)(?:;([\d:]+))?u$/);
+
+  if (csiU !== null) {
+    const key = codepointToKey(Number.parseInt(csiU[1], 10));
+    return csiU[2] === undefined ? key : addModifierPrefix(key, csiU[2]);
+  }
+
+  const modifyOtherKeys = seq.match(/^27;([\d:]+);(\d+)~$/);
+
+  if (modifyOtherKeys !== null) {
+    const key = codepointToKey(Number.parseInt(modifyOtherKeys[2], 10));
+    return addModifierPrefix(key, modifyOtherKeys[1]);
+  }
+
+  const modifiedFinal = seq.match(/^(?:1;)?([\d:]+)([A-Z])$/);
+
+  if (modifiedFinal !== null && modifiedFinal[2] in csiFinalKeys) {
+    return addModifierPrefix(csiFinalKeys[modifiedFinal[2]], modifiedFinal[1]);
+  }
+
+  const modifiedTilde = seq.match(/^(\d+);([\d:]+)~$/);
+
+  if (modifiedTilde !== null && modifiedTilde[1] in csiTildeKeys) {
+    return addModifierPrefix(csiTildeKeys[modifiedTilde[1]], modifiedTilde[2]);
+  }
+
+  return "";
+}
+
+function formatEscapeSequence(data) {
+  const seq = data.slice(1);
+
+  if (seq.length === 1) {
+    return seq in singles ? "A-" + singles[seq] : "A-" + seq;
+  }
+
+  if (seq in unicode_seq) {
+    return unicode_seq[seq];
+  }
+
+  if (seq.startsWith("[")) {
+    return formatCsiSequence(seq.slice(1));
+  }
+
+  return "";
+}
+
 function formatKeyCode(data, logger) {
-  let rep = JSON.stringify(data).slice(1, -1);
-
-  if (rep in basic_seqs) {
-    return basic_seqs[rep];
+  if (data in basic_seqs) {
+    return basic_seqs[data];
   }
 
-  if (rep.length === 1) {
-    if (rep in singles) {
-      return singles[rep];
+  if (data.length === 1) {
+    if (data in singles) {
+      return singles[data];
     }
-    return rep;
+    return data;
   }
 
-  if (rep.length < 6) {
-    logger.info("Short <" + rep + ">", rep.length);
-    return "";
-  }
-  rep = rep.slice(6);
-  if (rep.length === 1) {
-    if (rep in singles) {
-      return "A-" + singles[rep];
+  if (data.startsWith("\u001b")) {
+    const key = formatEscapeSequence(data);
+
+    if (key !== "") {
+      return key;
     }
-    return "A-" + rep;
   }
-  if (rep in unicode_seq) return unicode_seq[rep];
 
+  const rep = JSON.stringify(data).slice(1, -1);
   if (rep.length < 10) logger.info("<" + rep + ">", rep.length);
 
   return "";

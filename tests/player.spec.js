@@ -125,6 +125,28 @@ test("formats control keystrokes", async ({ page }) => {
   await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("C-p");
 });
 
+test("formats CSI-u control keystrokes", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/ctrl-csi-u-input.cast", {
+    hideKeystroke: false,
+  });
+
+  await playerApi.play();
+  await playerApi.events.waitFor("input");
+
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("C-p");
+});
+
+test("formats modified arrow keystrokes", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/ctrl-arrow-input.cast", {
+    hideKeystroke: false,
+  });
+
+  await playerApi.play();
+  await playerApi.events.waitFor("input");
+
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("C-Right");
+});
+
 test("formats backspace keystrokes", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/backspace-input.cast", {
     hideKeystroke: false,

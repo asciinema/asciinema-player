@@ -1,0 +1,4 @@
+{"version": 2, "width": 80, "height": 24}
+[0.1, "o", "start\r\n"]
+[0.2, "i", "\u001b[112;5u"]
+[0.4, "o", "done\r\n"]
