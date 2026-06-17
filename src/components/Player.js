@@ -182,8 +182,9 @@ export default (props) => {
       return;
     }
 
-    setIsKeystrokeVisible(true);
+    setIsKeystrokeVisible(false);
     setKeyStroke({ ms: Date.now(), value: data });
+    queueMicrotask(() => setIsKeystrokeVisible(true));
   };
 
   const onCoreSeeked = () => {
@@ -534,13 +535,15 @@ export default (props) => {
             ref={controlBarRef}
           />
         </Show>
-        <Show when={isKeystrokeVisible()}>
-          <KeystrokesOverlay
-            bottomOffset={controlBarHeight()}
-            fontFamily={props.terminalFontFamily}
-            keystroke={keyStroke()}
-            logger={props.logger}
-          />
+        <Show when={isKeystrokeVisible() && keyStroke()} keyed>
+          {(keystroke) => (
+            <KeystrokesOverlay
+              bottomOffset={controlBarHeight()}
+              fontFamily={props.terminalFontFamily}
+              keystroke={keystroke}
+              logger={props.logger}
+            />
+          )}
         </Show>
         <Switch>
           <Match when={overlay() == "start"}>

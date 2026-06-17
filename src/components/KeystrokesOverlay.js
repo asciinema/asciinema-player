@@ -1,4 +1,6 @@
-import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
+
+const FADE_DELAY_MS = 1200;
 
 const controlSeqs = Object.fromEntries(
   Array.from({ length: 26 }, (_, i) => {
@@ -245,25 +247,11 @@ function formatKeyCode(data, logger) {
 
 export default (props) => {
   const [isFading, setIsFading] = createSignal(false);
-
-  const keyLabel = createMemo(() => {
-    const data = props.keystroke;
-
-    if (data === null) {
-      return "";
-    }
-
-    return formatKeyCode(data.value, props.logger);
-  });
+  const keyLabel =
+    props.keystroke === null ? "" : formatKeyCode(props.keystroke.value, props.logger);
 
   createEffect(() => {
-    const data = props.keystroke;
-
-    if (data === null) {
-      return;
-    }
-
-    if (keyLabel() === "") {
+    if (keyLabel === "") {
       return;
     }
 
@@ -271,13 +259,13 @@ export default (props) => {
 
     const timeoutId = setTimeout(function () {
       setIsFading(true);
-    }, 20);
+    }, FADE_DELAY_MS);
 
     onCleanup(() => clearTimeout(timeoutId));
   });
 
   return (
-    <Show when={keyLabel() !== ""}>
+    <Show when={keyLabel !== ""}>
       <div
         class={
           isFading()
@@ -287,7 +275,7 @@ export default (props) => {
         style={{ "--ap-keystrokes-bottom": `${(props.bottomOffset ?? 0) + 12}px` }}
       >
         <div>
-          <kbd>{keyLabel()}</kbd>
+          <kbd>{keyLabel}</kbd>
         </div>
       </div>
     </Show>

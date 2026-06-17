@@ -140,6 +140,7 @@ test("restarts keystroke fade for repeated keys", async ({ page }) => {
   await playerApi.play();
   await playerApi.events.waitFor("input");
 
+  await expect(page.locator(".ap-overlay-keystrokes")).not.toHaveClass(/fading/);
   await expect(page.locator(".ap-overlay-keystrokes")).toHaveClass(/fading/);
 
   await playerApi.events.waitFor("input");
