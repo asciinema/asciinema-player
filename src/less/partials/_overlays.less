@@ -93,6 +93,8 @@
     text-align: right;
     padding: 0;
     opacity: 0.95;
+    transform: translateY(0) scale(1);
+    transition: opacity 80ms ease, transform 80ms ease;
     pointer-events: none;
 
     > div {
@@ -116,19 +118,9 @@
   }
 
   .ap-overlay-keystrokes.fading {
-    animation: hide 5s forwards;
-  }
-
-  @keyframes hide {
-    0% {
-      opacity: 1;
-      font-size: 18px;
-    }
-
-    100% {
-      opacity: 0;
-      font-size: 16px;
-    }
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+    transition: opacity 700ms ease 1200ms, transform 700ms ease 1200ms;
   }
 
   .ap-overlay-help {
