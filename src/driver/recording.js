@@ -430,7 +430,7 @@ function recording(
         if (currentState === STATE.COLD) {
           return {
             nextState: STATE.LOADING,
-            action: () => loadThenReplay(EVENT.STEP_REQUESTED, payload),
+            action: () => loadPromise().then(() => sendCommand(EVENT.STEP_REQUESTED, payload)),
           };
         }
 
@@ -932,12 +932,6 @@ function recording(
     ctx.posterRenderableAfterLoad = false;
   }
 
-  function loadThenReplay(event, payload) {
-    return loadPromise().then(() => {
-      return sendCommand(event, payload);
-    });
-  }
-
   function validateSeekInput(where) {
     if (typeof where === "number") {
       if (Number.isFinite(where)) return;
@@ -1122,6 +1116,7 @@ function recording(
     }
 
     enqueueEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
+
     return true;
   }
 
