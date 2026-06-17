@@ -19,36 +19,40 @@ function recording(
   },
 ) {
   const STATE = {
-    COLD: "cold",
-    LOADING: "loading",
-    READY_PRISTINE: "ready.pristine",
-    READY_PAUSED: "ready.paused",
-    READY_STARTING: "ready.starting",
-    READY_PLAYING: "ready.playing",
-    READY_BUFFERING_PAUSED: "ready.buffering.paused",
-    READY_BUFFERING_PLAYING: "ready.buffering.playing",
-    READY_ENDED: "ready.ended",
-    FAILED: "failed",
-    STOPPED: "stopped",
+    COLD: "cold", // Recording has not been loaded yet.
+    LOADING: "loading", // Recording/audio load is in progress.
+    READY_INITIAL: "ready.initial", // Loaded, not yet played or navigated.
+    READY_PAUSED: "ready.paused", // Loaded and positioned while playback clock is stopped.
+    READY_STARTING: "ready.starting", // Playback start/resume requested; waiting for clock readiness.
+    READY_PLAYING: "ready.playing", // Playback clock is running and events are scheduled.
+    READY_BUFFERING_WHILE_PAUSED: "ready.buffering.whilePaused", // Buffering audio, but stay paused.
+    READY_BUFFERING_TO_RESUME: "ready.buffering.toResume", // Buffering audio, then resume playback.
+    READY_ENDED: "ready.ended", // Playback or navigation reached recording duration.
+    FAILED: "failed", // Fatal driver error; public commands reject.
+    STOPPED: "stopped", // Terminal state after stop().
   };
 
   const EVENT = {
-    INIT_REQUESTED: "initRequested",
-    PLAY_REQUESTED: "playRequested",
-    PLAY_AFTER_LOAD: "playAfterLoad",
-    PAUSE_REQUESTED: "pauseRequested",
-    SEEK_REQUESTED: "seekRequested",
-    STEP_REQUESTED: "stepRequested",
-    STOP_REQUESTED: "stopRequested",
-    LOAD_SUCCEEDED: "loadSucceeded",
-    LOAD_FAILED: "loadFailed",
-    PLAYBACK_START_CONFIRMED: "playbackStartConfirmed",
-    SEEK_PLAYBACK_START_CONFIRMED: "seekPlaybackStartConfirmed",
-    PLAYBACK_START_FAILED: "playbackStartFailed",
-    PLAYBACK_ENDED: "playbackEnded",
-    AUDIO_WAITING: "audioWaiting",
-    AUDIO_PLAYING: "audioPlaying",
-    MARKER_REACHED: "markerReached",
+    INIT_REQUESTED: "initRequested", // Public init/preload command.
+    PLAY_REQUESTED: "playRequested", // Public play command.
+    DEFERRED_PLAY_READY: "deferredPlayReady", // Cold play() can continue after load.
+    PAUSE_REQUESTED: "pauseRequested", // Public pause command.
+    SEEK_REQUESTED: "seekRequested", // Public seek command.
+    STEP_REQUESTED: "stepRequested", // Public frame-step command.
+    STOP_REQUESTED: "stopRequested", // Public teardown command.
+    LOAD_SUCCEEDED: "loadSucceeded", // Recording load completed.
+    LOAD_FAILED: "loadFailed", // Recording load failed fatally.
+    PLAYBACK_START_CONFIRMED: "playbackStartConfirmed", // Playback clock can start.
+    PLAYBACK_START_REJECTED: "playbackStartRejected", // Audio/media play() rejected.
+    PLAYBACK_ENDED: "playbackEnded", // Scheduled playback reached natural end.
+    AUDIO_WAITING: "audioWaiting", // Audio element entered buffering.
+    AUDIO_PLAYING: "audioPlaying", // Audio element resumed from buffering.
+    MARKER_REACHED: "markerReached", // Playback crossed a marker event.
+  };
+
+  const PLAYBACK_START_REASON = {
+    PLAY: "play",
+    SEEK: "seek",
   };
 
   const outputBatchWindow = (src.minFrameTime ?? 1 / 60) * 1000;
@@ -85,8 +89,10 @@ function recording(
     return value === STATE.READY_PLAYING;
   }
 
-  function isBufferingState(value = state) {
-    return value === STATE.READY_BUFFERING_PAUSED || value === STATE.READY_BUFFERING_PLAYING;
+  function isBufferingForAudioState(value = state) {
+    return (
+      value === STATE.READY_BUFFERING_WHILE_PAUSED || value === STATE.READY_BUFFERING_TO_RESUME
+    );
   }
 
   function canLoopPlayback() {
@@ -103,34 +109,34 @@ function recording(
   }
 
   // Public command events (INIT_REQUESTED, PLAY_REQUESTED, PAUSE_REQUESTED,
-  // SEEK_REQUESTED, STEP_REQUESTED, STOP_REQUESTED) are serialized by Core.
+  // SEEK_REQUESTED, STEP_REQUESTED, STOP_REQUESTED) are serialized by Core
+  // and are considered re-entrancy safe.
   //
   // Primary non-stale state transitions:
   // COLD -> [INIT_REQUESTED] -> LOADING
   // COLD -> [PLAY_REQUESTED | SEEK_REQUESTED | STEP_REQUESTED] -> LOADING
-  // LOADING -> [LOAD_SUCCEEDED] -> READY_PRISTINE
+  // LOADING -> [LOAD_SUCCEEDED] -> READY_INITIAL
   // LOADING -> [LOAD_FAILED] -> FAILED
-  // READY_PRISTINE -> [PLAY_REQUESTED | PLAY_AFTER_LOAD] -> READY_STARTING
-  // READY_PRISTINE -> [SEEK_REQUESTED | STEP_REQUESTED] -> READY_PAUSED
+  // READY_INITIAL -> [PLAY_REQUESTED | DEFERRED_PLAY_READY] -> READY_STARTING
+  // READY_INITIAL -> [SEEK_REQUESTED | STEP_REQUESTED] -> READY_PAUSED
   // READY_PAUSED -> [PLAY_REQUESTED] -> READY_STARTING
   // READY_PAUSED -> [SEEK_REQUESTED | STEP_REQUESTED] -> READY_PAUSED
   // READY_ENDED -> [PLAY_REQUESTED] -> READY_STARTING
   // READY_ENDED -> [SEEK_REQUESTED | STEP_REQUESTED] -> READY_PAUSED
-  // READY_STARTING -> [PLAYBACK_START_CONFIRMED | SEEK_PLAYBACK_START_CONFIRMED]
-  //   -> READY_PLAYING
-  // READY_STARTING -> [PLAYBACK_START_FAILED] -> READY_PAUSED
+  // READY_STARTING -> [PLAYBACK_START_CONFIRMED] -> READY_PLAYING
+  // READY_STARTING -> [PLAYBACK_START_REJECTED] -> READY_PAUSED
   // READY_PLAYING -> [PAUSE_REQUESTED] -> READY_PAUSED
   // READY_PLAYING -> [SEEK_REQUESTED] -> READY_STARTING
-  // READY_PLAYING -> [AUDIO_WAITING] -> READY_BUFFERING_PLAYING
+  // READY_PLAYING -> [AUDIO_WAITING] -> READY_BUFFERING_TO_RESUME
   // READY_PLAYING -> [MARKER_REACHED] -> READY_PAUSED (pauseOnMarkers)
-  // READY_BUFFERING_PLAYING -> [PAUSE_REQUESTED] -> READY_BUFFERING_PAUSED
-  // READY_BUFFERING_PLAYING -> [AUDIO_PLAYING] -> READY_PLAYING
-  // READY_BUFFERING_PAUSED -> [PLAY_REQUESTED] -> READY_BUFFERING_PLAYING
-  // READY_BUFFERING_PAUSED -> [AUDIO_PLAYING] -> READY_PAUSED
-  // READY_BUFFERING_PLAYING -> [PLAYBACK_START_FAILED] -> READY_BUFFERING_PAUSED
+  // READY_BUFFERING_TO_RESUME -> [PAUSE_REQUESTED] -> READY_BUFFERING_WHILE_PAUSED
+  // READY_BUFFERING_TO_RESUME -> [AUDIO_PLAYING] -> READY_PLAYING
+  // READY_BUFFERING_WHILE_PAUSED -> [PLAY_REQUESTED] -> READY_BUFFERING_TO_RESUME
+  // READY_BUFFERING_WHILE_PAUSED -> [AUDIO_PLAYING] -> READY_PAUSED
+  // READY_BUFFERING_TO_RESUME -> [PLAYBACK_START_REJECTED] -> READY_BUFFERING_WHILE_PAUSED
   // READY_PLAYING -> [PLAYBACK_ENDED] -> READY_ENDED | READY_PLAYING (loop)
-  // COLD | READY_PRISTINE | READY_PAUSED | READY_PLAYING
-  //   | READY_BUFFERING_PAUSED | READY_BUFFERING_PLAYING | READY_ENDED
+  // COLD | READY_INITIAL | READY_PAUSED | READY_PLAYING
+  //   | READY_BUFFERING_WHILE_PAUSED | READY_BUFFERING_TO_RESUME | READY_ENDED
   //   -> [STOP_REQUESTED] -> STOPPED
   function transition(currentState, event, payload = {}) {
     switch (event) {
@@ -153,17 +159,19 @@ function recording(
         }
 
         return {
-          nextState: STATE.READY_PRISTINE,
+          nextState: STATE.READY_INITIAL,
           action: () => {
             dispatch("metadata", {
               duration: ctx.duration / 1000,
               markers: ctx.markers.map(([t, label]) => [t / 1000, label]),
               hasAudio: payload.hasAudio,
             });
+
             dispatch("reset", {
               size: { cols: ctx.cols, rows: ctx.rows },
               theme: payload.theme,
             });
+
             renderPoster();
           },
         };
@@ -188,13 +196,13 @@ function recording(
             action: () => {
               clearPoster();
               dispatch("play");
-              return loadPromise().then(() => sendEvent(EVENT.PLAY_AFTER_LOAD));
+              return loadPromise().then(() => sendEvent(EVENT.DEFERRED_PLAY_READY));
             },
           };
         }
 
         if (
-          currentState === STATE.READY_PRISTINE ||
+          currentState === STATE.READY_INITIAL ||
           currentState === STATE.READY_PAUSED ||
           currentState === STATE.READY_ENDED
         ) {
@@ -203,19 +211,20 @@ function recording(
             action: () => {
               dispatch("play");
               clearPoster();
-              return startPlayback(EVENT.PLAYBACK_START_CONFIRMED);
+              return startPlayback(PLAYBACK_START_REASON.PLAY);
             },
           };
         }
 
-        if (currentState === STATE.READY_BUFFERING_PAUSED) {
+        if (currentState === STATE.READY_BUFFERING_WHILE_PAUSED) {
           return {
-            nextState: STATE.READY_BUFFERING_PLAYING,
+            nextState: STATE.READY_BUFFERING_TO_RESUME,
             action: () => {
               dispatch("play");
+
               if (ctx.audioElement) {
                 return ctx.audioElement.play().catch((error) => {
-                  sendEvent(EVENT.PLAYBACK_START_FAILED);
+                  sendEvent(EVENT.PLAYBACK_START_REJECTED);
                   throw error;
                 });
               }
@@ -226,7 +235,7 @@ function recording(
         }
 
         if (
-          currentState === STATE.READY_BUFFERING_PLAYING ||
+          currentState === STATE.READY_BUFFERING_TO_RESUME ||
           currentState === STATE.READY_PLAYING
         ) {
           return {
@@ -240,13 +249,13 @@ function recording(
 
         return { nextState: currentState };
 
-      case EVENT.PLAY_AFTER_LOAD:
-        if (currentState === STATE.READY_PRISTINE) {
+      case EVENT.DEFERRED_PLAY_READY:
+        if (currentState === STATE.READY_INITIAL) {
           return {
             nextState: STATE.READY_STARTING,
             action: () => {
               clearPoster();
-              return startPlayback(EVENT.PLAYBACK_START_CONFIRMED);
+              return startPlayback(PLAYBACK_START_REASON.PLAY);
             },
           };
         }
@@ -262,35 +271,27 @@ function recording(
           nextState: STATE.READY_PLAYING,
           action: () => {
             confirmPlaybackClockStart();
-            dispatch("playing");
+
+            if (payload.reason === PLAYBACK_START_REASON.SEEK) {
+              dispatch("seeked");
+            } else {
+              dispatch("playing");
+            }
+
             return true;
           },
         };
 
-      case EVENT.SEEK_PLAYBACK_START_CONFIRMED:
-        if (currentState !== STATE.READY_STARTING) {
-          return { nextState: currentState };
-        }
-
-        return {
-          nextState: STATE.READY_PLAYING,
-          action: () => {
-            confirmPlaybackClockStart();
-            dispatch("seeked");
-            return true;
-          },
-        };
-
-      case EVENT.PLAYBACK_START_FAILED:
+      case EVENT.PLAYBACK_START_REJECTED:
         if (currentState === STATE.READY_STARTING) {
           return {
             nextState: STATE.READY_PAUSED,
           };
         }
 
-        if (currentState === STATE.READY_BUFFERING_PLAYING) {
+        if (currentState === STATE.READY_BUFFERING_TO_RESUME) {
           return {
-            nextState: STATE.READY_BUFFERING_PAUSED,
+            nextState: STATE.READY_BUFFERING_WHILE_PAUSED,
           };
         }
 
@@ -316,7 +317,7 @@ function recording(
       case EVENT.AUDIO_WAITING:
         if (currentState === STATE.READY_PLAYING) {
           return {
-            nextState: STATE.READY_BUFFERING_PLAYING,
+            nextState: STATE.READY_BUFFERING_TO_RESUME,
             action: () => {
               logger.debug("pausing session playback");
               pausePlaybackClock();
@@ -326,8 +327,8 @@ function recording(
         }
 
         if (
-          currentState === STATE.READY_BUFFERING_PAUSED ||
-          currentState === STATE.READY_BUFFERING_PLAYING
+          currentState === STATE.READY_BUFFERING_WHILE_PAUSED ||
+          currentState === STATE.READY_BUFFERING_TO_RESUME
         ) {
           return {
             nextState: currentState,
@@ -338,7 +339,7 @@ function recording(
         return { nextState: currentState };
 
       case EVENT.AUDIO_PLAYING:
-        if (currentState === STATE.READY_BUFFERING_PLAYING) {
+        if (currentState === STATE.READY_BUFFERING_TO_RESUME) {
           return {
             nextState: STATE.READY_PLAYING,
             action: () => {
@@ -350,13 +351,13 @@ function recording(
           };
         }
 
-        if (currentState === STATE.READY_BUFFERING_PAUSED) {
+        if (currentState === STATE.READY_BUFFERING_WHILE_PAUSED) {
           return {
             nextState: STATE.READY_PAUSED,
             action: () => {
               clearWaitingTimeout();
               // The media element may report recovery after the user has already paused.
-              // Clear buffering bookkeeping, but do not announce resumed playback.
+              // Clear waiting bookkeeping, but do not announce resumed playback.
             },
           };
         }
@@ -370,9 +371,9 @@ function recording(
           return { nextState: STATE.READY_PAUSED, action: performPause };
         }
 
-        if (currentState === STATE.READY_BUFFERING_PLAYING) {
+        if (currentState === STATE.READY_BUFFERING_TO_RESUME) {
           return {
-            nextState: STATE.READY_BUFFERING_PAUSED,
+            nextState: STATE.READY_BUFFERING_WHILE_PAUSED,
             action: () => {
               if (ctx.audioElement) {
                 ctx.audioElement.pause();
@@ -393,12 +394,12 @@ function recording(
           };
         }
 
-        if (isBufferingState(currentState)) {
+        if (isBufferingForAudioState(currentState)) {
           return { nextState: currentState, action: () => false };
         }
 
         if (
-          currentState !== STATE.READY_PRISTINE &&
+          currentState !== STATE.READY_INITIAL &&
           currentState !== STATE.READY_PAUSED &&
           currentState !== STATE.READY_ENDED &&
           currentState !== STATE.READY_PLAYING
@@ -433,14 +434,14 @@ function recording(
           };
         }
 
-        if (currentState === STATE.READY_PLAYING || isBufferingState(currentState)) {
+        if (currentState === STATE.READY_PLAYING || isBufferingForAudioState(currentState)) {
           // Stepping is only defined for paused/idle states. During active
-          // playback or buffering, keep the old no-op behavior.
+          // playback or audio buffering, step() is a no-op.
           return { nextState: currentState };
         }
 
         if (
-          currentState !== STATE.READY_PRISTINE &&
+          currentState !== STATE.READY_INITIAL &&
           currentState !== STATE.READY_PAUSED &&
           currentState !== STATE.READY_ENDED
         ) {
@@ -531,8 +532,8 @@ function recording(
 
   function sendEvent(event, payload = {}) {
     if (ctx.failureError || state === STATE.STOPPED) {
-      // After a fatal failure or stop(), only public commands are expected to
-      // observe that state. Late async facts are ignored.
+      // Terminal states reject public commands via sendCommand(); late async
+      // facts from timers/media callbacks are ignored here.
       return;
     }
 
@@ -1101,7 +1102,7 @@ function recording(
     }
   }
 
-  function startPlayback(confirmedEvent) {
+  function startPlayback(reason) {
     if (ctx.events[ctx.nextEventIndex] === undefined) {
       syncToTime(0);
     } else if (ctx.effectiveStartAt !== null) {
@@ -1112,15 +1113,15 @@ function recording(
 
     if (ctx.audioElement) {
       return ctx.audioElement.play().then(
-        () => sendEvent(confirmedEvent),
+        () => sendEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason }),
         (error) => {
-          sendEvent(EVENT.PLAYBACK_START_FAILED);
+          sendEvent(EVENT.PLAYBACK_START_REJECTED);
           throw error;
         },
       );
     }
 
-    enqueueEvent(confirmedEvent);
+    enqueueEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
     return true;
   }
 
@@ -1155,7 +1156,7 @@ function recording(
     }
 
     if (wasPlaying) {
-      return startPlayback(EVENT.SEEK_PLAYBACK_START_CONFIRMED);
+      return startPlayback(PLAYBACK_START_REASON.SEEK);
     }
 
     dispatch("seeked");
