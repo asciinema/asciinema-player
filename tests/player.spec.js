@@ -116,6 +116,22 @@ test("shows keystroke overlay when enabled", async ({ page }) => {
   await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(/^(a|Ret)$/);
 });
 
+test("positions keystroke overlay near lower right", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/input.cast", { hideKeystroke: false });
+
+  await playerApi.play();
+  await playerApi.events.waitFor("input");
+
+  const playerBox = await page.locator(".ap-player").boundingBox();
+  const overlayBox = await page.locator(".ap-overlay-keystrokes").boundingBox();
+
+  expect(playerBox).not.toBeNull();
+  expect(overlayBox).not.toBeNull();
+  expect(overlayBox.width).toBeLessThan(playerBox.width / 2);
+  expect(overlayBox.x).toBeGreaterThan(playerBox.x + playerBox.width * 0.6);
+  expect(overlayBox.y).toBeGreaterThan(playerBox.y + playerBox.height * 0.5);
+});
+
 test("formats control keystrokes", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/ctrl-input.cast", { hideKeystroke: false });
 

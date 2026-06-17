@@ -536,6 +536,7 @@ export default (props) => {
         </Show>
         <Show when={isKeystrokeVisible()}>
           <KeystrokesOverlay
+            bottomOffset={controlBarHeight()}
             fontFamily={props.terminalFontFamily}
             keystroke={keyStroke()}
             logger={props.logger}

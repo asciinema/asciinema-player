@@ -82,20 +82,27 @@
 
   .ap-overlay-keystrokes {
     position: absolute;
-    top: 3em;
-    height: 20px;
+    top: auto;
+    left: auto;
+    right: 12px;
+    bottom: var(--ap-keystrokes-bottom);
+    z-index: 20;
+    width: auto;
+    height: auto;
     font-size: 18px;
-    text-align: center;
-    padding: 0.5em;
-    opacity: 0.8;
+    text-align: right;
+    padding: 0;
+    opacity: 0.95;
+    pointer-events: none;
 
     > div {
       font-family: var(--term-font-family);
-      max-width: 25%;
-      max-height: 25%;
       font-size: inherit;
 
       kbd {
+        display: inline-flex;
+        justify-content: center;
+        min-width: 1.2em;
         color: var(--term-color-background);
         background-color: var(--term-color-foreground);
         padding: 0.2em 0.5em;

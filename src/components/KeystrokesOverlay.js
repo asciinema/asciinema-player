@@ -274,6 +274,7 @@ export default (props) => {
             ? "ap-overlay ap-overlay-keystrokes fading"
             : "ap-overlay ap-overlay-keystrokes"
         }
+        style={{ "--ap-keystrokes-bottom": `${(props.bottomOffset ?? 0) + 12}px` }}
       >
         <div>
           <kbd>{keyLabel()}</kbd>
