@@ -257,6 +257,12 @@ export default (props) => {
   });
 
   createEffect(() => {
+    const data = props.keystroke;
+
+    if (data === null) {
+      return;
+    }
+
     if (keyLabel() === "") {
       return;
     }

@@ -132,6 +132,22 @@ test("positions keystroke overlay near lower right", async ({ page }) => {
   expect(overlayBox.y).toBeGreaterThan(playerBox.y + playerBox.height * 0.5);
 });
 
+test("restarts keystroke fade for repeated keys", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/repeated-input.cast", {
+    hideKeystroke: false,
+  });
+
+  await playerApi.play();
+  await playerApi.events.waitFor("input");
+
+  await expect(page.locator(".ap-overlay-keystrokes")).toHaveClass(/fading/);
+
+  await playerApi.events.waitFor("input");
+
+  await expect(page.locator(".ap-overlay-keystrokes")).not.toHaveClass(/fading/);
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("a");
+});
+
 test("formats control keystrokes", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/ctrl-input.cast", { hideKeystroke: false });
 
