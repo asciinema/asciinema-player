@@ -1,6 +1,4 @@
-import { createSignal } from "solid-js";
-
-const [isFading, setisFading] = createSignal(false);
+import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 
 const controlSeqs = Object.fromEntries(
   Array.from({ length: 26 }, (_, i) => {
@@ -136,21 +134,32 @@ function formatKeyCode(data, logger) {
 }
 
 export default (props) => {
-  function showKeyPress(data) {
+  const [isFading, setIsFading] = createSignal(false);
+
+  const keyLabel = createMemo(() => {
+    const data = props.keystroke;
+
     if (data === null) {
       return "";
     }
-    var pressed_key = formatKeyCode(data.value, props.logger);
 
-    if (pressed_key === "") {
-      return "";
+    return formatKeyCode(data.value, props.logger);
+  });
+
+  createEffect(() => {
+    if (keyLabel() === "") {
+      return;
     }
-    setisFading(false);
-    setTimeout(function () {
-      setisFading(true);
+
+    setIsFading(false);
+
+    const timeoutId = setTimeout(function () {
+      setIsFading(true);
     }, 20);
-    return pressed_key;
-  }
+
+    onCleanup(() => clearTimeout(timeoutId));
+  });
+
   return (
     <div
       class={
@@ -158,7 +167,7 @@ export default (props) => {
       }
     >
       <div>
-        <kbd>{showKeyPress(props.keystroke)}</kbd>
+        <kbd>{keyLabel()}</kbd>
       </div>
     </div>
   );
