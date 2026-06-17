@@ -4,6 +4,17 @@ import rust from "@wasm-tool/rollup-plugin-rust";
 import commonjs from '@rollup/plugin-commonjs';
 import terser from "@rollup/plugin-terser";
 
+const libreJsLicense =
+  "/* @license magnet:?xt=urn:btih:8e4f440f4c65981c5bf93c76d35135ba5064d8b7&dn=apache-2.0.txt Apache-2.0 */";
+
+const libreJsLicenseEnd = "/* @license-end */";
+
+const minify = terser({
+  format: {
+    comments: /@license/
+  }
+});
+
 const esmPlugins = [
   babel({
     exclude: "node_modules/**",
@@ -46,13 +57,17 @@ export default [
       {
         file: "dist/bundle/asciinema-player.js",
         format: "iife",
-        name: "AsciinemaPlayer"
+        name: "AsciinemaPlayer",
+        banner: libreJsLicense,
+        footer: libreJsLicenseEnd
       },
       {
         file: "dist/bundle/asciinema-player.min.js",
         format: "iife",
         name: "AsciinemaPlayer",
-        plugins: [terser()]
+        banner: libreJsLicense,
+        footer: libreJsLicenseEnd,
+        plugins: [minify]
       }
     ],
     plugins: cjsPlugins
