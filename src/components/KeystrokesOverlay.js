@@ -128,7 +128,7 @@ function formatKeyCode(data, logger) {
   }
   if (rep in unicode_seq) return unicode_seq[rep];
 
-  if (rep.slice.length < 10) logger.info("<" + rep + ">", rep.length);
+  if (rep.length < 10) logger.info("<" + rep + ">", rep.length);
 
   return "";
 }
