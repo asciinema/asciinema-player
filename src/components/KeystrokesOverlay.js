@@ -12,6 +12,7 @@ const controlSeqs = Object.fromEntries(
 
 const basic_seqs = {
   ...controlSeqs,
+  "\\b": "Back",
   "\\r": "Ret",
   "\\t": "Tab",
   "\\u001b": "Esc",
@@ -105,6 +106,11 @@ const unicode_seq = {
 
 function formatKeyCode(data, logger) {
   let rep = JSON.stringify(data).slice(1, -1);
+
+  if (rep in basic_seqs) {
+    return basic_seqs[rep];
+  }
+
   if (rep.length === 1) {
     if (rep in singles) {
       return singles[rep];
@@ -112,9 +118,6 @@ function formatKeyCode(data, logger) {
     return rep;
   }
 
-  if (rep in basic_seqs) {
-    return basic_seqs[rep];
-  }
   if (rep.length < 6) {
     logger.info("Short <" + rep + ">", rep.length);
     return "";

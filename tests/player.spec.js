@@ -125,6 +125,17 @@ test("formats control keystrokes", async ({ page }) => {
   await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("C-p");
 });
 
+test("formats backspace keystrokes", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/backspace-input.cast", {
+    hideKeystroke: false,
+  });
+
+  await playerApi.play();
+  await playerApi.events.waitFor("input");
+
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("Back");
+});
+
 test("emits marker events during playback", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/markers.cast");
 
