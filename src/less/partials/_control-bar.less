@@ -30,13 +30,22 @@ div.ap-control-bar {
     }
   }
 
-  span.ap-button {
+  button.ap-button {
     display: flex;
     flex: 0 0 auto;
     cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    line-height: inherit;
   }
 
-  span.ap-playback-button {
+  button.ap-playback-button {
     width: 12px;
     height: 12px;
     padding: 10px;
@@ -124,7 +133,7 @@ div.ap-control-bar {
     }
   }
 
-  .ap-fullscreen-button {
+  button.ap-fullscreen-button {
     width: 14px;
     height: 14px;
     padding: 9px;
@@ -150,7 +159,7 @@ div.ap-control-bar {
     }
   }
 
-  .ap-kbd-button {
+  button.ap-kbd-button {
     height: 14px;
     padding: 9px;
     margin: 0 0 0 4px;
@@ -167,7 +176,7 @@ div.ap-control-bar {
     }
   }
 
-  .ap-speaker-button {
+  button.ap-speaker-button {
     width: 19px;
     padding: 6px 9px;
     margin: 0 0 0 4px;
@@ -190,7 +199,7 @@ div.ap-wrapper {
   }
 
   &:fullscreen {
-    .ap-fullscreen-button {
+    button.ap-fullscreen-button {
       svg.ap-icon-fullscreen-on {
         display: none;
       }

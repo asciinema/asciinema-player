@@ -114,7 +114,12 @@ export default (props) => {
   return (
     <div class="ap-control-bar" classList={{ "ap-seekable": props.isSeekable }} ref={props.ref}>
       <Show when={props.isPausable}>
-        <span class="ap-button ap-playback-button" onClick={e(props.onPlayClick)} tabindex="0">
+        <button
+          class="ap-button ap-playback-button"
+          onClick={e(props.onPlayClick)}
+          type="button"
+          aria-label={props.isPlaying ? "Pause" : "Play"}
+        >
           <Switch>
             <Match when={props.isPlaying}>
               <PauseIcon />
@@ -123,7 +128,7 @@ export default (props) => {
               <PlayIcon />
             </Match>
           </Switch>
-        </span>
+        </button>
       </Show>
 
       <span class="ap-timer">
@@ -156,12 +161,11 @@ export default (props) => {
       </span>
 
       <Show when={props.isMuted !== undefined}>
-        <span
+        <button
           class="ap-button ap-speaker-button ap-tooltip-container"
           onClick={e(props.onMuteClick)}
+          type="button"
           aria-label="Mute / unmute"
-          role="button"
-          tabindex="0"
         >
           <Switch>
             <Match when={props.isMuted === true}>
@@ -173,31 +177,29 @@ export default (props) => {
               <span class="ap-tooltip">Mute (m)</span>
             </Match>
           </Switch>
-        </span>
+        </button>
       </Show>
 
-      <span
+      <button
         class="ap-button ap-kbd-button ap-tooltip-container"
         onClick={e(props.onHelpClick)}
+        type="button"
         aria-label="Show keyboard shortcuts"
-        role="button"
-        tabindex="0"
       >
         <KeyboardIcon />
         <span class="ap-tooltip">Keyboard shortcuts (?)</span>
-      </span>
+      </button>
 
-      <span
+      <button
         class="ap-button ap-fullscreen-button ap-tooltip-container"
         onClick={e(props.onFullscreenClick)}
+        type="button"
         aria-label="Toggle fullscreen mode"
-        role="button"
-        tabindex="0"
       >
         <ShrinkIcon />
         <ExpandIcon />
         <span class="ap-tooltip">Fullscreen (f)</span>
-      </span>
+      </button>
     </div>
   );
 };

@@ -298,6 +298,12 @@ export default (props) => {
       return;
     }
 
+    // Let a focused control button activate itself on Space/Enter rather than
+    // also triggering the global keyboard shortcuts.
+    if ((e.key == " " || e.key == "Enter") && e.target instanceof HTMLButtonElement) {
+      return;
+    }
+
     if (e.key == " ") {
       togglePlay();
     } else if (e.key == ",") {
