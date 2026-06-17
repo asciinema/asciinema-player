@@ -50,6 +50,10 @@ export default (props) => {
               <kbd>f</kbd> - toggle fullscreen mode
             </li>
 
+            <li>
+              <kbd>k</kbd> - toggle keystroke popup
+            </li>
+
             <Show when={props.hasAudio}>
               <li>
                 <kbd>m</kbd> - mute / unmute audio

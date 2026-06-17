@@ -8,6 +8,7 @@ import LoaderOverlay from "./LoaderOverlay";
 import InfoOverlay from "./InfoOverlay";
 import StartOverlay from "./StartOverlay";
 import HelpOverlay from "./HelpOverlay";
+import KeystrokesOverlay from "./KeystrokesOverlay";
 
 const CONTROL_BAR_HEIGHT = 32; // must match height of div.ap-control-bar in CSS
 
@@ -45,6 +46,9 @@ export default (props) => {
   const terminalCols = createMemo(() => terminalSize().cols || 80);
   const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
+  const [hideKeystroke, setHideKeystroke] = createSignal(props.hideKeystroke);
+  const [isKeystrokeVisible, setIsKeystrokeVisible] = createSignal(false);
+  const [keyStroke, setKeyStroke] = createSignal(null);
 
   const controlsVisible = () =>
     props.controls === true || (props.controls === "auto" && userActive());
@@ -109,6 +113,7 @@ export default (props) => {
 
   const onCorePlay = () => {
     setOverlay(null);
+    setIsKeystrokeVisible(!hideKeystroke());
   };
 
   const onCorePlaying = () => {
@@ -132,6 +137,7 @@ export default (props) => {
       setIsPlaying(false);
       onStopped();
       setOverlay("loader");
+      setIsKeystrokeVisible(false);
     });
   };
 
@@ -139,6 +145,7 @@ export default (props) => {
     batch(() => {
       setIsPlaying(false);
       onStopped();
+      setIsKeystrokeVisible(false);
 
       if (message !== undefined) {
         setInfoMessage(message);
@@ -171,8 +178,18 @@ export default (props) => {
     setOverlay("error");
   };
 
+  const onCoreInput = ({ data }) => {
+    if (hideKeystroke()) {
+      return;
+    }
+
+    setIsKeystrokeVisible(true);
+    setKeyStroke({ ms: Date.now(), value: data });
+  };
+
   const onCoreSeeked = () => {
     updateTime();
+    setIsKeystrokeVisible(false);
   };
 
   core.addEventListener("ready", onCoreReady);
@@ -185,6 +202,7 @@ export default (props) => {
   core.addEventListener("muted", onCoreMuted);
   core.addEventListener("ended", onCoreEnded);
   core.addEventListener("error", onCoreError);
+  core.addEventListener("input", onCoreInput);
   core.addEventListener("seeked", onCoreSeeked);
   core.addEventListener("reset", onCoreReset);
   core.addEventListener("resize", onCoreResize);
@@ -218,6 +236,7 @@ export default (props) => {
     core.removeEventListener("muted", onCoreMuted);
     core.removeEventListener("ended", onCoreEnded);
     core.removeEventListener("error", onCoreError);
+    core.removeEventListener("input", onCoreInput);
     core.removeEventListener("seeked", onCoreSeeked);
     core.removeEventListener("reset", onCoreReset);
     core.removeEventListener("resize", onCoreResize);
@@ -293,6 +312,15 @@ export default (props) => {
     }
   };
 
+  const toggleKeystroke = () => {
+    if (hideKeystroke()) {
+      setHideKeystroke(false);
+    } else {
+      setIsKeystrokeVisible(false);
+      setHideKeystroke(true);
+    }
+  };
+
   const onKeyDown = (e) => {
     if (e.altKey || e.metaKey || e.ctrlKey) {
       return;
@@ -323,6 +351,8 @@ export default (props) => {
       core.seek(`${pos * 100}%`);
     } else if (e.key == "?") {
       toggleHelp();
+    } else if (e.key == "k") {
+      toggleKeystroke();
     } else if (e.key == "ArrowLeft") {
       if (e.shiftKey) {
         core.seek("<<<");
@@ -503,6 +533,13 @@ export default (props) => {
             onSeekClick={seek}
             onMuteClick={toggleMuted}
             ref={controlBarRef}
+          />
+        </Show>
+        <Show when={isKeystrokeVisible()}>
+          <KeystrokesOverlay
+            fontFamily={props.terminalFontFamily}
+            keystroke={keyStroke()}
+            logger={props.logger}
           />
         </Show>
         <Switch>

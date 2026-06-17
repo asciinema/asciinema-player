@@ -29,6 +29,7 @@ class Core {
     this.audioUrl = opts.audioUrl;
     this.initPromise = null;
     this.commandQueue = Promise.resolve();
+    this.hideKeystroke = opts.hideKeystroke ?? true;
 
     this.startupPromise = new Promise((resolve) => {
       this.resolveStartup = resolve;
