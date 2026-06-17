@@ -11,6 +11,7 @@ function mount(core, elem, opts = {}) {
     rows: opts.rows,
     fit: opts.fit,
     controls: opts.controls,
+    cursorMode: opts.cursorMode,
     autoPlay: opts.autoPlay,
     boldIsBright: opts.boldIsBright,
     adaptivePalette: opts.adaptivePalette,

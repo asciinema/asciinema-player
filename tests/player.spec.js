@@ -351,6 +351,50 @@ test("bold+inverse keeps indexed fg when boldIsBright=false", async ({ page }) =
   expect(cells[0]).toBe("#4e9a06");
 });
 
+test("cursorMode=blinking toggles cursor visibility during playback", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/cursor.cast", {
+    autoPlay: true,
+    theme: "tango",
+  });
+
+  await playerApi.events.waitFor("playing");
+
+  const visible = await waitForCellColor(page, [0, 1, 0.5, 0.5], "#cccccc");
+  const hidden = await waitForCellColor(page, [0, 1, 0.5, 0.5], "#121314");
+
+  expect(visible).toBe(true);
+  expect(hidden).toBe(true);
+});
+
+test("cursorMode=steady keeps cursor visible during playback", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/cursor.cast", {
+    autoPlay: true,
+    cursorMode: "steady",
+    theme: "tango",
+  });
+
+  await playerApi.events.waitFor("playing");
+  await page.waitForTimeout(800);
+
+  const { cells } = await sampleTerminalPixels(page, { cells: [[0, 1, 0.5, 0.5]] });
+
+  expect(cells[0]).toBe("#cccccc");
+});
+
+test("cursorMode=hidden hides cursor", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/cursor.cast", {
+    autoPlay: true,
+    cursorMode: "hidden",
+    theme: "tango",
+  });
+
+  await playerApi.events.waitFor("playing");
+
+  const { cells } = await sampleTerminalPixels(page, { cells: [[0, 1, 0.5, 0.5]] });
+
+  expect(cells[0]).toBe("#121314");
+});
+
 test("RGB colors apply across text, raster, and SVG layers", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/rgb.cast", {
     autoPlay: true,
@@ -1116,6 +1160,20 @@ async function sampleTerminalPixels(page, options = {}) {
     },
     { dataUrl, cells, border },
   );
+}
+
+async function waitForCellColor(page, cell, color) {
+  for (let i = 0; i < 15; i += 1) {
+    const { cells } = await sampleTerminalPixels(page, { cells: [cell] });
+
+    if (cells[0] === color) {
+      return true;
+    }
+
+    await page.waitForTimeout(200);
+  }
+
+  return false;
 }
 
 function buildThemeSamples(theme) {

@@ -476,6 +476,7 @@ export default (props) => {
           rows={terminalRows()}
           scale={terminalScale()}
           blinking={blinking()}
+          cursorMode={props.cursorMode}
           boldIsBright={props.boldIsBright}
           adaptivePalette={props.adaptivePalette}
           lineHeight={props.terminalLineHeight}

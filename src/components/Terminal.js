@@ -32,7 +32,12 @@ export default (props) => {
   const [theme, setTheme] = createSignal(buildTheme(FALLBACK_THEME, props.adaptivePalette));
   const lineHeight = () => props.lineHeight ?? 1.3333333333;
   const [blinkOn, setBlinkOn] = createSignal(true);
-  const cursorOn = createMemo(() => blinkOn() || cursorHold);
+
+  const cursorOn = createMemo(() => {
+    if (props.cursorMode === "hidden") return false;
+    if (props.cursorMode === "steady") return true;
+    return blinkOn() || cursorHold;
+  });
 
   const style = createMemo(() => {
     return {
@@ -253,7 +258,7 @@ export default (props) => {
       }
 
       const theme_ = theme();
-      const cursorOn_ = blinkOn() || cursorHold;
+      const cursorOn_ = cursorOn();
 
       for (const r of rows) {
         renderRow(r, theme_, cursorOn_);

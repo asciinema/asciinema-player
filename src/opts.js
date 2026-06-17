@@ -21,6 +21,7 @@ const UI_OPTS = [
   'cols',
   'adaptivePalette',
   'controls',
+  'cursorMode',
   'fit',
   'rows',
   'terminalFontFamily',
@@ -48,6 +49,11 @@ function uiOpts(inputOpts, overrides = {}) {
   opts.autoPlay ??= opts.autoplay;
   opts.adaptivePalette ??= false;
   opts.controls ??= "auto";
+  opts.cursorMode ??= "blinking";
+
+  if (!["blinking", "steady", "hidden"].includes(opts.cursorMode)) {
+    throw new Error(`unsupported cursor mode: ${opts.cursorMode}`);
+  }
 
   return { ...opts, ...overrides };
 }
