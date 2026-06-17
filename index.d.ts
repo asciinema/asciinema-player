@@ -71,6 +71,7 @@ export interface Options {
   fit?: "width" | "height" | "both" | "none" | false;
   controls?: boolean | "auto";
   cursorMode?: "blinking" | "steady" | "hidden";
+  hideKeystroke?: boolean;
   markers?: Marker[];
   pauseOnMarkers?: boolean;
   terminalFontSize?: "small" | "medium" | "big" | string;
