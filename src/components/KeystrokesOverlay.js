@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js";
 
 const controlSeqs = Object.fromEntries(
   Array.from({ length: 26 }, (_, i) => {
@@ -164,14 +164,18 @@ export default (props) => {
   });
 
   return (
-    <div
-      class={
-        isFading() ? "ap-overlay ap-overlay-keystrokes fading" : "ap-overlay ap-overlay-keystrokes"
-      }
-    >
-      <div>
-        <kbd>{keyLabel()}</kbd>
+    <Show when={keyLabel() !== ""}>
+      <div
+        class={
+          isFading()
+            ? "ap-overlay ap-overlay-keystrokes fading"
+            : "ap-overlay ap-overlay-keystrokes"
+        }
+      >
+        <div>
+          <kbd>{keyLabel()}</kbd>
+        </div>
       </div>
-    </div>
+    </Show>
   );
 };
