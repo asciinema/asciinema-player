@@ -113,7 +113,6 @@ export default (props) => {
 
   const onCorePlay = () => {
     setOverlay(null);
-    setIsKeystrokeVisible(!hideKeystroke());
   };
 
   const onCorePlaying = () => {

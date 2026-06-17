@@ -98,6 +98,24 @@ test("emits input events during playback", async ({ page }) => {
   expect(inputs).toEqual(["a", "\r"]);
 });
 
+test("hides keystroke overlay by default", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/input.cast");
+
+  await playerApi.play();
+  await playerApi.events.collect();
+
+  await expect(page.locator(".ap-overlay-keystrokes")).toHaveCount(0);
+});
+
+test("shows keystroke overlay when enabled", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/input.cast", { hideKeystroke: false });
+
+  await playerApi.play();
+  await playerApi.events.waitFor("input");
+
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(/^(a|Ret)$/);
+});
+
 test("emits marker events during playback", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/markers.cast");
 
@@ -139,9 +157,11 @@ test("invalid audioUrl falls back to playback without audio", async ({ page }) =
 
   const metadata = await playerApi.events.waitFor("metadata");
 
-  expect(metadata.payload).toEqual(expect.objectContaining({
-    hasAudio: false,
-  }));
+  expect(metadata.payload).toEqual(
+    expect.objectContaining({
+      hasAudio: false,
+    }),
+  );
 
   await playerApi.events.waitFor("playing");
 });
