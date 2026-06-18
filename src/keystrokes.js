@@ -39,7 +39,7 @@ const arrowKeys = {
 };
 
 const unicodeSeqs = {
-  "[3~": "Supr",
+  "[3~": "Del",
   "[C": arrowKeys.right,
   OC: arrowKeys.right,
   "[1;3C": `A-${arrowKeys.right}`,
@@ -132,7 +132,7 @@ const csiFinalKeys = {
 };
 
 const csiTildeKeys = {
-  3: "Supr",
+  3: "Del",
   5: "PgUp",
   6: "PgDn",
   15: "F5",

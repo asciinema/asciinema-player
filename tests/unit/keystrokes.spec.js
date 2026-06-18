@@ -12,6 +12,8 @@ const cases = [
   ["right arrow key", "\u001b[C", "→"],
   ["left arrow key", "\u001b[D", "←"],
   ["modified arrow key", "\u001b[1;5C", "C-→"],
+  ["delete", "\u001b[3~", "Del"],
+  ["modified delete", "\u001b[3;129~", "Del"],
   ["scroll lock", "\u001b[57359;129u", "Scroll"],
   ["pause", "\u001b[57362;129u", "Pause"],
   ["keypad enter", "\u001b[57414;129u", "Enter"],
