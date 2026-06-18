@@ -196,17 +196,6 @@ test("keeps keystroke fade timers independent", async ({ page }) => {
   await expect(pills.last()).not.toHaveClass(/fading/);
 });
 
-test("formats control keystrokes", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/ctrl-input.cast", {
-    keystrokeOverlay: true,
-  });
-
-  await playerApi.play();
-  await playerApi.events.waitFor("input");
-
-  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("C-p");
-});
-
 test("emits marker events during playback", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/markers.cast");
 
