@@ -132,6 +132,24 @@ test("positions keystroke overlay near lower right", async ({ page }) => {
   expect(overlayBox.y).toBeGreaterThan(playerBox.y + playerBox.height * 0.5);
 });
 
+test("shows last four keystrokes in a right-anchored reel", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/keystroke-reel.cast", {
+    hideKeystroke: false,
+  });
+
+  await playerApi.play();
+  await waitForInputEvents(playerApi, 5);
+
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(["b", "c", "d", "e"]);
+
+  const playerBox = await page.locator(".ap-player").boundingBox();
+  const latestBox = await page.locator(".ap-overlay-keystrokes kbd").last().boundingBox();
+
+  expect(playerBox).not.toBeNull();
+  expect(latestBox).not.toBeNull();
+  expect(latestBox.x + latestBox.width).toBeGreaterThan(playerBox.x + playerBox.width - 24);
+});
+
 test("restarts keystroke fade for repeated keys", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/repeated-input.cast", {
     hideKeystroke: false,
@@ -140,13 +158,21 @@ test("restarts keystroke fade for repeated keys", async ({ page }) => {
   await playerApi.play();
   await playerApi.events.waitFor("input");
 
-  await expect(page.locator(".ap-overlay-keystrokes")).not.toHaveClass(/fading/);
-  await expect(page.locator(".ap-overlay-keystrokes")).toHaveClass(/fading/);
+  const pills = page.locator(".ap-keystroke-pill");
+
+  await expect(pills.first()).not.toHaveClass(/fading/);
 
   await playerApi.events.waitFor("input");
 
-  await expect(page.locator(".ap-overlay-keystrokes")).not.toHaveClass(/fading/);
-  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("a");
+  await expect(pills).toHaveCount(2);
+  await expect(pills.first()).not.toHaveClass(/fading/);
+  await expect(pills.last()).not.toHaveClass(/fading/);
+  await expect(page.locator(".ap-overlay-keystrokes kbd").last()).toHaveText("a");
+
+  await page.waitForTimeout(1300);
+
+  await expect(pills).toHaveCount(2);
+  await expect(pills.first()).toHaveClass(/fading/);
 });
 
 test("formats control keystrokes", async ({ page }) => {
@@ -1128,6 +1154,12 @@ async function focusPlayer(page) {
   await page.evaluate(() => {
     document.querySelector(".ap-wrapper")?.focus();
   });
+}
+
+async function waitForInputEvents(playerApi, count) {
+  for (let i = 0; i < count; i += 1) {
+    await playerApi.events.waitFor("input");
+  }
 }
 
 async function setPlayerContainerSize(page, width, height) {

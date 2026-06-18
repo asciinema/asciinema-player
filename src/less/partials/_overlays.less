@@ -92,13 +92,17 @@
     font-size: 18px;
     text-align: right;
     padding: 0;
-    opacity: 0.95;
-    transition: opacity 80ms ease;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.35em;
     pointer-events: none;
 
-    > div {
+    .ap-keystroke-pill {
       font-family: var(--term-font-family);
       font-size: inherit;
+      opacity: 0.95;
+      transition: opacity 80ms ease;
 
       kbd {
         display: inline-flex;
@@ -114,11 +118,11 @@
         margin: 0;
       }
     }
-  }
 
-  .ap-overlay-keystrokes.fading {
-    opacity: 0;
-    transition: opacity 700ms ease;
+    .ap-keystroke-pill.fading {
+      opacity: 0;
+      transition: opacity 700ms ease;
+    }
   }
 
   .ap-overlay-help {

@@ -9,8 +9,10 @@ import InfoOverlay from "./InfoOverlay";
 import StartOverlay from "./StartOverlay";
 import HelpOverlay from "./HelpOverlay";
 import KeystrokesOverlay from "./KeystrokesOverlay";
+import { formatKeyCode } from "../keystrokes";
 
 const CONTROL_BAR_HEIGHT = 32; // must match height of div.ap-control-bar in CSS
+const MAX_KEYSTROKES = 4;
 
 export default (props) => {
   const logger = props.logger;
@@ -47,12 +49,12 @@ export default (props) => {
   const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
   const [hideKeystroke, setHideKeystroke] = createSignal(props.hideKeystroke);
-  const [isKeystrokeVisible, setIsKeystrokeVisible] = createSignal(false);
-  const [keyStroke, setKeyStroke] = createSignal(null);
+  const [keystrokes, setKeystrokes] = createSignal([]);
 
   const controlsVisible = () =>
     props.controls === true || (props.controls === "auto" && userActive());
 
+  let nextKeystrokeId = 1;
   let userActivityTimeoutId;
   let timeUpdateIntervalId;
   let wrapperRef;
@@ -136,7 +138,7 @@ export default (props) => {
       setIsPlaying(false);
       onStopped();
       setOverlay("loader");
-      setIsKeystrokeVisible(false);
+      clearKeystrokes();
     });
   };
 
@@ -144,7 +146,7 @@ export default (props) => {
     batch(() => {
       setIsPlaying(false);
       onStopped();
-      setIsKeystrokeVisible(false);
+      clearKeystrokes();
 
       if (message !== undefined) {
         setInfoMessage(message);
@@ -174,6 +176,7 @@ export default (props) => {
   };
 
   const onCoreError = () => {
+    clearKeystrokes();
     setOverlay("error");
   };
 
@@ -182,14 +185,46 @@ export default (props) => {
       return;
     }
 
-    setIsKeystrokeVisible(false);
-    setKeyStroke({ ms: Date.now(), value: data });
-    queueMicrotask(() => setIsKeystrokeVisible(true));
+    const label = formatKeyCode(data, logger);
+
+    if (label === "") {
+      return;
+    }
+
+    const currentKeystrokes = keystrokes();
+    const latestKeystroke = currentKeystrokes[currentKeystrokes.length - 1];
+
+    if (latestKeystroke !== undefined) {
+      latestKeystroke.refresh();
+    }
+
+    setKeystrokes([...currentKeystrokes, createKeystroke(label)].slice(-MAX_KEYSTROKES));
   };
 
   const onCoreSeeked = () => {
     updateTime();
-    setIsKeystrokeVisible(false);
+    clearKeystrokes();
+  };
+
+  const clearKeystrokes = () => {
+    setKeystrokes([]);
+  };
+
+  const removeKeystroke = (id, rev) => {
+    setKeystrokes((keystrokes) =>
+      keystrokes.filter((keystroke) => keystroke.id !== id || keystroke.rev() !== rev),
+    );
+  };
+
+  const createKeystroke = (label) => {
+    const [rev, setRev] = createSignal(0);
+
+    return {
+      id: nextKeystrokeId++,
+      label,
+      rev,
+      refresh: () => setRev((rev) => rev + 1),
+    };
   };
 
   core.addEventListener("ready", onCoreReady);
@@ -316,7 +351,7 @@ export default (props) => {
     if (hideKeystroke()) {
       setHideKeystroke(false);
     } else {
-      setIsKeystrokeVisible(false);
+      clearKeystrokes();
       setHideKeystroke(true);
     }
   };
@@ -535,15 +570,13 @@ export default (props) => {
             ref={controlBarRef}
           />
         </Show>
-        <Show when={isKeystrokeVisible() && keyStroke()} keyed>
-          {(keystroke) => (
-            <KeystrokesOverlay
-              bottomOffset={controlBarHeight()}
-              fontFamily={props.terminalFontFamily}
-              keystroke={keystroke}
-              logger={props.logger}
-            />
-          )}
+        <Show when={keystrokes().length > 0}>
+          <KeystrokesOverlay
+            bottomOffset={controlBarHeight()}
+            fontFamily={props.terminalFontFamily}
+            keystrokes={keystrokes()}
+            onExpired={removeKeystroke}
+          />
         </Show>
         <Switch>
           <Match when={overlay() == "start"}>

@@ -1,41 +1,47 @@
-import { createEffect, createSignal, onCleanup, Show } from "solid-js";
-import { formatKeyCode } from "../keystrokes";
+import { createEffect, createSignal, For, onCleanup } from "solid-js";
 
-const FADE_DELAY_MS = 1200;
+const VISIBLE_MS = 1200;
+const FADE_MS = 700;
 
-export default (props) => {
+function KeystrokePill(props) {
   const [isFading, setIsFading] = createSignal(false);
-  const keyLabel =
-    props.keystroke === null ? "" : formatKeyCode(props.keystroke.value, props.logger);
 
   createEffect(() => {
-    if (keyLabel === "") {
-      return;
-    }
+    const { id } = props.keystroke;
+    const rev = props.keystroke.rev();
 
     setIsFading(false);
 
-    const timeoutId = setTimeout(function () {
+    const fadeTimeoutId = setTimeout(function () {
       setIsFading(true);
-    }, FADE_DELAY_MS);
+    }, VISIBLE_MS);
 
-    onCleanup(() => clearTimeout(timeoutId));
+    const expireTimeoutId = setTimeout(function () {
+      props.onExpired(id, rev);
+    }, VISIBLE_MS + FADE_MS);
+
+    onCleanup(() => {
+      clearTimeout(fadeTimeoutId);
+      clearTimeout(expireTimeoutId);
+    });
   });
 
   return (
-    <Show when={keyLabel !== ""}>
-      <div
-        class={
-          isFading()
-            ? "ap-overlay ap-overlay-keystrokes fading"
-            : "ap-overlay ap-overlay-keystrokes"
-        }
-        style={{ "--ap-keystrokes-bottom": `${(props.bottomOffset ?? 0) + 12}px` }}
-      >
-        <div>
-          <kbd>{keyLabel}</kbd>
-        </div>
-      </div>
-    </Show>
+    <div class={isFading() ? "ap-keystroke-pill fading" : "ap-keystroke-pill"}>
+      <kbd>{props.keystroke.label}</kbd>
+    </div>
+  );
+}
+
+export default (props) => {
+  return (
+    <div
+      class="ap-overlay ap-overlay-keystrokes"
+      style={{ "--ap-keystrokes-bottom": `${(props.bottomOffset ?? 0) + 12}px` }}
+    >
+      <For each={props.keystrokes}>
+        {(keystroke) => <KeystrokePill keystroke={keystroke} onExpired={props.onExpired} />}
+      </For>
+    </div>
   );
 };
