@@ -222,7 +222,7 @@ function formatEscapeSequence(data) {
   return "";
 }
 
-export function formatKeystroke(data, logger) {
+export function formatKeystroke(data) {
   if (data in basicSeqs) {
     return { kind: "special", label: basicSeqs[data] };
   }
@@ -242,12 +242,9 @@ export function formatKeystroke(data, logger) {
     }
   }
 
-  const rep = JSON.stringify(data).slice(1, -1);
-  if (rep.length < 10) logger?.info("<" + rep + ">", rep.length);
-
   return null;
 }
 
-export function formatKeyCode(data, logger) {
-  return formatKeystroke(data, logger)?.label ?? "";
+export function formatKeyCode(data) {
+  return formatKeystroke(data)?.label ?? "";
 }

@@ -186,7 +186,7 @@ export default (props) => {
       return;
     }
 
-    const keystroke = formatKeystroke(data, logger);
+    const keystroke = formatKeystroke(data);
 
     if (keystroke === null) {
       return;
