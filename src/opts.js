@@ -51,7 +51,7 @@ function uiOpts(inputOpts, overrides = {}) {
   opts.adaptivePalette ??= false;
   opts.controls ??= "auto";
   opts.cursorMode ??= "blinking";
-  opts.keystrokeOverlay ??= true;
+  opts.keystrokeOverlay ??= false;
 
   if (!["blinking", "steady", "hidden"].includes(opts.cursorMode)) {
     throw new Error(`unsupported cursor mode: ${opts.cursorMode}`);
