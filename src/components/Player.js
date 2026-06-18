@@ -49,9 +49,11 @@ export default (props) => {
   const terminalCols = createMemo(() => terminalSize().cols || 80);
   const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
+
   const [isKeystrokeOverlayEnabled, setKeystrokeOverlayEnabled] = createSignal(
     props.keystrokeOverlay !== false,
   );
+
   const [keystrokes, setKeystrokes] = createSignal([]);
 
   const controlsVisible = () =>
