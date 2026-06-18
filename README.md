@@ -42,6 +42,7 @@ Notable features:
 * configurable [font families](https://docs.asciinema.org/manual/player/fonts/) and [line height](https://docs.asciinema.org/manual/player/options/#terminallineheight),
 * [automatic terminal scaling](https://docs.asciinema.org/manual/player/options/#fit) to fit into container element in most efficient way,
 * full-screen mode,
+* [keystroke overlay](https://docs.asciinema.org/manual/player/options/#keystrokeoverlay) showing keys typed during the recording,
 * [multiple color themes for standard 16 colors](https://docs.asciinema.org/manual/player/options/#theme) + support for 256 color palette and 24-bit true color (ISO-8613-3),
 * [adjustable playback speed](https://docs.asciinema.org/manual/player/options/#speed),
 * [looped playback](https://docs.asciinema.org/manual/player/options/#loop), infinite or finite,
