@@ -21,20 +21,27 @@ const singles = {
   " ": "Spc",
 };
 
+const arrowKeys = {
+  up: "↑",
+  down: "↓",
+  left: "←",
+  right: "→",
+};
+
 const unicodeSeqs = {
   "[3~": "Supr",
-  "[C": "Right",
-  OC: "Right",
-  "[1;3C": "A-Right",
-  "[D": "Left",
-  OD: "Left",
-  "[1;3D": "A-Left",
-  "[A": "Up",
-  OA: "Up",
-  "[1;3A": "A-Up",
-  "[B": "Down",
-  OB: "Down",
-  "[1;3B": "A-Down",
+  "[C": arrowKeys.right,
+  OC: arrowKeys.right,
+  "[1;3C": `A-${arrowKeys.right}`,
+  "[D": arrowKeys.left,
+  OD: arrowKeys.left,
+  "[1;3D": `A-${arrowKeys.left}`,
+  "[A": arrowKeys.up,
+  OA: arrowKeys.up,
+  "[1;3A": `A-${arrowKeys.up}`,
+  "[B": arrowKeys.down,
+  OB: arrowKeys.down,
+  "[1;3B": `A-${arrowKeys.down}`,
   "[H": "Home",
   "[5~": "PgUp",
   "[57421u": "PgUp",
@@ -102,10 +109,10 @@ const unicodeSeqs = {
 };
 
 const csiFinalKeys = {
-  A: "Up",
-  B: "Down",
-  C: "Right",
-  D: "Left",
+  A: arrowKeys.up,
+  B: arrowKeys.down,
+  C: arrowKeys.right,
+  D: arrowKeys.left,
   F: "End",
   H: "Home",
   P: "F1",
