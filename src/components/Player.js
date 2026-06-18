@@ -13,6 +13,7 @@ import { formatKeystroke } from "../keystrokes";
 
 const CONTROL_BAR_HEIGHT = 32; // must match height of div.ap-control-bar in CSS
 const MAX_KEYSTROKES = 4;
+const MAX_TEXT_KEYSTROKE_LENGTH = 10;
 
 export default (props) => {
   const logger = props.logger;
@@ -236,7 +237,7 @@ export default (props) => {
       label: () => (count() === 1 ? value() : `${value()} × ${count()}`),
       rev,
       append: (label) => {
-        setValue((value) => value + label);
+        setValue((value) => (value + label).slice(-MAX_TEXT_KEYSTROKE_LENGTH));
         setRev((rev) => rev + 1);
       },
       increment: () => {

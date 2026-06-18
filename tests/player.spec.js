@@ -156,9 +156,9 @@ test("groups text keystrokes into one pill", async ({ page }) => {
   });
 
   await playerApi.play();
-  await waitForInputEvents(playerApi, 3);
+  await waitForInputEvents(playerApi, 13);
 
-  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(["ab."]);
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(["cdefghijkl"]);
 });
 
 test("counts repeated special keystrokes in one pill", async ({ page }) => {
