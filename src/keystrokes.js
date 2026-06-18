@@ -21,6 +21,16 @@ const singles = {
   " ": "Spc",
 };
 
+const functionalKeys = {
+  57358: "Caps",
+  57359: "Scroll",
+  57360: "Num",
+  57361: "Print",
+  57362: "Pause",
+  57363: "Menu",
+  57414: "Enter",
+};
+
 const arrowKeys = {
   up: "↑",
   down: "↓",
@@ -46,8 +56,8 @@ const unicodeSeqs = {
   "[5~": "PgUp",
   "[57421u": "PgUp",
   "[57421;1:3u": "PgUp",
-  "[57362u": "PgUp",
-  "[57362;1:3u": "PgUp",
+  "[57362u": "Pause",
+  "[57362;1:3u": "Pause",
   "[6~": "PgDn",
   "[57422u": "PgDn",
   "[57422;1:3u": "PgDn",
@@ -153,6 +163,10 @@ function addModifierPrefix(key, modifier) {
 }
 
 function codepointToKey(codepoint) {
+  if (codepoint in functionalKeys) {
+    return functionalKeys[codepoint];
+  }
+
   const char = String.fromCodePoint(codepoint);
 
   if (char in basicSeqs) {
