@@ -12,7 +12,7 @@ function mount(core, elem, opts = {}) {
     fit: opts.fit,
     controls: opts.controls,
     cursorMode: opts.cursorMode,
-    hideKeystroke: opts.hideKeystroke,
+    keystrokeOverlay: opts.keystrokeOverlay,
     autoPlay: opts.autoPlay,
     boldIsBright: opts.boldIsBright,
     adaptivePalette: opts.adaptivePalette,

@@ -23,7 +23,7 @@ const UI_OPTS = [
   "controls",
   "cursorMode",
   "fit",
-  "hideKeystroke",
+  "keystrokeOverlay",
   "rows",
   "terminalFontFamily",
   "terminalFontSize",
@@ -51,10 +51,14 @@ function uiOpts(inputOpts, overrides = {}) {
   opts.adaptivePalette ??= false;
   opts.controls ??= "auto";
   opts.cursorMode ??= "blinking";
-  opts.hideKeystroke ??= true;
+  opts.keystrokeOverlay ??= true;
 
   if (!["blinking", "steady", "hidden"].includes(opts.cursorMode)) {
     throw new Error(`unsupported cursor mode: ${opts.cursorMode}`);
+  }
+
+  if (typeof opts.keystrokeOverlay !== "boolean") {
+    throw new Error(`unsupported keystroke overlay option: ${opts.keystrokeOverlay}`);
   }
 
   return { ...opts, ...overrides };

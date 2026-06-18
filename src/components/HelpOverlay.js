@@ -51,7 +51,7 @@ export default (props) => {
             </li>
 
             <li>
-              <kbd>k</kbd> - toggle keystroke popup
+              <kbd>k</kbd> - toggle keystroke overlay
             </li>
 
             <Show when={props.hasAudio}>

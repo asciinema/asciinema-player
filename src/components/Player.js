@@ -49,7 +49,9 @@ export default (props) => {
   const terminalCols = createMemo(() => terminalSize().cols || 80);
   const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
-  const [hideKeystroke, setHideKeystroke] = createSignal(props.hideKeystroke);
+  const [isKeystrokeOverlayEnabled, setKeystrokeOverlayEnabled] = createSignal(
+    props.keystrokeOverlay !== false,
+  );
   const [keystrokes, setKeystrokes] = createSignal([]);
 
   const controlsVisible = () =>
@@ -182,7 +184,7 @@ export default (props) => {
   };
 
   const onCoreInput = ({ data }) => {
-    if (hideKeystroke()) {
+    if (!isKeystrokeOverlayEnabled()) {
       return;
     }
 
@@ -367,12 +369,12 @@ export default (props) => {
     }
   };
 
-  const toggleKeystroke = () => {
-    if (hideKeystroke()) {
-      setHideKeystroke(false);
-    } else {
+  const toggleKeystrokeOverlay = () => {
+    if (isKeystrokeOverlayEnabled()) {
       clearKeystrokes();
-      setHideKeystroke(true);
+      setKeystrokeOverlayEnabled(false);
+    } else {
+      setKeystrokeOverlayEnabled(true);
     }
   };
 
@@ -407,7 +409,7 @@ export default (props) => {
     } else if (e.key == "?") {
       toggleHelp();
     } else if (e.key == "k") {
-      toggleKeystroke();
+      toggleKeystrokeOverlay();
     } else if (e.key == "ArrowLeft") {
       if (e.shiftKey) {
         core.seek("<<<");
