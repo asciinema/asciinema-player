@@ -8,6 +8,7 @@ function KeystrokePill(props) {
 
   createEffect(() => {
     const { id } = props.keystroke;
+    // Subscribe to append/increment bumps so the fade timer restarts.
     props.keystroke.rev();
 
     setIsFading(false);

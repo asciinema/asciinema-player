@@ -595,7 +595,6 @@ export default (props) => {
         <Show when={keystrokes().length > 0}>
           <KeystrokesOverlay
             bottomOffset={controlBarHeight()}
-            fontFamily={props.terminalFontFamily}
             keystrokes={keystrokes()}
             onExpired={removeKeystroke}
           />
