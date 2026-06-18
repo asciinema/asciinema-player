@@ -13,8 +13,7 @@ const basicSeqs = {
   "\r": "Ret",
   "\t": "Tab",
   "\u001b": "Esc",
-  [String.fromCharCode(127)]: "Back",
-  "^?": "Back",
+  "\u007f": "Back",
 };
 
 const singles = {
