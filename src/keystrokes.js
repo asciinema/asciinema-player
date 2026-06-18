@@ -222,28 +222,32 @@ function formatEscapeSequence(data) {
   return "";
 }
 
-export function formatKeyCode(data, logger) {
+export function formatKeystroke(data, logger) {
   if (data in basicSeqs) {
-    return basicSeqs[data];
+    return { kind: "special", label: basicSeqs[data] };
   }
 
   if (data.length === 1) {
     if (data in singles) {
-      return singles[data];
+      return { kind: "special", label: singles[data] };
     }
-    return data;
+    return { kind: "text", label: data };
   }
 
   if (data.startsWith("\u001b")) {
     const key = formatEscapeSequence(data);
 
     if (key !== "") {
-      return key;
+      return { kind: "special", label: key };
     }
   }
 
   const rep = JSON.stringify(data).slice(1, -1);
   if (rep.length < 10) logger?.info("<" + rep + ">", rep.length);
 
-  return "";
+  return null;
+}
+
+export function formatKeyCode(data, logger) {
+  return formatKeystroke(data, logger)?.label ?? "";
 }

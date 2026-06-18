@@ -8,6 +8,7 @@ function KeystrokePill(props) {
 
   createEffect(() => {
     const { id } = props.keystroke;
+    props.keystroke.rev();
 
     setIsFading(false);
 
@@ -27,7 +28,7 @@ function KeystrokePill(props) {
 
   return (
     <div class={isFading() ? "ap-keystroke-pill fading" : "ap-keystroke-pill"}>
-      <kbd>{props.keystroke.label}</kbd>
+      <kbd>{props.keystroke.label()}</kbd>
     </div>
   );
 }

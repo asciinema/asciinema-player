@@ -138,9 +138,9 @@ test("shows last four keystrokes in a right-anchored reel", async ({ page }) => 
   });
 
   await playerApi.play();
-  await waitForInputEvents(playerApi, 5);
+  await waitForInputEvents(playerApi, 6);
 
-  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(["b", "c", "d", "e"]);
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(["Ret", "c", "Esc", "d"]);
 
   const playerBox = await page.locator(".ap-player").boundingBox();
   const latestBox = await page.locator(".ap-overlay-keystrokes kbd").last().boundingBox();
@@ -148,6 +148,28 @@ test("shows last four keystrokes in a right-anchored reel", async ({ page }) => 
   expect(playerBox).not.toBeNull();
   expect(latestBox).not.toBeNull();
   expect(latestBox.x + latestBox.width).toBeGreaterThan(playerBox.x + playerBox.width - 24);
+});
+
+test("groups text keystrokes into one pill", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/text-group-input.cast", {
+    hideKeystroke: false,
+  });
+
+  await playerApi.play();
+  await waitForInputEvents(playerApi, 3);
+
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(["ab."]);
+});
+
+test("counts repeated special keystrokes in one pill", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/special-group-input.cast", {
+    hideKeystroke: false,
+  });
+
+  await playerApi.play();
+  await waitForInputEvents(playerApi, 3);
+
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(["Ret × 3"]);
 });
 
 test("keeps keystroke fade timers independent", async ({ page }) => {
@@ -167,7 +189,7 @@ test("keeps keystroke fade timers independent", async ({ page }) => {
   await expect(pills).toHaveCount(2);
   await expect(pills.first()).not.toHaveClass(/fading/);
   await expect(pills.last()).not.toHaveClass(/fading/);
-  await expect(page.locator(".ap-overlay-keystrokes kbd").last()).toHaveText("a");
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(["a", "Ret"]);
 
   await page.waitForTimeout(600);
 

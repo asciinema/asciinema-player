@@ -9,7 +9,7 @@ import InfoOverlay from "./InfoOverlay";
 import StartOverlay from "./StartOverlay";
 import HelpOverlay from "./HelpOverlay";
 import KeystrokesOverlay from "./KeystrokesOverlay";
-import { formatKeyCode } from "../keystrokes";
+import { formatKeystroke } from "../keystrokes";
 
 const CONTROL_BAR_HEIGHT = 32; // must match height of div.ap-control-bar in CSS
 const MAX_KEYSTROKES = 4;
@@ -185,13 +185,30 @@ export default (props) => {
       return;
     }
 
-    const label = formatKeyCode(data, logger);
+    const keystroke = formatKeystroke(data, logger);
 
-    if (label === "") {
+    if (keystroke === null) {
       return;
     }
 
-    setKeystrokes([...keystrokes(), createKeystroke(label)].slice(-MAX_KEYSTROKES));
+    const currentKeystrokes = keystrokes();
+    const latestKeystroke = currentKeystrokes[currentKeystrokes.length - 1];
+
+    if (latestKeystroke?.kind === "text" && keystroke.kind === "text") {
+      latestKeystroke.append(keystroke.label);
+      return;
+    }
+
+    if (
+      latestKeystroke?.kind === "special" &&
+      keystroke.kind === "special" &&
+      latestKeystroke.key === keystroke.label
+    ) {
+      latestKeystroke.increment();
+      return;
+    }
+
+    setKeystrokes([...currentKeystrokes, createKeystroke(keystroke)].slice(-MAX_KEYSTROKES));
   };
 
   const onCoreSeeked = () => {
@@ -207,10 +224,25 @@ export default (props) => {
     setKeystrokes((keystrokes) => keystrokes.filter((keystroke) => keystroke.id !== id));
   };
 
-  const createKeystroke = (label) => {
+  const createKeystroke = ({ kind, label }) => {
+    const [value, setValue] = createSignal(label);
+    const [count, setCount] = createSignal(1);
+    const [rev, setRev] = createSignal(0);
+
     return {
       id: nextKeystrokeId++,
-      label,
+      kind,
+      key: label,
+      label: () => (count() === 1 ? value() : `${value()} × ${count()}`),
+      rev,
+      append: (label) => {
+        setValue((value) => value + label);
+        setRev((rev) => rev + 1);
+      },
+      increment: () => {
+        setCount((count) => count + 1);
+        setRev((rev) => rev + 1);
+      },
     };
   };
 
