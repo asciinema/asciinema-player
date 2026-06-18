@@ -28,6 +28,8 @@ const functionalKeys = {
   57362: "Pause",
   57363: "Menu",
   57414: "Enter",
+  57421: "PgUp",
+  57422: "PgDn",
 };
 
 const arrowKeys = {
@@ -35,17 +37,6 @@ const arrowKeys = {
   down: "↓",
   left: "←",
   right: "→",
-};
-
-// Protocol-specific aliases that do not fit the generic CSI/SS3 parsers below.
-const unicodeSeqs = {
-  "[57421u": "PgUp",
-  "[57421;1:3u": "PgUp",
-  "[57362u": "Pause",
-  "[57362;1:3u": "Pause",
-  "[57422u": "PgDn",
-  "[57422;1:3u": "PgDn",
-  "[27u": "Esc",
 };
 
 const csiFinalKeys = {
@@ -112,10 +103,6 @@ function codepointToKey(codepoint) {
 }
 
 function formatCsiSequence(seq) {
-  if (seq in unicodeSeqs) {
-    return unicodeSeqs[seq];
-  }
-
   const csiUAlt = seq.match(/^(\d+);;(\d+)u$/);
 
   if (csiUAlt !== null) {
@@ -172,10 +159,6 @@ function formatEscapeSequence(data) {
     }
 
     return seq in singles ? "A-" + singles[seq] : "A-" + seq;
-  }
-
-  if (seq in unicodeSeqs) {
-    return unicodeSeqs[seq];
   }
 
   if (seq.startsWith("[")) {
