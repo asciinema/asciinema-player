@@ -38,83 +38,14 @@ const arrowKeys = {
   right: "→",
 };
 
+// Protocol-specific aliases that do not fit the generic CSI/SS3 parsers below.
 const unicodeSeqs = {
-  "[3~": "Del",
-  "[C": arrowKeys.right,
-  OC: arrowKeys.right,
-  "[1;3C": `A-${arrowKeys.right}`,
-  "[D": arrowKeys.left,
-  OD: arrowKeys.left,
-  "[1;3D": `A-${arrowKeys.left}`,
-  "[A": arrowKeys.up,
-  OA: arrowKeys.up,
-  "[1;3A": `A-${arrowKeys.up}`,
-  "[B": arrowKeys.down,
-  OB: arrowKeys.down,
-  "[1;3B": `A-${arrowKeys.down}`,
-  "[H": "Home",
-  "[5~": "PgUp",
   "[57421u": "PgUp",
   "[57421;1:3u": "PgUp",
   "[57362u": "Pause",
   "[57362;1:3u": "Pause",
-  "[6~": "PgDn",
   "[57422u": "PgDn",
   "[57422;1:3u": "PgDn",
-  OP: "F1",
-  "[P": "F1",
-  "[1;1:3P": "F1",
-  OQ: "F2",
-  "[Q": "F2",
-  "[1;1:3Q": "F2",
-  OR: "F3",
-  "[R": "F3",
-  "[1;1:3R": "F3",
-  OS: "F4",
-  "[S": "F4",
-  "[1;1:3S": "F4",
-  "[15~": "F5",
-  "[15;1:3~": "F5",
-  "[17~": "F6",
-  "[17;1:3~": "F6",
-  "[18~": "F7",
-  "[18;1:3~": "F7",
-  "[19~": "F8",
-  "[19;1:3~": "F8",
-  "[20~": "F9",
-  "[20;1:3~": "F9",
-  "[21~": "F10",
-  "[21;1:3~": "F10",
-  "[23~": "F11",
-  "[23;1:3~": "F11",
-  "[24~": "F12",
-  "[24;1:3~": "F12",
-  "[97;;97u": "A-a",
-  "[98;;98u": "A-b",
-  "[99;;99u": "A-c",
-  "[100;;100u": "A-d",
-  "[101;;101u": "A-e",
-  "[102;;102u": "A-f",
-  "[103;;103u": "A-g",
-  "[104;;104u": "A-h",
-  "[105;;105u": "A-i",
-  "[106;;106u": "A-j",
-  "[107;;107u": "A-k",
-  "[108;;108u": "A-l",
-  "[109;;109u": "A-m",
-  "[110;;110u": "A-n",
-  "[111;;111u": "A-o",
-  "[112;;112u": "A-p",
-  "[113;;113u": "A-q",
-  "[114;;114u": "A-r",
-  "[115;;115u": "A-s",
-  "[116;;116u": "A-t",
-  "[117;;117u": "A-u",
-  "[118;;118u": "A-v",
-  "[119;;119u": "A-w",
-  "[120;;120u": "A-x",
-  "[121;;121u": "A-y",
-  "[122;;122u": "A-z",
   "[27u": "Esc",
 };
 
@@ -132,6 +63,7 @@ const csiFinalKeys = {
 };
 
 const csiTildeKeys = {
+  2: "Ins",
   3: "Del",
   5: "PgUp",
   6: "PgDn",
@@ -185,11 +117,29 @@ function formatCsiSequence(seq) {
     return unicodeSeqs[seq];
   }
 
+  const csiUAlt = seq.match(/^(\d+);;(\d+)u$/);
+
+  if (csiUAlt !== null) {
+    return `A-${codepointToKey(Number.parseInt(csiUAlt[2], 10))}`;
+  }
+
   const csiU = seq.match(/^(\d+)(?:;([\d:]+))?u$/);
 
   if (csiU !== null) {
     const key = codepointToKey(Number.parseInt(csiU[1], 10));
     return csiU[2] === undefined ? key : addModifierPrefix(key, csiU[2]);
+  }
+
+  const finalKey = seq.match(/^O?([A-Z])$/);
+
+  if (finalKey !== null && finalKey[1] in csiFinalKeys) {
+    return csiFinalKeys[finalKey[1]];
+  }
+
+  const tildeKey = seq.match(/^(\d+)~$/);
+
+  if (tildeKey !== null && tildeKey[1] in csiTildeKeys) {
+    return csiTildeKeys[tildeKey[1]];
   }
 
   const modifyOtherKeys = seq.match(/^27;([\d:]+);(\d+)~$/);
@@ -231,6 +181,10 @@ function formatEscapeSequence(data) {
 
   if (seq.startsWith("[")) {
     return formatCsiSequence(seq.slice(1));
+  }
+
+  if (seq.startsWith("O")) {
+    return formatCsiSequence(seq);
   }
 
   return "";
