@@ -98,17 +98,8 @@ test("emits input events during playback", async ({ page }) => {
   expect(inputs).toEqual(["a", "\r"]);
 });
 
-test("shows keystroke overlay by default", async ({ page }) => {
+test("hides keystroke overlay by default", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/input.cast");
-
-  await playerApi.play();
-  await playerApi.events.waitFor("input");
-
-  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(/^(a|Ret)$/);
-});
-
-test("hides keystroke overlay when disabled", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/input.cast", { keystrokeOverlay: false });
 
   await playerApi.play();
   await playerApi.events.collect();
@@ -116,8 +107,17 @@ test("hides keystroke overlay when disabled", async ({ page }) => {
   await expect(page.locator(".ap-overlay-keystrokes")).toHaveCount(0);
 });
 
+test("shows keystroke overlay when enabled", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/input.cast", { keystrokeOverlay: true });
+
+  await playerApi.play();
+  await playerApi.events.waitFor("input");
+
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(/^(a|Ret)$/);
+});
+
 test("positions keystroke overlay near lower right", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/input.cast");
+  const playerApi = await createPlayer(page, "/assets/input.cast", { keystrokeOverlay: true });
 
   await playerApi.play();
   await playerApi.events.waitFor("input");
@@ -133,7 +133,9 @@ test("positions keystroke overlay near lower right", async ({ page }) => {
 });
 
 test("shows last four keystrokes in a right-anchored reel", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/keystroke-reel.cast");
+  const playerApi = await createPlayer(page, "/assets/keystroke-reel.cast", {
+    keystrokeOverlay: true,
+  });
 
   await playerApi.play();
   await waitForInputEvents(playerApi, 6);
@@ -149,7 +151,9 @@ test("shows last four keystrokes in a right-anchored reel", async ({ page }) => 
 });
 
 test("groups text keystrokes into one pill", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/text-group-input.cast");
+  const playerApi = await createPlayer(page, "/assets/text-group-input.cast", {
+    keystrokeOverlay: true,
+  });
 
   await playerApi.play();
   await waitForInputEvents(playerApi, 13);
@@ -158,7 +162,9 @@ test("groups text keystrokes into one pill", async ({ page }) => {
 });
 
 test("counts repeated special keystrokes in one pill", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/special-group-input.cast");
+  const playerApi = await createPlayer(page, "/assets/special-group-input.cast", {
+    keystrokeOverlay: true,
+  });
 
   await playerApi.play();
   await waitForInputEvents(playerApi, 3);
@@ -167,7 +173,9 @@ test("counts repeated special keystrokes in one pill", async ({ page }) => {
 });
 
 test("keeps keystroke fade timers independent", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/repeated-input.cast");
+  const playerApi = await createPlayer(page, "/assets/repeated-input.cast", {
+    keystrokeOverlay: true,
+  });
 
   await playerApi.play();
   await playerApi.events.waitFor("input");
@@ -189,7 +197,9 @@ test("keeps keystroke fade timers independent", async ({ page }) => {
 });
 
 test("formats control keystrokes", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/ctrl-input.cast");
+  const playerApi = await createPlayer(page, "/assets/ctrl-input.cast", {
+    keystrokeOverlay: true,
+  });
 
   await playerApi.play();
   await playerApi.events.waitFor("input");
