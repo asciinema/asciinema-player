@@ -158,61 +158,6 @@ test("formats control keystrokes", async ({ page }) => {
   await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("C-p");
 });
 
-test("formats CSI-u control keystrokes", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/ctrl-csi-u-input.cast", {
-    hideKeystroke: false,
-  });
-
-  await playerApi.play();
-  await playerApi.events.waitFor("input");
-
-  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("C-p");
-});
-
-test("formats modified arrow keystrokes", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/ctrl-arrow-input.cast", {
-    hideKeystroke: false,
-  });
-
-  await playerApi.play();
-  await playerApi.events.waitFor("input");
-
-  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("C-Right");
-});
-
-test("formats backspace keystrokes", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/backspace-input.cast", {
-    hideKeystroke: false,
-  });
-
-  await playerApi.play();
-  await playerApi.events.waitFor("input");
-
-  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("Back");
-});
-
-test("formats alt-backspace keystrokes", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/alt-backspace-input.cast", {
-    hideKeystroke: false,
-  });
-
-  await playerApi.play();
-  await playerApi.events.waitFor("input");
-
-  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText("A-Back");
-});
-
-test("does not render unsupported keystrokes", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/unknown-input.cast", {
-    hideKeystroke: false,
-  });
-
-  await playerApi.play();
-  await playerApi.events.waitFor("input");
-
-  await expect(page.locator(".ap-overlay-keystrokes")).toHaveCount(0);
-});
-
 test("emits marker events during playback", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/markers.cast");
 
