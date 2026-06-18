@@ -150,7 +150,7 @@ test("shows last four keystrokes in a right-anchored reel", async ({ page }) => 
   expect(latestBox.x + latestBox.width).toBeGreaterThan(playerBox.x + playerBox.width - 24);
 });
 
-test("restarts keystroke fade for repeated keys", async ({ page }) => {
+test("keeps keystroke fade timers independent", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/repeated-input.cast", {
     hideKeystroke: false,
   });
@@ -169,10 +169,11 @@ test("restarts keystroke fade for repeated keys", async ({ page }) => {
   await expect(pills.last()).not.toHaveClass(/fading/);
   await expect(page.locator(".ap-overlay-keystrokes kbd").last()).toHaveText("a");
 
-  await page.waitForTimeout(1300);
+  await page.waitForTimeout(600);
 
   await expect(pills).toHaveCount(2);
   await expect(pills.first()).toHaveClass(/fading/);
+  await expect(pills.last()).not.toHaveClass(/fading/);
 });
 
 test("formats control keystrokes", async ({ page }) => {

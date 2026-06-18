@@ -191,14 +191,7 @@ export default (props) => {
       return;
     }
 
-    const currentKeystrokes = keystrokes();
-    const latestKeystroke = currentKeystrokes[currentKeystrokes.length - 1];
-
-    if (latestKeystroke !== undefined) {
-      latestKeystroke.refresh();
-    }
-
-    setKeystrokes([...currentKeystrokes, createKeystroke(label)].slice(-MAX_KEYSTROKES));
+    setKeystrokes([...keystrokes(), createKeystroke(label)].slice(-MAX_KEYSTROKES));
   };
 
   const onCoreSeeked = () => {
@@ -210,20 +203,14 @@ export default (props) => {
     setKeystrokes([]);
   };
 
-  const removeKeystroke = (id, rev) => {
-    setKeystrokes((keystrokes) =>
-      keystrokes.filter((keystroke) => keystroke.id !== id || keystroke.rev() !== rev),
-    );
+  const removeKeystroke = (id) => {
+    setKeystrokes((keystrokes) => keystrokes.filter((keystroke) => keystroke.id !== id));
   };
 
   const createKeystroke = (label) => {
-    const [rev, setRev] = createSignal(0);
-
     return {
       id: nextKeystrokeId++,
       label,
-      rev,
-      refresh: () => setRev((rev) => rev + 1),
     };
   };
 

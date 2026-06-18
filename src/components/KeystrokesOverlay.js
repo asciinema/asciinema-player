@@ -8,7 +8,6 @@ function KeystrokePill(props) {
 
   createEffect(() => {
     const { id } = props.keystroke;
-    const rev = props.keystroke.rev();
 
     setIsFading(false);
 
@@ -17,7 +16,7 @@ function KeystrokePill(props) {
     }, VISIBLE_MS);
 
     const expireTimeoutId = setTimeout(function () {
-      props.onExpired(id, rev);
+      props.onExpired(id);
     }, VISIBLE_MS + FADE_MS);
 
     onCleanup(() => {
