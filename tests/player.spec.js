@@ -183,10 +183,8 @@ test("keeps keystroke fade timers independent", async ({ page }) => {
   await expect(pills.last()).not.toHaveClass(/fading/);
   await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(["a", "Ret"]);
 
-  await page.waitForTimeout(600);
-
   await expect(pills).toHaveCount(2);
-  await expect(pills.first()).toHaveClass(/fading/);
+  await expect(pills.first()).toHaveClass(/fading/, { timeout: 5000 });
   await expect(pills.last()).not.toHaveClass(/fading/);
 });
 

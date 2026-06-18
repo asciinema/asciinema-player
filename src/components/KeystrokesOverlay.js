@@ -1,6 +1,6 @@
 import { createEffect, createSignal, For, onCleanup } from "solid-js";
 
-const VISIBLE_MS = 1200;
+const VISIBLE_MS = 2000;
 const FADE_MS = 700;
 
 function KeystrokePill(props) {
