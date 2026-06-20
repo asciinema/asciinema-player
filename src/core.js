@@ -320,7 +320,7 @@ function getDriver(src) {
   }
 
   if (src.driver == "recording") {
-    if (src.parser === undefined) {
+    if (src.format !== "segmented" && src.parser === undefined) {
       src.parser = "asciicast";
     }
 

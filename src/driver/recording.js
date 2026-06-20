@@ -1,5 +1,6 @@
 import Stream from "../stream";
 import { toErrorPayload } from "../error";
+import { normalizeTheme } from "../theme";
 
 function recording(
   src,
@@ -13,8 +14,6 @@ function recording(
     poster,
     markers: markers_,
     pauseOnMarkers,
-    cols: initialCols,
-    rows: initialRows,
     audioUrl,
   },
 ) {
@@ -47,6 +46,8 @@ function recording(
     PLAYBACK_ENDED: "playbackEnded", // Scheduled playback reached natural end.
     AUDIO_WAITING: "audioWaiting", // Audio element entered buffering.
     AUDIO_PLAYING: "audioPlaying", // Audio element resumed from buffering.
+    SEGMENT_WAITING: "segmentWaiting", // Required segment is loading at a boundary.
+    SEGMENT_READY: "segmentReady", // Required segment loaded and playback may continue.
     MARKER_REACHED: "markerReached", // Playback crossed a marker event.
   };
 
@@ -62,9 +63,11 @@ function recording(
   let processingEvents = false;
 
   const ctx = {
-    cols: undefined,
-    rows: undefined,
-    events: undefined,
+    recording: undefined,
+    segmentIndex: undefined,
+    segment: undefined,
+    segmentCache: new Map(),
+    positionGeneration: 0,
     markers: undefined,
     duration: undefined,
     effectiveStartAt: undefined,
@@ -83,6 +86,7 @@ function recording(
     posterVisible: false,
     posterRenderableAfterLoad: poster !== undefined,
     failureError: null,
+    segmentWaiting: false,
   };
 
   function isPlayingState(value = state) {
@@ -99,9 +103,9 @@ function recording(
     return loop === true || (typeof loop === "number" && ctx.playCount < loop);
   }
 
-  function loadPromise() {
+  function loadPromise(initialTime) {
     if (ctx.loaded === undefined) {
-      ctx.loaded = load();
+      ctx.loaded = load(initialTime);
       void ctx.loaded.catch(() => {});
     }
 
@@ -168,7 +172,11 @@ function recording(
             });
 
             dispatch("reset", {
-              size: { cols: ctx.cols, rows: ctx.rows },
+              size: {
+                cols: ctx.segment.snapshot.cols,
+                rows: ctx.segment.snapshot.rows,
+              },
+              init: ctx.segment.snapshot.init,
               theme: payload.theme,
             });
 
@@ -221,6 +229,8 @@ function recording(
             nextState: STATE.READY_BUFFERING_TO_RESUME,
             action: () => {
               dispatch("play");
+
+              if (ctx.segmentWaiting) return true;
 
               if (ctx.audioElement) {
                 return ctx.audioElement.play().catch((error) => {
@@ -366,6 +376,43 @@ function recording(
         // driver has already moved on to another state, so treat them as stale.
         return { nextState: currentState };
 
+      case EVENT.SEGMENT_WAITING:
+        if (currentState === STATE.READY_PLAYING) {
+          return {
+            nextState: STATE.READY_BUFFERING_TO_RESUME,
+            action: () => {
+              ctx.segmentWaiting = true;
+              pausePlaybackAt(payload.time);
+              restartWaitingTimeout();
+
+              if (ctx.audioElement) {
+                ctx.audioElement.pause();
+              }
+            },
+          };
+        }
+
+        return { nextState: currentState };
+
+      case EVENT.SEGMENT_READY:
+        ctx.segmentWaiting = false;
+
+        if (currentState === STATE.READY_BUFFERING_TO_RESUME) {
+          return {
+            nextState: currentState,
+            action: resumeAfterSegmentWait,
+          };
+        }
+
+        if (currentState === STATE.READY_BUFFERING_WHILE_PAUSED) {
+          return {
+            nextState: STATE.READY_PAUSED,
+            action: clearWaitingTimeout,
+          };
+        }
+
+        return { nextState: currentState };
+
       case EVENT.PAUSE_REQUESTED:
         if (currentState === STATE.READY_PLAYING) {
           return { nextState: STATE.READY_PAUSED, action: performPause };
@@ -390,11 +437,14 @@ function recording(
         if (currentState === STATE.COLD) {
           return {
             nextState: STATE.LOADING,
-            action: () => loadPromise().then(() => seek(payload.where)),
+            action: () =>
+              loadPromise(
+                typeof payload.where === "number" ? payload.where * 1000 : undefined,
+              ).then(() => seek(payload.where)),
           };
         }
 
-        if (isBufferingForAudioState(currentState)) {
+        if (isBufferingForAudioState(currentState) && !ctx.segmentWaiting) {
           return { nextState: currentState, action: () => false };
         }
 
@@ -402,7 +452,9 @@ function recording(
           currentState !== STATE.READY_INITIAL &&
           currentState !== STATE.READY_PAUSED &&
           currentState !== STATE.READY_ENDED &&
-          currentState !== STATE.READY_PLAYING
+          currentState !== STATE.READY_PLAYING &&
+          currentState !== STATE.READY_BUFFERING_WHILE_PAUSED &&
+          currentState !== STATE.READY_BUFFERING_TO_RESUME
         ) {
           return { nextState: currentState };
         }
@@ -416,7 +468,8 @@ function recording(
         return {
           nextState: seekOperation.reachedEnd
             ? STATE.READY_ENDED
-            : currentState === STATE.READY_PLAYING
+            : currentState === STATE.READY_PLAYING ||
+                currentState === STATE.READY_BUFFERING_TO_RESUME
               ? STATE.READY_STARTING
               : STATE.READY_PAUSED,
           action: () => {
@@ -448,18 +501,11 @@ function recording(
           return { nextState: currentState };
         }
 
-        const step = describeStep(payload.n);
-
         return {
-          nextState:
-            step.targetIndex === undefined
-              ? currentState
-              : step.reachedEnd
-                ? STATE.READY_ENDED
-                : STATE.READY_PAUSED,
+          nextState: STATE.READY_PAUSED,
           action: () => {
             clearPoster();
-            return performStep(step);
+            return performStep(payload.n);
           },
         };
       }
@@ -567,45 +613,50 @@ function recording(
     return sendCommand(EVENT.INIT_REQUESTED);
   }
 
-  async function load() {
+  async function load(requestedInitialTime) {
     ctx.loadingTimeout = setTimeout(() => {
       dispatch("loading");
     }, 3000);
 
     try {
-      const parsedRecording = loadRecording(src);
-
-      const audioLoaded = loadAudio(audioUrl).catch((error) => {
-        logger.warn(`audio load failed: ${error.message}`);
-        return false;
-      });
-
-      const recording = prepareRecording(await parsedRecording, {
+      validateSegmentedOptions(src, { idleTimeLimit, markers: markers_ });
+      const loadedRecording = loadRecordingSource(src, {
         idleTimeLimit,
         startAt,
         markers: markers_,
         inputOffset: src.inputOffset,
       });
 
+      const audioLoaded = loadAudio(audioUrl).catch((error) => {
+        logger.warn(`audio load failed: ${error.message}`);
+        return false;
+      });
+
+      const recording = await loadedRecording;
+
+      ctx.recording = recording;
+      ctx.duration = recording.duration;
+      ctx.effectiveStartAt = recording.effectiveStartAt;
+      ctx.markers = recording.markers;
+
+      const initialTime =
+        requestedInitialTime ??
+        (poster?.type === "npt" ? poster.value * 1000 : ctx.effectiveStartAt);
+      const segmentIndex = findSegmentIndex(recording, initialTime ?? 0);
+      const segment = await getSegment(segmentIndex, true);
+      activateSegment(segmentIndex, segment);
+
       const hasAudio = await audioLoaded;
 
-      ({
-        cols: ctx.cols,
-        rows: ctx.rows,
-        events: ctx.events,
-        duration: ctx.duration,
-        effectiveStartAt: ctx.effectiveStartAt,
-      } = recording);
-
-      initialCols = initialCols ?? ctx.cols;
-      initialRows = initialRows ?? ctx.rows;
-
       const theme = recording.theme ?? null;
-      ctx.markers = ctx.events.filter((e) => e[1] === "m").map((e) => [e[0], e[2].label]);
-
       sendEvent(EVENT.LOAD_SUCCEEDED, { hasAudio, theme });
     } catch (e) {
-      sendEvent(EVENT.LOAD_FAILED, { error: e });
+      if (processingEvents) {
+        enqueueEvent(EVENT.LOAD_FAILED, { error: e });
+      } else {
+        sendEvent(EVENT.LOAD_FAILED, { error: e });
+      }
+
       throw e;
     } finally {
       clearTimeout(ctx.loadingTimeout);
@@ -641,17 +692,12 @@ function recording(
     if (!ctx.posterRenderableAfterLoad) return;
 
     if (poster.type == "npt") {
-      feed(getPoster(poster.value));
+      syncActiveSegmentToTime(poster.value * 1000, false, false);
     } else if (poster.type == "text") {
       feed(poster.value);
     }
 
     ctx.posterVisible = true;
-  }
-
-  function getPoster(time) {
-    const timeMs = time * 1000;
-    return ctx.events.filter((e) => e[0] < timeMs && e[1] === "o").map((e) => e[2]);
   }
 
   function clearPoster() {
@@ -663,16 +709,144 @@ function recording(
     ctx.posterRenderableAfterLoad = false;
   }
 
+  function activateSegment(index, segment) {
+    ctx.segmentIndex = index;
+    ctx.segment = segment;
+    ctx.nextEventIndex = 0;
+    ctx.lastEventTime = ctx.recording.segments[index].start;
+  }
+
+  function getSegment(index, required = false) {
+    let entry = ctx.segmentCache.get(index);
+
+    if (entry === undefined) {
+      entry = {};
+      entry.promise = ctx.recording.loadSegment(ctx.recording.segments[index]).then(
+        (data) => {
+          if (ctx.segmentCache.get(index) === entry) {
+            entry.data = data;
+          }
+
+          return data;
+        },
+        (error) => {
+          if (ctx.segmentCache.get(index) === entry) {
+            ctx.segmentCache.delete(index);
+          }
+
+          if (!required) {
+            logger.warn(`segment prefetch failed: ${error.message}`);
+          }
+
+          throw error;
+        },
+      );
+      ctx.segmentCache.set(index, entry);
+
+      if (!required) {
+        void entry.promise.catch(() => {});
+      }
+    }
+
+    return entry.promise;
+  }
+
+  function retainSegments(indexes) {
+    const retained = new Set(indexes.filter((index) => index >= 0));
+
+    for (const index of ctx.segmentCache.keys()) {
+      if (!retained.has(index)) {
+        ctx.segmentCache.delete(index);
+      }
+    }
+  }
+
+  function prefetchNextSegment() {
+    const nextIndex = ctx.segmentIndex + 1;
+    const retained = [ctx.segmentIndex - 1, ctx.segmentIndex, nextIndex];
+    retainSegments(retained);
+
+    if (nextIndex < ctx.recording.segments.length) {
+      getSegment(nextIndex);
+    } else if (canLoopPlayback()) {
+      retainSegments([ctx.segmentIndex - 1, ctx.segmentIndex, 0]);
+      getSegment(0);
+    }
+  }
+
+  async function advanceSegment() {
+    const nextIndex = ctx.segmentIndex + 1;
+    const boundary = ctx.recording.segments[nextIndex].start;
+    const generation = ++ctx.positionGeneration;
+    const entry = ctx.segmentCache.get(nextIndex);
+
+    if (entry?.data === undefined) {
+      sendEvent(EVENT.SEGMENT_WAITING, { time: boundary });
+    }
+
+    try {
+      const segment = await getSegment(nextIndex, true);
+
+      if (generation !== ctx.positionGeneration || state === STATE.STOPPED) return;
+
+      activateSegment(nextIndex, segment);
+      prefetchNextSegment();
+
+      if (
+        state === STATE.READY_BUFFERING_TO_RESUME ||
+        state === STATE.READY_BUFFERING_WHILE_PAUSED
+      ) {
+        await sendEvent(EVENT.SEGMENT_READY);
+      } else if (state === STATE.READY_PLAYING) {
+        scheduleNextEvent();
+      }
+    } catch (error) {
+      if (generation === ctx.positionGeneration) {
+        failDriver(error);
+      }
+    }
+  }
+
+  function pausePlaybackAt(time) {
+    cancelNextEvent();
+    ctx.pauseElapsedTime = time;
+  }
+
+  function resumeAfterSegmentWait() {
+    clearWaitingTimeout();
+
+    if (ctx.audioElement) {
+      return ctx.audioElement.play().then(
+        () => sendEvent(EVENT.AUDIO_PLAYING),
+        (error) => {
+          sendEvent(EVENT.PLAYBACK_START_REJECTED);
+          throw error;
+        },
+      );
+    }
+
+    if (processingEvents) {
+      enqueueEvent(EVENT.AUDIO_PLAYING);
+    } else {
+      sendEvent(EVENT.AUDIO_PLAYING);
+    }
+  }
+
   function scheduleNextEvent() {
-    const nextEvent = ctx.events[ctx.nextEventIndex];
+    const nextEvent = ctx.segment.events[ctx.nextEventIndex];
 
     if (nextEvent) {
       ctx.eventTimeoutId = scheduleAt(runNextEvent, nextEvent[0]);
     } else {
-      if (processingEvents) {
-        enqueueEvent(EVENT.PLAYBACK_ENDED);
+      if (ctx.segmentIndex < ctx.recording.segments.length - 1) {
+        const boundary = ctx.recording.segments[ctx.segmentIndex + 1].start;
+        ctx.eventTimeoutId = scheduleAt(advanceSegment, boundary);
       } else {
-        sendEvent(EVENT.PLAYBACK_ENDED);
+        if (processingEvents) {
+          enqueueEvent(EVENT.PLAYBACK_ENDED);
+        } else {
+          sendEvent(EVENT.PLAYBACK_ENDED);
+        }
       }
     }
   }
@@ -688,12 +862,12 @@ function recording(
   }
 
   function runNextEvent() {
-    while (ctx.events[ctx.nextEventIndex] !== undefined) {
+    while (ctx.segment.events[ctx.nextEventIndex] !== undefined) {
       if (executeNextEventChunk()) {
         return;
       }
 
-      const nextEvent = ctx.events[ctx.nextEventIndex];
+      const nextEvent = ctx.segment.events[ctx.nextEventIndex];
 
       if (nextEvent === undefined) {
         break;
@@ -710,7 +884,7 @@ function recording(
   }
 
   function executeNextEventChunk() {
-    const event = ctx.events[ctx.nextEventIndex];
+    const event = ctx.segment.events[ctx.nextEventIndex];
 
     if (event[1] === "o") {
       executeOutputGroup();
@@ -724,7 +898,7 @@ function recording(
   }
 
   function executeOutputGroup() {
-    const firstEvent = ctx.events[ctx.nextEventIndex];
+    const firstEvent = ctx.segment.events[ctx.nextEventIndex];
     const batchDeadline = firstEvent[0] + outputBatchWindow;
     const output = [];
     let event = firstEvent;
@@ -733,7 +907,7 @@ function recording(
       output.push(event[2]);
       ctx.lastEventTime = event[0];
       ctx.nextEventIndex++;
-      event = ctx.events[ctx.nextEventIndex];
+      event = ctx.segment.events[ctx.nextEventIndex];
     }
 
     feed(output);
@@ -861,10 +1035,6 @@ function recording(
 
   function getCurrentTime() {
     return getCurrentTimeMs() / 1000;
-  }
-
-  function resizeTerminalToInitialSize() {
-    dispatch("resize", { cols: initialCols, rows: initialRows });
   }
 
   function setupAudioCtx() {
@@ -1012,63 +1182,20 @@ function recording(
     };
   }
 
-  function describeStep(n = 1) {
-    let nextEvent;
-    let targetIndex;
-
-    if (n > 0) {
-      let index = ctx.nextEventIndex;
-      nextEvent = ctx.events[index];
-
-      for (let i = 0; i < n; i++) {
-        while (nextEvent !== undefined && nextEvent[1] !== "o") {
-          nextEvent = ctx.events[++index];
-        }
-
-        if (nextEvent !== undefined && nextEvent[1] === "o") {
-          targetIndex = index;
-          nextEvent = ctx.events[++index];
-        }
-      }
-    } else {
-      let index = Math.max(ctx.nextEventIndex - 2, 0);
-      nextEvent = ctx.events[index];
-
-      for (let i = n; i < 0; i++) {
-        while (nextEvent !== undefined && nextEvent[1] !== "o") {
-          nextEvent = ctx.events[--index];
-        }
-
-        if (nextEvent !== undefined && nextEvent[1] === "o") {
-          targetIndex = index;
-          nextEvent = ctx.events[--index];
-        }
-      }
-    }
-
-    return {
-      n,
-      targetIndex,
-      reachedEnd: targetIndex !== undefined && ctx.events[targetIndex + 1] === undefined,
-    };
-  }
-
-  function resetTerminal() {
+  function restoreSegmentSnapshot(segment) {
     feed("\x1bc");
-    resizeTerminalToInitialSize();
+    dispatch("reset", {
+      size: { cols: segment.snapshot.cols, rows: segment.snapshot.rows },
+      init: segment.snapshot.init,
+      theme: ctx.recording.theme ?? null,
+    });
   }
 
-  function syncToTime(targetTime) {
-    if (targetTime < ctx.lastEventTime) {
-      resetTerminal();
-      ctx.nextEventIndex = 0;
-      ctx.lastEventTime = 0;
-    }
-
-    let event = ctx.events[ctx.nextEventIndex];
+  function syncActiveSegmentToTime(targetTime, clearStartAt = true, inclusive = true) {
+    let event = ctx.segment.events[ctx.nextEventIndex];
     let output = [];
 
-    while (event && event[0] <= targetTime) {
+    while (event && (inclusive ? event[0] <= targetTime : event[0] < targetTime)) {
       if (event[1] === "o") {
         output.push(event[2]);
       } else if (event[1] === "r") {
@@ -1081,7 +1208,7 @@ function recording(
       }
 
       ctx.lastEventTime = event[0];
-      event = ctx.events[++ctx.nextEventIndex];
+      event = ctx.segment.events[++ctx.nextEventIndex];
     }
 
     if (output.length > 0) {
@@ -1089,35 +1216,66 @@ function recording(
     }
 
     ctx.pauseElapsedTime = targetTime;
-    ctx.effectiveStartAt = null;
+    if (clearStartAt) {
+      ctx.effectiveStartAt = null;
+    }
 
     if (ctx.audioElement && ctx.audioSeekable) {
       ctx.audioElement.currentTime = targetTime / 1000 / speed;
     }
   }
 
-  function startPlayback(reason) {
-    if (ctx.events[ctx.nextEventIndex] === undefined) {
-      syncToTime(0);
-    } else if (ctx.effectiveStartAt !== null) {
-      syncToTime(ctx.effectiveStartAt);
+  async function positionAt(targetTime, reuseForward = false, generation) {
+    const targetIndex = findSegmentIndex(ctx.recording, targetTime);
+
+    if (generation !== undefined && generation !== ctx.positionGeneration) return false;
+
+    if (reuseForward && targetIndex === ctx.segmentIndex && targetTime >= ctx.lastEventTime) {
+      syncActiveSegmentToTime(targetTime);
+      return true;
     }
+
+    retainSegments([targetIndex - 1, targetIndex, targetIndex + 1]);
+    const segment = await getSegment(targetIndex, true);
+
+    if (generation !== undefined && generation !== ctx.positionGeneration) return false;
+
+    activateSegment(targetIndex, segment);
+    restoreSegmentSnapshot(segment);
+    syncActiveSegmentToTime(targetTime);
+    return true;
+  }
+
+  async function startPlayback(reason) {
+    if (
+      ctx.segmentIndex === ctx.recording.segments.length - 1 &&
+      ctx.segment.events[ctx.nextEventIndex] === undefined
+    ) {
+      await positionAt(0);
+    } else if (ctx.effectiveStartAt !== null) {
+      await positionAt(ctx.effectiveStartAt, true);
+    }
+
+    prefetchNextSegment();
 
     preparePlaybackClock();
 
     if (ctx.audioElement) {
-      return ctx.audioElement.play().then(
-        () => sendEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason }),
-        (error) => {
-          sendEvent(EVENT.PLAYBACK_START_REJECTED);
-          throw error;
-        },
-      );
+      try {
+        await ctx.audioElement.play();
+        return sendEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
+      } catch (error) {
+        sendEvent(EVENT.PLAYBACK_START_REJECTED);
+        throw error;
+      }
     }
 
-    enqueueEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
+    if (processingEvents) {
+      enqueueEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
+      return true;
+    }
 
-    return true;
+    return sendEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
   }
 
   function performPause() {
@@ -1131,18 +1289,24 @@ function recording(
     return true;
   }
 
-  function performSeek(seekOperation, previousState) {
-    const wasPlaying = previousState === STATE.READY_PLAYING;
+  async function performSeek(seekOperation, previousState) {
+    const wasPlaying =
+      previousState === STATE.READY_PLAYING || previousState === STATE.READY_BUFFERING_TO_RESUME;
+    const generation = ++ctx.positionGeneration;
 
-    if (wasPlaying) {
+    if (previousState === STATE.READY_PLAYING) {
       pausePlaybackClock();
     }
+
+    ctx.segmentWaiting = false;
 
     if (ctx.audioElement) {
       ctx.audioElement.pause();
     }
 
-    syncToTime(seekOperation.targetTime);
+    if (!(await positionAt(seekOperation.targetTime, true, generation))) return false;
+
+    if (generation !== ctx.positionGeneration) return false;
 
     if (seekOperation.reachedEnd) {
       dispatch("seeked");
@@ -1151,7 +1315,7 @@ function recording(
     }
 
     if (wasPlaying) {
-      return startPlayback(PLAYBACK_START_REASON.SEEK);
+      return await startPlayback(PLAYBACK_START_REASON.SEEK);
     }
 
     dispatch("seeked");
@@ -1159,48 +1323,63 @@ function recording(
     return true;
   }
 
-  function performStep(step) {
-    if (step.targetIndex === undefined) return;
+  async function performStep(n = 1) {
+    const target = await findStepTarget(n);
 
-    if (step.n < 0) {
-      resetTerminal();
-      ctx.nextEventIndex = 0;
-      ctx.lastEventTime = 0;
+    if (target === undefined) return;
+
+    await positionAt(target.time, n > 0);
+
+    if (ctx.audioElement && ctx.audioSeekable) {
+      ctx.audioElement.currentTime = target.time / 1000 / speed;
     }
 
-    let nextEvent;
-    let output = [];
+    if (target.reachedEnd) {
+      state = STATE.READY_ENDED;
+      dispatch("ended");
+    }
+  }
 
-    while (ctx.nextEventIndex <= step.targetIndex) {
-      nextEvent = ctx.events[ctx.nextEventIndex++];
+  async function findStepTarget(n) {
+    let remaining = Math.abs(n);
+    let segmentIndex = ctx.segmentIndex;
+    let eventIndex = n > 0 ? ctx.nextEventIndex : ctx.nextEventIndex - 2;
+    let target;
 
-      if (nextEvent[1] === "o") {
-        output.push(nextEvent[2]);
-      } else if (nextEvent[1] === "r") {
-        if (output.length > 0) {
-          feed(output);
-          output = [];
+    while (segmentIndex >= 0 && segmentIndex < ctx.recording.segments.length) {
+      retainSegments([segmentIndex - 1, segmentIndex, segmentIndex + 1]);
+      const segment = await getSegment(segmentIndex, true);
+
+      if (n > 0) {
+        for (let i = Math.max(eventIndex, 0); i < segment.events.length; i++) {
+          if (segment.events[i][1] === "o" && --remaining === 0) {
+            target = { time: segment.events[i][0] };
+            break;
+          }
         }
 
-        executeEvent(nextEvent);
+        if (target) break;
+        segmentIndex++;
+        eventIndex = 0;
+      } else {
+        for (let i = Math.min(eventIndex, segment.events.length - 1); i >= 0; i--) {
+          if (segment.events[i][1] === "o" && --remaining === 0) {
+            target = { time: segment.events[i][0] };
+            break;
+          }
+        }
+
+        if (target) break;
+        segmentIndex--;
+        eventIndex = Number.MAX_SAFE_INTEGER;
       }
     }
 
-    if (output.length > 0) {
-      feed(output);
+    if (target) {
+      target.reachedEnd = target.time >= ctx.duration;
     }
 
-    ctx.lastEventTime = nextEvent[0];
-    ctx.pauseElapsedTime = ctx.lastEventTime;
-    ctx.effectiveStartAt = null;
-
-    if (ctx.audioElement && ctx.audioSeekable) {
-      ctx.audioElement.currentTime = ctx.lastEventTime / 1000 / speed;
-    }
-
-    if (step.reachedEnd) {
-      dispatch("ended");
-    }
+    return target;
   }
 
   function restartWaitingTimeout() {
@@ -1216,19 +1395,45 @@ function recording(
     ctx.waitingTimeout = null;
   }
 
-  function restartLoop() {
+  async function restartLoop() {
     cancelNextEvent();
     ctx.playCount++;
-    ctx.nextEventIndex = 0;
-    ctx.startTime = now();
-    ctx.pauseElapsedTime = null;
-    resetTerminal();
+    const generation = ++ctx.positionGeneration;
+    const entry = ctx.segmentCache.get(0);
 
-    if (ctx.audioElement && ctx.audioSeekable) {
-      ctx.audioElement.currentTime = 0;
+    if (entry?.data === undefined) {
+      sendEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
     }
 
-    scheduleNextEvent();
+    try {
+      const segment = await getSegment(0, true);
+
+      if (generation !== ctx.positionGeneration) return;
+
+      activateSegment(0, segment);
+      restoreSegmentSnapshot(segment);
+      ctx.pauseElapsedTime = 0;
+      ctx.startTime = now();
+      prefetchNextSegment();
+
+      if (ctx.audioElement && ctx.audioSeekable) {
+        ctx.audioElement.currentTime = 0;
+      }
+
+      if (
+        state === STATE.READY_BUFFERING_TO_RESUME ||
+        state === STATE.READY_BUFFERING_WHILE_PAUSED
+      ) {
+        await sendEvent(EVENT.SEGMENT_READY);
+      } else {
+        ctx.pauseElapsedTime = null;
+        scheduleNextEvent();
+      }
+    } catch (error) {
+      if (generation === ctx.positionGeneration) {
+        failDriver(error);
+      }
+    }
   }
 
   function finishPlayback() {
@@ -1239,6 +1444,8 @@ function recording(
     if (ctx.audioElement) {
       ctx.audioElement.pause();
     }
+
+    retainSegments([ctx.segmentIndex - 1, ctx.segmentIndex]);
 
     dispatch("ended");
   }
@@ -1256,6 +1463,8 @@ function recording(
   }
 
   function teardown() {
+    ctx.positionGeneration++;
+    ctx.segmentCache.clear();
     clearTimeout(ctx.loadingTimeout);
     ctx.loadingTimeout = null;
     clearWaitingTimeout();
@@ -1283,6 +1492,284 @@ async function loadRecording(src) {
   const data = await doFetch(src);
 
   return await parser(data, { encoding });
+}
+
+async function loadRecordingSource(src, options) {
+  if (src.format === "segmented") {
+    return await loadSegmentedRecording(src, options);
+  }
+
+  return wrapFullRecording(prepareRecording(await loadRecording(src), options));
+}
+
+function wrapFullRecording(recording) {
+  const segment = { start: 0 };
+  const markers = recording.events
+    .filter((event) => event[1] === "m")
+    .map((event) => [event[0], event[2].label]);
+
+  return {
+    cols: recording.cols,
+    rows: recording.rows,
+    theme: recording.theme,
+    duration: recording.duration,
+    effectiveStartAt: recording.effectiveStartAt,
+    markers,
+    segments: [segment],
+    async loadSegment(requestedSegment) {
+      if (requestedSegment !== segment) {
+        throw new Error("unknown recording segment");
+      }
+
+      return {
+        snapshot: { cols: recording.cols, rows: recording.rows, init: "" },
+        events: recording.events,
+      };
+    },
+  };
+}
+
+async function loadSegmentedRecording(src, { startAt = 0 } = {}) {
+  if (typeof src.url !== "string") {
+    throw new Error("segmented recording source requires a URL");
+  }
+
+  const response = await doFetchOne(src.url, src.fetchOpts ?? {});
+  let index;
+
+  try {
+    index = await response.json();
+  } catch (error) {
+    throw new Error(`failed parsing segmented recording index from ${src.url}: ${error.message}`);
+  }
+
+  validateSegmentedIndex(index);
+
+  const duration = index.duration * 1000;
+  const markers = (index.markers ?? []).map(([time, label]) => [time * 1000, label]);
+  const segments = index.segments.map((segment) => ({
+    start: segment.start * 1000,
+    url: resolveSegmentUrl(segment.url, response.url || src.url),
+  }));
+  const recording = {
+    cols: index.term.cols,
+    rows: index.term.rows,
+    theme: parseSegmentedTheme(index.term.theme),
+    duration,
+    effectiveStartAt: Math.min(Math.max(startAt * 1000, 0), duration),
+    markers,
+    segments,
+    async loadSegment(segment) {
+      const segmentIndex = segments.indexOf(segment);
+
+      if (segmentIndex === -1) {
+        throw new Error("unknown recording segment");
+      }
+
+      const segmentResponse = await doFetchOne(segment.url, src.fetchOpts ?? {});
+      let payload;
+
+      try {
+        payload = await segmentResponse.json();
+      } catch (error) {
+        throw new Error(`failed parsing recording segment from ${segment.url}: ${error.message}`);
+      }
+
+      const data = normalizeSegment(recording, segmentIndex, payload);
+      return data;
+    },
+  };
+
+  return recording;
+}
+
+function validateSegmentedOptions(src, { idleTimeLimit, markers }) {
+  if (src.format !== "segmented") return;
+
+  const unsupported = [];
+
+  if (idleTimeLimit !== undefined) unsupported.push("idleTimeLimit");
+  if (markers !== undefined) unsupported.push("markers");
+
+  for (const option of ["inputOffset", "parser", "encoding"]) {
+    if (Object.hasOwn(src, option)) unsupported.push(option);
+  }
+
+  if (unsupported.length > 0) {
+    throw new Error(`segmented recordings do not support option: ${unsupported.join(", ")}`);
+  }
+}
+
+function validateSegmentedIndex(index) {
+  if (index?.version !== 1) {
+    throw new Error(`unsupported segmented recording version: ${JSON.stringify(index?.version)}`);
+  }
+
+  validateFiniteTime(index.duration, "recording duration");
+  validateTerminalSize(index.term, "recording terminal");
+
+  if (!Array.isArray(index.segments) || index.segments.length === 0) {
+    throw new Error("segmented recording index is missing segments");
+  }
+
+  let previousStart = -1;
+
+  index.segments.forEach((segment, i) => {
+    validateFiniteTime(segment?.start, `segment ${i} start`);
+
+    if (typeof segment?.url !== "string" || segment.url.length === 0) {
+      throw new Error(`segment ${i} is missing its URL`);
+    }
+
+    if (i === 0 && segment.start !== 0) {
+      throw new Error("first segment must start at 0");
+    }
+
+    if (i > 0 && (segment.start <= previousStart || segment.start >= index.duration)) {
+      throw new Error(`segment ${i} start must be strictly increasing and before duration`);
+    }
+
+    previousStart = segment.start;
+  });
+
+  if (index.markers !== undefined && !Array.isArray(index.markers)) {
+    throw new Error("segmented recording markers must be an array");
+  }
+
+  let previousMarkerTime = -1;
+
+  for (const [i, marker] of (index.markers ?? []).entries()) {
+    if (!Array.isArray(marker) || marker.length !== 2 || typeof marker[1] !== "string") {
+      throw new Error(`invalid marker ${i} in segmented recording index`);
+    }
+
+    validateFiniteTime(marker[0], `marker ${i} time`);
+
+    if (marker[0] < previousMarkerTime || marker[0] > index.duration) {
+      throw new Error(`marker ${i} time is out of order or range`);
+    }
+
+    previousMarkerTime = marker[0];
+  }
+}
+
+function normalizeSegment(recording, index, payload) {
+  const snapshot = payload?.snapshot;
+  validateTerminalSize(snapshot, `segment ${index} snapshot`);
+
+  if (typeof snapshot.init !== "string") {
+    throw new Error(`segment ${index} snapshot init must be a string`);
+  }
+
+  if (!Array.isArray(payload.events) || payload.events.length === 0) {
+    throw new Error(`segment ${index} is missing events`);
+  }
+
+  const start = recording.segments[index].start;
+  const end = getSegmentEnd(recording, index);
+  let previousTime = -1;
+  let markerIndex = recording.markers.findIndex(([time]) => time >= start);
+
+  if (markerIndex === -1) markerIndex = recording.markers.length;
+
+  const events = payload.events.map((event, eventIndex) => {
+    if (!Array.isArray(event) || event.length !== 3 || typeof event[1] !== "string") {
+      throw new Error(`invalid event ${eventIndex} in segment ${index}`);
+    }
+
+    const time = event[0] * 1000;
+    validateFiniteTime(time, `event ${eventIndex} time in segment ${index}`, true);
+
+    if (
+      time < previousTime ||
+      time < start ||
+      (index + 1 < recording.segments.length ? time >= end : time > end)
+    ) {
+      throw new Error(`event ${eventIndex} time is out of range in segment ${index}`);
+    }
+
+    previousTime = time;
+
+    if (event[1] === "m") {
+      if (typeof event[2] !== "string") {
+        throw new Error(`marker event ${eventIndex} in segment ${index} must have a string label`);
+      }
+
+      return [time, "m", { index: markerIndex++, time, label: event[2] }];
+    }
+
+    return [time, event[1], event[2]];
+  });
+
+  if (index > 0 && events[0][0] !== start) {
+    throw new Error(`segment ${index} first event must match its start`);
+  }
+
+  if (
+    index === recording.segments.length - 1 &&
+    events[events.length - 1][0] !== recording.duration
+  ) {
+    throw new Error("final segment event must match recording duration");
+  }
+
+  return {
+    snapshot: { cols: snapshot.cols, rows: snapshot.rows, init: snapshot.init },
+    events,
+  };
+}
+
+function validateFiniteTime(value, label, milliseconds = false) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(
+      `${label} must be a finite non-negative ${milliseconds ? "millisecond" : "second"} value`,
+    );
+  }
+}
+
+function validateTerminalSize(term, label) {
+  if (
+    !Number.isInteger(term?.cols) ||
+    term.cols <= 0 ||
+    !Number.isInteger(term?.rows) ||
+    term.rows <= 0
+  ) {
+    throw new Error(`${label} must have positive integer cols and rows`);
+  }
+}
+
+function parseSegmentedTheme(theme) {
+  return normalizeTheme({
+    foreground: theme?.fg,
+    background: theme?.bg,
+    palette: typeof theme?.palette === "string" ? theme.palette.split(":") : undefined,
+  });
+}
+
+function resolveSegmentUrl(url, indexUrl) {
+  return new URL(url, new URL(indexUrl, globalThis.location?.href ?? "http://localhost/")).href;
+}
+
+function findSegmentIndex(recording, time) {
+  if (time >= recording.duration) return recording.segments.length - 1;
+
+  let low = 0;
+  let high = recording.segments.length;
+
+  while (low + 1 < high) {
+    const middle = Math.floor((low + high) / 2);
+
+    if (recording.segments[middle].start <= time) {
+      low = middle;
+    } else {
+      high = middle;
+    }
+  }
+
+  return low;
+}
+
+function getSegmentEnd(recording, index) {
+  return recording.segments[index + 1]?.start ?? recording.duration;
 }
 
 async function doFetch({ url, data, fetchOpts = {} }) {
@@ -1442,4 +1929,4 @@ async function createAudioElement(src) {
 }
 
 export default recording;
-export { loadRecording, prepareRecording };
+export { loadRecording, loadSegmentedRecording, prepareRecording };
