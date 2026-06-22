@@ -1262,12 +1262,12 @@ function recording(
     }
   }
 
-  async function positionAt(targetTime, reuseForward = false, generation) {
+  async function positionAt(targetTime, generation, forceReset = false) {
     const targetIndex = findSegmentIndex(ctx.recording, targetTime);
 
     if (generation !== ctx.positionGeneration) return false;
 
-    if (reuseForward && targetIndex === ctx.segmentIndex && targetTime >= ctx.lastEventTime) {
+    if (!forceReset && targetIndex === ctx.segmentIndex && targetTime >= ctx.lastEventTime) {
       syncActiveSegmentToTime(targetTime);
       return true;
     }
@@ -1291,9 +1291,9 @@ function recording(
       ctx.segmentIndex === ctx.recording.segments.length - 1 &&
       ctx.segment.events[ctx.nextEventIndex] === undefined
     ) {
-      if (!(await positionAt(0, false, generation))) return false;
+      if (!(await positionAt(0, generation, true))) return false;
     } else if (ctx.effectiveStartAt !== null) {
-      if (!(await positionAt(ctx.effectiveStartAt, true, generation))) return false;
+      if (!(await positionAt(ctx.effectiveStartAt, generation))) return false;
     }
 
     if (generation !== ctx.positionGeneration) return false;
@@ -1342,7 +1342,7 @@ function recording(
       ctx.audioElement.pause();
     }
 
-    if (!(await positionAt(seekOperation.targetTime, true, generation))) return false;
+    if (!(await positionAt(seekOperation.targetTime, generation))) return false;
 
     if (generation !== ctx.positionGeneration) return false;
 
@@ -1369,7 +1369,7 @@ function recording(
 
     clearPoster();
 
-    if (!(await positionAt(target.time, n > 0, generation))) return;
+    if (!(await positionAt(target.time, generation, n < 0))) return;
 
     if (ctx.audioElement && ctx.audioSeekable) {
       ctx.audioElement.currentTime = target.time / 1000 / speed;
