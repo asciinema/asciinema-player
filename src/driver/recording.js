@@ -550,10 +550,7 @@ function recording(
 
     queuedEvents.length = 0;
     ctx.segmentWaiting = false;
-    clearTimeout(ctx.loadingTimeout);
-    ctx.loadingTimeout = null;
-    clearWaitingTimeout();
-    cancelNextEvent();
+    cancelPendingTimers();
 
     if (ctx.audioElement) {
       ctx.audioElement.pause();
@@ -679,8 +676,7 @@ function recording(
 
       throw e;
     } finally {
-      clearTimeout(ctx.loadingTimeout);
-      ctx.loadingTimeout = null;
+      clearLoadingTimeout();
     }
   }
 
@@ -1443,6 +1439,17 @@ function recording(
     ctx.waitingTimeout = null;
   }
 
+  function clearLoadingTimeout() {
+    clearTimeout(ctx.loadingTimeout);
+    ctx.loadingTimeout = null;
+  }
+
+  function cancelPendingTimers() {
+    clearLoadingTimeout();
+    clearWaitingTimeout();
+    cancelNextEvent();
+  }
+
   async function restartLoop() {
     cancelNextEvent();
     ctx.playCount++;
@@ -1511,10 +1518,7 @@ function recording(
   function teardown() {
     ctx.positionGeneration++;
     ctx.segmentCache.clear();
-    clearTimeout(ctx.loadingTimeout);
-    ctx.loadingTimeout = null;
-    clearWaitingTimeout();
-    cancelNextEvent();
+    cancelPendingTimers();
 
     return teardownAudio();
   }
