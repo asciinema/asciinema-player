@@ -614,6 +614,7 @@ function recording(
   }
 
   async function load(requestedInitialTime) {
+    const generation = ctx.positionGeneration;
     ctx.loadingTimeout = setTimeout(() => {
       dispatch("loading");
     }, 3000);
@@ -634,6 +635,8 @@ function recording(
 
       const recording = await loadedRecording;
 
+      if (generation !== ctx.positionGeneration) return false;
+
       ctx.recording = recording;
       ctx.duration = recording.duration;
       ctx.effectiveStartAt = recording.effectiveStartAt;
@@ -644,9 +647,14 @@ function recording(
         (poster?.type === "npt" ? poster.value * 1000 : ctx.effectiveStartAt);
       const segmentIndex = findSegmentIndex(recording, initialTime ?? 0);
       const segment = await getSegment(segmentIndex, true);
+
+      if (generation !== ctx.positionGeneration) return false;
+
       activateSegment(segmentIndex, segment);
 
       const hasAudio = await audioLoaded;
+
+      if (generation !== ctx.positionGeneration) return false;
 
       const theme = recording.theme ?? null;
       sendEvent(EVENT.LOAD_SUCCEEDED, { hasAudio, theme });
@@ -1247,14 +1255,18 @@ function recording(
   }
 
   async function startPlayback(reason) {
+    const generation = ctx.positionGeneration;
+
     if (
       ctx.segmentIndex === ctx.recording.segments.length - 1 &&
       ctx.segment.events[ctx.nextEventIndex] === undefined
     ) {
-      await positionAt(0);
+      if (!(await positionAt(0, false, generation))) return false;
     } else if (ctx.effectiveStartAt !== null) {
-      await positionAt(ctx.effectiveStartAt, true);
+      if (!(await positionAt(ctx.effectiveStartAt, true, generation))) return false;
     }
+
+    if (generation !== ctx.positionGeneration) return false;
 
     prefetchNextSegment();
 
@@ -1299,6 +1311,7 @@ function recording(
     }
 
     ctx.segmentWaiting = false;
+    clearWaitingTimeout();
 
     if (ctx.audioElement) {
       ctx.audioElement.pause();
@@ -1324,11 +1337,12 @@ function recording(
   }
 
   async function performStep(n = 1) {
-    const target = await findStepTarget(n);
+    const generation = ++ctx.positionGeneration;
+    const target = await findStepTarget(n, generation);
 
-    if (target === undefined) return;
+    if (target === undefined || generation !== ctx.positionGeneration) return;
 
-    await positionAt(target.time, n > 0);
+    if (!(await positionAt(target.time, n > 0, generation))) return;
 
     if (ctx.audioElement && ctx.audioSeekable) {
       ctx.audioElement.currentTime = target.time / 1000 / speed;
@@ -1340,15 +1354,19 @@ function recording(
     }
   }
 
-  async function findStepTarget(n) {
+  async function findStepTarget(n, generation) {
     let remaining = Math.abs(n);
     let segmentIndex = ctx.segmentIndex;
     let eventIndex = n > 0 ? ctx.nextEventIndex : ctx.nextEventIndex - 2;
     let target;
 
     while (segmentIndex >= 0 && segmentIndex < ctx.recording.segments.length) {
+      if (generation !== ctx.positionGeneration) return;
+
       retainSegments([segmentIndex - 1, segmentIndex, segmentIndex + 1]);
       const segment = await getSegment(segmentIndex, true);
+
+      if (generation !== ctx.positionGeneration) return;
 
       if (n > 0) {
         for (let i = Math.max(eventIndex, 0); i < segment.events.length; i++) {
@@ -1402,7 +1420,11 @@ function recording(
     const entry = ctx.segmentCache.get(0);
 
     if (entry?.data === undefined) {
-      sendEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
+      if (processingEvents) {
+        enqueueEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
+      } else {
+        sendEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
+      }
     }
 
     try {
