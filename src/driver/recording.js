@@ -1325,13 +1325,14 @@ function recording(
     return true;
   }
 
-  async function performSeek(seekOperation, previousState) {
-    const wasPlaying =
-      previousState === STATE.READY_PLAYING || previousState === STATE.READY_BUFFERING_TO_RESUME;
+  async function performSeek(seekOperation, stateBeforeSeek) {
+    const resumeAfterSeek =
+      stateBeforeSeek === STATE.READY_PLAYING ||
+      stateBeforeSeek === STATE.READY_BUFFERING_TO_RESUME;
 
     const generation = ++ctx.positionGeneration;
 
-    if (previousState === STATE.READY_PLAYING) {
+    if (stateBeforeSeek === STATE.READY_PLAYING) {
       pausePlaybackClock();
     }
 
@@ -1352,7 +1353,7 @@ function recording(
       return true;
     }
 
-    if (wasPlaying) {
+    if (resumeAfterSeek) {
       return await startPlayback(PLAYBACK_START_REASON.SEEK);
     }
 
