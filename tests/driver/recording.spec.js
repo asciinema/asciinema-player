@@ -1044,6 +1044,7 @@ test("pausing during a pending segment transition prevents automatic resume", as
     await wait(0);
 
     expect(recorder.eventsNamed("playing")).toHaveLength(1);
+    expect(recorder.eventsNamed("loading")).toHaveLength(0);
     expect(recorder.outputs).toEqual([["first"]]);
 
     const ended = recorder.waitFor("ended");
@@ -1054,6 +1055,294 @@ test("pausing during a pending segment transition prevents automatic resume", as
   } finally {
     restoreFetch();
   }
+});
+
+test("required segment failures fail seek, step, and playback positioning", async () => {
+  for (const operation of ["seek", "step", "play"]) {
+    const requests = [];
+    const restoreFetch = stubSegmentedFetch(requests, {
+      failSegmentZero: operation === "play" ? 1 : 0,
+      failSegmentOne: operation === "play" ? 0 : 1,
+    });
+    const recorder = createDispatchRecorder();
+
+    try {
+      const driver = recording(
+        { url: "/recording/index.json", format: "segmented" },
+        { logger: stubLogger(), dispatch: recorder.dispatch },
+        operation === "play"
+          ? { speed: 1, poster: { type: "npt", value: 0.04 } }
+          : { speed: 1, preload: true },
+      );
+
+      await driver.init();
+
+      const result =
+        operation === "seek"
+          ? driver.seek(0.04)
+          : operation === "step"
+            ? driver.step(2)
+            : driver.play();
+
+      await expect(result).rejects.toThrow("503 Unavailable");
+      expect(recorder.eventsNamed("error")).toHaveLength(1);
+      expect(() => driver.play()).toThrow("503 Unavailable");
+    } finally {
+      restoreFetch();
+    }
+  }
+});
+
+test("fatal boundary failure clears the delayed loading notification", async () => {
+  const requests = [];
+  const gate = createGate();
+  const restoreFetch = stubSegmentedFetch(requests, {
+    failSegmentOne: 1,
+    segmentOneGate: gate,
+  });
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      { url: "/recording/index.json", format: "segmented" },
+      { logger: stubLogger(), dispatch: recorder.dispatch },
+      { speed: 1, preload: true },
+    );
+
+    await driver.init();
+    await driver.play();
+    await wait(40);
+    gate.resolve();
+    await wait(0);
+    await wait(1100);
+
+    expect(recorder.eventsNamed("error")).toHaveLength(1);
+    expect(recorder.eventsNamed("loading")).toHaveLength(0);
+  } finally {
+    gate.resolve();
+    restoreFetch();
+  }
+});
+
+test("stale audio recovery does not resume a pending segment wait", async () => {
+  const restoreAudio = installFakeAudio();
+  const requests = [];
+  const gate = createGate();
+  const restoreFetch = stubSegmentedFetch(requests, { segmentOneGate: gate });
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      { url: "/recording/index.json", format: "segmented" },
+      { logger: stubLogger(), dispatch: recorder.dispatch },
+      { speed: 1, preload: true, audioUrl: "/assets/fake.mp3" },
+    );
+
+    await driver.init();
+    await driver.play();
+    await wait(40);
+
+    fakeAudioState.lastAudio.dispatch("playing");
+    await wait(20);
+
+    expect(driver.getCurrentTime()).toBeCloseTo(0.03, 2);
+    expect(recorder.eventsNamed("playing")).toHaveLength(1);
+
+    const ended = recorder.waitFor("ended");
+    gate.resolve();
+    await ended;
+
+    expect(recorder.eventsNamed("playing")).toHaveLength(2);
+  } finally {
+    restoreFetch();
+    restoreAudio();
+  }
+});
+
+test("segment wait longer than one second dispatches loading once", async () => {
+  const requests = [];
+  const gate = createGate();
+  const restoreFetch = stubSegmentedFetch(requests, { segmentOneGate: gate });
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      { url: "/recording/index.json", format: "segmented" },
+      { logger: stubLogger(), dispatch: recorder.dispatch },
+      { speed: 1, preload: true },
+    );
+
+    await driver.init();
+    await driver.play();
+    await wait(1100);
+
+    expect(recorder.eventsNamed("loading")).toHaveLength(1);
+
+    const ended = recorder.waitFor("ended");
+    gate.resolve();
+    await ended;
+  } finally {
+    gate.resolve();
+    restoreFetch();
+  }
+});
+
+test("ready segment boundaries advance without loading or resetting", async () => {
+  const requests = [];
+  const restoreFetch = stubLinearSegmentedFetch(requests);
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      { url: "/linear/index.json", format: "segmented" },
+      { logger: stubLogger(), dispatch: recorder.dispatch },
+      { speed: 1, preload: true },
+    );
+
+    await driver.init();
+    const ended = recorder.waitFor("ended");
+    await driver.play();
+    await ended;
+
+    expect(recorder.eventsNamed("loading")).toHaveLength(0);
+    expect(recorder.eventsNamed("reset")).toHaveLength(1);
+    expect(recordingOutputs(recorder)).toEqual(["zero", "one", "two", "three"]);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("segmented rewind reuses the previous segment and refetches an evicted one", async () => {
+  const requests = [];
+  const restoreFetch = stubLinearSegmentedFetch(requests);
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      { url: "/linear/index.json", format: "segmented" },
+      { logger: stubLogger(), dispatch: recorder.dispatch },
+      { speed: 1, preload: true },
+    );
+
+    await driver.init();
+    const ended = recorder.waitFor("ended");
+    await driver.play();
+    await ended;
+
+    await driver.seek(0.035);
+    expect(requestCount(requests, "2.json")).toBe(1);
+
+    await driver.seek(0.015);
+    expect(requestCount(requests, "0.json")).toBe(2);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("finite segmented loop reloads and later evicts segment zero", async () => {
+  const requests = [];
+  const restoreFetch = stubLinearSegmentedFetch(requests);
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      { url: "/linear/index.json", format: "segmented" },
+      { logger: stubLogger(), dispatch: recorder.dispatch },
+      { speed: 1, preload: true, loop: 1 },
+    );
+
+    await driver.init();
+    const ended = recorder.waitFor("ended");
+    await driver.play();
+    await ended;
+
+    expect(recordingOutputs(recorder).filter((output) => output === "zero")).toHaveLength(2);
+    expect(requestCount(requests, "0.json")).toBe(2);
+
+    await driver.seek(0.015);
+    expect(requestCount(requests, "0.json")).toBe(3);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("segmented playback preserves server-provided effective boundary times", async () => {
+  const requests = [];
+  const restoreFetch = stubEffectiveTimeFetch(requests);
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      { url: "/effective/index.json", format: "segmented" },
+      { logger: stubLogger(), dispatch: recorder.dispatch },
+      { speed: 100, preload: true },
+    );
+
+    await driver.init();
+    expect(driver.getDuration()).toBe(0.51);
+
+    await driver.seek(0.5);
+    expect(driver.getCurrentTime()).toBe(0.5);
+    expect(requestCount(requests, "1.json")).toBe(1);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("terminal size overrides apply to full and segmented snapshot restoration", async () => {
+  const fullRecorder = createDispatchRecorder();
+  const fullDriver = recording(
+    source([
+      [10, "o", "first"],
+      [20, "o", "last"],
+    ]),
+    { logger: stubLogger(), dispatch: fullRecorder.dispatch },
+    { speed: 1, preload: true, cols: 120, rows: 40 },
+  );
+
+  await fullDriver.init();
+  await fullDriver.seek(0.02);
+  await fullDriver.seek(0.005);
+  expect(fullRecorder.eventsNamed("resize").at(-1).payload).toEqual({ cols: 120, rows: 40 });
+
+  const requests = [];
+  const restoreFetch = stubSegmentedFetch(requests);
+  const segmentedRecorder = createDispatchRecorder();
+
+  try {
+    const segmentedDriver = recording(
+      { url: "/recording/index.json", format: "segmented" },
+      { logger: stubLogger(), dispatch: segmentedRecorder.dispatch },
+      { speed: 1, preload: true, cols: 120, rows: 40 },
+    );
+
+    await segmentedDriver.init();
+    await segmentedDriver.seek(0.04);
+    expect(segmentedRecorder.eventsNamed("resize").at(-1).payload).toEqual({
+      cols: 120,
+      rows: 40,
+    });
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("NPT poster applies resize events before the poster time", async () => {
+  const recorder = createDispatchRecorder();
+  const driver = recording(
+    source([
+      [10, "r", "100x30"],
+      [20, "o", "poster"],
+    ]),
+    { logger: stubLogger(), dispatch: recorder.dispatch },
+    { speed: 1, poster: { type: "npt", value: 0.015 } },
+  );
+
+  await driver.init();
+
+  expect(recorder.eventsNamed("resize")).toEqual([
+    { name: "resize", payload: { cols: 100, rows: 30 } },
+  ]);
 });
 
 test("seeking away from a pending segment transition clears its loading timeout", async () => {
@@ -1766,7 +2055,7 @@ function stubFetch(fn) {
 
 function stubSegmentedFetch(
   requests,
-  { segmentZeroGate, segmentOneGate, failSegmentOne = 0 } = {},
+  { segmentZeroGate, segmentOneGate, failSegmentZero = 0, failSegmentOne = 0 } = {},
 ) {
   const index = {
     version: 1,
@@ -1805,15 +2094,20 @@ function stubSegmentedFetch(
     if (segments[url]) {
       if (url.endsWith("/0.json")) {
         await segmentZeroGate?.promise;
+
+        if (failSegmentZero > 0) {
+          failSegmentZero--;
+          return new Response("unavailable", { status: 503, statusText: "Unavailable" });
+        }
       }
 
       if (url.endsWith("/1.json")) {
+        await segmentOneGate?.promise;
+
         if (failSegmentOne > 0) {
           failSegmentOne--;
           return new Response("unavailable", { status: 503, statusText: "Unavailable" });
         }
-
-        await segmentOneGate?.promise;
       }
 
       return Response.json(segments[url]);
@@ -1821,6 +2115,90 @@ function stubSegmentedFetch(
 
     return new Response("missing", { status: 404, statusText: "Not Found" });
   });
+}
+
+function stubLinearSegmentedFetch(requests) {
+  const index = {
+    version: 1,
+    duration: 0.05,
+    term: { cols: 80, rows: 24 },
+    segments: [
+      { url: "0.json", start: 0 },
+      { url: "1.json", start: 0.02 },
+      { url: "2.json", start: 0.03 },
+      { url: "3.json", start: 0.04 },
+    ],
+  };
+  const segments = {
+    "0.json": {
+      snapshot: { cols: 80, rows: 24, init: "" },
+      events: [[0.01, "o", "zero"]],
+    },
+    "1.json": {
+      snapshot: { cols: 80, rows: 24, init: "zero" },
+      events: [[0.02, "o", "one"]],
+    },
+    "2.json": {
+      snapshot: { cols: 80, rows: 24, init: "zero one" },
+      events: [[0.03, "o", "two"]],
+    },
+    "3.json": {
+      snapshot: { cols: 80, rows: 24, init: "zero one two" },
+      events: [
+        [0.04, "o", "three"],
+        [0.05, "r", "80x24"],
+      ],
+    },
+  };
+
+  return stubFetch((url) => {
+    requests.push(url);
+
+    if (url === "/linear/index.json") return Response.json(index);
+
+    return Response.json(segments[url.split("/").at(-1)]);
+  });
+}
+
+function stubEffectiveTimeFetch(requests) {
+  const index = {
+    version: 1,
+    duration: 0.51,
+    term: { cols: 80, rows: 24 },
+    segments: [
+      { url: "0.json", start: 0 },
+      { url: "1.json", start: 0.5 },
+    ],
+  };
+  const segments = {
+    "0.json": {
+      snapshot: { cols: 80, rows: 24, init: "" },
+      events: [[0.01, "o", "before limited gap"]],
+    },
+    "1.json": {
+      snapshot: { cols: 80, rows: 24, init: "before limited gap" },
+      events: [
+        [0.5, "o", "after limited gap"],
+        [0.51, "r", "80x24"],
+      ],
+    },
+  };
+
+  return stubFetch((url) => {
+    requests.push(url);
+
+    if (url === "/effective/index.json") return Response.json(index);
+
+    return Response.json(segments[url.split("/").at(-1)]);
+  });
+}
+
+function requestCount(requests, name) {
+  return requests.filter((url) => url.endsWith(`/${name}`)).length;
+}
+
+function recordingOutputs(recorder) {
+  return recorder.outputs.flatMap((output) => (Array.isArray(output) ? output : []));
 }
 
 function wait(ms) {

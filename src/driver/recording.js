@@ -1,6 +1,6 @@
 import Stream from "../stream";
 import { toErrorPayload } from "../error";
-import { normalizeTheme } from "../theme";
+import { loadSegmentedRecording, validateSegmentedOptions } from "./segmented";
 
 function recording(
   src,
@@ -14,6 +14,8 @@ function recording(
     poster,
     markers: markers_,
     pauseOnMarkers,
+    cols: optionCols,
+    rows: optionRows,
     audioUrl,
   },
 ) {
@@ -171,14 +173,7 @@ function recording(
               hasAudio: payload.hasAudio,
             });
 
-            dispatch("reset", {
-              size: {
-                cols: ctx.segment.snapshot.cols,
-                rows: ctx.segment.snapshot.rows,
-              },
-              init: ctx.segment.snapshot.init,
-              theme: payload.theme,
-            });
+            resetTerminalFromSnapshot(ctx.segment);
 
             renderPoster();
           },
@@ -349,6 +344,10 @@ function recording(
         return { nextState: currentState };
 
       case EVENT.AUDIO_PLAYING:
+        if (ctx.segmentWaiting) {
+          return { nextState: currentState };
+        }
+
         if (currentState === STATE.READY_BUFFERING_TO_RESUME) {
           return {
             nextState: STATE.READY_PLAYING,
@@ -554,7 +553,19 @@ function recording(
   }
 
   function failDriver(error) {
+    if (ctx.failureError || state === STATE.STOPPED) return;
+
     queuedEvents.length = 0;
+    ctx.segmentWaiting = false;
+    clearTimeout(ctx.loadingTimeout);
+    ctx.loadingTimeout = null;
+    clearWaitingTimeout();
+    cancelNextEvent();
+
+    if (ctx.audioElement) {
+      ctx.audioElement.pause();
+    }
+
     ctx.failureError = error;
     state = STATE.FAILED;
     dispatch("error", toErrorPayload(error));
@@ -656,8 +667,7 @@ function recording(
 
       if (generation !== ctx.positionGeneration) return false;
 
-      const theme = recording.theme ?? null;
-      sendEvent(EVENT.LOAD_SUCCEEDED, { hasAudio, theme });
+      sendEvent(EVENT.LOAD_SUCCEEDED, { hasAudio });
     } catch (e) {
       if (processingEvents) {
         enqueueEvent(EVENT.LOAD_FAILED, { error: e });
@@ -759,6 +769,18 @@ function recording(
     return entry.promise;
   }
 
+  async function getRequiredSegment(index, generation) {
+    try {
+      return await getSegment(index, true);
+    } catch (error) {
+      if (generation === ctx.positionGeneration && state !== STATE.STOPPED) {
+        failDriver(error);
+      }
+
+      throw error;
+    }
+  }
+
   function retainSegments(indexes) {
     const retained = new Set(indexes.filter((index) => index >= 0));
 
@@ -793,7 +815,7 @@ function recording(
     }
 
     try {
-      const segment = await getSegment(nextIndex, true);
+      const segment = await getRequiredSegment(nextIndex, generation);
 
       if (generation !== ctx.positionGeneration || state === STATE.STOPPED) return;
 
@@ -808,10 +830,8 @@ function recording(
       } else if (state === STATE.READY_PLAYING) {
         scheduleNextEvent();
       }
-    } catch (error) {
-      if (generation === ctx.positionGeneration) {
-        failDriver(error);
-      }
+    } catch {
+      // Required segment failures have already failed the driver.
     }
   }
 
@@ -828,7 +848,8 @@ function recording(
         () => sendEvent(EVENT.AUDIO_PLAYING),
         (error) => {
           sendEvent(EVENT.PLAYBACK_START_REJECTED);
-          throw error;
+          logger.warn(`audio resume failed: ${error.message}`);
+          return false;
         },
       );
     }
@@ -1190,13 +1211,26 @@ function recording(
     };
   }
 
-  function restoreSegmentSnapshot(segment) {
-    feed("\x1bc");
+  function resetTerminalFromSnapshot(segment, emitClear = false) {
+    if (emitClear) {
+      // Preserve the existing observable RIS output even though reset replaces the VT state.
+      feed("\x1bc");
+    }
+
     dispatch("reset", {
       size: { cols: segment.snapshot.cols, rows: segment.snapshot.rows },
       init: segment.snapshot.init,
       theme: ctx.recording.theme ?? null,
     });
+
+    const size = {
+      cols: optionCols ?? segment.snapshot.cols,
+      rows: optionRows ?? segment.snapshot.rows,
+    };
+
+    if (size.cols !== segment.snapshot.cols || size.rows !== segment.snapshot.rows) {
+      dispatch("resize", size);
+    }
   }
 
   function syncActiveSegmentToTime(targetTime, clearStartAt = true, inclusive = true) {
@@ -1244,12 +1278,12 @@ function recording(
     }
 
     retainSegments([targetIndex - 1, targetIndex, targetIndex + 1]);
-    const segment = await getSegment(targetIndex, true);
+    const segment = await getRequiredSegment(targetIndex, generation);
 
     if (generation !== undefined && generation !== ctx.positionGeneration) return false;
 
     activateSegment(targetIndex, segment);
-    restoreSegmentSnapshot(segment);
+    resetTerminalFromSnapshot(segment, true);
     syncActiveSegmentToTime(targetTime);
     return true;
   }
@@ -1364,7 +1398,7 @@ function recording(
       if (generation !== ctx.positionGeneration) return;
 
       retainSegments([segmentIndex - 1, segmentIndex, segmentIndex + 1]);
-      const segment = await getSegment(segmentIndex, true);
+      const segment = await getRequiredSegment(segmentIndex, generation);
 
       if (generation !== ctx.positionGeneration) return;
 
@@ -1428,12 +1462,12 @@ function recording(
     }
 
     try {
-      const segment = await getSegment(0, true);
+      const segment = await getRequiredSegment(0, generation);
 
       if (generation !== ctx.positionGeneration) return;
 
       activateSegment(0, segment);
-      restoreSegmentSnapshot(segment);
+      resetTerminalFromSnapshot(segment, true);
       ctx.pauseElapsedTime = 0;
       ctx.startTime = now();
       prefetchNextSegment();
@@ -1451,10 +1485,8 @@ function recording(
         ctx.pauseElapsedTime = null;
         scheduleNextEvent();
       }
-    } catch (error) {
-      if (generation === ctx.positionGeneration) {
-        failDriver(error);
-      }
+    } catch {
+      // Required segment failures have already failed the driver.
     }
   }
 
@@ -1551,226 +1583,6 @@ function wrapFullRecording(recording) {
   };
 }
 
-async function loadSegmentedRecording(src, { startAt = 0 } = {}) {
-  if (typeof src.url !== "string") {
-    throw new Error("segmented recording source requires a URL");
-  }
-
-  const response = await doFetchOne(src.url, src.fetchOpts ?? {});
-  let index;
-
-  try {
-    index = await response.json();
-  } catch (error) {
-    throw new Error(`failed parsing segmented recording index from ${src.url}: ${error.message}`);
-  }
-
-  validateSegmentedIndex(index);
-
-  const duration = index.duration * 1000;
-  const markers = (index.markers ?? []).map(([time, label]) => [time * 1000, label]);
-  const segments = index.segments.map((segment) => ({
-    start: segment.start * 1000,
-    url: resolveSegmentUrl(segment.url, response.url || src.url),
-  }));
-  const recording = {
-    cols: index.term.cols,
-    rows: index.term.rows,
-    theme: parseSegmentedTheme(index.term.theme),
-    duration,
-    effectiveStartAt: Math.min(Math.max(startAt * 1000, 0), duration),
-    markers,
-    segments,
-    async loadSegment(segment) {
-      const segmentIndex = segments.indexOf(segment);
-
-      if (segmentIndex === -1) {
-        throw new Error("unknown recording segment");
-      }
-
-      const segmentResponse = await doFetchOne(segment.url, src.fetchOpts ?? {});
-      let payload;
-
-      try {
-        payload = await segmentResponse.json();
-      } catch (error) {
-        throw new Error(`failed parsing recording segment from ${segment.url}: ${error.message}`);
-      }
-
-      const data = normalizeSegment(recording, segmentIndex, payload);
-      return data;
-    },
-  };
-
-  return recording;
-}
-
-function validateSegmentedOptions(src, { idleTimeLimit, markers }) {
-  if (src.format !== "segmented") return;
-
-  const unsupported = [];
-
-  if (idleTimeLimit !== undefined) unsupported.push("idleTimeLimit");
-  if (markers !== undefined) unsupported.push("markers");
-
-  for (const option of ["inputOffset", "parser", "encoding"]) {
-    if (Object.hasOwn(src, option)) unsupported.push(option);
-  }
-
-  if (unsupported.length > 0) {
-    throw new Error(`segmented recordings do not support option: ${unsupported.join(", ")}`);
-  }
-}
-
-function validateSegmentedIndex(index) {
-  if (index?.version !== 1) {
-    throw new Error(`unsupported segmented recording version: ${JSON.stringify(index?.version)}`);
-  }
-
-  validateFiniteTime(index.duration, "recording duration");
-  validateTerminalSize(index.term, "recording terminal");
-
-  if (!Array.isArray(index.segments) || index.segments.length === 0) {
-    throw new Error("segmented recording index is missing segments");
-  }
-
-  let previousStart = -1;
-
-  index.segments.forEach((segment, i) => {
-    validateFiniteTime(segment?.start, `segment ${i} start`);
-
-    if (typeof segment?.url !== "string" || segment.url.length === 0) {
-      throw new Error(`segment ${i} is missing its URL`);
-    }
-
-    if (i === 0 && segment.start !== 0) {
-      throw new Error("first segment must start at 0");
-    }
-
-    if (i > 0 && (segment.start <= previousStart || segment.start >= index.duration)) {
-      throw new Error(`segment ${i} start must be strictly increasing and before duration`);
-    }
-
-    previousStart = segment.start;
-  });
-
-  if (index.markers !== undefined && !Array.isArray(index.markers)) {
-    throw new Error("segmented recording markers must be an array");
-  }
-
-  let previousMarkerTime = -1;
-
-  for (const [i, marker] of (index.markers ?? []).entries()) {
-    if (!Array.isArray(marker) || marker.length !== 2 || typeof marker[1] !== "string") {
-      throw new Error(`invalid marker ${i} in segmented recording index`);
-    }
-
-    validateFiniteTime(marker[0], `marker ${i} time`);
-
-    if (marker[0] < previousMarkerTime || marker[0] > index.duration) {
-      throw new Error(`marker ${i} time is out of order or range`);
-    }
-
-    previousMarkerTime = marker[0];
-  }
-}
-
-function normalizeSegment(recording, index, payload) {
-  const snapshot = payload?.snapshot;
-  validateTerminalSize(snapshot, `segment ${index} snapshot`);
-
-  if (typeof snapshot.init !== "string") {
-    throw new Error(`segment ${index} snapshot init must be a string`);
-  }
-
-  if (!Array.isArray(payload.events) || payload.events.length === 0) {
-    throw new Error(`segment ${index} is missing events`);
-  }
-
-  const start = recording.segments[index].start;
-  const end = getSegmentEnd(recording, index);
-  let previousTime = -1;
-  let markerIndex = recording.markers.findIndex(([time]) => time >= start);
-
-  if (markerIndex === -1) markerIndex = recording.markers.length;
-
-  const events = payload.events.map((event, eventIndex) => {
-    if (!Array.isArray(event) || event.length !== 3 || typeof event[1] !== "string") {
-      throw new Error(`invalid event ${eventIndex} in segment ${index}`);
-    }
-
-    const time = event[0] * 1000;
-    validateFiniteTime(time, `event ${eventIndex} time in segment ${index}`, true);
-
-    if (
-      time < previousTime ||
-      time < start ||
-      (index + 1 < recording.segments.length ? time >= end : time > end)
-    ) {
-      throw new Error(`event ${eventIndex} time is out of range in segment ${index}`);
-    }
-
-    previousTime = time;
-
-    if (event[1] === "m") {
-      if (typeof event[2] !== "string") {
-        throw new Error(`marker event ${eventIndex} in segment ${index} must have a string label`);
-      }
-
-      return [time, "m", { index: markerIndex++, time, label: event[2] }];
-    }
-
-    return [time, event[1], event[2]];
-  });
-
-  if (index > 0 && events[0][0] !== start) {
-    throw new Error(`segment ${index} first event must match its start`);
-  }
-
-  if (
-    index === recording.segments.length - 1 &&
-    events[events.length - 1][0] !== recording.duration
-  ) {
-    throw new Error("final segment event must match recording duration");
-  }
-
-  return {
-    snapshot: { cols: snapshot.cols, rows: snapshot.rows, init: snapshot.init },
-    events,
-  };
-}
-
-function validateFiniteTime(value, label, milliseconds = false) {
-  if (!Number.isFinite(value) || value < 0) {
-    throw new Error(
-      `${label} must be a finite non-negative ${milliseconds ? "millisecond" : "second"} value`,
-    );
-  }
-}
-
-function validateTerminalSize(term, label) {
-  if (
-    !Number.isInteger(term?.cols) ||
-    term.cols <= 0 ||
-    !Number.isInteger(term?.rows) ||
-    term.rows <= 0
-  ) {
-    throw new Error(`${label} must have positive integer cols and rows`);
-  }
-}
-
-function parseSegmentedTheme(theme) {
-  return normalizeTheme({
-    foreground: theme?.fg,
-    background: theme?.bg,
-    palette: typeof theme?.palette === "string" ? theme.palette.split(":") : undefined,
-  });
-}
-
-function resolveSegmentUrl(url, indexUrl) {
-  return new URL(url, new URL(indexUrl, globalThis.location?.href ?? "http://localhost/")).href;
-}
-
 function findSegmentIndex(recording, time) {
   if (time >= recording.duration) return recording.segments.length - 1;
 
@@ -1788,10 +1600,6 @@ function findSegmentIndex(recording, time) {
   }
 
   return low;
-}
-
-function getSegmentEnd(recording, index) {
-  return recording.segments[index + 1]?.start ?? recording.duration;
 }
 
 async function doFetch({ url, data, fetchOpts = {} }) {
