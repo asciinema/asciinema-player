@@ -1546,8 +1546,6 @@ async function loadRecordingSource(src, options) {
 }
 
 function findSegmentIndex(recording, time) {
-  if (time >= recording.duration) return recording.segments.length - 1;
-
   let low = 0;
   let high = recording.segments.length;
 
