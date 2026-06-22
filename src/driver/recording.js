@@ -512,7 +512,7 @@ function recording(
             nextState: STATE.READY_PAUSED,
             action: () => {
               dispatchMarker(payload.data);
-              return performPauseAtMarker(payload.time);
+              return performPause(payload.time);
             },
           };
         }
@@ -1315,12 +1315,17 @@ function recording(
     return raiseDriverEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
   }
 
-  function performPause() {
+  function performPause(time) {
     if (ctx.audioElement) {
       ctx.audioElement.pause();
     }
 
     pausePlaybackClock();
+
+    if (time !== undefined) {
+      ctx.pauseElapsedTime = time;
+    }
+
     dispatch("pause");
 
     return true;
@@ -1503,18 +1508,6 @@ function recording(
     retainSegments([ctx.segmentIndex - 1, ctx.segmentIndex]);
 
     dispatch("ended");
-  }
-
-  function performPauseAtMarker(time) {
-    if (ctx.audioElement) {
-      ctx.audioElement.pause();
-    }
-
-    pausePlaybackClock();
-    ctx.pauseElapsedTime = time;
-    dispatch("pause");
-
-    return true;
   }
 
   function teardown() {
