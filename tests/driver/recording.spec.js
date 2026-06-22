@@ -1,9 +1,7 @@
 import { test, expect } from "@playwright/test";
-import recording, {
-  loadRecording,
-  loadSegmentedRecording,
-  prepareRecording,
-} from "../../src/driver/recording.js";
+import recording from "../../src/driver/recording.js";
+import { loadRecording, prepareRecording } from "../../src/driver/recording/full.js";
+import { loadSegmentedRecording } from "../../src/driver/recording/segmented.js";
 
 // --- init ---
 
@@ -1557,8 +1555,8 @@ test("loop waits safely when the evicted first segment is still reloading", asyn
     gate.resolve();
     await waitForCondition(
       () =>
-        recorder.outputs.filter((output) => Array.isArray(output) && output[0] === "zero")
-          .length >= 2,
+        recorder.outputs.filter((output) => Array.isArray(output) && output[0] === "zero").length >=
+        2,
     );
     await driver.stop();
 

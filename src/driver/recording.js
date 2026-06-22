@@ -1,6 +1,6 @@
-import Stream from "../stream";
 import { toErrorPayload } from "../error";
-import { loadSegmentedRecording, validateSegmentedOptions } from "./segmented";
+import { loadFullRecording } from "./recording/full";
+import { loadSegmentedRecording, validateSegmentedOptions } from "./recording/segmented";
 
 function recording(
   src,
@@ -1542,46 +1542,12 @@ function recording(
   };
 }
 
-async function loadRecording(src) {
-  const { parser, encoding = "utf-8" } = src;
-  const data = await doFetch(src);
-
-  return await parser(data, { encoding });
-}
-
 async function loadRecordingSource(src, options) {
   if (src.format === "segmented") {
     return await loadSegmentedRecording(src, options);
   }
 
-  return wrapFullRecording(prepareRecording(await loadRecording(src), options));
-}
-
-function wrapFullRecording(recording) {
-  const segment = { start: 0 };
-  const markers = recording.events
-    .filter((event) => event[1] === "m")
-    .map((event) => [event[0], event[2].label]);
-
-  return {
-    cols: recording.cols,
-    rows: recording.rows,
-    theme: recording.theme,
-    duration: recording.duration,
-    effectiveStartAt: recording.effectiveStartAt,
-    markers,
-    segments: [segment],
-    async loadSegment(requestedSegment) {
-      if (requestedSegment !== segment) {
-        throw new Error("unknown recording segment");
-      }
-
-      return {
-        snapshot: { cols: recording.cols, rows: recording.rows, init: "" },
-        events: recording.events,
-      };
-    },
-  };
+  return await loadFullRecording(src, options);
 }
 
 function findSegmentIndex(recording, time) {
@@ -1601,117 +1567,6 @@ function findSegmentIndex(recording, time) {
   }
 
   return low;
-}
-
-async function doFetch({ url, data, fetchOpts = {} }) {
-  if (typeof url === "string") {
-    return await doFetchOne(url, fetchOpts);
-  } else if (Array.isArray(url)) {
-    return await Promise.all(url.map((url) => doFetchOne(url, fetchOpts)));
-  } else if (data !== undefined) {
-    if (typeof data === "function") {
-      data = data();
-    }
-
-    if (!(data instanceof Promise)) {
-      data = Promise.resolve(data);
-    }
-
-    const value = await data;
-
-    if (typeof value === "string" || value instanceof ArrayBuffer) {
-      return new Response(value);
-    } else {
-      return value;
-    }
-  } else {
-    throw new Error("failed fetching recording file: url/data missing in src");
-  }
-}
-
-async function doFetchOne(url, fetchOpts) {
-  const response = await fetch(url, fetchOpts);
-
-  if (!response.ok) {
-    throw new Error(
-      `failed fetching recording from ${url}: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  return response;
-}
-
-function prepareRecording(recording, { startAt = 0, idleTimeLimit, inputOffset, markers }) {
-  let { events } = recording;
-
-  if (!(events instanceof Stream)) {
-    events = new Stream(events);
-  }
-
-  startAt = startAt * 1000;
-  idleTimeLimit = idleTimeLimit ?? recording.idleTimeLimit;
-  idleTimeLimit = idleTimeLimit !== undefined ? idleTimeLimit * 1000 : Infinity;
-  inputOffset = inputOffset !== undefined ? inputOffset * 1000 : undefined;
-  const limiterOutput = { offset: 0 };
-
-  if (markers !== undefined) {
-    markers = new Stream(markers).map(normalizeMarker);
-    events = events.filter((e) => e[1] !== "m").multiplex(markers, (a, b) => a[0] < b[0]);
-  }
-
-  events = events.map(timeLimiter(idleTimeLimit, startAt, limiterOutput)).map(markerWrapper());
-  events = events.toArray();
-
-  if (inputOffset !== undefined) {
-    events = events.map((e) => (e[1] === "i" ? [e[0] + inputOffset, e[1], e[2]] : e));
-    events.sort((a, b) => a[0] - b[0]);
-  }
-
-  if (events.length === 0) {
-    throw new Error("recording is missing events");
-  }
-
-  const duration = events[events.length - 1][0];
-  const effectiveStartAt = startAt - limiterOutput.offset;
-
-  return { ...recording, events, duration, effectiveStartAt };
-}
-
-function normalizeMarker(m) {
-  return typeof m === "number" ? [m * 1000, "m", ""] : [m[0] * 1000, "m", m[1]];
-}
-
-function timeLimiter(idleTimeLimit, startAt, output) {
-  let prevT = 0;
-  let shift = 0;
-
-  return function (e) {
-    const delay = e[0] - prevT;
-    const delta = delay - idleTimeLimit;
-    prevT = e[0];
-
-    if (delta > 0) {
-      shift += delta;
-
-      if (e[0] < startAt) {
-        output.offset += delta;
-      }
-    }
-
-    return [e[0] - shift, e[1], e[2]];
-  };
-}
-
-function markerWrapper() {
-  let i = 0;
-
-  return function (e) {
-    if (e[1] === "m") {
-      return [e[0], e[1], { index: i++, time: e[0], label: e[2] }];
-    } else {
-      return e;
-    }
-  };
 }
 
 async function createAudioElement(src) {
@@ -1760,4 +1615,3 @@ async function createAudioElement(src) {
 }
 
 export default recording;
-export { loadRecording, loadSegmentedRecording, prepareRecording };

@@ -1,4 +1,4 @@
-import { normalizeTheme } from "../theme";
+import { normalizeTheme } from "../../theme";
 
 async function loadSegmentedRecording(src, { startAt = 0 } = {}) {
   if (typeof src.url !== "string") {
