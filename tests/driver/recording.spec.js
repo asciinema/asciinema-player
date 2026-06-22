@@ -1,7 +1,5 @@
 import { test, expect } from "@playwright/test";
 import recording from "../../src/driver/recording.js";
-import { loadRecording, prepareRecording } from "../../src/driver/recording/full.js";
-import { loadSegmentedRecording } from "../../src/driver/recording/segmented.js";
 
 // --- init ---
 
@@ -119,6 +117,21 @@ test("init with preload and text poster loads immediately and still renders post
   expect(parserCalls).toBe(1);
   expect(recorder.eventNames()).toEqual(["metadata", "reset", "output"]);
   expect(recorder.outputs).toEqual(["hello world"]);
+});
+
+test("preload exposes duration before playback", async () => {
+  const driver = recording(
+    source([
+      [100, "o", "start"],
+      [500, "o", "end"],
+    ]),
+    { logger: stubLogger(), dispatch() {} },
+    { speed: 1, preload: true },
+  );
+
+  await driver.init();
+
+  expect(driver.getDuration()).toBe(0.5);
 });
 
 // --- play ---
@@ -278,6 +291,28 @@ test("play batches adjacent output events at runtime", async () => {
   expect(recorder.outputs).toEqual([["hel", "lo", "!"], ["?"]]);
 });
 
+test("playback dispatches input events", async () => {
+  const recorder = createDispatchRecorder();
+  const driver = recording(
+    source([
+      [10, "i", "a"],
+      [20, "i", "\r"],
+      [30, "o", "done"],
+    ]),
+    { logger: stubLogger(), dispatch: recorder.dispatch },
+    { speed: 1 },
+  );
+
+  const ended = recorder.waitFor("ended");
+  await driver.play();
+  await ended;
+
+  expect(recorder.eventsNamed("input")).toEqual([
+    { name: "input", payload: { data: "a" } },
+    { name: "input", payload: { data: "\r" } },
+  ]);
+});
+
 // --- pause & markers ---
 
 test("pauseOnMarkers pauses playback and resumes on play", async () => {
@@ -361,6 +396,32 @@ test("mute and unmute are no-ops without audio", async () => {
   expect(driver.mute()).toBeUndefined();
   expect(driver.unmute()).toBeUndefined();
   expect(recorder.eventsNamed("muted")).toHaveLength(0);
+});
+
+test("audio load failure falls back to playback without audio", async () => {
+  const restoreAudio = installFakeAudio({ failLoad: true });
+  const recorder = createDispatchRecorder();
+
+  try {
+    const driver = recording(
+      source([[10, "o", "done"]]),
+      { logger: stubLogger(), dispatch: recorder.dispatch },
+      { speed: 1, preload: true, audioUrl: "/missing.mp3" },
+    );
+
+    await driver.init();
+
+    expect(recorder.eventsNamed("metadata")[0].payload.hasAudio).toBe(false);
+
+    const ended = recorder.waitFor("ended");
+    await driver.play();
+    await ended;
+
+    expect(recorder.eventsNamed("playing")).toHaveLength(1);
+    expect(recorder.eventsNamed("error")).toHaveLength(0);
+  } finally {
+    restoreAudio();
+  }
 });
 
 // --- seek ---
@@ -991,59 +1052,6 @@ test("segmented recordings reject unsupported options", async () => {
   }
 });
 
-test("loadSegmentedRecording validates and normalizes index and segment data", async () => {
-  const requests = [];
-  const restoreFetch = stubSegmentedFetch(requests);
-
-  try {
-    const loaded = await loadSegmentedRecording({
-      url: "/recording/index.json",
-      format: "segmented",
-    });
-    const segment = await loaded.loadSegment(loaded.segments[1]);
-
-    expect(loaded.duration).toBe(60);
-    expect(loaded.segments.map(({ start }) => start)).toEqual([0, 30]);
-    expect(segment.snapshot).toEqual({ cols: 100, rows: 30, init: "second snapshot" });
-    expect(segment.events).toEqual([
-      [30, "o", "last"],
-      [40, "m", { index: 1, time: 40, label: "summary" }],
-      [60, "r", "100x30"],
-    ]);
-  } finally {
-    restoreFetch();
-  }
-});
-
-test("segmented loading rejects missing snapshots and inconsistent final duration", async () => {
-  const index = {
-    version: 1,
-    duration: 1,
-    term: { cols: 80, rows: 24 },
-    segments: [{ url: "0.json", start: 0 }],
-  };
-  let payload = { events: [[1, "o", "end"]] };
-  const restoreFetch = stubFetch((url) => Response.json(url === "/index.json" ? index : payload));
-
-  try {
-    let loaded = await loadSegmentedRecording({ url: "/index.json" });
-    await expect(loaded.loadSegment(loaded.segments[0])).rejects.toThrow(
-      "segment 0 snapshot must have positive integer cols and rows",
-    );
-
-    payload = {
-      snapshot: { cols: 80, rows: 24, init: "" },
-      events: [[0.5, "o", "end"]],
-    };
-    loaded = await loadSegmentedRecording({ url: "/index.json" });
-    await expect(loaded.loadSegment(loaded.segments[0])).rejects.toThrow(
-      "final segment event must match recording duration",
-    );
-  } finally {
-    restoreFetch();
-  }
-});
-
 test("pausing during a pending segment transition prevents automatic resume", async () => {
   const requests = [];
   const gate = createGate();
@@ -1632,275 +1640,6 @@ test("stepping crosses segmented boundaries in both directions", async () => {
   }
 });
 
-// --- loadRecording ---
-
-test("loadRecording fetches a single URL and passes Response to parser", async () => {
-  const restoreFetch = stubFetch(() => new Response("hello"));
-  let received;
-  let receivedEncoding;
-
-  try {
-    const recording = await loadRecording({
-      url: "/demo.cast",
-      encoding: "iso-8859-2",
-      parser: async (data, { encoding }) => {
-        received = data;
-        receivedEncoding = encoding;
-        return { cols: 80, rows: 24, events: [[1, "o", "ok"]] };
-      },
-    });
-
-    expect(recording).toEqual({ cols: 80, rows: 24, events: [[1, "o", "ok"]] });
-    expect(received).toBeInstanceOf(Response);
-    expect(receivedEncoding).toBe("iso-8859-2");
-  } finally {
-    restoreFetch();
-  }
-});
-
-test("loadRecording fetches URL arrays and passes fetchOpts through", async () => {
-  const calls = [];
-
-  const restoreFetch = stubFetch((url, opts) => {
-    calls.push([url, opts]);
-    return new Response(url);
-  });
-
-  let received;
-
-  try {
-    await loadRecording({
-      url: ["/one", "/two"],
-      fetchOpts: { method: "POST" },
-      parser: async (data) => {
-        received = data;
-        return { cols: 80, rows: 24, events: [[1, "o", "ok"]] };
-      },
-    });
-
-    expect(calls).toEqual([
-      ["/one", { method: "POST" }],
-      ["/two", { method: "POST" }],
-    ]);
-
-    expect(Array.isArray(received)).toBe(true);
-    expect(received).toHaveLength(2);
-    expect(received[0]).toBeInstanceOf(Response);
-    expect(received[1]).toBeInstanceOf(Response);
-  } finally {
-    restoreFetch();
-  }
-});
-
-test("loadRecording wraps string data in Response and passes objects through unchanged", async () => {
-  let firstInput;
-
-  await loadRecording({
-    data: '{"version": 2}',
-    parser: async (data) => {
-      firstInput = data;
-      return { cols: 80, rows: 24, events: [[1, "o", "ok"]] };
-    },
-  });
-
-  expect(firstInput).toBeInstanceOf(Response);
-
-  let secondInput;
-  const data = { cols: 80, rows: 24, events: [[1, "o", "ok"]] };
-
-  await loadRecording({
-    data,
-    parser: async (input) => {
-      secondInput = input;
-      return data;
-    },
-  });
-
-  expect(secondInput).toBe(data);
-});
-
-test("loadRecording resolves async data functions", async () => {
-  let received;
-
-  await loadRecording({
-    data: async () => ({ cols: 90, rows: 30, events: [[1, "o", "ok"]] }),
-    parser: async (data) => {
-      received = data;
-      return data;
-    },
-  });
-
-  expect(received).toEqual({ cols: 90, rows: 30, events: [[1, "o", "ok"]] });
-});
-
-test("loadRecording rejects on missing source, fetch failure and parser failure", async () => {
-  await expect(
-    loadRecording({
-      parser: async () => ({ cols: 80, rows: 24, events: [[1, "o", "ok"]] }),
-    }),
-  ).rejects.toThrow("url/data missing");
-
-  const restoreFetch = stubFetch(
-    () => new Response("missing", { status: 404, statusText: "Not Found" }),
-  );
-
-  try {
-    await expect(
-      loadRecording({
-        url: "/missing.cast",
-        parser: async () => ({ cols: 80, rows: 24, events: [[1, "o", "ok"]] }),
-      }),
-    ).rejects.toThrow("failed fetching recording from /missing.cast: 404 Not Found");
-  } finally {
-    restoreFetch();
-  }
-
-  await expect(
-    loadRecording({
-      data: "x",
-      parser: async () => {
-        throw new Error("parser boom");
-      },
-    }),
-  ).rejects.toThrow("parser boom");
-});
-
-// --- prepareRecording ---
-
-test("prepareRecording applies idleTimeLimit from recording or options", () => {
-  const base = {
-    cols: 80,
-    rows: 24,
-    idleTimeLimit: 2,
-    events: [
-      [1000, "o", "a"],
-      [10000, "o", "b"],
-    ],
-  };
-
-  const withHeaderLimit = prepareRecording(base, {});
-
-  expect(withHeaderLimit.events.map((e) => e[0])).toEqual([1000, 3000]);
-  expect(withHeaderLimit.duration).toBe(3000);
-
-  const withOverride = prepareRecording(base, { idleTimeLimit: 4 });
-
-  expect(withOverride.events.map((e) => e[0])).toEqual([1000, 5000]);
-  expect(withOverride.duration).toBe(5000);
-});
-
-test("prepareRecording wraps embedded markers and can replace them with override markers", () => {
-  const base = {
-    cols: 80,
-    rows: 24,
-    events: [
-      [1000, "o", "a"],
-      [2000, "m", "embedded"],
-      [3000, "o", "b"],
-    ],
-  };
-
-  const embedded = prepareRecording(base, {});
-
-  expect(embedded.events[1]).toEqual([2000, "m", { index: 0, time: 2000, label: "embedded" }]);
-
-  const overridden = prepareRecording(base, {
-    markers: [1.5, [2.5, "override"]],
-  });
-
-  expect(overridden.events.filter((e) => e[1] === "m")).toEqual([
-    [1500, "m", { index: 0, time: 1500, label: "" }],
-    [2500, "m", { index: 1, time: 2500, label: "override" }],
-  ]);
-});
-
-test("prepareRecording applies idleTimeLimit to embedded markers", () => {
-  const recording = prepareRecording(
-    {
-      cols: 80,
-      rows: 24,
-      events: [
-        [1000, "o", "a"],
-        [8000, "m", "chapter"],
-        [10000, "o", "b"],
-      ],
-    },
-    { idleTimeLimit: 2 },
-  );
-
-  expect(recording.events).toEqual([
-    [1000, "o", "a"],
-    [3000, "m", { index: 0, time: 3000, label: "chapter" }],
-    [5000, "o", "b"],
-  ]);
-
-  expect(recording.duration).toBe(5000);
-});
-
-test("prepareRecording applies idleTimeLimit to override markers", () => {
-  const recording = prepareRecording(
-    {
-      cols: 80,
-      rows: 24,
-      events: [
-        [1000, "o", "a"],
-        [10000, "o", "b"],
-        [20000, "o", "c"],
-      ],
-    },
-    {
-      idleTimeLimit: 2,
-      markers: [
-        [8, "chapter 1"],
-        [15, "chapter 2"],
-        [18, "chapter 3"],
-      ],
-    },
-  );
-
-  expect(recording.events).toEqual([
-    [1000, "o", "a"],
-    [3000, "m", { index: 0, time: 3000, label: "chapter 1" }],
-    [5000, "o", "b"],
-    [7000, "m", { index: 1, time: 7000, label: "chapter 2" }],
-    [9000, "m", { index: 2, time: 9000, label: "chapter 3" }],
-    [11000, "o", "c"],
-  ]);
-
-  expect(recording.duration).toBe(11000);
-});
-
-test("prepareRecording computes effectiveStartAt after idle time compression", () => {
-  const recording = prepareRecording(
-    {
-      cols: 80,
-      rows: 24,
-      events: [
-        [1000, "o", "a"],
-        [10000, "o", "b"],
-        [12000, "o", "c"],
-      ],
-    },
-    { idleTimeLimit: 2, startAt: 11 },
-  );
-
-  expect(recording.events.map((e) => e[0])).toEqual([1000, 3000, 5000]);
-  expect(recording.effectiveStartAt).toBe(4000);
-});
-
-test("prepareRecording rejects recordings with no events", () => {
-  expect(() =>
-    prepareRecording(
-      {
-        cols: 80,
-        rows: 24,
-        events: [],
-      },
-      {},
-    ),
-  ).toThrow("recording is missing events");
-});
-
 // --- helpers ---
 
 const fakeAudioState = {
@@ -1909,7 +1648,7 @@ const fakeAudioState = {
   pendingPlay: null,
 };
 
-function installFakeAudio({ manualPlay = false } = {}) {
+function installFakeAudio({ manualPlay = false, failLoad = false } = {}) {
   const originalAudio = globalThis.Audio;
   const originalAudioContext = globalThis.AudioContext;
   fakeAudioState.closedContexts = 0;
@@ -1954,7 +1693,7 @@ function installFakeAudio({ manualPlay = false } = {}) {
     load() {
       setTimeout(() => {
         if (this.src !== "") {
-          this.dispatch("canplay");
+          this.dispatch(failLoad ? "error" : "canplay");
         }
       }, 0);
     }

@@ -86,18 +86,6 @@ test("progress bar click seeks to a new position", async ({ page }) => {
   await expectCurrentTime(playerApi).toBeCloseTo(9, 1);
 });
 
-test("emits input events during playback", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/input.cast");
-
-  await playerApi.play();
-
-  const inputs = (await playerApi.events.collect())
-    .filter((event) => event.name === "input")
-    .map((event) => event.payload?.data);
-
-  expect(inputs).toEqual(["a", "\r"]);
-});
-
 test("hides keystroke overlay by default", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/input.cast");
 
@@ -196,54 +184,56 @@ test("keeps keystroke fade timers independent", async ({ page }) => {
   await expect(pills.last()).not.toHaveClass(/fading/);
 });
 
-test("emits marker events during playback", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/markers.cast");
-
-  await playerApi.play();
-
-  const markers = (await playerApi.events.collect())
-    .filter((event) => event.name === "marker")
-    .map((event) => event.payload);
-
-  expect(markers).toEqual([
-    { index: 0, label: "first", time: 0.5 },
-    { index: 1, label: "second", time: 1.1 },
-  ]);
-});
-
 test("autoplay starts playback without user interaction", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/simple.cast", { autoPlay: true });
   await playerApi.events.waitFor("playing");
 });
 
-test("preload exposes duration before playback", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/simple.cast", { preload: true });
+test("segmented source loads through Core and fetches segments on demand", async ({ page }) => {
+  const requests = [];
+  const payloads = {
+    "/recording/index.json": {
+      version: 1,
+      duration: 0.04,
+      term: { cols: 80, rows: 24 },
+      segments: [
+        { url: "0.json", start: 0 },
+        { url: "1.json", start: 0.02 },
+      ],
+    },
+    "/recording/0.json": {
+      snapshot: { cols: 80, rows: 24, init: "" },
+      events: [[0.01, "o", "first"]],
+    },
+    "/recording/1.json": {
+      snapshot: { cols: 80, rows: 24, init: "first" },
+      events: [
+        [0.02, "o", "last"],
+        [0.04, "r", "80x24"],
+      ],
+    },
+  };
 
-  await expectDuration(playerApi).toBeGreaterThan(0);
-});
-
-test("invalid audioUrl falls back to playback without audio", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/simple.cast", {
-    audioUrl: "/assets/missing.mp3",
+  await page.route("**/recording/*.json", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    requests.push(path);
+    await route.fulfill({ json: payloads[path] });
   });
 
-  await page.evaluate(() => {
-    window.player.addEventListener("metadata", (payload) => {
-      window.__pushEvent({ name: "metadata", payload: payload ?? null });
-    });
-  });
-
-  await playerApi.play();
-
-  const metadata = await playerApi.events.waitFor("metadata");
-
-  expect(metadata.payload).toEqual(
-    expect.objectContaining({
-      hasAudio: false,
-    }),
+  const playerApi = await createPlayer(
+    page,
+    { url: "/recording/index.json", format: "segmented" },
+    { preload: true },
   );
 
-  await playerApi.events.waitFor("playing");
+  await expectDuration(playerApi).toBe(0.04);
+  expect(requests).toEqual(["/recording/index.json", "/recording/0.json"]);
+
+  await playerApi.play();
+  await playerApi.events.waitFor("ended");
+
+  expect(requests).toEqual(["/recording/index.json", "/recording/0.json", "/recording/1.json"]);
+  await expectTermText(page, ["first", "last"]);
 });
 
 test("invalid preload data emits error without an unhandled rejection", async ({ page }) => {
@@ -255,79 +245,6 @@ test("invalid preload data emits error without an unhandled rejection", async ({
     name: "Error",
     message: "invalid data",
   });
-});
-
-test("audio playback emits playing once on start and once after buffering recovery", async ({
-  page,
-}) => {
-  await installFakeAudio(page);
-
-  const playerApi = await createPlayer(page, "/assets/simple.cast", {
-    audioUrl: "/assets/fake.mp3",
-  });
-
-  await playerApi.play();
-  await playerApi.events.expectNext("play");
-  await playerApi.events.expectNext("playing");
-  await page.waitForTimeout(50);
-
-  let playingEvents = await page.evaluate(() => {
-    return window.__events.filter((event) => event.name === "playing").length;
-  });
-
-  expect(playingEvents).toBe(1);
-
-  await page.evaluate(() => {
-    window.__dispatchAudioEvent("waiting");
-    window.__dispatchAudioEvent("playing");
-  });
-
-  await playerApi.events.expectNext("playing");
-
-  playingEvents = await page.evaluate(() => {
-    return window.__events.filter((event) => event.name === "playing").length;
-  });
-
-  expect(playingEvents).toBe(2);
-});
-
-test("startAt begins playback near the requested offset", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/simple.cast", { startAt: 1 });
-
-  await playerApi.play();
-  await playerApi.events.waitFor("playing");
-  const startTime = await playerApi.getCurrentTime();
-  expect(startTime).toBeCloseTo(1.0, 1);
-});
-
-test("pauseOnMarkers pauses playback when a marker is reached", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/markers.cast", { pauseOnMarkers: true });
-
-  await playerApi.play();
-  await playerApi.events.waitFor("playing");
-  await playerApi.events.waitFor("marker");
-  await playerApi.events.waitFor("pause");
-  await expectCurrentTime(playerApi).toBeCloseTo(0.5);
-
-  await page.waitForTimeout(200);
-  const pausedTime = await playerApi.getCurrentTime();
-  expect(pausedTime).toBeCloseTo(0.5);
-});
-
-test("loop option replays before ending", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/loop.cast", { loop: 2 });
-
-  const startTime = Date.now();
-
-  await playerApi.play();
-  await playerApi.events.waitFor("playing");
-  const duration = await playerApi.getDuration();
-  expect(duration).toBeGreaterThan(0);
-  await playerApi.events.waitFor("ended");
-  const elapsed = (Date.now() - startTime) / 1000;
-
-  // Use a loose lower bound to avoid timer throttling flakiness in Firefox.
-  expect(elapsed).toBeGreaterThan(duration * 1.5);
 });
 
 test("resizes terminal view when the container changes size", async ({ page }) => {
@@ -916,16 +833,6 @@ test("poster - npt", async ({ page }) => {
   await expectTermText(page, ["start", "one", "six"]);
 });
 
-test("poster - data:text/plain", async ({ page }) => {
-  await createPlayer(page, "/assets/long.cast", {
-    poster: "data:text/plain,hello world",
-  });
-
-  await page.waitForTimeout(500);
-
-  await expectTermText(page, "hello world");
-});
-
 test("poster - data:text/plain - clears when playback starts", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/long.cast", {
     poster: "data:text/plain,hello world",
@@ -945,87 +852,7 @@ test("poster - data:text/plain - clears when playback starts", async ({ page }) 
     .toBe(false);
 });
 
-test("poster - data:text/plain - with preload", async ({ page }) => {
-  await createPlayer(page, "/assets/long.cast", {
-    poster: "data:text/plain,hello world",
-    preload: true,
-  });
-
-  await page.waitForTimeout(500);
-
-  await expectTermText(page, "hello world");
-});
-
 const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "error", "input", "marker"];
-
-async function installFakeAudio(page) {
-  await page.addInitScript(() => {
-    class FakeAudio {
-      constructor() {
-        this.currentTime = 0;
-        this.duration = 10;
-        this.loop = false;
-        this.preload = "metadata";
-        this.crossOrigin = "anonymous";
-        this.muted = false;
-        this.seekable = { length: 1, end: () => this.duration };
-        this.listeners = new Map();
-        window.__lastAudio = this;
-      }
-
-      addEventListener(name, handler) {
-        const handlers = this.listeners.get(name) ?? [];
-        handlers.push(handler);
-        this.listeners.set(name, handlers);
-      }
-
-      removeEventListener(name, handler) {
-        const handlers = this.listeners.get(name) ?? [];
-        this.listeners.set(
-          name,
-          handlers.filter((h) => h !== handler),
-        );
-      }
-
-      dispatch(name) {
-        for (const handler of this.listeners.get(name) ?? []) {
-          handler();
-        }
-      }
-
-      load() {
-        setTimeout(() => this.dispatch("canplay"), 0);
-      }
-
-      play() {
-        setTimeout(() => this.dispatch("playing"), 0);
-        return Promise.resolve();
-      }
-
-      pause() {}
-    }
-
-    class FakeAudioContext {
-      constructor() {
-        this.destination = {};
-      }
-
-      createMediaElementSource() {
-        return { connect() {} };
-      }
-
-      getOutputTimestamp() {
-        const time = performance.now();
-
-        return { contextTime: time / 1000, performanceTime: time };
-      }
-    }
-
-    window.Audio = FakeAudio;
-    window.AudioContext = FakeAudioContext;
-    window.__dispatchAudioEvent = (name) => window.__lastAudio.dispatch(name);
-  });
-}
 
 async function createPlayer(page, src, opts = {}) {
   await page.goto("/index.html");
