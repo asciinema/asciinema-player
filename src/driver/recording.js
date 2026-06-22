@@ -773,7 +773,11 @@ function recording(
     return entry.promise;
   }
 
-  async function getRequiredSegment(index, generation) {
+  async function getRequiredSegment(index, generation, onWaiting) {
+    if (ctx.segmentCache.get(index)?.data === undefined) {
+      onWaiting?.();
+    }
+
     try {
       return await getSegment(index, true);
     } catch (error) {
@@ -810,14 +814,11 @@ function recording(
     const nextIndex = ctx.segmentIndex + 1;
     const boundary = ctx.recording.segments[nextIndex].start;
     const generation = ++ctx.positionGeneration;
-    const entry = ctx.segmentCache.get(nextIndex);
-
-    if (entry?.data === undefined) {
-      sendDriverEvent(EVENT.SEGMENT_WAITING, { time: boundary });
-    }
 
     try {
-      const segment = await getRequiredSegment(nextIndex, generation);
+      const segment = await getRequiredSegment(nextIndex, generation, () => {
+        sendDriverEvent(EVENT.SEGMENT_WAITING, { time: boundary });
+      });
 
       if (generation !== ctx.positionGeneration || state === STATE.STOPPED) return;
 
@@ -1458,14 +1459,11 @@ function recording(
     cancelScheduledRecordingEvent();
     ctx.playCount++;
     const generation = ++ctx.positionGeneration;
-    const entry = ctx.segmentCache.get(0);
-
-    if (entry?.data === undefined) {
-      enqueueDriverEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
-    }
 
     try {
-      const segment = await getRequiredSegment(0, generation);
+      const segment = await getRequiredSegment(0, generation, () => {
+        enqueueDriverEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
+      });
 
       if (generation !== ctx.positionGeneration) return;
 
