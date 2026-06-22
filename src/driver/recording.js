@@ -818,7 +818,7 @@ function recording(
     const entry = ctx.segmentCache.get(nextIndex);
 
     if (entry?.data === undefined) {
-      sendEvent(EVENT.SEGMENT_WAITING, { time: boundary });
+      raiseEvent(EVENT.SEGMENT_WAITING, { time: boundary });
     }
 
     try {
