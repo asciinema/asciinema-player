@@ -1265,7 +1265,7 @@ function recording(
   async function positionAt(targetTime, reuseForward = false, generation) {
     const targetIndex = findSegmentIndex(ctx.recording, targetTime);
 
-    if (generation !== undefined && generation !== ctx.positionGeneration) return false;
+    if (generation !== ctx.positionGeneration) return false;
 
     if (reuseForward && targetIndex === ctx.segmentIndex && targetTime >= ctx.lastEventTime) {
       syncActiveSegmentToTime(targetTime);
@@ -1275,7 +1275,7 @@ function recording(
     retainSegments([targetIndex - 1, targetIndex, targetIndex + 1]);
     const segment = await getRequiredSegment(targetIndex, generation);
 
-    if (generation !== undefined && generation !== ctx.positionGeneration) return false;
+    if (generation !== ctx.positionGeneration) return false;
 
     activateSegment(targetIndex, segment);
     resetTerminalFromSnapshot(segment, true);
