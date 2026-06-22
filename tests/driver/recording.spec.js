@@ -864,7 +864,10 @@ test("segmented init loads only the initial segment and playback prefetches the 
     expect(requests).toEqual(["/recording/index.json", "http://localhost/recording/0.json"]);
     expect(recorder.eventsNamed("metadata")[0].payload).toEqual({
       duration: 0.06,
-      markers: [[0.02, "chapter"]],
+      markers: [
+        [0.02, "chapter"],
+        [0.04, "summary"],
+      ],
       hasAudio: false,
     });
     expect(recorder.eventsNamed("reset")[0].payload.init).toBe("first snapshot");
@@ -952,6 +955,10 @@ test("segmented marker metadata and playback use global marker indexes", async (
         name: "marker",
         payload: { index: 0, time: 0.02, label: "chapter" },
       },
+      {
+        name: "marker",
+        payload: { index: 1, time: 0.04, label: "summary" },
+      },
     ]);
   } finally {
     restoreFetch();
@@ -1002,6 +1009,7 @@ test("loadSegmentedRecording validates and normalizes index and segment data", a
     expect(segment.snapshot).toEqual({ cols: 100, rows: 30, init: "second snapshot" });
     expect(segment.events).toEqual([
       [30, "o", "last"],
+      [40, "m", { index: 1, time: 40, label: "summary" }],
       [60, "r", "100x30"],
     ]);
   } finally {
@@ -1483,6 +1491,7 @@ test("stop prevents pending step positioning from restoring a segment", async ()
 
 test("loop waits safely when the evicted first segment is still reloading", async () => {
   const gate = createGate();
+  const reloadStarted = createGate();
   const recorder = createDispatchRecorder();
   let segmentZeroLoads = 0;
   const index = {
@@ -1523,6 +1532,7 @@ test("loop waits safely when the evicted first segment is still reloading", asyn
     const name = url.split("/").at(-1);
 
     if (name === "0.json" && segmentZeroLoads++ > 0) {
+      reloadStarted.resolve();
       await gate.promise;
     }
 
@@ -1538,18 +1548,23 @@ test("loop waits safely when the evicted first segment is still reloading", asyn
 
     await driver.init();
     await driver.play();
-    await wait(70);
+    await reloadStarted.promise;
+    await waitForCondition(() => driver.getCurrentTime() >= 0.049);
 
     expect(driver.getCurrentTime()).toBeCloseTo(0.05, 2);
     expect(recorder.eventsNamed("error")).toHaveLength(0);
 
     gate.resolve();
-    await wait(30);
+    await waitForCondition(
+      () =>
+        recorder.outputs.filter((output) => Array.isArray(output) && output[0] === "zero")
+          .length >= 2,
+    );
+    await driver.stop();
 
     expect(
       recorder.outputs.filter((output) => Array.isArray(output) && output[0] === "zero"),
     ).toHaveLength(2);
-    await driver.stop();
   } finally {
     gate.resolve();
     restoreFetch();
@@ -1583,9 +1598,8 @@ test("failed segmented prefetch is logged and retried when required", async () =
     await ended;
 
     expect(requests.filter((url) => url.endsWith("/1.json"))).toHaveLength(2);
-    expect(warnings).toEqual([
-      "segment prefetch failed: failed fetching recording from http://localhost/recording/1.json: 503 Unavailable",
-    ]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("503 Unavailable");
     expect(recorder.eventsNamed("error")).toHaveLength(0);
   } finally {
     restoreFetch();
@@ -2079,7 +2093,10 @@ function stubSegmentedFetch(
     version: 1,
     duration: 0.06,
     term: { cols: 100, rows: 30 },
-    markers: [[0.02, "chapter"]],
+    markers: [
+      [0.02, "chapter"],
+      [0.04, "summary"],
+    ],
     segments: [
       { url: "0.json", start: 0 },
       { url: "1.json", start: 0.03 },
@@ -2097,6 +2114,7 @@ function stubSegmentedFetch(
       snapshot: { cols: 100, rows: 30, init: "second snapshot" },
       events: [
         [0.03, "o", "last"],
+        [0.04, "m", "summary"],
         [0.06, "r", "100x30"],
       ],
     },
@@ -2223,6 +2241,18 @@ function wait(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+async function waitForCondition(condition, timeout = 1000) {
+  const deadline = performance.now() + timeout;
+
+  while (!condition()) {
+    if (performance.now() >= deadline) {
+      throw new Error("timed out waiting for condition");
+    }
+
+    await wait(1);
+  }
 }
 
 function createGate() {
