@@ -801,16 +801,14 @@ function recording(
   }
 
   function prefetchNextSegment() {
-    const nextIndex = ctx.segmentIndex + 1;
-    const retained = [ctx.segmentIndex - 1, ctx.segmentIndex, nextIndex];
-    retainSegments(retained);
+    const lastIndex = ctx.recording.segments.length - 1;
 
-    if (nextIndex < ctx.recording.segments.length) {
-      getSegment(nextIndex);
-    } else if (canLoopPlayback()) {
-      retainSegments([ctx.segmentIndex - 1, ctx.segmentIndex, 0]);
-      getSegment(0);
-    }
+    const nextIndex =
+      ctx.segmentIndex < lastIndex ? ctx.segmentIndex + 1 : canLoopPlayback() ? 0 : undefined;
+
+    retainSegments([ctx.segmentIndex - 1, ctx.segmentIndex, nextIndex]);
+
+    if (nextIndex !== undefined) getSegment(nextIndex);
   }
 
   async function advanceSegment() {
