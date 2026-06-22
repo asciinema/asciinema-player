@@ -61,8 +61,8 @@ function recording(
   const outputBatchWindow = (src.minFrameTime ?? 1 / 60) * 1000;
   let now = () => performance.now() * speed;
   let state = STATE.COLD;
-  let queuedEvents = [];
-  let processingEvents = false;
+  let queuedDriverEvents = [];
+  let processingDriverEvents = false;
 
   const ctx = {
     recording: undefined,
@@ -73,7 +73,7 @@ function recording(
     markers: undefined,
     duration: undefined,
     effectiveStartAt: undefined,
-    eventTimeoutId: undefined,
+    recordingEventTimeoutId: undefined,
     nextEventIndex: 0,
     lastEventTime: 0,
     startTime: undefined,
@@ -195,7 +195,7 @@ function recording(
             action: () => {
               clearPoster();
               dispatch("play");
-              return loadPromise().then(() => sendEvent(EVENT.DEFERRED_PLAY_READY));
+              return loadPromise().then(() => sendDriverEvent(EVENT.DEFERRED_PLAY_READY));
             },
           };
         }
@@ -225,7 +225,7 @@ function recording(
 
               if (ctx.audioElement) {
                 return ctx.audioElement.play().catch((error) => {
-                  sendEvent(EVENT.PLAYBACK_START_REJECTED);
+                  sendDriverEvent(EVENT.PLAYBACK_START_REJECTED);
                   throw error;
                 });
               }
@@ -530,11 +530,11 @@ function recording(
     }
   }
 
-  function enqueueEvent(event, payload = {}) {
-    queuedEvents.push({ event, payload });
+  function enqueueDriverEvent(event, payload = {}) {
+    queuedDriverEvents.push({ event, payload });
   }
 
-  function processEvent(event, payload = {}) {
+  function processDriverEvent(event, payload = {}) {
     const previousState = state;
     const { nextState, action } = transition(previousState, event, payload);
 
@@ -548,7 +548,7 @@ function recording(
   function failDriver(error) {
     if (ctx.failureError || state === STATE.STOPPED) return;
 
-    queuedEvents.length = 0;
+    queuedDriverEvents.length = 0;
     ctx.segmentWaiting = false;
     cancelPendingTimers();
 
@@ -574,30 +574,30 @@ function recording(
   function sendCommand(event, payload = {}) {
     assertCommandAllowed();
 
-    return sendEvent(event, payload);
+    return sendDriverEvent(event, payload);
   }
 
-  function sendEvent(event, payload = {}) {
+  function sendDriverEvent(event, payload = {}) {
     if (ctx.failureError || state === STATE.STOPPED) {
       // Terminal states reject public commands via sendCommand(); late async
       // facts from timers/media callbacks are ignored here.
       return;
     }
 
-    if (processingEvents) {
+    if (processingDriverEvents) {
       // Core serializes public commands, so re-entry here means the driver was
       // called directly in an unsupported way.
-      throw new Error("re-entrant sendEvent() is not allowed during queue processing");
+      throw new Error("re-entrant sendDriverEvent() is not allowed during queue processing");
     }
 
-    processingEvents = true;
+    processingDriverEvents = true;
 
     try {
-      const result = processEvent(event, payload);
+      const result = processDriverEvent(event, payload);
 
-      while (queuedEvents.length > 0) {
-        const queuedEvent = queuedEvents.shift();
-        processEvent(queuedEvent.event, queuedEvent.payload);
+      while (queuedDriverEvents.length > 0) {
+        const queuedEvent = queuedDriverEvents.shift();
+        processDriverEvent(queuedEvent.event, queuedEvent.payload);
       }
 
       return result;
@@ -605,22 +605,22 @@ function recording(
       failDriver(error);
       throw error;
     } finally {
-      processingEvents = false;
-      queuedEvents.length = 0;
+      processingDriverEvents = false;
+      queuedDriverEvents.length = 0;
     }
   }
 
   // Emit a follow-up event when the call site's framing is runtime-dependent:
-  // defer to the active queue while one is processing (a direct sendEvent() would
+  // defer to the active queue while one is processing (a direct sendDriverEvent() would
   // re-enter and throw), otherwise process immediately. Where the framing is
-  // statically known, call sendEvent()/enqueueEvent() directly instead.
-  function raiseEvent(event, payload = {}) {
-    if (processingEvents) {
-      enqueueEvent(event, payload);
+  // statically known, call sendDriverEvent()/enqueueDriverEvent() directly instead.
+  function raiseDriverEvent(event, payload = {}) {
+    if (processingDriverEvents) {
+      enqueueDriverEvent(event, payload);
       return true;
     }
 
-    return sendEvent(event, payload);
+    return sendDriverEvent(event, payload);
   }
 
   function init() {
@@ -671,11 +671,11 @@ function recording(
 
       if (generation !== ctx.positionGeneration) return false;
 
-      sendEvent(EVENT.LOAD_SUCCEEDED, { hasAudio });
+      sendDriverEvent(EVENT.LOAD_SUCCEEDED, { hasAudio });
     } catch (e) {
       // Segmented option validation may fail synchronously in-frame, while
       // fetch and parser failures arrive asynchronously out-of-frame.
-      raiseEvent(EVENT.LOAD_FAILED, { error: e });
+      raiseDriverEvent(EVENT.LOAD_FAILED, { error: e });
 
       throw e;
     } finally {
@@ -813,7 +813,7 @@ function recording(
     const entry = ctx.segmentCache.get(nextIndex);
 
     if (entry?.data === undefined) {
-      sendEvent(EVENT.SEGMENT_WAITING, { time: boundary });
+      sendDriverEvent(EVENT.SEGMENT_WAITING, { time: boundary });
     }
 
     try {
@@ -828,9 +828,9 @@ function recording(
         state === STATE.READY_BUFFERING_TO_RESUME ||
         state === STATE.READY_BUFFERING_WHILE_PAUSED
       ) {
-        await sendEvent(EVENT.SEGMENT_READY);
+        await sendDriverEvent(EVENT.SEGMENT_READY);
       } else if (state === STATE.READY_PLAYING) {
-        scheduleNextEvent();
+        scheduleNextRecordingEvent();
       }
     } catch {
       // Required segment failures have already failed the driver.
@@ -838,7 +838,7 @@ function recording(
   }
 
   function pausePlaybackAt(time) {
-    cancelNextEvent();
+    cancelScheduledRecordingEvent();
     ctx.pauseElapsedTime = time;
   }
 
@@ -847,29 +847,29 @@ function recording(
 
     if (ctx.audioElement) {
       return ctx.audioElement.play().then(
-        () => sendEvent(EVENT.AUDIO_PLAYING),
+        () => sendDriverEvent(EVENT.AUDIO_PLAYING),
         (error) => {
-          sendEvent(EVENT.PLAYBACK_START_REJECTED);
+          sendDriverEvent(EVENT.PLAYBACK_START_REJECTED);
           logger.warn(`audio resume failed: ${error.message}`);
           return false;
         },
       );
     }
 
-    enqueueEvent(EVENT.AUDIO_PLAYING);
+    enqueueDriverEvent(EVENT.AUDIO_PLAYING);
   }
 
-  function scheduleNextEvent() {
+  function scheduleNextRecordingEvent() {
     const nextEvent = ctx.segment.events[ctx.nextEventIndex];
 
     if (nextEvent) {
-      ctx.eventTimeoutId = scheduleAt(runNextEvent, nextEvent[0]);
+      ctx.recordingEventTimeoutId = scheduleAt(runDueRecordingEvents, nextEvent[0]);
     } else {
       if (ctx.segmentIndex < ctx.recording.segments.length - 1) {
         const boundary = ctx.recording.segments[ctx.segmentIndex + 1].start;
-        ctx.eventTimeoutId = scheduleAt(advanceSegment, boundary);
+        ctx.recordingEventTimeoutId = scheduleAt(advanceSegment, boundary);
       } else {
-        raiseEvent(EVENT.PLAYBACK_ENDED);
+        raiseDriverEvent(EVENT.PLAYBACK_ENDED);
       }
     }
   }
@@ -884,9 +884,9 @@ function recording(
     return setTimeout(f, timeout);
   }
 
-  function runNextEvent() {
+  function runDueRecordingEvents() {
     while (ctx.segment.events[ctx.nextEventIndex] !== undefined) {
-      if (executeNextEventChunk()) {
+      if (applyNextRecordingEvents()) {
         return;
       }
 
@@ -903,24 +903,24 @@ function recording(
       }
     }
 
-    scheduleNextEvent();
+    scheduleNextRecordingEvent();
   }
 
-  function executeNextEventChunk() {
+  function applyNextRecordingEvents() {
     const event = ctx.segment.events[ctx.nextEventIndex];
 
     if (event[1] === "o") {
-      executeOutputGroup();
+      applyOutputGroup();
       return false;
     }
 
     ctx.lastEventTime = event[0];
     ctx.nextEventIndex++;
 
-    return executeEvent(event);
+    return applyRecordingEvent(event);
   }
 
-  function executeOutputGroup() {
+  function applyOutputGroup() {
     const firstEvent = ctx.segment.events[ctx.nextEventIndex];
     const batchDeadline = firstEvent[0] + outputBatchWindow;
     const output = [];
@@ -936,9 +936,9 @@ function recording(
     feed(output);
   }
 
-  function cancelNextEvent() {
-    clearTimeout(ctx.eventTimeoutId);
-    ctx.eventTimeoutId = null;
+  function cancelScheduledRecordingEvent() {
+    clearTimeout(ctx.recordingEventTimeoutId);
+    ctx.recordingEventTimeoutId = null;
   }
 
   async function teardownAudio() {
@@ -959,7 +959,7 @@ function recording(
     }
   }
 
-  function executeEvent(event) {
+  function applyRecordingEvent(event) {
     const [time, type, data] = event;
 
     if (type === "o") {
@@ -970,7 +970,7 @@ function recording(
       const [cols, rows] = data.split("x").map((n) => Number.parseInt(n, 10));
       dispatch("resize", { cols, rows });
     } else if (type === "m") {
-      return sendEvent(EVENT.MARKER_REACHED, { data, time }) === true;
+      return sendDriverEvent(EVENT.MARKER_REACHED, { data, time }) === true;
     }
 
     return false;
@@ -985,7 +985,7 @@ function recording(
   }
 
   function pausePlaybackClock() {
-    cancelNextEvent();
+    cancelScheduledRecordingEvent();
     ctx.pauseElapsedTime = now() - ctx.startTime;
   }
 
@@ -996,7 +996,7 @@ function recording(
   function confirmPlaybackClockStart() {
     ctx.startTime = now() - ctx.pauseElapsedTime;
     ctx.pauseElapsedTime = null;
-    scheduleNextEvent();
+    scheduleNextRecordingEvent();
   }
 
   function seek(where) {
@@ -1004,10 +1004,10 @@ function recording(
     validateSeekInput(where);
 
     if (state === STATE.COLD) {
-      return sendEvent(EVENT.SEEK_REQUESTED, { where });
+      return sendDriverEvent(EVENT.SEEK_REQUESTED, { where });
     }
 
-    return sendEvent(EVENT.SEEK_REQUESTED, { seekOperation: resolveSeek(state, where) });
+    return sendDriverEvent(EVENT.SEEK_REQUESTED, { seekOperation: resolveSeek(state, where) });
   }
 
   function findMarkerTimeBefore(time) {
@@ -1084,12 +1084,12 @@ function recording(
 
   function onAudioWaiting() {
     logger.debug("audio buffering");
-    sendEvent(EVENT.AUDIO_WAITING);
+    sendDriverEvent(EVENT.AUDIO_WAITING);
   }
 
   function onAudioPlaying() {
     logger.debug("audio resumed");
-    sendEvent(EVENT.AUDIO_PLAYING);
+    sendDriverEvent(EVENT.AUDIO_PLAYING);
   }
 
   function mute() {
@@ -1240,7 +1240,7 @@ function recording(
           output = [];
         }
 
-        executeEvent(event);
+        applyRecordingEvent(event);
       }
 
       ctx.lastEventTime = event[0];
@@ -1304,14 +1304,14 @@ function recording(
     if (ctx.audioElement) {
       try {
         await ctx.audioElement.play();
-        return sendEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
+        return sendDriverEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
       } catch (error) {
-        sendEvent(EVENT.PLAYBACK_START_REJECTED);
+        sendDriverEvent(EVENT.PLAYBACK_START_REJECTED);
         throw error;
       }
     }
 
-    return raiseEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
+    return raiseDriverEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
   }
 
   function performPause() {
@@ -1450,17 +1450,17 @@ function recording(
   function cancelPendingTimers() {
     clearLoadingTimeout();
     clearWaitingTimeout();
-    cancelNextEvent();
+    cancelScheduledRecordingEvent();
   }
 
   async function restartLoop() {
-    cancelNextEvent();
+    cancelScheduledRecordingEvent();
     ctx.playCount++;
     const generation = ++ctx.positionGeneration;
     const entry = ctx.segmentCache.get(0);
 
     if (entry?.data === undefined) {
-      enqueueEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
+      enqueueDriverEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
     }
 
     try {
@@ -1482,10 +1482,10 @@ function recording(
         state === STATE.READY_BUFFERING_TO_RESUME ||
         state === STATE.READY_BUFFERING_WHILE_PAUSED
       ) {
-        await sendEvent(EVENT.SEGMENT_READY);
+        await sendDriverEvent(EVENT.SEGMENT_READY);
       } else {
         ctx.pauseElapsedTime = null;
-        scheduleNextEvent();
+        scheduleNextRecordingEvent();
       }
     } catch {
       // Required segment failures have already failed the driver.
@@ -1493,7 +1493,7 @@ function recording(
   }
 
   function finishPlayback() {
-    cancelNextEvent();
+    cancelScheduledRecordingEvent();
     ctx.playCount++;
     ctx.pauseElapsedTime = ctx.duration;
 
