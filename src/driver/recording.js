@@ -673,9 +673,8 @@ function recording(
 
       sendEvent(EVENT.LOAD_SUCCEEDED, { hasAudio });
     } catch (e) {
-      // raiseEvent (not sendEvent): a synchronous throw before the first await
-      // would run in-frame, so handle both framings even though loads currently
-      // fail only out-of-frame.
+      // Segmented option validation may fail synchronously in-frame, while
+      // fetch and parser failures arrive asynchronously out-of-frame.
       raiseEvent(EVENT.LOAD_FAILED, { error: e });
 
       throw e;
@@ -1541,12 +1540,12 @@ function recording(
   };
 }
 
-async function loadRecordingSource(src, options) {
+function loadRecordingSource(src, options) {
   if (src.format === "segmented") {
-    return await loadSegmentedRecording(src, options);
+    return loadSegmentedRecording(src, options);
   }
 
-  return await loadFullRecording(src, options);
+  return loadFullRecording(src, options);
 }
 
 function findSegmentIndex(recording, time) {

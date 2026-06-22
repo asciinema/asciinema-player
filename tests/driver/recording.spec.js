@@ -1067,6 +1067,31 @@ test("segmented recordings reject unsupported options", async () => {
   }
 });
 
+test("invalid segmented options do not start audio loading", async () => {
+  const restoreAudio = installFakeAudio();
+
+  const driver = recording(
+    { url: "/recording/index.json", format: "segmented" },
+    { logger: stubLogger(), dispatch() {} },
+    {
+      speed: 1,
+      preload: true,
+      idleTimeLimit: 1,
+      audioUrl: "/audio.mp3",
+    },
+  );
+
+  try {
+    await expect(driver.init()).rejects.toThrow(
+      "segmented recordings do not support option: idleTimeLimit",
+    );
+
+    expect(fakeAudioState.lastAudio).toBeUndefined();
+  } finally {
+    restoreAudio();
+  }
+});
+
 test("pausing during a pending segment transition prevents automatic resume", async () => {
   const requests = [];
   const gate = createGate();

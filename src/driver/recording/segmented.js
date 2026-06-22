@@ -1,9 +1,12 @@
 import { normalizeTheme } from "../../theme";
 
-async function loadSegmentedRecording(src, opts = {}) {
+function loadSegmentedRecording(src, opts = {}) {
   validateOptions(src, opts);
 
-  const { startAt = 0 } = opts;
+  return doLoadSegmentedRecording(src, opts);
+}
+
+async function doLoadSegmentedRecording(src, { startAt = 0 }) {
   const response = await fetchResponse(src.url, src.fetchOpts ?? {});
   let index;
 
