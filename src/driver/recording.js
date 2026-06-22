@@ -610,9 +610,10 @@ function recording(
     }
   }
 
-  // Emit a follow-up event from within an action: defer it to the active queue
-  // when one is processing (a direct sendEvent() would re-enter and throw),
-  // otherwise process it immediately.
+  // Emit a follow-up event when the call site's framing is runtime-dependent:
+  // defer to the active queue while one is processing (a direct sendEvent() would
+  // re-enter and throw), otherwise process immediately. Where the framing is
+  // statically known, call sendEvent()/enqueueEvent() directly instead.
   function raiseEvent(event, payload = {}) {
     if (processingEvents) {
       enqueueEvent(event, payload);
@@ -672,6 +673,9 @@ function recording(
 
       sendEvent(EVENT.LOAD_SUCCEEDED, { hasAudio });
     } catch (e) {
+      // raiseEvent (not sendEvent): a synchronous throw before the first await
+      // would run in-frame, so handle both framings even though loads currently
+      // fail only out-of-frame.
       raiseEvent(EVENT.LOAD_FAILED, { error: e });
 
       throw e;
@@ -810,7 +814,7 @@ function recording(
     const entry = ctx.segmentCache.get(nextIndex);
 
     if (entry?.data === undefined) {
-      raiseEvent(EVENT.SEGMENT_WAITING, { time: boundary });
+      sendEvent(EVENT.SEGMENT_WAITING, { time: boundary });
     }
 
     try {
@@ -853,7 +857,7 @@ function recording(
       );
     }
 
-    raiseEvent(EVENT.AUDIO_PLAYING);
+    enqueueEvent(EVENT.AUDIO_PLAYING);
   }
 
   function scheduleNextEvent() {
@@ -1457,7 +1461,7 @@ function recording(
     const entry = ctx.segmentCache.get(0);
 
     if (entry?.data === undefined) {
-      raiseEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
+      enqueueEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
     }
 
     try {
