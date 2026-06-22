@@ -75,6 +75,24 @@ test("init with npt poster loads recording and renders poster frame", async () =
   expect(recorder.outputs).toEqual([["start\r\n"]]);
 });
 
+test("step without a target frame preserves the initial poster", async () => {
+  const recorder = createDispatchRecorder();
+  const driver = recording(
+    source([
+      [100, "o", "start\r\n"],
+      [1000, "o", "one\r\n"],
+    ]),
+    { logger: stubLogger(), dispatch: recorder.dispatch },
+    { speed: 1, poster: { type: "npt", value: 0.5 } },
+  );
+
+  await driver.init();
+  await driver.step(-1);
+
+  expect(recorder.outputs).toEqual([["start\r\n"]]);
+  expect(driver.getCurrentTime()).toBeCloseTo(0.5);
+});
+
 test("init with preload and text poster loads immediately and still renders poster", async () => {
   const recorder = createDispatchRecorder();
   let parserCalls = 0;

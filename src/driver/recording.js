@@ -26,8 +26,8 @@ function recording(
     READY_PAUSED: "ready.paused", // Loaded and positioned while playback clock is stopped.
     READY_STARTING: "ready.starting", // Playback start/resume requested; waiting for clock readiness.
     READY_PLAYING: "ready.playing", // Playback clock is running and events are scheduled.
-    READY_BUFFERING_WHILE_PAUSED: "ready.buffering.whilePaused", // Buffering audio, but stay paused.
-    READY_BUFFERING_TO_RESUME: "ready.buffering.toResume", // Buffering audio, then resume playback.
+    READY_BUFFERING_WHILE_PAUSED: "ready.buffering.whilePaused", // Buffering while remaining paused.
+    READY_BUFFERING_TO_RESUME: "ready.buffering.toResume", // Buffering before resuming playback.
     READY_ENDED: "ready.ended", // Playback or navigation reached recording duration.
     FAILED: "failed", // Fatal driver error; public commands reject.
     STOPPED: "stopped", // Terminal state after stop().
@@ -95,7 +95,7 @@ function recording(
     return value === STATE.READY_PLAYING;
   }
 
-  function isBufferingForAudioState(value = state) {
+  function isBufferingState(value = state) {
     return (
       value === STATE.READY_BUFFERING_WHILE_PAUSED || value === STATE.READY_BUFFERING_TO_RESUME
     );
@@ -443,7 +443,7 @@ function recording(
           };
         }
 
-        if (isBufferingForAudioState(currentState) && !ctx.segmentWaiting) {
+        if (isBufferingState(currentState) && !ctx.segmentWaiting) {
           return { nextState: currentState, action: () => false };
         }
 
@@ -486,9 +486,9 @@ function recording(
           };
         }
 
-        if (currentState === STATE.READY_PLAYING || isBufferingForAudioState(currentState)) {
+        if (currentState === STATE.READY_PLAYING || isBufferingState(currentState)) {
           // Stepping is only defined for paused/idle states. During active
-          // playback or audio buffering, step() is a no-op.
+          // playback or buffering, step() is a no-op.
           return { nextState: currentState };
         }
 
@@ -501,11 +501,8 @@ function recording(
         }
 
         return {
-          nextState: STATE.READY_PAUSED,
-          action: () => {
-            clearPoster();
-            return performStep(payload.n);
-          },
+          nextState: currentState,
+          action: () => performStep(payload.n),
         };
       }
 
@@ -1376,6 +1373,8 @@ function recording(
 
     if (target === undefined || generation !== ctx.positionGeneration) return;
 
+    clearPoster();
+
     if (!(await positionAt(target.time, n > 0, generation))) return;
 
     if (ctx.audioElement && ctx.audioSeekable) {
@@ -1385,6 +1384,8 @@ function recording(
     if (target.reachedEnd) {
       state = STATE.READY_ENDED;
       dispatch("ended");
+    } else {
+      state = STATE.READY_PAUSED;
     }
   }
 
