@@ -623,12 +623,14 @@ function recording(
 
   async function load(requestedInitialTime) {
     const generation = ctx.positionGeneration;
+
     ctx.loadingTimeout = setTimeout(() => {
       dispatch("loading");
     }, 3000);
 
     try {
       validateSegmentedOptions(src, { idleTimeLimit, markers: markers_ });
+
       const loadedRecording = loadRecordingSource(src, {
         idleTimeLimit,
         startAt,
@@ -653,6 +655,7 @@ function recording(
       const initialTime =
         requestedInitialTime ??
         (poster?.type === "npt" ? poster.value * 1000 : ctx.effectiveStartAt);
+
       const segmentIndex = findSegmentIndex(recording, initialTime ?? 0);
       const segment = await getSegment(segmentIndex, true);
 
@@ -736,6 +739,7 @@ function recording(
 
     if (entry === undefined) {
       entry = {};
+
       entry.promise = ctx.recording.loadSegment(ctx.recording.segments[index]).then(
         (data) => {
           if (ctx.segmentCache.get(index) === entry) {
@@ -744,6 +748,7 @@ function recording(
 
           return data;
         },
+
         (error) => {
           if (ctx.segmentCache.get(index) === entry) {
             ctx.segmentCache.delete(index);
@@ -756,6 +761,7 @@ function recording(
           throw error;
         },
       );
+
       ctx.segmentCache.set(index, entry);
 
       if (!required) {
@@ -1255,6 +1261,7 @@ function recording(
     }
 
     ctx.pauseElapsedTime = targetTime;
+
     if (clearStartAt) {
       ctx.effectiveStartAt = null;
     }
@@ -1282,6 +1289,7 @@ function recording(
     activateSegment(targetIndex, segment);
     resetTerminalFromSnapshot(segment, true);
     syncActiveSegmentToTime(targetTime);
+
     return true;
   }
 
@@ -1300,7 +1308,6 @@ function recording(
     if (generation !== ctx.positionGeneration) return false;
 
     prefetchNextSegment();
-
     preparePlaybackClock();
 
     if (ctx.audioElement) {
@@ -1335,6 +1342,7 @@ function recording(
   async function performSeek(seekOperation, previousState) {
     const wasPlaying =
       previousState === STATE.READY_PLAYING || previousState === STATE.READY_BUFFERING_TO_RESUME;
+
     const generation = ++ctx.positionGeneration;
 
     if (previousState === STATE.READY_PLAYING) {

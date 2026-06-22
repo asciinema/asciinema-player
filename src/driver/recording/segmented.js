@@ -18,10 +18,12 @@ async function loadSegmentedRecording(src, { startAt = 0 } = {}) {
 
   const duration = index.duration * 1000;
   const markers = (index.markers ?? []).map(([time, label]) => [time * 1000, label]);
+
   const segments = index.segments.map((segment) => ({
     start: segment.start * 1000,
     url: resolveUrl(segment.url, response.url || src.url),
   }));
+
   const recording = {
     cols: index.term.cols,
     rows: index.term.rows,
@@ -30,6 +32,7 @@ async function loadSegmentedRecording(src, { startAt = 0 } = {}) {
     effectiveStartAt: Math.min(Math.max(startAt * 1000, 0), duration),
     markers,
     segments,
+
     async loadSegment(segment) {
       const segmentIndex = segments.indexOf(segment);
 

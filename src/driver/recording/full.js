@@ -13,6 +13,7 @@ async function loadRecording(src) {
 
 function wrapFullRecording(recording) {
   const segment = { start: 0 };
+
   const markers = recording.events
     .filter((event) => event[1] === "m")
     .map((event) => [event[0], event[2].label]);
@@ -25,6 +26,7 @@ function wrapFullRecording(recording) {
     effectiveStartAt: recording.effectiveStartAt,
     markers,
     segments: [segment],
+
     async loadSegment(requestedSegment) {
       if (requestedSegment !== segment) {
         throw new Error("unknown recording segment");

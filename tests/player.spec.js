@@ -191,6 +191,7 @@ test("autoplay starts playback without user interaction", async ({ page }) => {
 
 test("segmented source loads through Core and fetches segments on demand", async ({ page }) => {
   const requests = [];
+
   const payloads = {
     "/recording/index.json": {
       version: 1,
@@ -201,10 +202,12 @@ test("segmented source loads through Core and fetches segments on demand", async
         { url: "1.json", start: 0.02 },
       ],
     },
+
     "/recording/0.json": {
       snapshot: { cols: 80, rows: 24, init: "" },
       events: [[0.01, "o", "first"]],
     },
+
     "/recording/1.json": {
       snapshot: { cols: 80, rows: 24, init: "first" },
       events: [
@@ -257,9 +260,11 @@ test("resizes terminal view when the container changes size", async ({ page }) =
   expect(initialBox).not.toBeNull();
 
   await setPlayerContainerSize(page, 420, 320);
+
   await expect
     .poll(async () => (await terminal.boundingBox())?.width ?? 0)
     .toBeLessThan(initialBox.width - 20);
+
   await expect
     .poll(async () => (await terminal.boundingBox())?.height ?? 0)
     .toBeLessThan(initialBox.height - 20);
@@ -856,11 +861,13 @@ const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "error", "input", "m
 
 async function createPlayer(page, src, opts = {}) {
   await page.goto("/index.html");
+
   await page.evaluate(
     ({ src, opts, eventNames }) => {
       window.__events = [];
       window.__eventIndex = 0;
       window.__eventWaiter = null;
+
       window.__pushEvent = (event) => {
         window.__events.push(event);
 
@@ -871,6 +878,7 @@ async function createPlayer(page, src, opts = {}) {
           window.__eventIndex += 1;
         }
       };
+
       window.__nextEvent = () => {
         if (window.__events.length > window.__eventIndex) {
           const event = window.__events[window.__eventIndex];
@@ -921,6 +929,7 @@ function createEventStream(page) {
     async collect(predicate) {
       const shouldStop =
         typeof predicate === "function" ? predicate : (event) => event.name === "ended";
+
       const collected = [];
 
       while (true) {
@@ -935,6 +944,7 @@ function createEventStream(page) {
     async waitFor(name) {
       while (true) {
         const event = await this.next();
+
         if (!name || event.name === name) {
           return event;
         }
@@ -1138,6 +1148,7 @@ async function failOnPageError(page) {
   page.on("pageerror", (error) => {
     throw error;
   });
+
   page.on("crash", () => {
     throw new Error("Page crashed.");
   });

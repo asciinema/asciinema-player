@@ -73,6 +73,7 @@ test("init with npt poster loads recording and renders poster frame", async () =
 
 test("step without a target frame preserves the initial poster", async () => {
   const recorder = createDispatchRecorder();
+
   const driver = recording(
     source([
       [100, "o", "start\r\n"],
@@ -167,6 +168,7 @@ test("play after text poster init loads recording and starts playback", async ()
   await ended;
 
   expect(parserCalls).toBe(1);
+
   expect(recorder.eventNames()).toEqual([
     "output",
     "output",
@@ -177,6 +179,7 @@ test("play after text poster init loads recording and starts playback", async ()
     "output",
     "ended",
   ]);
+
   expect(recorder.outputs[0]).toBe("hello world");
   expect(recorder.outputs[1]).toBe("\x1bc");
   expect(recorder.outputs[2]).toEqual(["start\r\n"]);
@@ -237,6 +240,7 @@ test("play after ended restarts from beginning", async () => {
   expect(recorder.eventsNamed("play")).toHaveLength(2);
   expect(recorder.eventsNamed("playing")).toHaveLength(2);
   expect(recorder.eventsNamed("ended")).toHaveLength(2);
+
   expect(recorder.outputs.slice(firstRunOutputCount)).toEqual([
     "\x1bc",
     ["start\r\n"],
@@ -293,6 +297,7 @@ test("play batches adjacent output events at runtime", async () => {
 
 test("playback dispatches input events", async () => {
   const recorder = createDispatchRecorder();
+
   const driver = recording(
     source([
       [10, "i", "a"],
@@ -338,6 +343,7 @@ test("pauseOnMarkers pauses playback and resumes on play", async () => {
   expect(recorder.eventsNamed("marker")).toEqual([
     { name: "marker", payload: { index: 0, time: 0.02, label: "chapter" } },
   ]);
+
   expect(recorder.eventsNamed("pause")).toHaveLength(1);
   expect(driver.getCurrentTime()).toBeCloseTo(0.02, 2);
   expect(recorder.outputs).toEqual([["start\r\n"]]);
@@ -370,6 +376,7 @@ test("mute and unmute toggle audio and dispatch events", async () => {
 
     expect(driver.mute()).toBe(true);
     expect(driver.unmute()).toBe(true);
+
     expect(recorder.eventsNamed("muted")).toEqual([
       { name: "muted", payload: true },
       { name: "muted", payload: false },
@@ -703,9 +710,11 @@ test("stop during playback cancels scheduled progression", async () => {
   await driver.stop();
 
   await wait(250);
+
   expect(recorder.eventsNamed("marker")).toEqual([
     { name: "marker", payload: { index: 0, time: 0.01, label: "start" } },
   ]);
+
   expect(recorder.eventsNamed("ended")).toHaveLength(0);
 });
 
@@ -773,6 +782,7 @@ test("audio waiting during playback emits loading and resumes on playing", async
 
     expect(recorder.eventsNamed("loading")).toHaveLength(1);
     expect(recorder.eventsNamed("playing")).toHaveLength(2);
+
     expect(recorder.eventsNamed("marker")).toEqual([
       { name: "marker", payload: { index: 0, time: 0.01, label: "start" } },
       { name: "marker", payload: { index: 1, time: 0.2, label: "later" } },
@@ -849,9 +859,11 @@ test("pause while buffering prevents automatic resume", async () => {
     fakeAudioState.lastAudio.dispatch("playing");
 
     expect(recorder.eventsNamed("playing")).toHaveLength(playingCount);
+
     expect(recorder.eventsNamed("marker")).toEqual([
       { name: "marker", payload: { index: 0, time: 0.01, label: "start" } },
     ]);
+
     expect(driver.getCurrentTime()).toBeCloseTo(pausedTime, 2);
 
     const ended = recorder.waitFor("ended");
@@ -921,6 +933,7 @@ test("segmented init loads only the initial segment and playback prefetches the 
     await driver.init();
 
     expect(requests).toEqual(["/recording/index.json", "http://localhost/recording/0.json"]);
+
     expect(recorder.eventsNamed("metadata")[0].payload).toEqual({
       duration: 0.06,
       markers: [
@@ -929,6 +942,7 @@ test("segmented init loads only the initial segment and playback prefetches the 
       ],
       hasAudio: false,
     });
+
     expect(recorder.eventsNamed("reset")[0].payload.init).toBe("first snapshot");
 
     const ended = recorder.waitFor("ended");
@@ -940,6 +954,7 @@ test("segmented init loads only the initial segment and playback prefetches the 
       "http://localhost/recording/0.json",
       "http://localhost/recording/1.json",
     ]);
+
     expect(recorder.outputs).toEqual([["first"], ["last"]]);
     expect(recorder.eventsNamed("reset")).toHaveLength(1);
   } finally {
@@ -1092,10 +1107,12 @@ test("pausing during a pending segment transition prevents automatic resume", as
 test("required segment failures fail seek, step, and playback positioning", async () => {
   for (const operation of ["seek", "step", "play"]) {
     const requests = [];
+
     const restoreFetch = stubSegmentedFetch(requests, {
       failSegmentZero: operation === "play" ? 1 : 0,
       failSegmentOne: operation === "play" ? 0 : 1,
     });
+
     const recorder = createDispatchRecorder();
 
     try {
@@ -1128,10 +1145,12 @@ test("required segment failures fail seek, step, and playback positioning", asyn
 test("fatal boundary failure clears the delayed loading notification", async () => {
   const requests = [];
   const gate = createGate();
+
   const restoreFetch = stubSegmentedFetch(requests, {
     failSegmentOne: 1,
     segmentOneGate: gate,
   });
+
   const recorder = createDispatchRecorder();
 
   try {
@@ -1323,6 +1342,7 @@ test("segmented playback preserves server-provided effective boundary times", as
 
 test("terminal size overrides apply to full and segmented snapshot restoration", async () => {
   const fullRecorder = createDispatchRecorder();
+
   const fullDriver = recording(
     source([
       [10, "o", "first"],
@@ -1350,6 +1370,7 @@ test("terminal size overrides apply to full and segmented snapshot restoration",
 
     await segmentedDriver.init();
     await segmentedDriver.seek(0.04);
+
     expect(segmentedRecorder.eventsNamed("resize").at(-1).payload).toEqual({
       cols: 120,
       rows: 40,
@@ -1361,6 +1382,7 @@ test("terminal size overrides apply to full and segmented snapshot restoration",
 
 test("NPT poster applies resize events before the poster time", async () => {
   const recorder = createDispatchRecorder();
+
   const driver = recording(
     source([
       [10, "r", "100x30"],
@@ -1500,6 +1522,7 @@ test("loop waits safely when the evicted first segment is still reloading", asyn
   const reloadStarted = createGate();
   const recorder = createDispatchRecorder();
   let segmentZeroLoads = 0;
+
   const index = {
     version: 1,
     duration: 0.05,
@@ -1511,6 +1534,7 @@ test("loop waits safely when the evicted first segment is still reloading", asyn
       { url: "3.json", start: 0.04 },
     ],
   };
+
   const payloads = {
     "0.json": {
       snapshot: { cols: 80, rows: 24, init: "" },
@@ -1532,6 +1556,7 @@ test("loop waits safely when the evicted first segment is still reloading", asyn
       ],
     },
   };
+
   const restoreFetch = stubFetch(async (url) => {
     if (url === "/loop/index.json") return Response.json(index);
 
@@ -1561,11 +1586,13 @@ test("loop waits safely when the evicted first segment is still reloading", asyn
     expect(recorder.eventsNamed("error")).toHaveLength(0);
 
     gate.resolve();
+
     await waitForCondition(
       () =>
         recorder.outputs.filter((output) => Array.isArray(output) && output[0] === "zero").length >=
         2,
     );
+
     await driver.stop();
 
     expect(
@@ -1776,6 +1803,7 @@ function createDispatchRecorder() {
   return {
     events,
     outputs,
+
     dispatch(name, payload) {
       events.push({ name, payload });
 
@@ -1788,12 +1816,15 @@ function createDispatchRecorder() {
         waiter = null;
       }
     },
+
     eventNames() {
       return events.map((event) => event.name);
     },
+
     eventsNamed(name) {
       return events.filter((event) => event.name === name);
     },
+
     waitFor(name) {
       if (waiter) {
         throw new Error(`already waiting for ${waiter.name}`);
@@ -1839,6 +1870,7 @@ function stubSegmentedFetch(
       { url: "1.json", start: 0.03 },
     ],
   };
+
   const segments = {
     "http://localhost/recording/0.json": {
       snapshot: { cols: 100, rows: 30, init: "first snapshot" },
@@ -1902,19 +1934,23 @@ function stubLinearSegmentedFetch(requests) {
       { url: "3.json", start: 0.04 },
     ],
   };
+
   const segments = {
     "0.json": {
       snapshot: { cols: 80, rows: 24, init: "" },
       events: [[0.01, "o", "zero"]],
     },
+
     "1.json": {
       snapshot: { cols: 80, rows: 24, init: "zero" },
       events: [[0.02, "o", "one"]],
     },
+
     "2.json": {
       snapshot: { cols: 80, rows: 24, init: "zero one" },
       events: [[0.03, "o", "two"]],
     },
+
     "3.json": {
       snapshot: { cols: 80, rows: 24, init: "zero one two" },
       events: [
@@ -1943,11 +1979,13 @@ function stubEffectiveTimeFetch(requests) {
       { url: "1.json", start: 0.5 },
     ],
   };
+
   const segments = {
     "0.json": {
       snapshot: { cols: 80, rows: 24, init: "" },
       events: [[0.01, "o", "before limited gap"]],
     },
+
     "1.json": {
       snapshot: { cols: 80, rows: 24, init: "before limited gap" },
       events: [
