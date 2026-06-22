@@ -91,10 +91,6 @@ function recording(
     segmentWaiting: false,
   };
 
-  function isPlayingState(value = state) {
-    return value === STATE.READY_PLAYING;
-  }
-
   function isBufferingState(value = state) {
     return (
       value === STATE.READY_BUFFERING_WHILE_PAUSED || value === STATE.READY_BUFFERING_TO_RESUME
@@ -1054,7 +1050,7 @@ function recording(
   }
 
   function getCurrentTimeMs() {
-    if (isPlayingState()) {
+    if (state === STATE.READY_PLAYING) {
       return now() - ctx.startTime;
     } else {
       return ctx.pauseElapsedTime ?? 0;
