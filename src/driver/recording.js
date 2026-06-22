@@ -617,6 +617,18 @@ function recording(
     }
   }
 
+  // Emit a follow-up event from within an action: defer it to the active queue
+  // when one is processing (a direct sendEvent() would re-enter and throw),
+  // otherwise process it immediately.
+  function raiseEvent(event, payload = {}) {
+    if (processingEvents) {
+      enqueueEvent(event, payload);
+      return true;
+    }
+
+    return sendEvent(event, payload);
+  }
+
   function init() {
     return sendCommand(EVENT.INIT_REQUESTED);
   }
@@ -667,11 +679,7 @@ function recording(
 
       sendEvent(EVENT.LOAD_SUCCEEDED, { hasAudio });
     } catch (e) {
-      if (processingEvents) {
-        enqueueEvent(EVENT.LOAD_FAILED, { error: e });
-      } else {
-        sendEvent(EVENT.LOAD_FAILED, { error: e });
-      }
+      raiseEvent(EVENT.LOAD_FAILED, { error: e });
 
       throw e;
     } finally {
@@ -855,11 +863,7 @@ function recording(
       );
     }
 
-    if (processingEvents) {
-      enqueueEvent(EVENT.AUDIO_PLAYING);
-    } else {
-      sendEvent(EVENT.AUDIO_PLAYING);
-    }
+    raiseEvent(EVENT.AUDIO_PLAYING);
   }
 
   function scheduleNextEvent() {
@@ -872,11 +876,7 @@ function recording(
         const boundary = ctx.recording.segments[ctx.segmentIndex + 1].start;
         ctx.eventTimeoutId = scheduleAt(advanceSegment, boundary);
       } else {
-        if (processingEvents) {
-          enqueueEvent(EVENT.PLAYBACK_ENDED);
-        } else {
-          sendEvent(EVENT.PLAYBACK_ENDED);
-        }
+        raiseEvent(EVENT.PLAYBACK_ENDED);
       }
     }
   }
@@ -1318,12 +1318,7 @@ function recording(
       }
     }
 
-    if (processingEvents) {
-      enqueueEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
-      return true;
-    }
-
-    return sendEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
+    return raiseEvent(EVENT.PLAYBACK_START_CONFIRMED, { reason });
   }
 
   function performPause() {
@@ -1461,11 +1456,7 @@ function recording(
     const entry = ctx.segmentCache.get(0);
 
     if (entry?.data === undefined) {
-      if (processingEvents) {
-        enqueueEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
-      } else {
-        sendEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
-      }
+      raiseEvent(EVENT.SEGMENT_WAITING, { time: ctx.duration });
     }
 
     try {
