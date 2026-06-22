@@ -1,6 +1,6 @@
 import { toErrorPayload } from "../error";
 import { loadFullRecording } from "./recording/full";
-import { loadSegmentedRecording, validateSegmentedOptions } from "./recording/segmented";
+import { loadSegmentedRecording } from "./recording/segmented";
 
 function recording(
   src,
@@ -629,8 +629,6 @@ function recording(
     }, 3000);
 
     try {
-      validateSegmentedOptions(src, { idleTimeLimit, markers: markers_ });
-
       const loadedRecording = loadRecordingSource(src, {
         idleTimeLimit,
         startAt,

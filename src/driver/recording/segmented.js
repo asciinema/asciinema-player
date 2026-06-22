@@ -1,10 +1,9 @@
 import { normalizeTheme } from "../../theme";
 
-async function loadSegmentedRecording(src, { startAt = 0 } = {}) {
-  if (typeof src.url !== "string") {
-    throw new Error("segmented recording source requires a URL");
-  }
+async function loadSegmentedRecording(src, opts = {}) {
+  validateOptions(src, opts);
 
+  const { startAt = 0 } = opts;
   const response = await fetchResponse(src.url, src.fetchOpts ?? {});
   let index;
 
@@ -56,8 +55,10 @@ async function loadSegmentedRecording(src, { startAt = 0 } = {}) {
   return recording;
 }
 
-function validateSegmentedOptions(src, { idleTimeLimit, markers }) {
-  if (src.format !== "segmented") return;
+function validateOptions(src, { idleTimeLimit, markers }) {
+  if (typeof src.url !== "string") {
+    throw new Error("segmented recording source requires a URL");
+  }
 
   const unsupported = [];
 
@@ -234,4 +235,4 @@ function resolveUrl(url, indexUrl) {
   return new URL(url, new URL(indexUrl, globalThis.location?.href ?? "http://localhost/")).href;
 }
 
-export { loadSegmentedRecording, validateSegmentedOptions };
+export { loadSegmentedRecording };
