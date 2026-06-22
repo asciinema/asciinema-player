@@ -6,7 +6,7 @@ test("loadSegmentedRecording validates and normalizes index and segment data", a
 
   try {
     const loaded = await loadSegmentedRecording({ url: "/recording/index.json" });
-    const segment = await loaded.loadSegment(loaded.segments[1]);
+    const segment = await loaded.loadSegment(1);
 
     expect(loaded.duration).toBe(60);
     expect(loaded.segments.map(({ start }) => start)).toEqual([0, 30]);
@@ -35,7 +35,7 @@ test("segmented loading rejects missing snapshots and inconsistent final duratio
 
   try {
     let loaded = await loadSegmentedRecording({ url: "/index.json" });
-    await expect(loaded.loadSegment(loaded.segments[0])).rejects.toThrow(
+    await expect(loaded.loadSegment(0)).rejects.toThrow(
       "segment 0 snapshot must have positive integer cols and rows",
     );
 
@@ -45,7 +45,8 @@ test("segmented loading rejects missing snapshots and inconsistent final duratio
     };
 
     loaded = await loadSegmentedRecording({ url: "/index.json" });
-    await expect(loaded.loadSegment(loaded.segments[0])).rejects.toThrow(
+
+    await expect(loaded.loadSegment(0)).rejects.toThrow(
       "final segment event must match recording duration",
     );
   } finally {

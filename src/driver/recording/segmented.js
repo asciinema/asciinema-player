@@ -35,13 +35,12 @@ async function doLoadSegmentedRecording(src, { startAt = 0 }) {
     markers,
     segments,
 
-    async loadSegment(segment) {
-      const segmentIndex = segments.indexOf(segment);
-
-      if (segmentIndex === -1) {
+    async loadSegment(segmentIndex) {
+      if (!Number.isInteger(segmentIndex) || segmentIndex < 0 || segmentIndex >= segments.length) {
         throw new Error("unknown recording segment");
       }
 
+      const segment = segments[segmentIndex];
       const segmentResponse = await fetchResponse(segment.url, src.fetchOpts ?? {});
       let payload;
 

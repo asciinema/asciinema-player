@@ -741,7 +741,7 @@ function recording(
     if (entry === undefined) {
       entry = {};
 
-      entry.promise = ctx.recording.loadSegment(ctx.recording.segments[index]).then(
+      entry.promise = ctx.recording.loadSegment(index).then(
         (data) => {
           if (ctx.segmentCache.get(index) === entry) {
             entry.data = data;

@@ -27,8 +27,8 @@ function wrapFullRecording(recording) {
     markers,
     segments: [segment],
 
-    async loadSegment(requestedSegment) {
-      if (requestedSegment !== segment) {
+    async loadSegment(index) {
+      if (index !== 0) {
         throw new Error("unknown recording segment");
       }
 
