@@ -969,7 +969,7 @@ function recording(
       dispatch("input", { data });
     } else if (type === "r") {
       const [cols, rows] = data.split("x").map((n) => Number.parseInt(n, 10));
-      dispatch("resize", { cols, rows });
+      dispatch("resize", effectiveSize(cols, rows));
     } else if (type === "m") {
       return sendDriverEvent(EVENT.MARKER_REACHED, { data, time }) === true;
     }
@@ -1206,6 +1206,10 @@ function recording(
     };
   }
 
+  function effectiveSize(cols, rows) {
+    return { cols: optionCols ?? cols, rows: optionRows ?? rows };
+  }
+
   function resetTerminalFromSnapshot(segment, emitClear = false) {
     if (emitClear) {
       // Preserve the existing observable RIS output even though reset replaces the VT state.
@@ -1213,19 +1217,10 @@ function recording(
     }
 
     dispatch("reset", {
-      size: { cols: segment.snapshot.cols, rows: segment.snapshot.rows },
+      size: effectiveSize(segment.snapshot.cols, segment.snapshot.rows),
       init: segment.snapshot.init,
       theme: ctx.recording.theme ?? null,
     });
-
-    const size = {
-      cols: optionCols ?? segment.snapshot.cols,
-      rows: optionRows ?? segment.snapshot.rows,
-    };
-
-    if (size.cols !== segment.snapshot.cols || size.rows !== segment.snapshot.rows) {
-      dispatch("resize", size);
-    }
   }
 
   function syncActiveSegmentToTime(targetTime, clearStartAt = true, inclusive = true) {
