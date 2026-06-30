@@ -165,7 +165,7 @@ test("prepareRecording wraps embedded markers and can replace them", () => {
   ]);
 });
 
-test("prepareRecording applies idleTimeLimit to markers", () => {
+test("prepareRecording applies idleTimeLimit to embedded markers", () => {
   const embedded = prepareRecording(
     {
       cols: 80,
@@ -184,7 +184,9 @@ test("prepareRecording applies idleTimeLimit to markers", () => {
     [3000, "m", { index: 0, time: 3000, label: "chapter" }],
     [5000, "o", "b"],
   ]);
+});
 
+test("prepareRecording places option markers verbatim, after idle time compression", () => {
   const overridden = prepareRecording(
     {
       cols: 80,
@@ -207,11 +209,11 @@ test("prepareRecording applies idleTimeLimit to markers", () => {
 
   expect(overridden.events).toEqual([
     [1000, "o", "a"],
-    [3000, "m", { index: 0, time: 3000, label: "chapter 1" }],
-    [5000, "o", "b"],
-    [7000, "m", { index: 1, time: 7000, label: "chapter 2" }],
-    [9000, "m", { index: 2, time: 9000, label: "chapter 3" }],
-    [11000, "o", "c"],
+    [3000, "o", "b"],
+    [5000, "o", "c"],
+    [8000, "m", { index: 0, time: 8000, label: "chapter 1" }],
+    [15000, "m", { index: 1, time: 15000, label: "chapter 2" }],
+    [18000, "m", { index: 2, time: 18000, label: "chapter 3" }],
   ]);
 });
 
