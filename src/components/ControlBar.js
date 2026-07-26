@@ -31,13 +31,6 @@ function zeroPad(n) {
 }
 
 export default (props) => {
-  const e = (f) => {
-    return (e) => {
-      e.preventDefault();
-      f(e);
-    };
-  };
-
   const currentTime = () =>
     typeof props.currentTime === "number" ? formatTime(props.currentTime) : "--:--";
 
@@ -77,7 +70,8 @@ export default (props) => {
   };
 
   const [mouseDown, setMouseDown] = createSignal(false);
-  const throttledSeek = throttle(props.onSeekClick, 50);
+  // eslint-disable-next-line solid/reactivity -- called from event handlers only, reads the prop at call time
+  const throttledSeek = throttle((pos) => props.onSeekClick(pos), 50);
 
   const onMouseDown = (e) => {
     if (e._marker) return;
@@ -85,12 +79,6 @@ export default (props) => {
 
     setMouseDown(true);
     props.onSeekClick(calcPosition(e));
-  };
-
-  const seekToMarker = (index) => {
-    return e(() => {
-      props.onSeekClick({ marker: index });
-    });
   };
 
   const onMove = (e) => {
@@ -116,7 +104,10 @@ export default (props) => {
       <Show when={props.isPausable}>
         <button
           class="ap-button ap-playback-button"
-          onClick={e(props.onPlayClick)}
+          onClick={(e) => {
+            e.preventDefault();
+            props.onPlayClick(e);
+          }}
           type="button"
           aria-label={props.isPlaying ? "Pause" : "Play"}
         >
@@ -146,7 +137,10 @@ export default (props) => {
                 <span
                   class="ap-marker-container ap-tooltip-container"
                   style={{ left: markerPosition(m) }}
-                  onClick={seekToMarker(i())}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    props.onSeekClick({ marker: i() });
+                  }}
                   onMouseDown={(e) => {
                     e._marker = true;
                   }}
@@ -163,7 +157,10 @@ export default (props) => {
       <Show when={props.isMuted !== undefined}>
         <button
           class="ap-button ap-speaker-button ap-tooltip-container"
-          onClick={e(props.onMuteClick)}
+          onClick={(e) => {
+            e.preventDefault();
+            props.onMuteClick(e);
+          }}
           type="button"
           aria-label="Mute / unmute"
         >
@@ -182,7 +179,10 @@ export default (props) => {
 
       <button
         class="ap-button ap-kbd-button ap-tooltip-container"
-        onClick={e(props.onHelpClick)}
+        onClick={(e) => {
+          e.preventDefault();
+          props.onHelpClick(e);
+        }}
         type="button"
         aria-label="Show keyboard shortcuts"
       >
@@ -192,7 +192,10 @@ export default (props) => {
 
       <button
         class="ap-button ap-fullscreen-button ap-tooltip-container"
-        onClick={e(props.onFullscreenClick)}
+        onClick={(e) => {
+          e.preventDefault();
+          props.onFullscreenClick(e);
+        }}
         type="button"
         aria-label="Toggle fullscreen mode"
       >

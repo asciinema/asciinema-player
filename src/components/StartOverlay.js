@@ -1,13 +1,12 @@
 export default (props) => {
-  const e = (f) => {
-    return (e) => {
-      e.preventDefault();
-      f(e);
-    };
-  };
-
   return (
-    <div class="ap-overlay ap-overlay-start" onClick={e(props.onClick)}>
+    <div
+      class="ap-overlay ap-overlay-start"
+      onClick={(e) => {
+        e.preventDefault();
+        props.onClick(e);
+      }}
+    >
       <div class="ap-play-button">
         <div>
           <span>

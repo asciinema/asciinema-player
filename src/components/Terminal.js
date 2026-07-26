@@ -14,6 +14,7 @@ const STRIKETHROUGH_MASK = 1 << 4;
 const BLINK_MASK = 1 << 5;
 
 export default (props) => {
+  // eslint-disable-next-line solid/reactivity -- core is a mount-time dependency, never swapped
   const core = props.core;
   const textRowPool = [];
   const vectorSymbolRowPool = [];
@@ -21,14 +22,17 @@ export default (props) => {
   const vectorSymbolDefCache = new Set();
   const colorsCache = new Map();
   const attrClassCache = new Map();
+  // eslint-disable-next-line solid/reactivity -- VT is built once with initial size, resizes arrive via core events
   const vtReady = Vt.build(props.cols, props.rows, props.boldIsBright, props.logger);
   let vt;
 
   const [size, setSize] = createSignal(
+    // eslint-disable-next-line solid/reactivity -- initial size only, core reset/resize events update it
     { cols: props.cols, rows: props.rows },
     { equals: (newVal, oldVal) => newVal.cols === oldVal.cols && newVal.rows === oldVal.rows },
   );
 
+  // eslint-disable-next-line solid/reactivity -- adaptivePalette is a static mount-time option
   const [theme, setTheme] = createSignal(buildTheme(FALLBACK_THEME, props.adaptivePalette));
   const lineHeight = () => props.lineHeight ?? 1.3333333333;
   const [blinkOn, setBlinkOn] = createSignal(true);
@@ -80,6 +84,7 @@ export default (props) => {
     adjustTextRowNodeCount(size().rows);
     adjustSymbolRowNodeCount(size().rows);
 
+    // eslint-disable-next-line solid/reactivity -- one-shot init continuation, core and onReady are mount-time props
     vtReady.then((vt_) => {
       vt = vt_;
       core.addEventListener("reset", onVtReset);

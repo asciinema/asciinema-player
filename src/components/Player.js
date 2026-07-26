@@ -16,6 +16,7 @@ const MAX_KEYSTROKES = 4;
 const MAX_TEXT_KEYSTROKE_LENGTH = 10;
 
 export default (props) => {
+  /* eslint-disable solid/reactivity -- mount-time config, passed as plain values (see view.js) */
   const logger = props.logger;
   const core = props.core;
   const autoPlay = props.autoPlay;
@@ -24,11 +25,22 @@ export default (props) => {
   const bordersW = props.bordersW;
   const bordersH = props.bordersH;
   const themeOption = props.theme ?? "auto/asciinema";
+  /* eslint-enable solid/reactivity */
   const preferEmbeddedTheme = themeOption.slice(0, 5) === "auto/";
   const themeName = preferEmbeddedTheme ? themeOption.slice(5) : themeOption;
 
-  const [terminalSize, setTerminalSize] = createTerminalSizeSignal(props.cols, props.rows);
-  const [containerSize, setContainerSize] = createContainerSizeSignal();
+  const [terminalSize, setTerminalSize] = createSignal(
+    // eslint-disable-next-line solid/reactivity -- initial size only, core reset/resize events update it
+    { cols: props.cols, rows: props.rows },
+    { equals: (newVal, oldVal) => newVal.cols === oldVal.cols && newVal.rows === oldVal.rows },
+  );
+
+  const [containerSize, setContainerSize] = createSignal(
+    { width: 0, height: 0 },
+    {
+      equals: (newVal, oldVal) => newVal.width === oldVal.width && newVal.height === oldVal.height,
+    },
+  );
   const [isPausable, setIsPausable] = createSignal(true);
   const [isSeekable, setIsSeekable] = createSignal(true);
   const [isFullscreen, setIsFullscreen] = createSignal(false);
@@ -51,6 +63,7 @@ export default (props) => {
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
 
   const [isKeystrokeOverlayEnabled, setKeystrokeOverlayEnabled] = createSignal(
+    // eslint-disable-next-line solid/reactivity -- initial value only, toggled with the "k" key
     props.keystrokeOverlay !== false,
   );
 
@@ -631,19 +644,3 @@ export default (props) => {
 
   return el;
 };
-
-function createTerminalSizeSignal(cols, rows) {
-  return createSignal(
-    { cols, rows },
-    { equals: (newVal, oldVal) => newVal.cols === oldVal.cols && newVal.rows === oldVal.rows },
-  );
-}
-
-function createContainerSizeSignal() {
-  return createSignal(
-    { width: 0, height: 0 },
-    {
-      equals: (newVal, oldVal) => newVal.width === oldVal.width && newVal.height === oldVal.height,
-    },
-  );
-}

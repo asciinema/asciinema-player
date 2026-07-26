@@ -1,15 +1,14 @@
 import { Show } from "solid-js";
 
 export default (props) => {
-  const e = (f) => {
-    return (e) => {
-      e.preventDefault();
-      f(e);
-    };
-  };
-
   return (
-    <div class="ap-overlay ap-overlay-help" onClick={e(props.onClose)}>
+    <div
+      class="ap-overlay ap-overlay-help"
+      onClick={(e) => {
+        e.preventDefault();
+        props.onClose(e);
+      }}
+    >
       <div
         onClick={(e) => {
           e.stopPropagation();
