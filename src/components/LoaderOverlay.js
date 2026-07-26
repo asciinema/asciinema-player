@@ -1,7 +1,7 @@
-export default (props) => {
+export default () => {
   return (
     <div class="ap-overlay ap-overlay-loading">
-      <span class="ap-loader"></span>
+      <span class="ap-loader" />
     </div>
   );
 };

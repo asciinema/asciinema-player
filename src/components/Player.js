@@ -1,4 +1,4 @@
-import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch } from "solid-js";
+import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch, Show } from "solid-js";
 import { Transition } from "solid-transition-group";
 import { debounce } from "../util";
 import Terminal from "./Terminal";

@@ -1,9 +1,9 @@
 class DummyLogger {
-  log(...args) {}
-  debug(...args) {}
-  info(...args) {}
-  warn(...args) {}
-  error(...args) {}
+  log(..._args) {}
+  debug(..._args) {}
+  info(..._args) {}
+  warn(..._args) {}
+  error(..._args) {}
 }
 
 class PrefixedLogger {

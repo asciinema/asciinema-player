@@ -14,11 +14,11 @@ export default (props) => {
             <svg version="1.1" viewBox="0 0 1000.0 1000.0" class="ap-icon">
               <defs>
                 <mask id="small-triangle-mask">
-                  <rect width="100%" height="100%" fill="white"></rect>
+                  <rect width="100%" height="100%" fill="white" />
                   <polygon
                     points="700.0 500.0, 400.00000000000006 326.7949192431122, 399.9999999999999 673.2050807568877"
                     fill="black"
-                  ></polygon>
+                  />
                 </mask>
               </defs>
               <polygon
@@ -26,13 +26,13 @@ export default (props) => {
                 mask="url(#small-triangle-mask)"
                 fill="white"
                 class="ap-play-btn-fill"
-              ></polygon>
+              />
               <polyline
                 points="673.2050807568878 400.0, 326.7949192431123 600.0"
                 stroke="white"
                 stroke-width="90"
                 class="ap-play-btn-stroke"
-              ></polyline>
+              />
             </svg>
           </span>
         </div>

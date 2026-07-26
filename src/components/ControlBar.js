@@ -1,4 +1,4 @@
-import { Match, Switch, createMemo, createSignal, onCleanup } from "solid-js";
+import { Match, Switch, createMemo, createSignal, onCleanup, Show, For } from "solid-js";
 import { throttle } from "../util";
 import ExpandIcon from "./icons/ExpandIcon";
 import KeyboardIcon from "./icons/KeyboardIcon";
@@ -139,8 +139,8 @@ export default (props) => {
       <span class="ap-progressbar">
         <Show when={typeof props.progress === "number" || props.isSeekable}>
           <span class="ap-bar" onMouseDown={onMouseDown} onMouseMove={onMove}>
-            <span class="ap-gutter ap-gutter-empty"></span>
-            <span class="ap-gutter ap-gutter-full" style={gutterBarStyle()}></span>
+            <span class="ap-gutter ap-gutter-empty" />
+            <span class="ap-gutter ap-gutter-full" style={gutterBarStyle()} />
             <For each={markers()}>
               {(m, i) => (
                 <span
@@ -151,7 +151,7 @@ export default (props) => {
                     e._marker = true;
                   }}
                 >
-                  <span class="ap-marker" classList={{ "ap-marker-past": isPastMarker(m) }}></span>
+                  <span class="ap-marker" classList={{ "ap-marker-past": isPastMarker(m) }} />
                   <span class="ap-tooltip">{markerText(m)}</span>
                 </span>
               )}

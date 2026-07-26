@@ -1,3 +1,5 @@
+import { Show } from "solid-js";
+
 export default (props) => {
   const e = (f) => {
     return (e) => {

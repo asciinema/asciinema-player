@@ -22,7 +22,7 @@ function invoke(method, params) {
   switch (method) {
     case "getChanges":
       return core.getChanges();
-    case "new":
+    case "new": {
       const opts = params[1];
 
       if (opts.logger === true) {
@@ -32,6 +32,7 @@ function invoke(method, params) {
       opts.logger = logger;
       core = new Core(params[0], opts);
       return;
+    }
     case "init":
       return core.init();
     case "terminalReady":

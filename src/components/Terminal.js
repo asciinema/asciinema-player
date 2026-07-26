@@ -611,8 +611,8 @@ export default (props) => {
         classList={{ "ap-blink": blinkOn() }}
         ref={vectorSymbolsEl}
       >
-        <defs ref={vectorSymbolDefsEl}></defs>
-        <g ref={vectorSymbolRowsEl}></g>
+        <defs ref={vectorSymbolDefsEl} />
+        <g ref={vectorSymbolRowsEl} />
       </svg>
       <pre
         class="ap-term-text"
@@ -620,7 +620,7 @@ export default (props) => {
         ref={textEl}
         aria-live="off"
         tabindex="0"
-      ></pre>
+      />
     </div>
   );
 };
@@ -1710,8 +1710,8 @@ function getVectorSymbolDef(codepoint) {
       return '<path d="M0,1 L0,0 L1,1 Z" fill="currentColor"/>';
 
     // nf-ple-backslash_separator (https://www.nerdfonts.com/cheat-sheet)
-    case 0xe0b9:
     // nf-ple-backslash_separator_redundant (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0b9:
     case 0xe0bf:
       return '<path d="M0,0 L1,1" fill="none" stroke="currentColor" stroke-width="0.07"/>';
 
@@ -1720,8 +1720,8 @@ function getVectorSymbolDef(codepoint) {
       return '<path d="M1,1 L1,0 L0,1 Z" fill="currentColor"/>';
 
     // nf-ple-forwardslash_separator (https://www.nerdfonts.com/cheat-sheet)
-    case 0xe0bb:
     // nf-ple-forwardslash_separator_redundant (https://www.nerdfonts.com/cheat-sheet)
+    case 0xe0bb:
     case 0xe0bd:
       return '<path d="M0,1 L1,0" fill="none" stroke="currentColor" stroke-width="0.07"/>';
 

@@ -23,6 +23,7 @@ jobs:
         primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
         restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}
     - run: nix develop --command npm ci
+    - run: nix develop --command npm run lint
     - run: nix develop --command npm run build
     - run: ls -lhR dist
     - run: nix develop --command npm run test
