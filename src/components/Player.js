@@ -1,6 +1,6 @@
 import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch, Show } from "solid-js";
-import { Transition } from "solid-transition-group";
 import { debounce } from "../util";
+import Slide from "./Slide";
 import Terminal from "./Terminal";
 import ControlBar from "./ControlBar";
 import ErrorOverlay from "./ErrorOverlay";
@@ -625,11 +625,11 @@ export default (props) => {
             <ErrorOverlay />
           </Match>
         </Switch>
-        <Transition name="slide">
+        <Slide>
           <Show when={overlay() == "info"}>
             <InfoOverlay message={infoMessage()} wasPlaying={wasPlaying()} />
           </Show>
-        </Transition>
+        </Slide>
         <Show when={isHelpVisible()}>
           <HelpOverlay
             onClose={() => setIsHelpVisible(false)}

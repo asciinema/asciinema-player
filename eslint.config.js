@@ -10,6 +10,9 @@ export default [
 
   {
     languageOptions: {
+      // Syntax floor of our browserslist targets; there is no transpilation,
+      // so newer syntax must fail the build. Bump when targets move.
+      ecmaVersion: 2021,
       globals: { ...globals.browser, ...globals.worker },
     },
 

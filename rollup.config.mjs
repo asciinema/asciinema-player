@@ -1,7 +1,6 @@
 import babel from "@rollup/plugin-babel";
 import resolve from "@rollup/plugin-node-resolve";
 import rust from "@wasm-tool/rollup-plugin-rust";
-import commonjs from '@rollup/plugin-commonjs';
 import terser from "@rollup/plugin-terser";
 
 const libreJsLicense =
@@ -18,9 +17,8 @@ const minify = terser({
 const esmPlugins = [
   babel({
     exclude: "node_modules/**",
-    babelHelpers: "runtime",
-    presets: ["solid", "@babel/preset-env"],
-    plugins: [['@babel/transform-runtime']]
+    babelHelpers: "bundled",
+    presets: ["solid"]
   }),
   rust({
     inlineWasm: true,
@@ -29,11 +27,6 @@ const esmPlugins = [
     }
   }),
   resolve({ extensions: [".js", ".jsx"] })
-];
-
-const cjsPlugins = [
-  resolve(),
-  commonjs()
 ];
 
 export default [
@@ -46,7 +39,6 @@ export default [
         format: "es"
       }
     ],
-    external: [/@babel\/runtime/],
     plugins: esmPlugins
   },
 
@@ -69,8 +61,7 @@ export default [
         footer: libreJsLicenseEnd,
         plugins: [minify]
       }
-    ],
-    plugins: cjsPlugins
+    ]
   },
 
   // 3. Build the UI-only standalone IIFE from the ESM output
@@ -88,8 +79,7 @@ export default [
         name: "AsciinemaPlayer",
         plugins: [terser()]
       }
-    ],
-    plugins: cjsPlugins
+    ]
   },
 
   // 4. Build the worker-only standalone IIFE from the ESM output
@@ -105,7 +95,6 @@ export default [
         format: "iife",
         plugins: [terser()]
       }
-    ],
-    plugins: cjsPlugins
+    ]
   }
 ];
