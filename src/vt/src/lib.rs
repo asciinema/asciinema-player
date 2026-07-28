@@ -1,7 +1,7 @@
 use std::mem::{align_of, size_of};
 use std::ops::RangeInclusive;
 
-use serde::{ser::Serializer, Serialize};
+use serde::{Serialize, ser::Serializer};
 use wasm_bindgen::prelude::*;
 
 #[cfg(all(not(target_feature = "atomics"), target_family = "wasm"))]
