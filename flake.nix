@@ -25,7 +25,7 @@
           nativeBuildInputs = with pkgs; [
             nodejs_24
             typescript-language-server
-            (rust-bin.stable."1.85.0".default.override {
+            (rust-bin.stable."1.86.0".default.override {
               targets = [ "wasm32-unknown-unknown" ];
               extensions = [
                 "rust-src"
