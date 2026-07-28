@@ -46,7 +46,7 @@
   "devDependencies": {
     "@babel/core": "^7.21.3",
     "@eslint/js": "^9.39.5",
-    "@playwright/test": "^1.56.0",
+    "@playwright/test": "^1.61.1",
     "@rollup/plugin-babel": "^7.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-terser": "^1.0.0",
