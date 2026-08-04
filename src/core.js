@@ -24,7 +24,7 @@ class Core {
     this.preload = opts.preload;
     this.startAt = parseNpt(opts.startAt);
     this.poster = this._parsePoster(opts.poster);
-    this.markers = this._normalizeMarkers(opts.markers);
+    this.markers = opts.markers;
     this.pauseOnMarkers = opts.pauseOnMarkers;
     this.audioUrl = opts.audioUrl;
     this.initPromise = null;
@@ -280,17 +280,6 @@ class Core {
     }
 
     return;
-  }
-
-  // Recording drivers (see e.g. driver/recording/full.js) only guard against
-  // `undefined` before wrapping markers in a Stream, so a non-array value
-  // (notably `null`, which host apps like asciinema-server pass for
-  // markerless recordings) reaches `new Stream(markers)` and throws. Coerce
-  // anything that isn't an array to `undefined` here, at the API boundary.
-  _normalizeMarkers(markers) {
-    if (Array.isArray(markers)) {
-      return markers.map((m) => (typeof m === "number" ? [m, ""] : m));
-    }
   }
 }
 

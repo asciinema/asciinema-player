@@ -35,6 +35,35 @@ test("initializes successfully and mounts in DOM", async ({ page }) => {
   expect(hasApiMethods).toBe(true);
 });
 
+test("initializes and plays with null option values", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/simple.cast", {
+    markers: null,
+    poster: null,
+    speed: null,
+  });
+
+  await playerApi.play();
+  await playerApi.events.waitFor("playing");
+});
+
+test("create throws synchronously on an invalid markers option", async ({ page }) => {
+  await page.goto("/index.html");
+
+  const error = await page.evaluate(() => {
+    try {
+      AsciinemaPlayer.create("/assets/simple.cast", document.getElementById("player"), {
+        markers: "0:12",
+      });
+
+      return null;
+    } catch (e) {
+      return e.message;
+    }
+  });
+
+  expect(error).toMatch(/markers option must be an array/);
+});
+
 test("starts playback when start overlay is clicked", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/simple.cast");
 
