@@ -95,6 +95,47 @@ test("API seek jumps to a marker index", async ({ page }) => {
   await expectCurrentTime(playerApi).toBeCloseTo(1.1);
 });
 
+// Re-entrancy guard: seeking from inside an event listener calls back into the player
+// while it is mid-dispatch. Core queues public commands (see Core#_enqueue), so the seek
+// runs after the dispatch unwinds instead of re-entering the driver, which would throw.
+test("marker listener can synchronously seek without failing the player", async ({ page }) => {
+  // markers.cast: output at 0.2, markers at 0.5 ("first") and 1.1 ("second"), ends at 2.0.
+  const playerApi = await createPlayer(page, "/assets/markers.cast");
+
+  await page.evaluate(() => {
+    window.__seek = null;
+
+    // Seek on the first marker only, jumping over the second one. The listener runs
+    // synchronously inside the player's dispatch, which is the whole point of the test.
+    window.player.addEventListener("marker", () => {
+      window.__seek ??= window.player.seek(1.3);
+    });
+  });
+
+  await playerApi.play();
+
+  // Marker at 0.5 fires, which arms the seek above.
+  await playerApi.events.waitFor("marker");
+
+  // Let the queued seek settle before asserting on it, otherwise it may still be pending.
+  await page.evaluate(() => window.__seek);
+
+  // Playback resumes from 1.3 and runs to the end of the recording.
+  await playerApi.events.waitFor("ended");
+
+  const events = await page.evaluate(() => window.__events);
+
+  // A re-entrant seek used to fail the driver, which surfaces to the page as an error event.
+  expect(events.filter((event) => event.name === "error")).toEqual([]);
+
+  // The seek jumped past the second marker (1.1), so only the first one was emitted.
+  // This also proves the seek actually took effect rather than being silently dropped.
+  expect(events.filter((event) => event.name === "marker")).toHaveLength(1);
+
+  // Time is pinned at the duration once playback ends.
+  await expectCurrentTime(playerApi).toBeCloseTo(2.0);
+});
+
 test("playback button toggles play/pause", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/simple.cast");
 
