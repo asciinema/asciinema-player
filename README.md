@@ -60,7 +60,6 @@ To build the project run:
 
     git clone https://github.com/asciinema/asciinema-player
     cd asciinema-player
-    rustup target add wasm32-unknown-unknown
     npm install
     npm run build
 
@@ -106,7 +105,8 @@ Common tasks are defined in the justfile: `just build`, `just test`,
 `just format`.
 
 If you don't use Nix, you need Node.js with npm, and the Rust toolchain (1.85
-or later) with the `wasm32-unknown-unknown` target. Running the test suite
+or later) with the `wasm32-unknown-unknown` target (added with
+`rustup target add wasm32-unknown-unknown`). Running the test suite
 additionally requires Playwright browsers.
 
 If you'd like to propose or submit any changes, please read the
