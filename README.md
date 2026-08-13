@@ -53,11 +53,8 @@ Notable features:
 
 ## Building
 
-Building asciinema player from source requires:
-
-- [Node.js](https://nodejs.org/) and [npm](https://www.npmjs.com/),
-- [Rust](https://www.rust-lang.org/) compiler (1.85 or later) and [Cargo package
-  manager](https://doc.rust-lang.org/cargo/).
+Building asciinema player from source requires Node.js and the Rust toolchain
+(see [Development](#development) below for details).
 
 To build the project run:
 
@@ -94,6 +91,26 @@ runs in a
 The benefit of this configuration is typically observed only for high
 frame-rate / high bandwidth recordings. For typical demos/sessions it's
 not worth the setup hassle.
+
+## Development
+
+The recommended way to work on the player is the Nix dev shell, which provides
+the complete toolchain (including the wasm target and test browsers) and just
+works:
+
+```sh
+nix develop
+```
+
+Common tasks are defined in the justfile: `just build`, `just test`,
+`just format`.
+
+If you don't use Nix, you need Node.js with npm, and the Rust toolchain (1.85
+or later) with the `wasm32-unknown-unknown` target. Running the test suite
+additionally requires Playwright browsers.
+
+If you'd like to propose or submit any changes, please read the
+[contribution guidelines](CONTRIBUTING.md) first.
 
 ## Donations
 
