@@ -53,15 +53,30 @@ Notable features:
 
 ## Building
 
-Building asciinema player from source requires Node.js and the Rust toolchain
-(see [Development](#development) below for details).
+To build the player, first download the source code:
 
-To build the project run:
+```sh
+git clone https://github.com/asciinema/asciinema-player
+cd asciinema-player
+```
 
-    git clone https://github.com/asciinema/asciinema-player
-    cd asciinema-player
-    npm install
-    npm run build
+The recommended way to get the toolchain is the Nix dev shell, which provides
+Node.js, Rust and the `wasm32-unknown-unknown` target, and just works:
+
+```sh
+nix develop
+```
+
+If you don't use Nix, you need Node.js with npm, and the Rust toolchain (1.85
+or later) with the `wasm32-unknown-unknown` target (added with
+`rustup target add wasm32-unknown-unknown`).
+
+Then build the player with:
+
+```sh
+npm install
+npm run build
+```
 
 This produces following output files:
 
@@ -93,21 +108,12 @@ not worth the setup hassle.
 
 ## Development
 
-The recommended way to work on the player is the Nix dev shell, which provides
-the complete toolchain (including the wasm target and test browsers) and just
-works:
-
-```sh
-nix develop
-```
+For toolchain setup and build instructions, see [Building](#building). Running
+the test suite additionally requires Playwright browsers, which the Nix dev
+shell provides.
 
 Common tasks are defined in the justfile: `just build`, `just test`,
 `just format`.
-
-If you don't use Nix, you need Node.js with npm, and the Rust toolchain (1.85
-or later) with the `wasm32-unknown-unknown` target (added with
-`rustup target add wasm32-unknown-unknown`). Running the test suite
-additionally requires Playwright browsers.
 
 If you'd like to propose or submit any changes, please read the
 [contribution guidelines](CONTRIBUTING.md) first.
