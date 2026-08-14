@@ -16,8 +16,8 @@ function ascicastV3Handler() {
     const term = {
       size: {
         cols: header.term.cols,
-        rows: header.term.rows
-      }
+        rows: header.term.rows,
+      },
     };
 
     if (header.term.theme) {
@@ -53,7 +53,7 @@ function ascicastV3Handler() {
     }
   }
 
-  return function(buffer) {
+  return function (buffer) {
     return parse(buffer);
   };
 }

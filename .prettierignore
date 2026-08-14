@@ -1,0 +1,3 @@
+# Rust/wasm build output. Covered by src/vt/.gitignore, which Prettier does not read
+# (it only reads the root .gitignore and this file).
+src/vt/target

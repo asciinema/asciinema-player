@@ -11,7 +11,7 @@ function alisHandler(logger) {
   let markerIndex = 0;
 
   function parseMagicString(buffer) {
-    const text = (new TextDecoder()).decode(buffer);
+    const text = new TextDecoder().decode(buffer);
 
     if (text === "ALiS\x01") {
       handler = parseFirstFrame;
@@ -67,9 +67,9 @@ function alisHandler(logger) {
       term: {
         size: { cols, rows },
         theme,
-        init
-      }
-    }
+        init,
+      },
+    };
   }
 
   function parseFrame(buffer) {
@@ -78,15 +78,20 @@ function alisHandler(logger) {
 
     if (type === 0x01) {
       return parseResetFrame(view, buffer);
-    } else if (type === 0x6f) { // "o"
+    } else if (type === 0x6f) {
+      // "o"
       return parseOutputFrame(view, buffer);
-    } else if (type === 0x69) { // "i"
+    } else if (type === 0x69) {
+      // "i"
       return parseInputFrame(view, buffer);
-    } else if (type === 0x72) { // "r"
+    } else if (type === 0x72) {
+      // "r"
       return parseResizeFrame(view);
-    } else if (type === 0x6d) { // "m"
+    } else if (type === 0x6d) {
+      // "m"
       return parseMarkerFrame(view, buffer);
-    } else if (type === 0x78) { // "x"
+    } else if (type === 0x78) {
+      // "x"
       return parseExitFrame(view, buffer);
     } else if (type === 0x04) {
       // EOT
@@ -150,7 +155,7 @@ function alisHandler(logger) {
     return [lastEventTime / ONE_MS_IN_USEC, "x", { status }];
   }
 
-  return function(buffer) {
+  return function (buffer) {
     return handler(buffer);
   };
 }
@@ -200,7 +205,7 @@ class BinaryReader {
 
     while (byte > 127) {
       byte &= 127;
-      number += (BigInt(byte) << shift);
+      number += BigInt(byte) << shift;
       shift += BigInt(7);
       byte = this.getUint8();
     }

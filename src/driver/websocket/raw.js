@@ -9,11 +9,11 @@ function rawHandler() {
     parse = parseOutput;
 
     return {
-      time: 0.0, 
+      time: 0.0,
       term: {
         size: { cols, rows },
-        init: text
-      }
+        init: text,
+      },
     };
   }
 
@@ -21,7 +21,7 @@ function rawHandler() {
     return outputDecoder.decode(buffer, { stream: true });
   }
 
-  return function(buffer) {
+  return function (buffer) {
     return parse(buffer);
   };
 }

@@ -33,12 +33,12 @@ function nullBuffer(execute) {
       execute("o", text);
     },
 
-    stop() { },
+    stop() {},
   };
 }
 
 function executeEvent(dispatch) {
-  return function(code, data) {
+  return function (code, data) {
     if (code === "o") {
       dispatch("output", data);
     } else if (code === "i") {
@@ -48,7 +48,7 @@ function executeEvent(dispatch) {
     } else if (code === "m") {
       dispatch("marker", data);
     }
-  }
+  };
 }
 
 function buffer(getBufferTime, execute, setTime, logger, baseStreamTime, minFrameTime = 1.0 / 60) {
@@ -195,7 +195,7 @@ function adaptiveBufferTimeProvider(
     idealHalfLifeDown = 5000,
     safetyMultiplier = 1.2,
     minImprovementDuration = 3000,
-  } = {}
+  } = {},
 ) {
   function levelToMs(level) {
     return level === 0 ? minBufferTime : bufferLevelStep * level;
@@ -211,7 +211,7 @@ function adaptiveBufferTimeProvider(
   let targetBufferTime = null;
   let transitionRate = null;
 
-  return function(latency) {
+  return function (latency) {
     const now = performance.now();
     const dt = Math.max(0, now - lastUpdateTime);
     lastUpdateTime = now;
@@ -253,10 +253,10 @@ function adaptiveBufferTimeProvider(
       smoothedIdealBufferTime = idealBufferTime;
     } else if (idealBufferTime > smoothedIdealBufferTime) {
       const alphaUp = 1 - Math.pow(2, -dt / idealHalfLifeUp);
-      smoothedIdealBufferTime += + alphaUp * (idealBufferTime - smoothedIdealBufferTime);
+      smoothedIdealBufferTime += +alphaUp * (idealBufferTime - smoothedIdealBufferTime);
     } else {
       const alphaDown = 1 - Math.pow(2, -dt / idealHalfLifeDown);
-      smoothedIdealBufferTime += + alphaDown * (idealBufferTime - smoothedIdealBufferTime);
+      smoothedIdealBufferTime += +alphaDown * (idealBufferTime - smoothedIdealBufferTime);
     }
 
     // quantize smoothed ideal buffer time to discrete buffer level
@@ -266,17 +266,22 @@ function adaptiveBufferTimeProvider(
     if (smoothedIdealBufferTime <= minBufferTime) {
       newBufferLevel = 0;
     } else {
-      newBufferLevel = clamp(Math.ceil(smoothedIdealBufferTime / bufferLevelStep), 1, maxBufferLevel);
+      newBufferLevel = clamp(
+        Math.ceil(smoothedIdealBufferTime / bufferLevelStep),
+        1,
+        maxBufferLevel,
+      );
     }
 
     if (latency > bufferTime) {
-      logger.debug('buffer underrun', { latency, bufferTime });
+      logger.debug("buffer underrun", { latency, bufferTime });
     }
 
     // adjust buffer level and target buffer time for new buffer level
 
     if (newBufferLevel > bufferLevel) {
-      if (latency > bufferTime) { // <- underrun - raise quickly
+      if (latency > bufferTime) {
+        // <- underrun - raise quickly
         bufferLevel = Math.min(newBufferLevel, bufferLevel + 3);
       } else {
         bufferLevel += 1;
@@ -285,7 +290,7 @@ function adaptiveBufferTimeProvider(
       targetBufferTime = levelToMs(bufferLevel);
       transitionRate = (targetBufferTime - bufferTime) / transitionDuration;
       stableSince = null;
-      logger.debug('raising buffer', { latency, bufferTime, targetBufferTime });
+      logger.debug("raising buffer", { latency, bufferTime, targetBufferTime });
     } else if (newBufferLevel < bufferLevel) {
       if (stableSince == null) stableSince = now;
 
@@ -294,7 +299,7 @@ function adaptiveBufferTimeProvider(
         targetBufferTime = levelToMs(bufferLevel);
         transitionRate = (targetBufferTime - bufferTime) / transitionDuration;
         stableSince = now;
-        logger.debug('lowering buffer', { latency, bufferTime, targetBufferTime });
+        logger.debug("lowering buffer", { latency, bufferTime, targetBufferTime });
       }
     } else {
       stableSince = null;
@@ -305,7 +310,10 @@ function adaptiveBufferTimeProvider(
     if (targetBufferTime !== null) {
       bufferTime += transitionRate * dt;
 
-      if (transitionRate >= 0 && bufferTime > targetBufferTime || transitionRate < 0 && bufferTime < targetBufferTime) {
+      if (
+        (transitionRate >= 0 && bufferTime > targetBufferTime) ||
+        (transitionRate < 0 && bufferTime < targetBufferTime)
+      ) {
         bufferTime = targetBufferTime;
         targetBufferTime = null;
       }
@@ -315,6 +323,8 @@ function adaptiveBufferTimeProvider(
   };
 }
 
-function clamp(x, lo, hi) { return Math.min(hi, Math.max(lo, x)); }
+function clamp(x, lo, hi) {
+  return Math.min(hi, Math.max(lo, x));
+}
 
 export default getBuffer;

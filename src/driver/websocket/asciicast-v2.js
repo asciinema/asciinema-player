@@ -15,9 +15,9 @@ function ascicastV2Handler() {
       term: {
         size: {
           cols: header.width,
-          rows: header.height
-        }
-      }
+          rows: header.height,
+        },
+      },
     };
   }
 
@@ -33,7 +33,7 @@ function ascicastV2Handler() {
     }
   }
 
-  return function(buffer) {
+  return function (buffer) {
     return parse(buffer);
   };
 }

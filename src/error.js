@@ -6,9 +6,7 @@ function toErrorPayload(error) {
 }
 
 function fromErrorPayload(payload) {
-  const error = new Error(
-    typeof payload?.message === "string" ? payload.message : "Unknown error",
-  );
+  const error = new Error(typeof payload?.message === "string" ? payload.message : "Unknown error");
   error.name = typeof payload?.name === "string" ? payload.name : "Error";
 
   return error;

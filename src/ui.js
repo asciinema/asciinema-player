@@ -6,7 +6,12 @@ import { fromErrorPayload } from "./error";
 function create(src, elem, workerUrl, opts = {}) {
   const coreLogger = opts.logger === console ? true : undefined;
   const uiLogger = opts.logger ?? new DummyLogger();
-  const core = new CoreWorkerProxy(workerUrl, src, coreOpts(opts, { logger: coreLogger }), uiLogger);
+  const core = new CoreWorkerProxy(
+    workerUrl,
+    src,
+    coreOpts(opts, { logger: coreLogger }),
+    uiLogger,
+  );
   const { el, dispose } = mount(
     core,
     elem,
@@ -70,27 +75,27 @@ class CoreWorkerProxy {
   }
 
   play() {
-    return this._sendCommand('play');
+    return this._sendCommand("play");
   }
 
   pause() {
-    return this._sendCommand('pause');
+    return this._sendCommand("pause");
   }
 
   togglePlay() {
-    return this._sendCommand('togglePlay');
+    return this._sendCommand("togglePlay");
   }
 
   seek(where) {
-    return this._sendCommand('seek', where);
+    return this._sendCommand("seek", where);
   }
 
   step(n) {
-    return this._sendCommand('step', n);
+    return this._sendCommand("step", n);
   }
 
   stop() {
-    return this._sendCommand('stop');
+    return this._sendCommand("stop");
   }
 
   terminalReady() {
@@ -98,23 +103,23 @@ class CoreWorkerProxy {
   }
 
   getChanges() {
-    return this._sendCommand('getChanges');
+    return this._sendCommand("getChanges");
   }
 
   getCurrentTime() {
-    return this._sendCommand('getCurrentTime');
+    return this._sendCommand("getCurrentTime");
   }
 
   getRemainingTime() {
-    return this._sendCommand('getRemainingTime');
+    return this._sendCommand("getRemainingTime");
   }
 
   getProgress() {
-    return this._sendCommand('getProgress');
+    return this._sendCommand("getProgress");
   }
 
   getDuration() {
-    return this._sendCommand('getDuration');
+    return this._sendCommand("getDuration");
   }
 
   addEventListener(eventName, handler) {

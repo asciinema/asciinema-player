@@ -1,7 +1,7 @@
 import { init as initVt, module as vtWasmModule } from "./vt/Cargo.toml?custom";
 
 const vt = initVt({ module: vtWasmModule }); // trigger async loading of wasm
-const memory = vt.then(wasm => wasm.default()).then(d => d.memory);
+const memory = vt.then((wasm) => wasm.default()).then((d) => d.memory);
 
 class Vt {
   static async build(cols, rows, boldIsBright, logger) {

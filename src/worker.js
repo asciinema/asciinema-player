@@ -5,7 +5,7 @@ import { toErrorPayload } from "./error";
 let logger = new DummyLogger();
 let core;
 
-onmessage = async function(e) {
+onmessage = async function (e) {
   if (e.data.id !== undefined) {
     try {
       const result = await invoke(e.data.method, e.data.params);
