@@ -51,6 +51,37 @@ Notable features:
 * [keyboard shortcuts](https://docs.asciinema.org/manual/player/shortcuts/),
 * [support for other recording formats](https://docs.asciinema.org/manual/player/parsers/) like ttyrec, typescript.
 
+## Experimental: alternative terminal backends
+
+The player can hand terminal rendering to an external engine via the experimental
+`terminalBackend` option, while keeping its own recording parser, playback clock,
+controls, seeking, markers and theming. The default build imports and depends on
+nothing new — the hook is inert unless a backend is provided.
+
+```js
+AsciinemaPlayer.create("demo.cast", el, {
+  terminalBackend: async ({ element, size, appearance }) => {
+    // mount your terminal into `element`, sized to `size` ({ cols, rows })
+    return {
+      write(data) {},                 // feed VT output; retain parser state
+      resize({ cols, rows }) {},       // apply the recording's dimensions
+      reset({ size, init, theme }) {}, // discard state, re-init (used by seek/loop)
+      update(appearance) {},           // theme, font, cursor, display settings
+      present() {},                    // draw pending changes; coalesced per frame
+      dispose() {},                    // release resources
+    };
+  },
+});
+```
+
+The factory may be async (playback waits for it) and receives an owned DOM
+`element`, the initial `size`, and an `appearance` (font, line height, cursor,
+resolved theme). Mutations are delivered synchronously and in stream order. See
+[`index.d.ts`](index.d.ts) for the full `TerminalBackend` / `TerminalBackendFactory`
+types, and [`examples/`](examples/) for working adapters (ghostty-web, wterm,
+xterm.js, rioterm) plus a comparison launcher. This is an experimental hook, not a
+stable plugin ABI.
+
 ## Building
 
 To build the player, first download the source code:
