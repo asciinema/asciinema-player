@@ -2,6 +2,7 @@ import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch, Sho
 import { debounce } from "../util";
 import Slide from "./Slide";
 import Terminal from "./Terminal";
+import ExternalTerminal from "./ExternalTerminal";
 import ControlBar from "./ControlBar";
 import ErrorOverlay from "./ErrorOverlay";
 import LoaderOverlay from "./LoaderOverlay";
@@ -25,6 +26,7 @@ export default (props) => {
   const bordersW = props.bordersW;
   const bordersH = props.bordersH;
   const themeOption = props.theme ?? "auto/asciinema";
+  const TerminalView = props.terminalBackend ? ExternalTerminal : Terminal;
   /* eslint-enable solid/reactivity */
   const preferEmbeddedTheme = themeOption.slice(0, 5) === "auto/";
   const themeName = preferEmbeddedTheme ? themeOption.slice(5) : themeOption;
@@ -573,7 +575,8 @@ export default (props) => {
         onMouseMove={() => onUserActive(true)}
         ref={playerRef}
       >
-        <Terminal
+        <TerminalView
+          backend={props.terminalBackend}
           cols={terminalCols()}
           rows={terminalRows()}
           scale={terminalScale()}

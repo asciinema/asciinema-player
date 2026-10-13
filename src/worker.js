@@ -1,6 +1,6 @@
 import Core from "./core";
 import { DummyLogger } from "./logging";
-import { toErrorPayload } from "./error";
+import { toErrorPayload, fromErrorPayload } from "./error";
 
 let logger = new DummyLogger();
 let core;
@@ -37,6 +37,8 @@ function invoke(method, params) {
       return core.init();
     case "terminalReady":
       return core.terminalReady();
+    case "terminalFailed":
+      return core.terminalFailed(fromErrorPayload(params));
     case "play":
       return core.play();
     case "pause":

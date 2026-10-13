@@ -18,6 +18,7 @@ function mount(core, elem, opts = {}) {
     adaptivePalette: opts.adaptivePalette,
     terminalFontSize: opts.terminalFontSize,
     terminalFontFamily: opts.terminalFontFamily,
+    terminalBackend: opts.terminalBackend,
     terminalLineHeight: opts.terminalLineHeight,
     theme: opts.theme,
     onTerminalReady: opts.onTerminalReady,
