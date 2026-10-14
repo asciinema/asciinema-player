@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>asciinema-player — terminal backends</title>
+<link rel="stylesheet" href="../dist/bundle/asciinema-player.css">
+<style>
+  body { background: #161922; color: #e8eaf0; font: 16px/1.5 system-ui; margin: 24px auto; max-width: 1600px; padding: 0 20px; }
+  h1 { font-size: 22px; } h2 { font-size: 15px; font-weight: 600; color: #9aa4bd; margin: 0 0 6px; }
+  p { color: #9aa4bd; font-size: 14px; } a { color: #7aa2f7; }
+  .picker label { display: inline-flex; align-items: center; gap: 5px; margin: 0 14px 6px 0; font-size: 14px; }
+  .bar { margin: 10px 0 14px; } button { padding: 6px 14px; margin-right: 8px; }
+  .err { color: #f7768e; font: 13px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
+  /* Adaptable grid: as many columns as fit; each player scales to its cell (fit: width). */
+  #panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 18px 22px; align-items: start; }
+  .panel { min-width: 0; }
+</style>
+
+<h1>asciinema-player — terminal backends</h1>
+<p>Same recording and player; only the <code>terminalBackend</code> differs. See the
+<a href="https://github.com/maxandersen/asciinema-player/tree/optional-terminal-backend/examples">README</a>.</p>
+
+<div class="picker" id="picker"></div>
+<div class="bar">
+  <button id="play">Play all</button><button id="reset">Rewind all</button>
+  <button id="select-all">Select all</button><button id="reset-default">Reset default</button>
+  <label style="margin-left:14px">theme <select id="theme"></select></label>
+</div>
+<div id="panels"></div>
+
+<script type="module">
+  import { create } from "../dist/index.js";
+
+  const REGISTRY = {
+    "default":        {},
+    "ghostty-web":    { dir: "ghostty-web", mod: "./ghostty-web/dist/ghostty-web-backend.js", make: m => m.ghosttyBackend() },
+    "wterm":          { dir: "wterm", mod: "./wterm/dist/wterm-backend.js", css: ["./wterm/dist/wterm.css"], make: m => m.wtermBackend() },
+    "wterm-ghostty":  { dir: "wterm", mod: "./wterm/dist/wterm-backend.js", css: ["./wterm/dist/wterm.css"], make: m => m.wtermBackend({ ghostty: true }) },
+    "xterm":          { dir: "xterm", mod: "./xterm/dist/xterm-backend.js", css: ["./xterm/dist/xterm.css"], make: m => m.xtermBackend() },
+    "rioterm":        { dir: "rioterm", mod: "./rioterm/dist/rioterm-backend.js", make: m => m.riotermBackend() },
+    "rioterm-canvas": { dir: "rioterm", mod: "./rioterm/dist/rioterm-backend.js", make: m => m.riotermBackend({ renderer: "canvas" }) },
+  };
+  const DEFAULT_SELECTION = ["default", "wterm-ghostty", "xterm"]; // most capable backends
+
+  const THEMES = ["asciinema", "dracula", "monokai", "nord", "seti", "solarized-dark", "solarized-light", "tango", "gruvbox-dark", "auto/asciinema"];
+
+  const params = new URLSearchParams(location.search);
+  const selected = (params.get("backends")?.split(",").map(s => s.trim()).filter(id => REGISTRY[id])) ?? [];
+  const active = selected.length ? selected : DEFAULT_SELECTION;
+  const theme = params.get("theme") || "asciinema";
+
+  // Rebuild the query preserving other params; commas stay literal (no %2C).
+  function navigate(overrides) {
+    const q = new URLSearchParams(location.search);
+    for (const [k, v] of Object.entries(overrides)) { if (v == null) q.delete(k); else q.set(k, v); }
+    const parts = [...q].map(([k, v]) => `${k}=${v}`); // our values are URL-safe
+    location.search = parts.length ? "?" + parts.join("&") : "";
+  }
+
+  const picker = document.getElementById("picker");
+  for (const id of Object.keys(REGISTRY)) {
+    const l = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = active.includes(id); cb.value = id;
+    cb.onchange = () => {
+      const next = [...picker.querySelectorAll("input:checked")].map(i => i.value);
+      navigate({ backends: next.length ? next.join(",") : null });
+    };
+    l.append(cb, document.createTextNode(id));
+    picker.append(l);
+  }
+
+  const themeSel = document.getElementById("theme");
+  for (const t of THEMES) { const o = document.createElement("option"); o.value = o.textContent = t; themeSel.append(o); }
+  themeSel.value = theme;
+  // themeSel.onchange is wired after buildPanels() is defined, below.
+
+  const addedCss = new Set();
+  const addCss = (href) => { if (addedCss.has(href)) return; addedCss.add(href); const link = document.createElement("link"); link.rel = "stylesheet"; link.href = href; document.head.append(link); };
+
+  const source = "./unicode.cast";
+  const panels = document.getElementById("panels");
+
+  let players = [];
+  let currentTheme = theme;
+  let playing = false;
+
+  // Sync: keep every player on the same time while playing; any play/scrub drives
+  // the rest; pause stays put. A suppression window swallows our own cascade.
+  let suppressUntil = 0;
+  const suppressed = () => performance.now() < suppressUntil;
+  const bump = () => { suppressUntil = performance.now() + 300; };
+  async function playFrom(t) { playing = true; bump(); await Promise.all(players.map(p => p.seek(t))); await Promise.all(players.map(p => p.play())); bump(); }
+  async function syncSeek(t) { bump(); await Promise.all(players.map(p => p.seek(t))); bump(); }
+  async function pauseAll() { playing = false; bump(); await Promise.all(players.map(p => p.pause())); bump(); }
+
+  // (Re)create every panel with the current theme. theme is a create-time option,
+  // so changing it recreates the players; the caller seeks back to the saved
+  // position so playback is not lost (no page reload).
+  async function buildPanels() {
+    players.forEach((p) => { try { p.dispose(); } catch (e) {} });
+    players = [];
+    panels.replaceChildren();
+    const options = {
+      controls: true, terminalFontFamily: '"Menlo", "DejaVu Sans Mono", monospace', cursorMode: "steady", theme: currentTheme,
+      markers: [[1.0, "unicode"], [3.0, "images"], [5.2, "done"]],
+      keystrokeOverlay: true,
+    };
+    for (const id of active) {
+      const info = REGISTRY[id];
+      const panel = document.createElement("section"); panel.className = "panel";
+      const h = document.createElement("h2"); h.textContent = id;
+      const host = document.createElement("div");
+      panel.append(h, host);
+      panels.append(panel);
+      try {
+        if (!info.mod) { players.push(create(source, host, options)); continue; }
+        (info.css ?? []).forEach(addCss);
+        const mod = await import(info.mod);
+        const p = create(source, host, { ...options, terminalBackend: info.make(mod) });
+        p.addEventListener("error", (e) => console.error(id, e));
+        players.push(p);
+      } catch (e) {
+        const pre = document.createElement("div"); pre.className = "err";
+        pre.textContent = `Failed to load "${id}". Build the examples:\n  cd examples\n  npm ci && npm run build\n\n${e.message}`;
+        host.replaceWith(pre);
+      }
+    }
+    for (const p of players) {
+      p.addEventListener("play", async () => { if (!suppressed()) playFrom(await p.getCurrentTime()); });
+      p.addEventListener("seeked", async () => { if (!suppressed()) syncSeek(await p.getCurrentTime()); });
+      p.addEventListener("pause", () => { if (!suppressed()) pauseAll(); });
+    }
+    window.players = players;
+  }
+
+  await buildPanels();
+
+  // Theme change: recreate with the new theme, restore position (resume if playing).
+  themeSel.onchange = async () => {
+    currentTheme = themeSel.value;
+    const u = new URL(location.href); u.searchParams.set("theme", currentTheme);
+    history.replaceState(null, "", u.pathname + "?" + [...u.searchParams].map(([k, v]) => `${k}=${v}`).join("&"));
+    const t = await (players[0]?.getCurrentTime() ?? 0);
+    const wasPlaying = playing;
+    await buildPanels();
+    if (wasPlaying) await playFrom(t); else if (t > 0) await syncSeek(t);
+  };
+
+  document.getElementById("play").onclick = async () => playFrom(await (players[0]?.getCurrentTime() ?? 0));
+  document.getElementById("reset").onclick = async () => { await pauseAll(); await syncSeek(0); };
+  document.getElementById("select-all").onclick = () => navigate({ backends: Object.keys(REGISTRY).join(",") });
+  document.getElementById("reset-default").onclick = () => { location.search = ""; };
+</script>
+</html>

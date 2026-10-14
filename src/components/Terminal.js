@@ -640,7 +640,7 @@ function buildTheme(theme, adaptivePalette = false) {
   };
 }
 
-function getCssTheme(el) {
+export function getCssTheme(el) {
   const style = getComputedStyle(el);
 
   const foreground = normalizeHexColor(

@@ -1,0 +1,18 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "ghostty-web": "0.4.0",
+    "@wterm/dom": "0.5.4",
+    "@wterm/ghostty": "0.5.4",
+    "@xterm/xterm": "5.5.0",
+    "@xterm/addon-image": "0.9.0",
+    "rioterm": "0.1.8"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

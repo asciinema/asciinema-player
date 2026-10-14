@@ -54,6 +54,8 @@ export interface Logger {
 }
 
 export interface Options {
+  /** Experimental: mount an independently maintained VT and renderer. */
+  terminalBackend?: TerminalBackendFactory;
   cols?: number;
   rows?: number;
   autoPlay?: boolean;
@@ -79,6 +81,44 @@ export interface Options {
   terminalLineHeight?: number;
   logger?: Logger;
 }
+
+export interface TerminalSize { cols: number; rows: number; }
+export interface TerminalTheme {
+  foreground: string;
+  background: string;
+  palette: string[];
+}
+export interface TerminalAppearance {
+  fontFamily: string;
+  fontSize: number;
+  lineHeight: number;
+  blinking: boolean;
+  cursorMode: "blinking" | "steady" | "hidden";
+  boldIsBright: boolean;
+  adaptivePalette: boolean;
+  theme: TerminalTheme;
+}
+export interface TerminalReset {
+  size: TerminalSize;
+  /** VT output restoring the recording segment's initial terminal state. */
+  init?: string;
+  theme?: TerminalTheme | null;
+}
+export interface TerminalBackend {
+  /** These mutations are synchronous and must preserve stream order. */
+  write(data: string): void;
+  resize(size: TerminalSize): void;
+  reset(state: TerminalReset): void;
+  update(appearance: TerminalAppearance): void;
+  /** Draw all preceding mutations. The player coalesces calls per animation frame. */
+  present(): void | Promise<void>;
+  dispose(): void;
+}
+export type TerminalBackendFactory = (context: {
+  element: HTMLDivElement;
+  size: TerminalSize;
+  appearance: TerminalAppearance;
+}) => TerminalBackend | Promise<TerminalBackend>;
 
 export type SeekLocation =
   | number
