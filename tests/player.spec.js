@@ -363,6 +363,47 @@ test("resizes terminal grid when the session window changes size", async ({ page
   await expectTermSize(terminal, 50, 10);
 });
 
+test("seeking matches playback across resizes and screen switches", async ({ page }) => {
+  const checkpoints = [
+    { time: 0.15, cols: 8, text: ["head", "ab界cd界", "ef"] },
+    { time: 0.25, cols: 12, text: ["head", "ab界cd界ef"] },
+    { time: 0.35, cols: 12, text: ["ALT", ""] },
+    { time: 0.45, cols: 12, text: ["head", "ab界cd界ef"] },
+    { time: 0.55, cols: 12, text: ["done", ""] },
+  ];
+
+  const playerApi = await createPlayer(page, "/assets/vt-replay.cast", {
+    cursorMode: "hidden",
+    theme: "tango",
+    markers: checkpoints.map(({ time }) => time),
+    pauseOnMarkers: true,
+  });
+
+  const terminal = page.locator(".ap-term");
+  const lines = page.locator(".ap-term-text .ap-line");
+  const frames = [];
+
+  for (const { cols, text } of checkpoints) {
+    await playerApi.play();
+    await playerApi.events.waitFor("pause");
+    await expectTermSize(terminal, cols, text.length);
+    await expect(lines).toHaveText(text);
+    frames.push(await readTerminalFrame(page));
+  }
+
+  expect(frames[3]).toEqual(frames[1]);
+
+  // Backward seeks reset the terminal and replay the complete prefix, including resizes.
+  // The final two forward jumps also batch output across resize and buffer boundaries.
+  for (const index of [3, 2, 1, 0, 2, 4]) {
+    const { time, cols, text } = checkpoints[index];
+    await playerApi.seek(time);
+    await expectTermSize(terminal, cols, text.length);
+    await expect(lines).toHaveText(text);
+    expect(await readTerminalFrame(page)).toEqual(frames[index]);
+  }
+});
+
 test("keyboard space toggles play/pause", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/simple.cast");
   await focusPlayer(page);
@@ -496,6 +537,44 @@ test("cursorMode=hidden hides cursor", async ({ page }) => {
   const { cells } = await sampleTerminalPixels(page, { cells: [[0, 1, 0.5, 0.5]] });
 
   expect(cells[0]).toBe("#121314");
+});
+
+test("cursor changes repaint the affected terminal cells", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/vt-cursor.cast", {
+    cursorMode: "steady",
+    theme: "tango",
+  });
+
+  // Dismiss the start overlay before sampling the terminal beneath it.
+  await playerApi.play();
+  await playerApi.pause();
+
+  const fg = "#cccccc";
+  const bg = "#121314";
+
+  const checkpoints = [
+    { time: 0.15, text: "", colors: [bg, bg, bg, bg] },
+    { time: 0.25, text: "", colors: [bg, fg, bg, bg] },
+    { time: 0.35, text: "", colors: [bg, bg, bg, bg] },
+    { time: 0.45, text: "界", colors: [bg, bg, bg, fg] },
+    { time: 0.55, text: "界", colors: [bg, fg, fg, bg] },
+  ];
+
+  for (const { time, text, colors } of checkpoints) {
+    await playerApi.seek(time);
+    await expect(page.locator(".ap-term-text .ap-line")).toHaveText(["abcd", text]);
+
+    const { cells } = await sampleTerminalPixels(page, {
+      cells: [
+        [0, 3, 0.9, 0.1],
+        [1, 0, 0.9, 0.1],
+        [1, 1, 0.9, 0.1],
+        [1, 2, 0.9, 0.1],
+      ],
+    });
+
+    expect(cells).toEqual(colors);
+  }
 });
 
 test("RGB colors apply across text, raster, and SVG layers", async ({ page }) => {
@@ -1184,6 +1263,14 @@ async function sampleTerminalPixels(page, options = {}) {
     },
     { dataUrl, cells, border },
   );
+}
+
+async function readTerminalFrame(page) {
+  return page.locator(".ap-term").evaluate((node) => ({
+    text: node.querySelector(".ap-term-text").innerHTML,
+    canvas: node.querySelector("canvas").toDataURL(),
+    symbols: node.querySelector(".ap-term-symbols > g").innerHTML,
+  }));
 }
 
 async function waitForCellColor(page, cell, color) {

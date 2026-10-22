@@ -67,7 +67,7 @@ Node.js, Rust and the `wasm32-unknown-unknown` target, and just works:
 nix develop
 ```
 
-If you don't use Nix, you need Node.js with npm, and the Rust toolchain (1.85
+If you don't use Nix, you need Node.js with npm, and the Rust toolchain (1.86
 or later) with the `wasm32-unknown-unknown` target (added with
 `rustup target add wasm32-unknown-unknown`).
 

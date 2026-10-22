@@ -21,9 +21,10 @@ const STRIKETHROUGH_MASK: u8 = 1 << 4;
 const BLINK_MASK: u8 = 1 << 5;
 const INVERSE_MASK: u8 = 1 << 6;
 
-#[wasm_bindgen]
-pub struct Vt {
-    vt: avt::Vt,
+#[wasm_bindgen(js_name = Vt)]
+pub struct Terminal {
+    terminal: avt::Terminal,
+    dirty: avt::observer::DirtyRows,
     bold_is_bright: bool,
     bg_spans: Vec<BgSpan>,
     text_spans: Vec<TextSpan>,
@@ -89,38 +90,43 @@ enum Color {
 struct TextAttrs(u8);
 
 #[wasm_bindgen]
-pub fn create(cols: usize, rows: usize, scrollback_limit: usize, bold_is_bright: bool) -> Vt {
-    let vt = avt::Vt::builder()
-        .size(cols, rows)
-        .scrollback_limit(scrollback_limit)
-        .build();
+pub fn create(
+    cols: usize,
+    rows: usize,
+    scrollback_limit: usize,
+    bold_is_bright: bool,
+) -> Result<Terminal, JsError> {
+    let terminal = avt::Terminal::with_scrollback(cols, rows, Some(scrollback_limit))?;
 
-    Vt {
-        vt,
+    Ok(Terminal {
+        terminal,
+        dirty: avt::observer::DirtyRows::new(),
         bold_is_bright,
         bg_spans: Vec::with_capacity(cols),
         text_spans: Vec::with_capacity(cols),
         raster_symbols: Vec::with_capacity(cols),
         vector_symbols: Vec::with_capacity(cols),
         codepoints: Vec::with_capacity(cols),
-    }
+    })
 }
 
-#[wasm_bindgen]
-impl Vt {
+#[wasm_bindgen(js_class = Vt)]
+impl Terminal {
     pub fn feed(&mut self, s: &str) -> JsValue {
-        let changes = self.vt.feed_str(s);
-        serde_wasm_bindgen::to_value(&changes.lines).unwrap()
+        let rows = self.terminal.feed_with(s, &mut self.dirty);
+
+        serde_wasm_bindgen::to_value(&rows).unwrap()
     }
 
     pub fn resize(&mut self, cols: usize, rows: usize) -> JsValue {
-        let changes = self.vt.resize(cols, rows);
-        serde_wasm_bindgen::to_value(&changes.lines).unwrap()
+        let rows = self.terminal.resize_with(cols, rows, &mut self.dirty);
+
+        serde_wasm_bindgen::to_value(&rows).unwrap()
     }
 
     #[wasm_bindgen(js_name = getSize)]
     pub fn get_size(&self) -> Vec<usize> {
-        let (cols, rows) = self.vt.size();
+        let (cols, rows) = self.terminal.size();
 
         vec![cols, rows]
     }
@@ -138,7 +144,7 @@ impl Vt {
         self.codepoints.clear();
 
         let cursor_column = {
-            let cursor = self.vt.cursor();
+            let cursor = self.terminal.cursor();
 
             if cursor.visible && cursor.row == row && cursor_on {
                 Some(cursor.col as u16)
@@ -147,7 +153,14 @@ impl Vt {
             }
         };
 
-        let cells = self.vt.line(row).cells().iter().filter(|c| c.width() > 0);
+        let cells = self
+            .terminal
+            .screen()
+            .line(row)
+            .unwrap()
+            .cells()
+            .iter()
+            .filter(|c| c.width() > 0);
 
         for (idx, cell) in cells.enumerate() {
             let mut ch = cell.char();
@@ -282,7 +295,7 @@ impl Vt {
 
     #[wasm_bindgen(js_name = getCursor)]
     pub fn get_cursor(&self) -> JsValue {
-        let cursor: Option<(usize, usize)> = self.vt.cursor().into();
+        let cursor = self.terminal.cursor().position();
 
         serde_wasm_bindgen::to_value(&cursor).unwrap()
     }
