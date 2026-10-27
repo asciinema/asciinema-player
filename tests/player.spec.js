@@ -293,6 +293,8 @@ test("segmented source loads through Core and fetches segments on demand", async
     await route.fulfill({ json: payloads[path] });
   });
 
+  const firstSegmentResponse = page.waitForResponse("**/recording/0.json");
+
   const playerApi = await createPlayer(
     page,
     { url: "/recording/index.json", format: "segmented" },
@@ -300,6 +302,7 @@ test("segmented source loads through Core and fetches segments on demand", async
   );
 
   await expectDuration(playerApi).toBe(0.04);
+  await firstSegmentResponse;
   expect(requests).toEqual(["/recording/index.json", "/recording/0.json"]);
 
   await playerApi.play();
@@ -341,14 +344,22 @@ test("resizes terminal view when the container changes size", async ({ page }) =
 });
 
 test("resizes terminal grid when the session window changes size", async ({ page }) => {
-  const playerApi = await createPlayer(page, "/assets/resizing.cast");
+  const playerApi = await createPlayer(page, "/assets/resizing.cast", {
+    markers: [1.5],
+    pauseOnMarkers: true,
+  });
+
   const terminal = page.locator(".ap-term");
   await terminal.waitFor();
 
   await expectTermSize(terminal, 80, 24);
 
   await playerApi.play();
+  await playerApi.events.waitFor("pause");
   await expectTermSize(terminal, 100, 30);
+
+  await playerApi.play();
+  await playerApi.events.waitFor("ended");
   await expectTermSize(terminal, 50, 10);
 });
 
