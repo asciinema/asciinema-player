@@ -30,8 +30,9 @@ class Core {
     this.initPromise = null;
     this.commandQueue = Promise.resolve();
 
-    this.startupPromise = new Promise((resolve) => {
+    this.startupPromise = new Promise((resolve, reject) => {
       this.resolveStartup = resolve;
+      this.rejectStartup = reject;
     });
 
     this.eventHandlers = new Map([
@@ -64,6 +65,11 @@ class Core {
 
   terminalReady() {
     this.resolveStartup();
+  }
+
+  terminalFailed(error) {
+    this.rejectStartup(error);
+    this._dispatchEvent("error", error);
   }
 
   async _init() {

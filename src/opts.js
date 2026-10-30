@@ -26,6 +26,7 @@ const UI_OPTS = [
   "keystrokeOverlay",
   "rows",
   "terminalFontFamily",
+  "terminalBackend",
   "terminalFontSize",
   "terminalLineHeight",
   "theme",
@@ -82,6 +83,10 @@ function coreOpts(inputOpts, overrides = {}) {
 
 function uiOpts(inputOpts, overrides = {}) {
   const opts = pick(inputOpts, UI_OPTS);
+
+  if (opts.terminalBackend !== undefined && typeof opts.terminalBackend !== "function") {
+    throw new Error("terminalBackend must be a factory function");
+  }
 
   opts.autoPlay ??= opts.autoplay;
   opts.adaptivePalette ??= false;

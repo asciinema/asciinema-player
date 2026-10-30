@@ -1,7 +1,7 @@
 import { mount } from "./view";
 import { coreOpts, uiOpts } from "./opts";
 import { DummyLogger } from "./logging";
-import { fromErrorPayload } from "./error";
+import { fromErrorPayload, toErrorPayload } from "./error";
 
 function create(src, elem, workerUrl, opts = {}) {
   const coreLogger = opts.logger === console ? true : undefined;
@@ -102,6 +102,10 @@ class CoreWorkerProxy {
     this._sendNotification("terminalReady");
   }
 
+  terminalFailed(error) {
+    this._sendNotification("terminalFailed", toErrorPayload(error));
+  }
+
   getChanges() {
     return this._sendCommand("getChanges");
   }
@@ -130,6 +134,12 @@ class CoreWorkerProxy {
     }
 
     handlers.push(handler);
+  }
+
+  removeEventListener(eventName, handler) {
+    const handlers = this.eventHandlers.get(eventName);
+    const index = handlers?.indexOf(handler) ?? -1;
+    if (index >= 0) handlers.splice(index, 1);
   }
 
   _dispatchEvent(eventName, data = {}) {
