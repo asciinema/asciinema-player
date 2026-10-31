@@ -3,7 +3,7 @@ import { alisHandler } from "./websocket/alis";
 import { ascicastV2Handler } from "./websocket/asciicast-v2";
 import { ascicastV3Handler } from "./websocket/asciicast-v3";
 import { rawHandler } from "./websocket/raw";
-import { Clock, NullClock } from "../clock";
+import { Clock } from "../clock";
 import { PrefixedLogger } from "../logging";
 
 const RECONNECT_DELAY_BASE = 500;
@@ -20,11 +20,12 @@ function websocket(
   { audioUrl },
 ) {
   logger = new PrefixedLogger(logger, "websocket: ");
+  const clock = new Clock((timing) => dispatch("timing", timing));
   let socket;
   let buf;
-  let clock = new NullClock();
   let reconnectAttempt = 0;
   let successfulConnectionTimeout;
+  let reconnectTimeout;
   let stop = false;
   let wasOnline = false;
   let gotExitEvent = false;
@@ -33,6 +34,8 @@ function websocket(
   let audioElement;
 
   function connect() {
+    if (stop) return;
+
     socket = new WebSocket(url, ["v1.alis", "v2.asciicast", "v3.asciicast", "raw"]);
     socket.binaryType = "arraybuffer";
     let proto;
@@ -60,10 +63,11 @@ function websocket(
 
     socket.onclose = (event) => {
       clearTimeout(initTimeout);
-      stopBuffer();
+      clearTimeout(successfulConnectionTimeout);
 
       if (stop) return;
 
+      stopBuffer();
       let ended = false;
       let endedMessage = "Stream ended";
 
@@ -83,11 +87,10 @@ function websocket(
         logger.debug(`close reason: ${event.reason}`);
         dispatch("ended", { message: "Err: Player not compatible with the server" });
       } else {
-        clearTimeout(successfulConnectionTimeout);
         const delay = reconnectDelay(reconnectAttempt++);
         logger.info(`unexpected close, reconnecting in ${delay}...`);
         dispatch("loading");
-        setTimeout(connect, delay);
+        reconnectTimeout = setTimeout(connect, delay);
       }
     };
 
@@ -145,18 +148,21 @@ function websocket(
     logger.info(`stream reset (${cols}x${rows} @${time})`);
     stopBuffer();
 
-    buf = getBuffer(bufferTime, dispatch, (t) => clock.setTime(t), time, minFrameTime, logger);
+    buf = getBuffer(
+      bufferTime,
+      dispatch,
+      (t) => clock.setTime(t / 1000, 1),
+      time,
+      minFrameTime,
+      logger,
+    );
 
     dispatch("reset", { size: { cols, rows }, init, theme: theme ?? null });
-    clock = new Clock();
     wasOnline = true;
     gotExitEvent = false;
     gotEotEvent = false;
 
-    if (typeof time === "number") {
-      clock.setTime(time);
-    }
-
+    clock.setTime((time ?? 0) / 1000, 1);
     dispatch("playing");
   }
 
@@ -170,13 +176,12 @@ function websocket(
       logger.info("stream offline");
       dispatch("offline", { message: "Stream offline" });
     }
-
-    clock = new NullClock();
   }
 
   function stopBuffer() {
     if (buf) buf.stop();
     buf = null;
+    clock.stop();
   }
 
   function startAudio() {
@@ -226,6 +231,9 @@ function websocket(
 
     stop: () => {
       stop = true;
+      clearTimeout(initTimeout);
+      clearTimeout(successfulConnectionTimeout);
+      clearTimeout(reconnectTimeout);
       stopBuffer();
       if (socket !== undefined) socket.close();
       stopAudio();
@@ -234,10 +242,7 @@ function websocket(
     mute,
     unmute,
 
-    getCurrentTime: () => {
-      const t = clock.getTime();
-      return typeof t === "number" ? t / 1000 : t;
-    },
+    getTiming: () => clock.getTiming(),
   };
 }
 

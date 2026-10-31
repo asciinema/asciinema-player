@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import recording from "../../src/driver/recording.js";
+import { getTime } from "../../src/timing.js";
 
 // --- init ---
 
@@ -67,7 +68,7 @@ test("init with npt poster loads recording and renders poster frame", async () =
   await driver.init();
 
   expect(parserCalls).toBe(1);
-  expect(recorder.eventNames()).toEqual(["metadata", "reset", "output"]);
+  expect(recorder.publicEventNames()).toEqual(["metadata", "reset", "output"]);
   expect(recorder.outputs).toEqual([["start\r\n"]]);
 });
 
@@ -87,7 +88,7 @@ test("step without a target frame preserves the initial poster", async () => {
   await driver.step(-1);
 
   expect(recorder.outputs).toEqual([["start\r\n"]]);
-  expect(driver.getCurrentTime()).toBeCloseTo(0.5);
+  expect(driver.getTiming().time).toBeCloseTo(0.5);
 });
 
 test("init with preload and text poster loads immediately and still renders poster", async () => {
@@ -116,7 +117,7 @@ test("init with preload and text poster loads immediately and still renders post
   await driver.init();
 
   expect(parserCalls).toBe(1);
-  expect(recorder.eventNames()).toEqual(["metadata", "reset", "output"]);
+  expect(recorder.publicEventNames()).toEqual(["metadata", "reset", "output"]);
   expect(recorder.outputs).toEqual(["hello world"]);
 });
 
@@ -133,6 +134,101 @@ test("preload exposes duration before playback", async () => {
   await driver.init();
 
   expect(driver.getDuration()).toBe(0.5);
+});
+
+test("timing follows playback speed and freezes on pause", async () => {
+  const recorder = createDispatchRecorder();
+  const originalNow = performance.now;
+  let now = 1000;
+  performance.now = () => now;
+
+  const driver = recording(
+    source([
+      [1000, "o", "one"],
+      [10000, "o", "end"],
+    ]),
+    { logger: stubLogger(), dispatch: recorder.dispatch },
+    { speed: 2, preload: true },
+  );
+
+  const timing = () => recorder.eventsNamed("timing").at(-1).payload;
+
+  try {
+    await driver.init();
+    expect(timing()).toMatchObject({ time: 0, rate: 0 });
+
+    await driver.play();
+    const snapshot = timing();
+    expect(snapshot).toMatchObject({ time: 0, rate: 2 });
+
+    now += 250;
+    expect(getTime(snapshot)).toBe(0.5);
+    expect(driver.getTiming()).toMatchObject({ time: 0.5, rate: 2 });
+
+    await driver.pause();
+    expect(timing()).toMatchObject({ time: 0.5, rate: 0 });
+
+    now += 1000;
+    expect(getTime(timing())).toBe(0.5);
+    expect(driver.getTiming()).toMatchObject({ time: 0.5, rate: 0 });
+  } finally {
+    await driver.stop();
+    performance.now = originalNow;
+  }
+});
+
+test("seeking stops the clock until playback restarts at the destination", async () => {
+  const recorder = createDispatchRecorder();
+  const originalNow = performance.now;
+  performance.now = () => 1000;
+
+  const driver = recording(
+    source([[10000, "o", "end"]]),
+    { logger: stubLogger(), dispatch: recorder.dispatch },
+    { speed: 2 },
+  );
+
+  const timing = () => recorder.eventsNamed("timing").at(-1).payload;
+
+  try {
+    await driver.play();
+
+    const seeking = driver.seek(1.5);
+    expect(timing()).toMatchObject({ time: 1.5, rate: 0 });
+    await seeking;
+    expect(timing()).toMatchObject({ time: 1.5, rate: 2 });
+  } finally {
+    await driver.stop();
+    performance.now = originalNow;
+  }
+});
+
+test("paused seeks and steps publish exact stopped positions", async () => {
+  const recorder = createDispatchRecorder();
+
+  const driver = recording(
+    source([
+      [1000, "o", "one"],
+      [10000, "o", "end"],
+    ]),
+    { logger: stubLogger(), dispatch: recorder.dispatch },
+    { speed: 1 },
+  );
+
+  const timing = () => recorder.eventsNamed("timing").at(-1).payload;
+
+  try {
+    await driver.seek(0.5);
+    expect(timing()).toMatchObject({ time: 0.5, rate: 0 });
+
+    await driver.step();
+    expect(timing()).toMatchObject({ time: 1, rate: 0 });
+
+    await driver.seek(10);
+    expect(timing()).toMatchObject({ time: 10, rate: 0 });
+  } finally {
+    await driver.stop();
+  }
 });
 
 // --- play ---
@@ -169,7 +265,7 @@ test("play after text poster init loads recording and starts playback", async ()
 
   expect(parserCalls).toBe(1);
 
-  expect(recorder.eventNames()).toEqual([
+  expect(recorder.publicEventNames()).toEqual([
     "output",
     "output",
     "play",
@@ -207,8 +303,8 @@ test("first play applies startAt before playback starts", async () => {
   await driver.play();
 
   expect(recorder.outputs).toEqual([["zero\r\n", "one\r\n"]]);
-  expect(driver.getCurrentTime()).toBeGreaterThanOrEqual(0.25);
-  expect(driver.getCurrentTime()).toBeLessThan(0.4);
+  expect(driver.getTiming().time).toBeGreaterThanOrEqual(0.25);
+  expect(driver.getTiming().time).toBeLessThan(0.4);
 });
 
 test("play after ended restarts from beginning", async () => {
@@ -269,6 +365,10 @@ test("numeric loop plays exactly N times then ends", async () => {
 
   expect(recorder.eventsNamed("ended")).toHaveLength(1);
   expect(recorder.outputs.filter((o) => o === "\x1bc")).toHaveLength(2);
+
+  const starts = recorder.eventsNamed("timing").filter(({ payload }) => payload.rate > 0);
+  expect(starts).toHaveLength(3);
+  expect(recorder.eventsNamed("timing").at(-1).payload).toMatchObject({ time: 0.02, rate: 0 });
 });
 
 test("play batches adjacent output events at runtime", async () => {
@@ -345,7 +445,8 @@ test("pauseOnMarkers pauses playback and resumes on play", async () => {
   ]);
 
   expect(recorder.eventsNamed("pause")).toHaveLength(1);
-  expect(driver.getCurrentTime()).toBeCloseTo(0.02, 2);
+  expect(driver.getTiming().time).toBeCloseTo(0.02, 2);
+  expect(recorder.eventsNamed("timing").at(-1).payload).toMatchObject({ time: 0.02, rate: 0 });
   expect(recorder.outputs).toEqual([["start\r\n"]]);
 
   const ended = recorder.waitFor("ended");
@@ -450,7 +551,7 @@ test("seek to duration emits ended and pins current time", async () => {
 
   await driver.seek(999);
 
-  expect(driver.getCurrentTime()).toBe(driver.getDuration());
+  expect(driver.getTiming().time).toBe(driver.getDuration());
   expect(recorder.eventsNamed("ended")).toHaveLength(1);
   expect(recorder.eventsNamed("seeked")).toHaveLength(1);
 });
@@ -472,7 +573,7 @@ test("seek to duration with loop emits ended and pins current time", async () =>
 
   await driver.seek(999);
 
-  expect(driver.getCurrentTime()).toBe(driver.getDuration());
+  expect(driver.getTiming().time).toBe(driver.getDuration());
   expect(recorder.eventsNamed("ended")).toHaveLength(1);
   expect(recorder.eventsNamed("seeked")).toHaveLength(1);
 });
@@ -497,7 +598,7 @@ test("seek to duration during playback emits ended and pins current time", async
   await playing;
   await driver.seek(999);
 
-  expect(driver.getCurrentTime()).toBe(driver.getDuration());
+  expect(driver.getTiming().time).toBe(driver.getDuration());
   expect(recorder.eventsNamed("ended")).toHaveLength(1);
   expect(recorder.eventsNamed("seeked")).toHaveLength(1);
 });
@@ -522,7 +623,7 @@ test("seek from cold state loads recording and seeks", async () => {
 
   expect(recorder.eventsNamed("seeked")).toHaveLength(1);
   expect(recorder.outputs).toEqual([["start\r\n"]]);
-  expect(driver.getCurrentTime()).toBeCloseTo(0.5);
+  expect(driver.getTiming().time).toBeCloseTo(0.5);
 });
 
 test("invalid seek target throws without failing the driver", async () => {
@@ -568,7 +669,7 @@ test("invalid marker seek rejects without failing the driver", async () => {
 
   expect(recorder.eventsNamed("error")).toHaveLength(0);
   expect(recorder.eventsNamed("seeked")).toHaveLength(1);
-  expect(driver.getCurrentTime()).toBeCloseTo(0.2);
+  expect(driver.getTiming().time).toBeCloseTo(0.2);
 });
 
 // --- step ---
@@ -591,7 +692,7 @@ test("step advances across multiple output frames", async () => {
 
   await driver.step(2);
 
-  expect(driver.getCurrentTime()).toBeCloseTo(1.0);
+  expect(driver.getTiming().time).toBeCloseTo(1.0);
   expect(recorder.outputs.join("")).toContain("start");
   expect(recorder.outputs.join("")).toContain("one");
   expect(recorder.outputs.join("")).not.toContain("two");
@@ -618,7 +719,7 @@ test("step reverses across multiple output frames", async () => {
 
   await driver.step(-2);
 
-  expect(driver.getCurrentTime()).toBeCloseTo(0.1);
+  expect(driver.getTiming().time).toBeCloseTo(0.1);
   expect(recorder.outputs).toEqual(["\x1bc", ["start\r\n"]]);
 });
 
@@ -639,7 +740,7 @@ test("step to the last frame with loop emits ended and pins current time", async
 
   await driver.step(2);
 
-  expect(driver.getCurrentTime()).toBe(driver.getDuration());
+  expect(driver.getTiming().time).toBe(driver.getDuration());
   expect(recorder.eventsNamed("ended")).toHaveLength(1);
 });
 
@@ -662,7 +763,7 @@ test("step from cold state loads recording and steps", async () => {
   await driver.step(2);
 
   expect(recorder.outputs).toEqual([["start\r\n", "one\r\n"]]);
-  expect(driver.getCurrentTime()).toBeCloseTo(1.0);
+  expect(driver.getTiming().time).toBeCloseTo(1.0);
 });
 
 // --- resize ---
@@ -816,9 +917,18 @@ test("audio waiting during playback emits loading and resumes on playing", async
 
     const loading = recorder.waitFor("loading");
     fakeAudioState.lastAudio.dispatch("waiting");
+
+    expect(recorder.eventsNamed("loading")).toHaveLength(0);
+
+    expect(recorder.eventsNamed("timing").at(-1).payload).toMatchObject({
+      time: driver.getTiming().time,
+      rate: 0,
+    });
+
     await loading;
     const ended = recorder.waitFor("ended");
     fakeAudioState.lastAudio.dispatch("playing");
+    expect(recorder.eventsNamed("timing").at(-1).payload.rate).toBe(1);
     await ended;
 
     expect(recorder.eventsNamed("loading")).toHaveLength(1);
@@ -857,13 +967,13 @@ test("seek while buffering returns false and does not emit seeked", async () => 
     fakeAudioState.lastAudio.dispatch("waiting");
     await loading;
 
-    const bufferedTime = driver.getCurrentTime();
+    const bufferedTime = driver.getTiming().time;
     const seekedCount = recorder.eventsNamed("seeked").length;
     const result = await driver.seek(0.15);
 
     expect(result).toBe(false);
     expect(recorder.eventsNamed("seeked")).toHaveLength(seekedCount);
-    expect(driver.getCurrentTime()).toBeCloseTo(bufferedTime, 2);
+    expect(driver.getTiming().time).toBeCloseTo(bufferedTime, 2);
   } finally {
     restoreAudio();
   }
@@ -894,7 +1004,7 @@ test("pause while buffering prevents automatic resume", async () => {
     fakeAudioState.lastAudio.dispatch("waiting");
     await loading;
 
-    const pausedTime = driver.getCurrentTime();
+    const pausedTime = driver.getTiming().time;
     const playingCount = recorder.eventsNamed("playing").length;
     driver.pause();
     fakeAudioState.lastAudio.dispatch("playing");
@@ -905,7 +1015,7 @@ test("pause while buffering prevents automatic resume", async () => {
       { name: "marker", payload: { index: 0, time: 0.01, label: "start" } },
     ]);
 
-    expect(driver.getCurrentTime()).toBeCloseTo(pausedTime, 2);
+    expect(driver.getTiming().time).toBeCloseTo(pausedTime, 2);
 
     const ended = recorder.waitFor("ended");
     await driver.play();
@@ -1020,7 +1130,7 @@ test("cold segmented seek loads the target segment directly and restores its sna
     expect(requests).toEqual(["/recording/index.json", "http://localhost/recording/1.json"]);
     expect(recorder.eventsNamed("reset")[0].payload.init).toBe("second snapshot");
     expect(recorder.outputs).toEqual([["last"]]);
-    expect(driver.getCurrentTime()).toBeCloseTo(0.04);
+    expect(driver.getTiming().time).toBeCloseTo(0.04);
   } finally {
     restoreFetch();
   }
@@ -1150,7 +1260,8 @@ test("pausing during a pending segment transition prevents automatic resume", as
     await driver.play();
     await wait(40);
 
-    expect(driver.getCurrentTime()).toBeCloseTo(0.03, 2);
+    expect(driver.getTiming().time).toBeCloseTo(0.03, 2);
+    expect(recorder.eventsNamed("timing").at(-1).payload).toMatchObject({ time: 0.03, rate: 0 });
     await driver.pause();
     gate.resolve();
     await wait(0);
@@ -1262,7 +1373,7 @@ test("stale audio recovery does not resume a pending segment wait", async () => 
     fakeAudioState.lastAudio.dispatch("playing");
     await wait(20);
 
-    expect(driver.getCurrentTime()).toBeCloseTo(0.03, 2);
+    expect(driver.getTiming().time).toBeCloseTo(0.03, 2);
     expect(recorder.eventsNamed("playing")).toHaveLength(1);
 
     const ended = recorder.waitFor("ended");
@@ -1399,7 +1510,7 @@ test("segmented playback preserves server-provided effective boundary times", as
     expect(driver.getDuration()).toBe(0.51);
 
     await driver.seek(0.5);
-    expect(driver.getCurrentTime()).toBe(0.5);
+    expect(driver.getTiming().time).toBe(0.5);
     expect(requestCount(requests, "1.json")).toBe(1);
   } finally {
     restoreFetch();
@@ -1583,92 +1694,102 @@ test("stop prevents pending step positioning from restoring a segment", async ()
   }
 });
 
-test("loop waits safely when the evicted first segment is still reloading", async () => {
-  const gate = createGate();
-  const reloadStarted = createGate();
-  const recorder = createDispatchRecorder();
-  let segmentZeroLoads = 0;
+for (const paused of [false, true]) {
+  test(`loop ${paused ? "stays paused" : "resumes"} after the evicted first segment reloads`, async () => {
+    const gate = createGate();
+    const reloadStarted = createGate();
+    const recorder = createDispatchRecorder();
+    let segmentZeroLoads = 0;
 
-  const index = {
-    version: 1,
-    duration: 0.05,
-    term: { cols: 80, rows: 24 },
-    segments: [
-      { url: "0.json", start: 0 },
-      { url: "1.json", start: 0.02 },
-      { url: "2.json", start: 0.03 },
-      { url: "3.json", start: 0.04 },
-    ],
-  };
-
-  const payloads = {
-    "0.json": {
-      snapshot: { cols: 80, rows: 24, init: "" },
-      events: [[0.01, "o", "zero"]],
-    },
-    "1.json": {
-      snapshot: { cols: 80, rows: 24, init: "zero" },
-      events: [[0.02, "o", "one"]],
-    },
-    "2.json": {
-      snapshot: { cols: 80, rows: 24, init: "zero one" },
-      events: [[0.03, "o", "two"]],
-    },
-    "3.json": {
-      snapshot: { cols: 80, rows: 24, init: "zero one two" },
-      events: [
-        [0.04, "o", "three"],
-        [0.05, "r", "80x24"],
+    const index = {
+      version: 1,
+      duration: 0.05,
+      term: { cols: 80, rows: 24 },
+      segments: [
+        { url: "0.json", start: 0 },
+        { url: "1.json", start: 0.02 },
+        { url: "2.json", start: 0.03 },
+        { url: "3.json", start: 0.04 },
       ],
-    },
-  };
+    };
 
-  const restoreFetch = stubFetch(async (url) => {
-    if (url === "/loop/index.json") return Response.json(index);
+    const payloads = {
+      "0.json": {
+        snapshot: { cols: 80, rows: 24, init: "" },
+        events: [[0.01, "o", "zero"]],
+      },
+      "1.json": {
+        snapshot: { cols: 80, rows: 24, init: "zero" },
+        events: [[0.02, "o", "one"]],
+      },
+      "2.json": {
+        snapshot: { cols: 80, rows: 24, init: "zero one" },
+        events: [[0.03, "o", "two"]],
+      },
+      "3.json": {
+        snapshot: { cols: 80, rows: 24, init: "zero one two" },
+        events: [
+          [0.04, "o", "three"],
+          [0.05, "r", "80x24"],
+        ],
+      },
+    };
 
-    const name = url.split("/").at(-1);
+    const restoreFetch = stubFetch(async (url) => {
+      if (url === "/loop/index.json") return Response.json(index);
 
-    if (name === "0.json" && segmentZeroLoads++ > 0) {
-      reloadStarted.resolve();
-      await gate.promise;
-    }
+      const name = url.split("/").at(-1);
 
-    return Response.json(payloads[name]);
-  });
+      if (name === "0.json" && segmentZeroLoads++ > 0) {
+        reloadStarted.resolve();
+        await gate.promise;
+      }
 
-  try {
+      return Response.json(payloads[name]);
+    });
+
     const driver = recording(
       { url: "/loop/index.json", format: "segmented" },
       { logger: stubLogger(), dispatch: recorder.dispatch },
       { speed: 1, preload: true, loop: true },
     );
 
-    await driver.init();
-    await driver.play();
-    await reloadStarted.promise;
-    await waitForCondition(() => driver.getCurrentTime() >= 0.049);
+    try {
+      await driver.init();
+      await driver.play();
+      await reloadStarted.promise;
+      await expect.poll(() => driver.getTiming()).toMatchObject({ time: 0.05, rate: 0 });
 
-    expect(driver.getCurrentTime()).toBeCloseTo(0.05, 2);
-    expect(recorder.eventsNamed("error")).toHaveLength(0);
+      expect(recorder.eventsNamed("error")).toHaveLength(0);
 
-    gate.resolve();
+      if (paused) await driver.pause();
+      const reset = recorder.waitFor("reset");
+      gate.resolve();
+      await reset;
 
-    await waitForCondition(
-      () =>
-        recorder.outputs.filter((output) => Array.isArray(output) && output[0] === "zero").length >=
-        2,
-    );
+      if (paused) {
+        expect(driver.getTiming()).toMatchObject({ time: 0, rate: 0 });
+        expect(recorder.eventsNamed("timing").at(-1).payload).toMatchObject({ time: 0, rate: 0 });
+      } else {
+        expect(driver.getTiming().rate).toBe(1);
+        expect(recorder.eventsNamed("timing").at(-1).payload.rate).toBe(1);
+        await waitForCondition(
+          () =>
+            recorder.outputs.filter((output) => Array.isArray(output) && output[0] === "zero")
+              .length >= 2,
+        );
 
-    await driver.stop();
-
-    expect(
-      recorder.outputs.filter((output) => Array.isArray(output) && output[0] === "zero"),
-    ).toHaveLength(2);
-  } finally {
-    gate.resolve();
-    restoreFetch();
-  }
-});
+        expect(
+          recorder.outputs.filter((output) => Array.isArray(output) && output[0] === "zero"),
+        ).toHaveLength(2);
+      }
+    } finally {
+      gate.resolve();
+      restoreFetch();
+      await driver.stop();
+    }
+  });
+}
 
 test("failed segmented prefetch is logged and retried when required", async () => {
   const requests = [];
@@ -1721,12 +1842,12 @@ test("stepping crosses segmented boundaries in both directions", async () => {
     await driver.step(2);
 
     expect(recorder.eventsNamed("reset").at(-1).payload.init).toBe("second snapshot");
-    expect(driver.getCurrentTime()).toBeCloseTo(0.03);
+    expect(driver.getTiming().time).toBeCloseTo(0.03);
 
     await driver.step(-1);
 
     expect(recorder.eventsNamed("reset").at(-1).payload.init).toBe("first snapshot");
-    expect(driver.getCurrentTime()).toBeCloseTo(0.01);
+    expect(driver.getTiming().time).toBeCloseTo(0.01);
     expect(requests.filter((url) => url.endsWith("/0.json"))).toHaveLength(1);
   } finally {
     restoreFetch();
@@ -1883,8 +2004,8 @@ function createDispatchRecorder() {
       }
     },
 
-    eventNames() {
-      return events.map((event) => event.name);
+    publicEventNames() {
+      return events.filter((event) => event.name !== "timing").map((event) => event.name);
     },
 
     eventsNamed(name) {

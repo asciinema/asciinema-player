@@ -49,10 +49,10 @@ function invoke(method, params) {
       return core.step(params);
     case "getCurrentTime":
       return core.getCurrentTime();
-    case "getRemainingTime":
-      return core.getRemainingTime();
-    case "getProgress":
-      return core.getProgress();
+    case "getDuration":
+      return core.getDuration();
+    case "requestTiming":
+      return core.requestTiming();
     case "addEventListener":
       core.addEventListener(params[0], (e) => {
         postMessage({ method: "onEvent", params: { name: params[0], event: e } });

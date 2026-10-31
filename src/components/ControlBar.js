@@ -1,4 +1,13 @@
-import { Match, Switch, createMemo, createSignal, onCleanup, Show, For } from "solid-js";
+import {
+  Match,
+  Switch,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  Show,
+  For,
+} from "solid-js";
 import { throttle } from "../util";
 import ExpandIcon from "./icons/ExpandIcon";
 import KeyboardIcon from "./icons/KeyboardIcon";
@@ -30,6 +39,46 @@ function zeroPad(n) {
   return n < 10 ? `0${n}` : n.toString();
 }
 
+function Gutter(props) {
+  let fill;
+
+  createEffect(() => {
+    const duration = props.duration;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+
+    const animation = fill.animate([{ scale: "0 1" }, { scale: "1 1" }], {
+      duration: duration * 1000,
+      easing: "linear",
+      fill: "both",
+    });
+
+    animation.pause();
+    onCleanup(() => animation.cancel());
+
+    createEffect(() => {
+      const timing = props.timing;
+      if (typeof timing?.time !== "number") return;
+
+      if (timing.rate > 0) {
+        animation.playbackRate = timing.rate;
+        // Anchor to the document timeline, including time spent crossing the worker bridge.
+        animation.startTime =
+          timing.sampledAt - performance.timeOrigin - (timing.time * 1000) / timing.rate;
+      } else {
+        animation.pause();
+        animation.currentTime = Math.max(0, Math.min(timing.time, duration)) * 1000;
+      }
+    });
+  });
+
+  return (
+    <>
+      <span class="ap-gutter ap-gutter-empty" />
+      <span class="ap-gutter ap-gutter-full" ref={fill} />
+    </>
+  );
+}
+
 export default (props) => {
   const currentTime = () =>
     typeof props.currentTime === "number" ? formatTime(props.currentTime) : "--:--";
@@ -53,12 +102,6 @@ export default (props) => {
 
   const isPastMarker = (m) =>
     typeof props.currentTime === "number" ? m[0] <= props.currentTime : false;
-
-  const gutterBarStyle = () => {
-    return {
-      transform: `scaleX(${props.progress || 0}`,
-    };
-  };
 
   const calcPosition = (e) => {
     const barWidth = e.currentTarget.offsetWidth;
@@ -128,10 +171,9 @@ export default (props) => {
       </span>
 
       <span class="ap-progressbar">
-        <Show when={typeof props.progress === "number" || props.isSeekable}>
+        <Show when={typeof props.duration === "number" || props.isSeekable}>
           <span class="ap-bar" onMouseDown={onMouseDown} onMouseMove={onMove}>
-            <span class="ap-gutter ap-gutter-empty" />
-            <span class="ap-gutter ap-gutter-full" style={gutterBarStyle()} />
+            <Gutter duration={props.duration} timing={props.timing} />
             <For each={markers()}>
               {(m, i) => (
                 <span

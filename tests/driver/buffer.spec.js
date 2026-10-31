@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import getBuffer from "../../src/buffer.js";
+import { withFakeTime } from "../helpers/time.js";
 
 test("buffer groups consecutive output events within minFrameTime", async () => {
   const events = [];
@@ -202,50 +203,6 @@ function sequenceBufferTime(values) {
     index++;
     return value;
   };
-}
-
-async function withFakeTime(f) {
-  const originalPerformanceNow = performance.now.bind(performance);
-  const originalSetTimeout = globalThis.setTimeout;
-  const originalClearTimeout = globalThis.clearTimeout;
-  let currentTime = 0;
-  let nextTimerId = 1;
-  let timers = [];
-
-  performance.now = () => currentTime;
-
-  globalThis.setTimeout = (callback, delay = 0) => {
-    const id = nextTimerId++;
-    timers.push({ id, runAt: currentTime + delay, callback });
-    timers.sort((a, b) => a.runAt - b.runAt || a.id - b.id);
-    return id;
-  };
-
-  globalThis.clearTimeout = (id) => {
-    timers = timers.filter((timer) => timer.id !== id);
-  };
-
-  const runDueTimers = async () => {
-    while (timers[0] !== undefined && timers[0].runAt <= currentTime) {
-      const timer = timers.shift();
-      timer.callback();
-      await Promise.resolve();
-    }
-  };
-
-  try {
-    await f({
-      now: () => currentTime,
-      advanceBy: async (ms) => {
-        currentTime += ms;
-        await runDueTimers();
-      },
-    });
-  } finally {
-    performance.now = originalPerformanceNow;
-    globalThis.setTimeout = originalSetTimeout;
-    globalThis.clearTimeout = originalClearTimeout;
-  }
 }
 
 function stubLogger() {

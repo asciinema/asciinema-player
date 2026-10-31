@@ -1,24 +1,31 @@
 import getBuffer from "../buffer";
-import { Clock, NullClock } from "../clock";
+import { Clock } from "../clock";
 import { PrefixedLogger } from "../logging";
 
 function eventsource({ url, bufferTime, minFrameTime }, { dispatch, logger }) {
   logger = new PrefixedLogger(logger, "eventsource: ");
+  const clock = new Clock((timing) => dispatch("timing", timing));
   let es;
   let buf;
-  let clock = new NullClock();
 
   function initBuffer(baseStreamTime) {
-    if (buf !== undefined) buf.stop();
+    stopBuffer();
+    clock.stop();
 
     buf = getBuffer(
       bufferTime,
       dispatch,
-      (t) => clock.setTime(t),
+      // Buffered frames can finish after the stream ends; preserve the stopped rate.
+      (t) => clock.setTime(t / 1000),
       baseStreamTime,
       minFrameTime,
       logger,
     );
+  }
+
+  function stopBuffer() {
+    if (buf !== undefined) buf.stop();
+    buf = undefined;
   }
 
   return {
@@ -37,6 +44,7 @@ function eventsource({ url, bufferTime, minFrameTime }, { dispatch, logger }) {
       es.addEventListener("error", (e) => {
         logger.info("errored");
         logger.debug({ e });
+        clock.stop();
         dispatch("loading");
       });
 
@@ -52,23 +60,19 @@ function eventsource({ url, bufferTime, minFrameTime }, { dispatch, logger }) {
           logger.debug(`vt reset (${cols}x${rows})`);
           initBuffer(time);
           dispatch("reset", { size: { cols, rows }, init: e.init ?? undefined });
-          clock = new Clock();
-
-          if (time !== undefined) {
-            clock.setTime(time);
-          }
-
+          clock.setTime((time ?? 0) / 1000, 1);
           dispatch("playing");
         } else if (e.state === "offline") {
           logger.info("stream offline");
+          clock.stop();
           dispatch("offline", { message: "Stream offline" });
-          clock = new NullClock();
         }
       });
 
       es.addEventListener("done", () => {
         logger.info("closed");
         es.close();
+        clock.stop();
         dispatch("ended", { message: "Stream ended" });
       });
 
@@ -76,14 +80,12 @@ function eventsource({ url, bufferTime, minFrameTime }, { dispatch, logger }) {
     },
 
     stop: () => {
-      if (buf !== undefined) buf.stop();
+      stopBuffer();
+      clock.stop();
       if (es !== undefined) es.close();
     },
 
-    getCurrentTime: () => {
-      const t = clock.getTime();
-      return typeof t === "number" ? t / 1000 : t;
-    },
+    getTiming: () => clock.getTiming(),
   };
 }
 

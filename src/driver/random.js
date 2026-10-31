@@ -1,6 +1,9 @@
+import { Clock } from "../clock";
+
 function random(_src, { dispatch }, { speed }) {
   const base = " ".charCodeAt(0);
   const range = "~".charCodeAt(0) - base;
+  const clock = new Clock((timing) => dispatch("timing", timing));
   let timeoutId;
 
   const schedule = () => {
@@ -19,13 +22,18 @@ function random(_src, { dispatch }, { speed }) {
       if (timeoutId !== undefined) return true;
 
       dispatch("play");
+      clock.setTime(0, speed);
       dispatch("playing");
       schedule();
     },
 
     stop() {
-      clearInterval(timeoutId);
+      clearTimeout(timeoutId);
+      timeoutId = undefined;
+      clock.stop();
     },
+
+    getTiming: () => clock.getTiming(),
   };
 }
 

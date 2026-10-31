@@ -1,5 +1,6 @@
 import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch, Show } from "solid-js";
 import { debounce } from "../util";
+import { getTime } from "../timing";
 import Slide from "./Slide";
 import Terminal from "./Terminal";
 import ControlBar from "./ControlBar";
@@ -45,8 +46,7 @@ export default (props) => {
   const [isSeekable, setIsSeekable] = createSignal(true);
   const [isFullscreen, setIsFullscreen] = createSignal(false);
   const [currentTime, setCurrentTime] = createSignal(null);
-  const [remainingTime, setRemainingTime] = createSignal(null);
-  const [progress, setProgress] = createSignal(null);
+  const [timing, setTiming] = createSignal(null);
   const [isPlaying, setIsPlaying] = createSignal(false);
   const [isMuted, setIsMuted] = createSignal(undefined);
   const [wasPlaying, setWasPlaying] = createSignal(false);
@@ -61,6 +61,11 @@ export default (props) => {
   const terminalCols = createMemo(() => terminalSize().cols || 80);
   const terminalRows = createMemo(() => terminalSize().rows || 24);
   const controlBarHeight = () => (props.controls === false ? 0 : CONTROL_BAR_HEIGHT);
+
+  const remainingTime = () =>
+    typeof duration() === "number" && typeof currentTime() === "number"
+      ? duration() - currentTime()
+      : null;
 
   const [isKeystrokeOverlayEnabled, setKeystrokeOverlayEnabled] = createSignal(
     // eslint-disable-next-line solid/reactivity -- initial value only, toggled with the "k" key
@@ -80,17 +85,6 @@ export default (props) => {
   let controlBarRef;
   let resizeObserver;
 
-  function onPlaying() {
-    setBlinking(true);
-    startTimeUpdates();
-  }
-
-  function onStopped() {
-    setBlinking(false);
-    stopTimeUpdates();
-    updateTime();
-  }
-
   const onCoreReady = ({ isPausable, isSeekable }) => {
     batch(() => {
       setIsPausable(isPausable);
@@ -102,9 +96,6 @@ export default (props) => {
     batch(() => {
       if (meta.duration !== undefined) {
         setDuration(meta.duration);
-        setCurrentTime(0);
-        setRemainingTime(meta.duration);
-        setProgress(0);
       }
 
       if (meta.markers !== undefined) {
@@ -140,21 +131,21 @@ export default (props) => {
       setIsPlaying(true);
       setWasPlaying(true);
       setOverlay(null);
-      onPlaying();
+      setBlinking(true);
     });
   };
 
   const onCorePause = () => {
     batch(() => {
       setIsPlaying(false);
-      onStopped();
+      setBlinking(false);
     });
   };
 
   const onCoreLoading = () => {
     batch(() => {
       setIsPlaying(false);
-      onStopped();
+      setBlinking(false);
       setOverlay("loader");
       clearKeystrokes();
     });
@@ -163,7 +154,7 @@ export default (props) => {
   const onCoreOffline = ({ message }) => {
     batch(() => {
       setIsPlaying(false);
-      onStopped();
+      setBlinking(false);
       clearKeystrokes();
 
       if (message !== undefined) {
@@ -182,7 +173,7 @@ export default (props) => {
   const onCoreEnded = ({ message }) => {
     batch(() => {
       setIsPlaying(false);
-      onStopped();
+      setBlinking(false);
 
       if (message !== undefined) {
         setInfoMessage(message);
@@ -194,6 +185,7 @@ export default (props) => {
   };
 
   const onCoreError = () => {
+    setBlinking(false);
     clearKeystrokes();
     setOverlay("error");
   };
@@ -230,8 +222,24 @@ export default (props) => {
   };
 
   const onCoreSeeked = () => {
-    updateTime();
     clearKeystrokes();
+  };
+
+  const onCoreTiming = (snapshot) => {
+    clearInterval(timeUpdateIntervalId);
+
+    batch(() => {
+      setTiming(snapshot);
+      updateTime();
+    });
+
+    if (snapshot.rate > 0) {
+      timeUpdateIntervalId = setInterval(updateTime, 100);
+    }
+  };
+
+  const onVisibilityChange = () => {
+    if (document.visibilityState === "visible") core.requestTiming();
   };
 
   const clearKeystrokes = () => {
@@ -278,6 +286,8 @@ export default (props) => {
   core.addEventListener("seeked", onCoreSeeked);
   core.addEventListener("reset", onCoreReset);
   core.addEventListener("resize", onCoreResize);
+  core.addEventListener("timing", onCoreTiming);
+  document.addEventListener("visibilitychange", onVisibilityChange);
 
   const setupResizeObserver = () => {
     resizeObserver = new ResizeObserver(
@@ -312,8 +322,10 @@ export default (props) => {
     core.removeEventListener("seeked", onCoreSeeked);
     core.removeEventListener("reset", onCoreReset);
     core.removeEventListener("resize", onCoreResize);
+    core.removeEventListener("timing", onCoreTiming);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
     core.stop();
-    stopTimeUpdates();
+    clearInterval(timeUpdateIntervalId);
     resizeObserver.disconnect();
   });
 
@@ -407,9 +419,9 @@ export default (props) => {
     if (e.key == " ") {
       togglePlay();
     } else if (e.key == ",") {
-      core.step(-1).then(updateTime);
+      core.step(-1);
     } else if (e.key == ".") {
-      core.step().then(updateTime);
+      core.step();
     } else if (e.key == "f") {
       toggleFullscreen();
     } else if (e.key == "m") {
@@ -459,25 +471,9 @@ export default (props) => {
     }
   };
 
-  const startTimeUpdates = () => {
-    clearInterval(timeUpdateIntervalId);
-    timeUpdateIntervalId = setInterval(updateTime, 100);
-  };
-
-  const stopTimeUpdates = () => {
-    clearInterval(timeUpdateIntervalId);
-  };
-
-  const updateTime = async () => {
-    const newCurrentTime = await core.getCurrentTime();
-    const newRemainingTime = await core.getRemainingTime();
-    const newProgress = await core.getProgress();
-
-    batch(() => {
-      setCurrentTime(newCurrentTime);
-      setRemainingTime(newRemainingTime);
-      setProgress(newProgress);
-    });
+  const updateTime = () => {
+    const time = getTime(timing());
+    setCurrentTime(time === null ? null : Math.max(0, Math.min(time, duration() ?? Infinity)));
   };
 
   const onUserActive = (show) => {
@@ -593,7 +589,7 @@ export default (props) => {
             duration={duration()}
             currentTime={currentTime()}
             remainingTime={remainingTime()}
-            progress={progress()}
+            timing={timing()}
             markers={markers()}
             isPlaying={isPlaying() || overlay() == "loader"}
             isPausable={isPausable()}

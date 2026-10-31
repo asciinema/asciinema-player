@@ -1,3 +1,5 @@
+import { createTiming } from "../timing";
+
 function clock(
   { hourColor = 3, minuteColor = 4, separatorColor = 9 },
   { dispatch },
@@ -8,7 +10,7 @@ function clock(
   const setupCursor = `\x1b[?25l\x1b[1m\x1b[${middleRow}B`;
   let intervalId;
 
-  const getCurrentTime = () => {
+  const getTimeSequences = () => {
     const d = new Date();
     const h = d.getHours();
     const m = d.getMinutes();
@@ -40,9 +42,17 @@ function clock(
   };
 
   const updateTime = () => {
-    getCurrentTime().forEach((seq) => {
+    getTimeSequences().forEach((seq) => {
       dispatch("output", seq);
     });
+
+    dispatch("timing", getTiming());
+  };
+
+  const getTiming = () => {
+    const d = new Date();
+    // The timer displays HH:MM using its MM:SS formatter, with discrete minute updates.
+    return createTiming(d.getHours() * 60 + d.getMinutes(), 0);
   };
 
   return {
@@ -66,13 +76,10 @@ function clock(
 
     stop: () => {
       clearInterval(intervalId);
+      intervalId = undefined;
     },
 
-    getCurrentTime: () => {
-      const d = new Date();
-
-      return d.getHours() * 60 + d.getMinutes();
-    },
+    getTiming,
   };
 }
 

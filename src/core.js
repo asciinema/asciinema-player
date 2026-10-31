@@ -1,5 +1,4 @@
 import { parseNpt } from "./util";
-import { Clock, NullClock } from "./clock";
 import recording from "./driver/recording";
 import clock from "./driver/clock";
 import random from "./driver/random";
@@ -51,6 +50,7 @@ class Core {
       ["resize", []],
       ["ready", []],
       ["seeked", []],
+      ["timing", []],
     ]);
   }
 
@@ -136,21 +136,6 @@ class Core {
     if (this.driver.getDuration === undefined) {
       this.driver.getDuration = () => {};
     }
-
-    if (this.driver.getCurrentTime === undefined) {
-      const play = this.driver.play;
-      let clock = new NullClock();
-
-      this.driver.play = () => {
-        clock = new Clock(this.speed);
-        return play();
-      };
-
-      this.driver.getCurrentTime = () => {
-        const t = clock.getTime();
-        return typeof t === "number" ? t / 1000 : t;
-      };
-    }
   }
 
   _enqueue(command) {
@@ -212,23 +197,11 @@ class Core {
       return 0;
     }
 
-    return this.driver.getCurrentTime();
+    return this.driver.getTiming().time ?? undefined;
   }
 
-  getRemainingTime() {
-    const duration = this.getDuration();
-
-    if (typeof duration === "number") {
-      return duration - Math.min(this.getCurrentTime(), duration);
-    }
-  }
-
-  getProgress() {
-    const duration = this.getDuration();
-
-    if (typeof duration === "number") {
-      return Math.min(this.getCurrentTime(), duration) / duration;
-    }
+  requestTiming() {
+    if (this.driver) this._dispatchEvent("timing", this.driver.getTiming());
   }
 
   getDuration() {

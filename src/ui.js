@@ -55,6 +55,7 @@ class CoreWorkerProxy {
       ["loading", []],
       ["marker", []],
       ["metadata", []],
+      ["muted", []],
       ["offline", []],
       ["output", []],
       ["pause", []],
@@ -64,9 +65,11 @@ class CoreWorkerProxy {
       ["reset", []],
       ["resize", []],
       ["seeked", []],
+      ["timing", []],
     ]);
 
     this.pending = new Map();
+    this.subscriptions = new Set();
     this._sendCommand("new", [src, opts]);
   }
 
@@ -110,12 +113,8 @@ class CoreWorkerProxy {
     return this._sendCommand("getCurrentTime");
   }
 
-  getRemainingTime() {
-    return this._sendCommand("getRemainingTime");
-  }
-
-  getProgress() {
-    return this._sendCommand("getProgress");
+  requestTiming() {
+    this._sendNotification("requestTiming");
   }
 
   getDuration() {
@@ -125,11 +124,18 @@ class CoreWorkerProxy {
   addEventListener(eventName, handler) {
     const handlers = this.eventHandlers.get(eventName);
 
-    if (handlers.length === 0) {
+    if (!this.subscriptions.has(eventName)) {
       this._sendNotification("addEventListener", [eventName]);
+      this.subscriptions.add(eventName);
     }
 
     handlers.push(handler);
+  }
+
+  removeEventListener(eventName, handler) {
+    const handlers = this.eventHandlers.get(eventName);
+    const index = handlers.indexOf(handler);
+    if (index !== -1) handlers.splice(index, 1);
   }
 
   _dispatchEvent(eventName, data = {}) {

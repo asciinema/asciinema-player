@@ -1,8 +1,11 @@
 import parseAsciicast from "../parser/asciicast";
+import { Clock } from "../clock";
 
 function benchmark({ url, iterations = 10 }, { dispatch }) {
+  const clock = new Clock((timing) => dispatch("timing", timing));
   let data;
   let byteCount = 0;
+  let endTimeoutId;
 
   return {
     async init() {
@@ -21,6 +24,8 @@ function benchmark({ url, iterations = 10 }, { dispatch }) {
     },
 
     play() {
+      clearTimeout(endTimeoutId);
+      clock.setTime(0, 1);
       const startTime = performance.now();
 
       for (let i = 0; i < iterations; i++) {
@@ -32,6 +37,7 @@ function benchmark({ url, iterations = 10 }, { dispatch }) {
       }
 
       const endTime = performance.now();
+      clock.stop();
       const duration = (endTime - startTime) / 1000;
       const throughput = (byteCount * iterations) / duration;
       const throughputMbs = ((byteCount / (1024 * 1024)) * iterations) / duration;
@@ -44,12 +50,19 @@ function benchmark({ url, iterations = 10 }, { dispatch }) {
         throughputMbs,
       });
 
-      setTimeout(() => {
+      endTimeoutId = setTimeout(() => {
         dispatch("ended");
       }, 0);
 
       return true;
     },
+
+    stop() {
+      clearTimeout(endTimeoutId);
+      clock.stop();
+    },
+
+    getTiming: () => clock.getTiming(),
   };
 }
 

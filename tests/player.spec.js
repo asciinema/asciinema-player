@@ -156,6 +156,69 @@ test("progress bar click seeks to a new position", async ({ page }) => {
   await expectCurrentTime(playerApi).toBeCloseTo(9, 1);
 });
 
+for (const worker of [false, true]) {
+  test(`gutter follows playback speed and pauses (${worker ? "worker" : "main thread"})`, async ({
+    page,
+  }) => {
+    const playerApi = await createPlayer(page, "/assets/simple.cast", { speed: 2 }, worker);
+    await playerApi.seek(3);
+    await playerApi.play();
+    await expectGutterPlaying(page, playerApi, 2);
+
+    await playerApi.pause();
+    const paused = await playerApi.getCurrentTime();
+    const duration = await playerApi.getDuration();
+    expect(await gutterProgress(page)).toBeCloseTo(paused / duration, 3);
+    const stoppedFrames = await gutterFrames(page);
+    expect(new Set(stoppedFrames.map((frame) => frame.progress)).size).toBe(1);
+
+    await playerApi.play();
+    await expectGutterPlaying(page, playerApi, 2);
+  });
+
+  test(`gutter snaps on paused and playing seeks (${worker ? "worker" : "main thread"})`, async ({
+    page,
+  }) => {
+    const playerApi = await createPlayer(page, "/assets/simple.cast", { speed: 2 }, worker);
+
+    await playerApi.seek(3);
+    expect(await gutterProgress(page)).toBeCloseTo(0.25, 3);
+    await expect(page.locator(".ap-time-elapsed")).toHaveText("00:03");
+    await expect(page.locator(".ap-time-remaining")).toHaveText("-00:09");
+
+    await playerApi.seek(9);
+    expect(await gutterProgress(page)).toBeCloseTo(0.75, 3);
+    await playerApi.seek(2);
+    expect(await gutterProgress(page)).toBeCloseTo(2 / 12, 3);
+
+    await playerApi.play();
+    await playerApi.seek(6);
+    await expectGutterPlaying(page, playerApi, 2);
+  });
+
+  test(`gutter reaches the end and resets on replay (${worker ? "worker" : "main thread"})`, async ({
+    page,
+  }) => {
+    const playerApi = await createPlayer(page, "/assets/simple.cast", { speed: 2 }, worker);
+    await playerApi.seek(11.8);
+    await playerApi.play();
+    await playerApi.events.waitFor("ended");
+    expect(await gutterProgress(page)).toBeCloseTo(1, 3);
+
+    await playerApi.play();
+    await expectGutterPlaying(page, playerApi, 2);
+  });
+
+  test(`disposing removes the animated player (${worker ? "worker" : "main thread"})`, async ({
+    page,
+  }) => {
+    const playerApi = await createPlayer(page, "/assets/simple.cast", {}, worker);
+    await playerApi.play();
+    await page.evaluate(() => window.player.dispose());
+    await expect(page.locator(".ap-player")).toHaveCount(0);
+  });
+}
+
 test("hides keystroke overlay by default", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/input.cast");
 
@@ -1019,11 +1082,64 @@ test("poster - data:text/plain - clears when playback starts", async ({ page }) 
 
 const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "error", "input", "marker"];
 
-async function createPlayer(page, src, opts = {}) {
+async function gutterProgress(page) {
+  return page.locator(".ap-gutter-full").evaluate((fill) => {
+    return fill.getBoundingClientRect().width / fill.parentElement.getBoundingClientRect().width;
+  });
+}
+
+async function gutterFrames(page) {
+  return page.locator(".ap-gutter-full").evaluate(async (fill) => {
+    const frames = [];
+
+    for (let i = 0; i < 4; i++) {
+      const time = await new Promise(requestAnimationFrame);
+
+      frames.push({
+        time,
+        progress:
+          fill.getBoundingClientRect().width / fill.parentElement.getBoundingClientRect().width,
+      });
+    }
+
+    return frames;
+  });
+}
+
+async function expectGutterPlaying(page, playerApi, speed) {
+  const duration = await playerApi.getDuration();
+  const before = await playerApi.getCurrentTime();
+  const frames = await gutterFrames(page);
+  const after = await playerApi.getCurrentTime();
+  const first = frames[0];
+  const last = frames.at(-1);
+
+  // Bracket the rendered positions with driver reads, allowing one frame of rendering lag.
+  expect(first.progress * duration).toBeGreaterThanOrEqual(before - 0.05);
+  expect(last.progress * duration).toBeLessThanOrEqual(after + 0.05);
+  expect(frames.every((frame, i) => i === 0 || frame.progress > frames[i - 1].progress)).toBe(true);
+
+  const elapsed = (last.time - first.time) / 1000;
+  const played = (last.progress - first.progress) * duration;
+  expect(played / elapsed).toBeCloseTo(speed, 1);
+}
+
+async function createPlayer(page, src, opts = {}, worker = false) {
   await page.goto("/index.html");
 
+  if (worker) {
+    await page.addScriptTag({ path: "dist/bundle/asciinema-player-ui.js" });
+
+    await page.route("**/asciinema-player-worker.js", (route) =>
+      route.fulfill({
+        path: "dist/bundle/asciinema-player-worker.js",
+        contentType: "text/javascript",
+      }),
+    );
+  }
+
   await page.evaluate(
-    ({ src, opts, eventNames }) => {
+    ({ src, opts, eventNames, worker }) => {
       window.__events = [];
       window.__eventIndex = 0;
       window.__eventWaiter = null;
@@ -1051,7 +1167,11 @@ async function createPlayer(page, src, opts = {}) {
         });
       };
 
-      window.player = AsciinemaPlayer.create(src, document.getElementById("player"), opts);
+      const element = document.getElementById("player");
+
+      window.player = worker
+        ? AsciinemaPlayer.create(src, element, "/asciinema-player-worker.js", opts)
+        : AsciinemaPlayer.create(src, element, opts);
 
       eventNames.forEach((name) => {
         window.player.addEventListener(name, (payload) => {
@@ -1059,7 +1179,7 @@ async function createPlayer(page, src, opts = {}) {
         });
       });
     },
-    { src, opts, eventNames: PLAYER_EVENTS },
+    { src, opts, eventNames: PLAYER_EVENTS, worker },
   );
 
   const events = createEventStream(page);

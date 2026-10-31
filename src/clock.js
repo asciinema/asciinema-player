@@ -1,22 +1,23 @@
+import { createTiming, getTime } from "./timing";
+
 class Clock {
-  constructor(speed = 1.0) {
-    this.speed = speed;
-    this.startTime = performance.now();
+  constructor(onChange) {
+    this.onChange = onChange;
+    this.timing = createTiming(null, 0);
   }
 
-  getTime() {
-    return this.speed * (performance.now() - this.startTime);
+  getTiming() {
+    return createTiming(getTime(this.timing), this.timing.rate);
   }
 
-  setTime(time) {
-    this.startTime = performance.now() - time / this.speed;
+  setTime(time, rate = this.timing.rate) {
+    this.timing = createTiming(time, rate);
+    this.onChange(this.timing);
+  }
+
+  stop() {
+    this.setTime(getTime(this.timing), 0);
   }
 }
 
-class NullClock {
-  constructor() {}
-  getTime(_speed) {}
-  setTime(_time) {}
-}
-
-export { Clock, NullClock };
+export { Clock };

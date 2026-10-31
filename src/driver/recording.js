@@ -1,4 +1,5 @@
 import { toErrorPayload } from "../error";
+import { createTiming } from "../timing";
 import { loadFullRecording } from "./recording/full";
 import { loadSegmentedRecording } from "./recording/segmented";
 
@@ -74,6 +75,7 @@ function recording(
     duration: undefined,
     effectiveStartAt: undefined,
     recordingEventTimeoutId: undefined,
+    audioTimingIntervalId: undefined,
     nextEventIndex: 0,
     lastEventTime: 0,
     startTime: undefined,
@@ -172,6 +174,7 @@ function recording(
             resetTerminalFromSnapshot(ctx.segment);
 
             renderPoster();
+            reportTiming();
           },
         };
 
@@ -184,6 +187,7 @@ function recording(
           nextState: STATE.FAILED,
           action: () => {
             ctx.failureError = payload.error;
+            reportTiming();
             dispatch("error", toErrorPayload(payload.error));
           },
         };
@@ -548,6 +552,7 @@ function recording(
   function failDriver(error) {
     if (ctx.failureError || state === STATE.STOPPED) return;
 
+    pausePlaybackAt(getCurrentTimeMs());
     queuedDriverEvents.length = 0;
     ctx.segmentWaiting = false;
     cancelPendingTimers();
@@ -840,7 +845,9 @@ function recording(
 
   function pausePlaybackAt(time) {
     cancelScheduledRecordingEvent();
+    clearInterval(ctx.audioTimingIntervalId);
     ctx.pauseElapsedTime = time;
+    reportTiming();
   }
 
   function resumeAfterSegmentWait() {
@@ -985,9 +992,8 @@ function recording(
     return sendCommand(EVENT.PAUSE_REQUESTED);
   }
 
-  function pausePlaybackClock() {
-    cancelScheduledRecordingEvent();
-    ctx.pauseElapsedTime = now() - ctx.startTime;
+  function pausePlaybackClock(time = now() - ctx.startTime) {
+    pausePlaybackAt(time);
   }
 
   function preparePlaybackClock() {
@@ -995,8 +1001,16 @@ function recording(
   }
 
   function confirmPlaybackClockStart() {
-    ctx.startTime = now() - ctx.pauseElapsedTime;
+    ctx.startTime = now() - (ctx.pauseElapsedTime ?? 0);
     ctx.pauseElapsedTime = null;
+    reportTiming();
+
+    // The audio clock can drift relative to the browser's animation timeline.
+    if (ctx.audioCtx) {
+      clearInterval(ctx.audioTimingIntervalId);
+      ctx.audioTimingIntervalId = setInterval(reportTiming, 1000);
+    }
+
     scheduleNextRecordingEvent();
   }
 
@@ -1050,15 +1064,21 @@ function recording(
   }
 
   function getCurrentTimeMs() {
-    if (state === STATE.READY_PLAYING) {
+    // Only a running clock has no stored position, including during asynchronous navigation.
+    if (ctx.pauseElapsedTime === null) {
       return now() - ctx.startTime;
     } else {
       return ctx.pauseElapsedTime ?? 0;
     }
   }
 
-  function getCurrentTime() {
-    return getCurrentTimeMs() / 1000;
+  function getTiming() {
+    const rate = ctx.pauseElapsedTime === null ? (ctx.audioCtx ? 1 : speed) : 0;
+    return createTiming(getCurrentTimeMs() / 1000, rate);
+  }
+
+  function reportTiming() {
+    dispatch("timing", getTiming());
   }
 
   function setupAudioCtx() {
@@ -1256,6 +1276,8 @@ function recording(
     if (ctx.audioElement && ctx.audioSeekable) {
       ctx.audioElement.currentTime = targetTime / 1000 / speed;
     }
+
+    reportTiming();
   }
 
   async function positionAt(targetTime, generation, forceReset = false) {
@@ -1315,12 +1337,7 @@ function recording(
       ctx.audioElement.pause();
     }
 
-    pausePlaybackClock();
-
-    if (time !== undefined) {
-      ctx.pauseElapsedTime = time;
-    }
-
+    pausePlaybackClock(time);
     dispatch("pause");
 
     return true;
@@ -1456,7 +1473,7 @@ function recording(
   }
 
   async function restartLoop() {
-    cancelScheduledRecordingEvent();
+    pausePlaybackAt(ctx.duration);
     ctx.playCount++;
     const generation = ++ctx.positionGeneration;
 
@@ -1469,8 +1486,7 @@ function recording(
 
       activateSegment(0, segment);
       resetTerminalFromSnapshot(segment, true);
-      ctx.pauseElapsedTime = 0;
-      ctx.startTime = now();
+      pausePlaybackAt(0);
       prefetchNextSegment();
 
       if (ctx.audioElement && ctx.audioSeekable) {
@@ -1483,8 +1499,7 @@ function recording(
       ) {
         await sendDriverEvent(EVENT.SEGMENT_READY);
       } else {
-        ctx.pauseElapsedTime = null;
-        scheduleNextRecordingEvent();
+        confirmPlaybackClockStart();
       }
     } catch {
       // Required segment failures have already failed the driver.
@@ -1492,9 +1507,8 @@ function recording(
   }
 
   function finishPlayback() {
-    cancelScheduledRecordingEvent();
+    pausePlaybackAt(ctx.duration);
     ctx.playCount++;
-    ctx.pauseElapsedTime = ctx.duration;
 
     if (ctx.audioElement) {
       ctx.audioElement.pause();
@@ -1506,6 +1520,7 @@ function recording(
   }
 
   function teardown() {
+    pausePlaybackAt(getCurrentTimeMs());
     ctx.positionGeneration++;
     ctx.segmentCache.clear();
     cancelPendingTimers();
@@ -1517,7 +1532,7 @@ function recording(
     init,
     stop,
     getDuration,
-    getCurrentTime,
+    getTiming,
     play,
     pause,
     seek,
