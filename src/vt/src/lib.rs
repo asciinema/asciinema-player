@@ -539,6 +539,9 @@ const fn build_standalone_chars_lut() -> [u8; STANDALONE_CHARS_LUT_SIZE] {
     // Black Large Circle
     fill_lut(&mut lut, 0x2b24..=0x2b24);
 
+    // Sextile: fallback fonts may render this single-column symbol wider than one cell
+    fill_lut(&mut lut, 0x26b9..=0x26b9);
+
     lut
 }
 
