@@ -13,7 +13,9 @@ async function doLoadSegmentedRecording(src, { startAt = 0 }) {
   try {
     index = await response.json();
   } catch (error) {
-    throw new Error(`failed parsing segmented recording index from ${src.url}: ${error.message}`);
+    throw new Error(`failed parsing segmented recording index from ${src.url}: ${error.message}`, {
+      cause: error,
+    });
   }
 
   validateIndex(index);
@@ -47,7 +49,9 @@ async function doLoadSegmentedRecording(src, { startAt = 0 }) {
       try {
         payload = await segmentResponse.json();
       } catch (error) {
-        throw new Error(`failed parsing recording segment from ${segment.url}: ${error.message}`);
+        throw new Error(`failed parsing recording segment from ${segment.url}: ${error.message}`, {
+          cause: error,
+        });
       }
 
       return normalizeSegment(recording, segmentIndex, payload);

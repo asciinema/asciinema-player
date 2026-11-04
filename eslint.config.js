@@ -26,4 +26,13 @@ export default [
       ],
     },
   },
+
+  {
+    files: ["src/components/**/*.js"],
+
+    rules: {
+      // Solid's JSX compiler assigns ref variables.
+      "no-unassigned-vars": "off",
+    },
+  },
 ];

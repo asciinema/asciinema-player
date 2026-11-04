@@ -41,22 +41,36 @@
     "printWidth": 100
   },
   "dependencies": {
-    "solid-js": "^1.3.0"
+    "solid-js": "^1.9.18"
   },
   "devDependencies": {
-    "@babel/core": "^7.21.3",
-    "@eslint/js": "^9.39.5",
+    "@babel/core": "^7.29.7",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",
     "@rollup/plugin-babel": "^7.1.0",
-    "@rollup/plugin-node-resolve": "^16.0.1",
-    "@rollup/plugin-terser": "^1.0.0",
-    "@wasm-tool/rollup-plugin-rust": "^3.1.4",
-    "babel-preset-solid": "^1.6.13",
-    "eslint": "^9.39.5",
-    "eslint-plugin-solid": "^0.14.5",
-    "globals": "^17.8.0",
-    "less": "^4.1.1",
-    "prettier": "3.9.6",
-    "rollup": "^4.43.0"
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-terser": "^1.0.2",
+    "@wasm-tool/rollup-plugin-rust": "^3.1.6",
+    "babel-preset-solid": "^1.9.16",
+    "eslint": "^10.14.0",
+    "eslint-plugin-solid": "^0.18.1",
+    "globals": "^17.14.0",
+    "less": "^4.9.1",
+    "prettier": "3.9.10",
+    "rollup": "^4.67.5"
+  },
+  "overrides": {
+    "@wasm-tool/rollup-plugin-rust": {
+      "glob": "^14.0.3"
+    },
+    "@eslint/config-array": {
+      "minimatch": "^11.0.4"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.4"
+    },
+    "eslint": {
+      "minimatch": "^11.0.4"
+    }
   }
 }

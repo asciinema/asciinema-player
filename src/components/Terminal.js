@@ -84,7 +84,6 @@ export default (props) => {
     adjustTextRowNodeCount(size().rows);
     adjustSymbolRowNodeCount(size().rows);
 
-    // eslint-disable-next-line solid/reactivity -- one-shot init continuation, core and onReady are mount-time props
     vtReady.then((vt_) => {
       vt = vt_;
       core.addEventListener("reset", onVtReset);
