@@ -116,10 +116,16 @@ div.ap-control-bar {
         background-color: color-mix(in oklab, var(--term-color-foreground) 20%, var(--term-color-background));
       }
 
+      .ap-gutter-clip {
+        overflow: hidden;
+        border-radius: 3px;
+      }
+
       .ap-gutter-full {
+        display: block;
         width: 100%;
-        transform-origin: left center;
-        scale: 0 1;
+        height: 100%;
+        transform: translateX(-100%);
         background-color: var(--term-color-foreground);
         border-radius: 3px;
       }

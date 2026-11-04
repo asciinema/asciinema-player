@@ -181,6 +181,11 @@ for (const worker of [false, true]) {
   }) => {
     const playerApi = await createPlayer(page, "/assets/simple.cast", { speed: 2 }, worker);
 
+    for (const time of [0, 0.12, 1.2, 2.4]) {
+      await playerApi.seek(time);
+      expect(await gutterProgress(page)).toBeCloseTo(time / 12, 3);
+    }
+
     await playerApi.seek(3);
     expect(await gutterProgress(page)).toBeCloseTo(0.25, 3);
     await expect(page.locator(".ap-time-elapsed")).toHaveText("00:03");
@@ -1084,7 +1089,11 @@ const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "error", "input", "m
 
 async function gutterProgress(page) {
   return page.locator(".ap-gutter-full").evaluate((fill) => {
-    return fill.getBoundingClientRect().width / fill.parentElement.getBoundingClientRect().width;
+    const track = fill.parentElement.getBoundingClientRect();
+    return Math.max(
+      0,
+      Math.min(1, (fill.getBoundingClientRect().right - track.left) / track.width),
+    );
   });
 }
 
@@ -1094,11 +1103,14 @@ async function gutterFrames(page) {
 
     for (let i = 0; i < 4; i++) {
       const time = await new Promise(requestAnimationFrame);
+      const track = fill.parentElement.getBoundingClientRect();
 
       frames.push({
         time,
-        progress:
-          fill.getBoundingClientRect().width / fill.parentElement.getBoundingClientRect().width,
+        progress: Math.max(
+          0,
+          Math.min(1, (fill.getBoundingClientRect().right - track.left) / track.width),
+        ),
       });
     }
 

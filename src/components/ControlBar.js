@@ -46,11 +46,14 @@ function Gutter(props) {
     const duration = props.duration;
     if (!Number.isFinite(duration) || duration <= 0) return;
 
-    const animation = fill.animate([{ scale: "0 1" }, { scale: "1 1" }], {
-      duration: duration * 1000,
-      easing: "linear",
-      fill: "both",
-    });
+    const animation = fill.animate(
+      [{ transform: "translateX(-100%)" }, { transform: "translateX(0)" }],
+      {
+        duration: duration * 1000,
+        easing: "linear",
+        fill: "both",
+      },
+    );
 
     animation.pause();
     onCleanup(() => animation.cancel());
@@ -74,7 +77,9 @@ function Gutter(props) {
   return (
     <>
       <span class="ap-gutter ap-gutter-empty" />
-      <span class="ap-gutter ap-gutter-full" ref={fill} />
+      <span class="ap-gutter ap-gutter-clip">
+        <span class="ap-gutter-full" ref={fill} />
+      </span>
     </>
   );
 }
