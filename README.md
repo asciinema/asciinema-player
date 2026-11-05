@@ -2,7 +2,7 @@
 
 [![Build status](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml/badge.svg)](https://github.com/asciinema/asciinema-player/actions/workflows/build.yml)
 
-__asciinema player__ is a web player for terminal sessions recordings.
+__asciinema player__ is a web player for terminal session recordings and live streams.
 
 Unlike typical web _video_ players, which play heavyweight video files (`.mp4`,
 `.mov`), asciinema player plays lightweight terminal session recordings in the
@@ -36,6 +36,9 @@ Notable features:
 
 * ability to copy-paste terminal content - it's just text after all!
 * smooth, timing-accurate playback,
+* reproduction of terminal size changes recorded during the session,
+* [live terminal streaming](https://docs.asciinema.org/manual/player/loading/#playing-live-streams) with adaptive buffering and automatic reconnection,
+* [audio playback](https://docs.asciinema.org/manual/player/options/#audiourl), synchronized with recordings, with live audio support for streams,
 * [idle time optimization](https://docs.asciinema.org/manual/player/options/#idletimelimit) to skip periods of inactivity,
 * [posters](https://docs.asciinema.org/manual/player/options/#poster),
 * [markers](https://docs.asciinema.org/manual/player/markers/) for navigation or auto-pause,
@@ -43,8 +46,9 @@ Notable features:
 * [automatic terminal scaling](https://docs.asciinema.org/manual/player/options/#fit) to fit into container element in most efficient way,
 * full-screen mode,
 * [keystroke overlay](https://docs.asciinema.org/manual/player/options/#keystrokeoverlay) showing keys typed during the recording,
-* [multiple color themes for standard 16 colors](https://docs.asciinema.org/manual/player/options/#theme) + support for 256 color palette and 24-bit true color (ISO-8613-3),
+* [built-in and custom color themes](https://docs.asciinema.org/manual/player/themes/), automatic use of recorded terminal colors, and support for 256 colors and 24-bit true color (ISO-8613-3),
 * [adjustable playback speed](https://docs.asciinema.org/manual/player/options/#speed),
+* [frame-by-frame stepping](https://docs.asciinema.org/manual/player/shortcuts/), backward and forward,
 * [looped playback](https://docs.asciinema.org/manual/player/options/#loop), infinite or finite,
 * [starting playback at specific time](https://docs.asciinema.org/manual/player/options/#startat),
 * [API for programmatic control](https://docs.asciinema.org/manual/player/api/),
