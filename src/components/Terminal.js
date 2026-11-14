@@ -37,11 +37,11 @@ export default (props) => {
   const lineHeight = () => props.lineHeight ?? 1.3333333333;
   const [blinkOn, setBlinkOn] = createSignal(true);
 
-  const cursorOn = createMemo(() => {
+  const cursorOn = () => {
     if (props.cursorMode === "hidden") return false;
     if (props.cursorMode === "steady") return true;
     return blinkOn() || cursorHold;
-  });
+  };
 
   const style = createMemo(() => {
     return {

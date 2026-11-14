@@ -578,6 +578,32 @@ test("cursorMode=blinking toggles cursor visibility during playback", async ({ p
   expect(hidden).toBe(true);
 });
 
+test("terminal activity restores the cursor before the next blink", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-01-01T00:00:00Z") });
+
+  const playerApi = await createPlayer(
+    page,
+    {
+      data: [{ version: 2, width: 4, height: 1 }, [0, "o", "A"], [2, "o", "B"], [4, "x", "0"]],
+    },
+    { preload: true, theme: "tango" },
+  );
+
+  await page.clock.pauseAt(new Date("2026-01-01T01:00:00Z"));
+  await playerApi.play();
+  await playerApi.events.waitFor("playing");
+
+  // The initial activity hold has expired and the cursor blinked off at 1800 ms.
+  await page.clock.runFor(1900);
+  const hidden = await sampleTerminalPixels(page, { cells: [[0, 1, 0.5, 0.5]] });
+  expect(hidden.cells[0]).toBe("#121314");
+
+  // B arrives at 2000 ms. Allow a render, but stay before the blink-on at 2400 ms.
+  await page.clock.runFor(150);
+  const restored = await sampleTerminalPixels(page, { cells: [[0, 2, 0.5, 0.5]] });
+  expect(restored.cells[0]).toBe("#cccccc");
+});
+
 test("cursorMode=steady keeps cursor visible during playback", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/cursor.cast", {
     autoPlay: true,
