@@ -1,9 +1,5 @@
 name: Release
 
-permissions:
-  contents: write
-  id-token: write
-
 on:
   push:
     tags:
@@ -11,9 +7,15 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+-beta*'
       - 'v[0-9]+.[0-9]+.[0-9]+-rc*'
 
+env:
+  RELEASE_TAG: ${{ github.ref_name }}
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -27,34 +29,74 @@ jobs:
           primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}
 
+      - name: Validate release version
+        run: |
+          nix develop --command node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const { version } = JSON.parse(readFileSync("package.json", "utf8"));
+          const tag = process.env.RELEASE_TAG;
+
+          if (tag !== `v${version}`) {
+            console.error(`Release tag ${tag} does not match package.json version ${version}`);
+            process.exit(1);
+          }
+          NODE
+
       - run: nix develop --command npm ci
+
+      - run: nix develop --command npm run lint
 
       - run: nix develop --command npm run build
 
       - run: ls -lhR dist
 
+      - run: nix develop --command npm run test
+
+      - name: Save release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          if-no-files-found: error
+          path: |
+            dist/bundle/asciinema-player.min.js
+            dist/bundle/asciinema-player.css
+
       - name: Publish to npm
         run: |
-          if [[ "${{ github.ref_name }}" =~ -beta|-rc ]]; then
+          if [[ "$RELEASE_TAG" =~ -beta|-rc ]]; then
             nix develop --command npm publish --tag next --provenance
           else
             nix develop --command npm publish --provenance
           fi
 
-      - name: Create the release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: dist/bundle
+
+      - name: Create the release if needed
         run: |
-          TITLE=$(echo "${{ github.ref_name }}" | sed -e 's/^v//')
-          if [[ "${{ github.ref_name }}" =~ -beta|-rc ]]; then
-            gh release create ${{ github.ref_name }} --draft --prerelease --verify-tag --title "$TITLE"
+          if gh release view "$RELEASE_TAG" >/dev/null; then
+            echo "Reusing existing release $RELEASE_TAG"
+          elif [[ "$RELEASE_TAG" =~ -beta|-rc ]]; then
+            gh release create "$RELEASE_TAG" --draft --prerelease --verify-tag --title "${RELEASE_TAG#v}"
           else
-            gh release create ${{ github.ref_name }} --draft --verify-tag --title "$TITLE"
+            gh release create "$RELEASE_TAG" --draft --verify-tag --title "${RELEASE_TAG#v}"
           fi
 
       - name: Upload the assets to the release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload ${{ github.ref_name }} dist/bundle/asciinema-player.min.js
-          gh release upload ${{ github.ref_name }} dist/bundle/asciinema-player.css
+          gh release upload "$RELEASE_TAG" --clobber \
+            dist/bundle/asciinema-player.min.js \
+            dist/bundle/asciinema-player.css
