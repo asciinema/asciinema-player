@@ -237,9 +237,9 @@ test("shows keystroke overlay when enabled", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/input.cast", { keystrokeOverlay: true });
 
   await playerApi.play();
-  await playerApi.events.waitFor("input");
+  await waitForInputEvents(playerApi, 2);
 
-  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(/^(a|Ret)$/);
+  await expect(page.locator(".ap-overlay-keystrokes kbd")).toHaveText(["a", "Ret"]);
 });
 
 test("positions keystroke overlay near lower right", async ({ page }) => {
