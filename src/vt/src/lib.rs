@@ -166,7 +166,10 @@ impl Terminal {
             let mut ch = cell.char();
             let width = cell.width() as u16;
             let pen = cell.pen();
-            let inverse = matches!(cursor_column, Some(col) if col == column);
+
+            let inverse =
+                matches!(cursor_column, Some(col) if col >= column && col < column + width);
+
             let bg_color = self.bg_color(pen, inverse);
             let fg_color = self.fg_color(pen, inverse);
 

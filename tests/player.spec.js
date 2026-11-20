@@ -671,6 +671,41 @@ test("cursor changes repaint the affected terminal cells", async ({ page }) => {
   }
 });
 
+for (const column of [1, 2]) {
+  for (const { state, cursorMode, visibility, color } of [
+    { state: "visible", cursorMode: "steady", visibility: "h", color: "#cccccc" },
+    { state: "terminal-hidden", cursorMode: "steady", visibility: "l", color: "#121314" },
+    { state: "player-hidden", cursorMode: "hidden", visibility: "h", color: "#121314" },
+  ]) {
+    test(`wide-character cursor at column ${column} is ${state}`, async ({ page }) => {
+      const playerApi = await createPlayer(
+        page,
+        {
+          data: [
+            { version: 2, width: 5, height: 2 },
+            [0, "o", `a全b\x1b[1;${column + 1}H\x1b[?25${visibility}`],
+            [0.1, "x", "0"],
+          ],
+        },
+        { autoPlay: true, cursorMode, theme: "tango" },
+      );
+
+      await playerApi.events.waitFor("ended");
+
+      const { cells } = await sampleTerminalPixels(page, {
+        cells: [
+          [0, 0, 0.9, 0.1],
+          [0, 1, 0.9, 0.1],
+          [0, 2, 0.9, 0.1],
+          [0, 3, 0.9, 0.1],
+        ],
+      });
+
+      expect(cells).toEqual(["#121314", color, color, "#121314"]);
+    });
+  }
+}
+
 test("RGB colors apply across text, raster, and SVG layers", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/rgb.cast", {
     autoPlay: true,
