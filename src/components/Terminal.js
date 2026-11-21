@@ -280,7 +280,8 @@ export default (props) => {
     const line = vt.getLine(rowIndex, cursorOn);
 
     clearCanvasRow(rowIndex);
-    renderRowBg(rowIndex, line.bg, theme);
+    renderRowFills(rowIndex, line.fills, theme);
+    renderRowFills(rowIndex, line.cursor_fill, theme);
     renderRowRasterSymbols(rowIndex, line.raster_symbols, theme);
     renderRowVectorSymbols(rowIndex, line.vector_symbols, theme);
     renderRowText(rowIndex, line.text, line.codepoints, theme);
@@ -290,8 +291,8 @@ export default (props) => {
     canvasCtx.clearRect(0, rowIndex * BLOCK_V_RES, size().cols * BLOCK_H_RES, BLOCK_V_RES);
   }
 
-  function renderRowBg(rowIndex, spans, theme) {
-    // The memory layout of a BgSpan must follow one defined in lib.rs (see the assertions at the bottom)
+  function renderRowFills(rowIndex, spans, theme) {
+    // Must match FillSpan's layout assertions in lib.rs.
     const view = vt.getDataView(spans, 8);
 
     const y = rowIndex * BLOCK_V_RES;
@@ -790,11 +791,6 @@ function drawBlockGlyph(ctx, codepoint, x, y) {
     case 0x2587:
       // lower seven eighths block (https://symbl.cc/en/2587/)
       ctx.fillRect(x, y + unitY, BLOCK_H_RES, unitY * 7);
-      break;
-
-    case 0x2588:
-      // full block (https://symbl.cc/en/2588/)
-      ctx.fillRect(x, y, BLOCK_H_RES, BLOCK_V_RES);
       break;
 
     case 0x25a0:

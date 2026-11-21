@@ -26,7 +26,8 @@ pub struct Terminal {
     terminal: avt::Terminal,
     dirty: avt::observer::DirtyRows,
     bold_is_bright: bool,
-    bg_spans: Vec<BgSpan>,
+    fills: Vec<FillSpan>,
+    cursor_fill: Vec<FillSpan>,
     text_spans: Vec<TextSpan>,
     raster_symbols: Vec<RasterSymbol>,
     vector_symbols: Vec<VectorSymbol>,
@@ -35,7 +36,10 @@ pub struct Terminal {
 
 #[derive(Serialize)]
 struct Line {
-    bg: (usize, u16),
+    // Original backgrounds and full blocks, eligible for padding extension.
+    fills: (usize, u16),
+    // Zero or one full-cell fill, painted only inside the grid.
+    cursor_fill: (usize, u16),
     text: (usize, u16),
     codepoints: (usize, u16),
     raster_symbols: (usize, u16),
@@ -44,7 +48,7 @@ struct Line {
 
 #[derive(Clone, Default)]
 #[repr(C)]
-struct BgSpan {
+struct FillSpan {
     column: u16,
     width: u16,
     color: Color,
@@ -102,7 +106,8 @@ pub fn create(
         terminal,
         dirty: avt::observer::DirtyRows::new(),
         bold_is_bright,
-        bg_spans: Vec::with_capacity(cols),
+        fills: Vec::with_capacity(cols),
+        cursor_fill: Vec::with_capacity(1),
         text_spans: Vec::with_capacity(cols),
         raster_symbols: Vec::with_capacity(cols),
         vector_symbols: Vec::with_capacity(cols),
@@ -133,11 +138,12 @@ impl Terminal {
 
     #[wasm_bindgen(js_name = getLine)]
     pub fn get_line(&mut self, row: usize, cursor_on: bool) -> JsValue {
-        let mut prev_bg_span: Option<BgSpan> = None;
+        let mut prev_fill: Option<FillSpan> = None;
         let mut prev_text_span: Option<TextSpan> = None;
         let mut column = 0u16;
 
-        self.bg_spans.clear();
+        self.fills.clear();
+        self.cursor_fill.clear();
         self.text_spans.clear();
         self.raster_symbols.clear();
         self.vector_symbols.clear();
@@ -170,16 +176,27 @@ impl Terminal {
             let inverse =
                 matches!(cursor_column, Some(col) if col >= column && col < column + width);
 
-            let bg_color = self.bg_color(pen, inverse);
+            let full_block = ch == '\u{2588}';
+            let fill_color = self.fill_color(pen, full_block, false);
             let fg_color = self.fg_color(pen, inverse);
 
-            // bg spans
+            if inverse {
+                self.cursor_fill.push(FillSpan {
+                    column,
+                    width,
+                    color: self
+                        .fill_color(pen, full_block, true)
+                        .unwrap_or(Color::DefaultBg),
+                });
+            }
 
-            match (prev_bg_span.take(), bg_color.as_ref()) {
+            // Cursor-independent full-cell fills.
+
+            match (prev_fill.take(), fill_color.as_ref()) {
                 (None, None) => {}
 
                 (None, Some(color)) => {
-                    prev_bg_span = Some(BgSpan {
+                    prev_fill = Some(FillSpan {
                         column,
                         width,
                         color: color.clone(),
@@ -187,19 +204,19 @@ impl Terminal {
                 }
 
                 (Some(span), None) => {
-                    self.bg_spans.push(span);
-                    prev_bg_span = None;
+                    self.fills.push(span);
+                    prev_fill = None;
                 }
 
                 (Some(mut span), Some(c)) if &span.color == c => {
                     span.width += width;
-                    prev_bg_span = Some(span);
+                    prev_fill = Some(span);
                 }
 
                 (Some(span), Some(color)) => {
-                    self.bg_spans.push(span);
+                    self.fills.push(span);
 
-                    prev_bg_span = Some(BgSpan {
+                    prev_fill = Some(FillSpan {
                         column,
                         width,
                         color: color.clone(),
@@ -209,7 +226,9 @@ impl Terminal {
 
             // text spans and symbols
 
-            if is_raster_symbol(ch) {
+            if full_block {
+                ch = ' ';
+            } else if is_raster_symbol(ch) {
                 self.raster_symbols.push(RasterSymbol {
                     column,
                     codepoint: ch as u32,
@@ -265,8 +284,8 @@ impl Terminal {
             column += width;
         }
 
-        if let Some(span) = prev_bg_span {
-            self.bg_spans.push(span);
+        if let Some(span) = prev_fill {
+            self.fills.push(span);
         }
 
         if let Some(span) = prev_text_span {
@@ -274,7 +293,11 @@ impl Terminal {
         }
 
         let line = Line {
-            bg: (self.bg_spans.as_ptr() as usize, self.bg_spans.len() as u16),
+            fills: (self.fills.as_ptr() as usize, self.fills.len() as u16),
+            cursor_fill: (
+                self.cursor_fill.as_ptr() as usize,
+                self.cursor_fill.len() as u16,
+            ),
             text: (
                 self.text_spans.as_ptr() as usize,
                 self.text_spans.len() as u16,
@@ -301,6 +324,17 @@ impl Terminal {
         let cursor = self.terminal.cursor().position();
 
         serde_wasm_bindgen::to_value(&cursor).unwrap()
+    }
+
+    fn fill_color(&self, pen: &avt::Pen, full_block: bool, inverse: bool) -> Option<Color> {
+        if full_block {
+            Some(match self.fg_color(pen, inverse) {
+                Color::None => Color::DefaultFg,
+                color => color,
+            })
+        } else {
+            self.bg_color(pen, inverse)
+        }
     }
 
     fn bg_color(&self, pen: &avt::Pen, inverse: bool) -> Option<Color> {
@@ -561,8 +595,8 @@ const fn fill_lut(t: &mut [u8; STANDALONE_CHARS_LUT_SIZE], range: RangeInclusive
 // Compile-time assertions for the layout of structs and enums
 // It's crucial that Terminal.js follows these values!
 const _: () = {
-    assert!(size_of::<BgSpan>() == 8);
-    assert!(align_of::<BgSpan>() == 2);
+    assert!(size_of::<FillSpan>() == 8);
+    assert!(align_of::<FillSpan>() == 2);
 
     assert!(size_of::<TextSpan>() == 12);
     assert!(align_of::<TextSpan>() == 2);
