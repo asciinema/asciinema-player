@@ -247,38 +247,13 @@ impl Terminal {
                 ch = ' ';
             }
 
-            if is_standalone_char(ch, width) {
-                if let Some(span) = prev_text_span.take() {
-                    self.text_spans.push(span);
-                }
-
-                self.text_spans
-                    .push(build_text_span(column, idx, fg_color, cell));
-            } else {
-                match (prev_text_span.take(), pen) {
-                    (None, _pen) => {
-                        prev_text_span = Some(build_text_span(column, idx, fg_color, cell));
-                    }
-
-                    (Some(mut span), pen)
-                        if (fg_color == span.color && is_same_text_style(&span, pen))
-                            || (ch == ' '
-                                && span.is_underline() == pen.is_underline()
-                                && span.is_strikethrough() == pen.is_strikethrough()) =>
-                    // spaces with the same underline/strike-through values can be safely merged
-                    // into the previous span regardless of their other attr values (color, bold,
-                    // italic etc), reducing the overall number of text spans representing a row
-                    {
-                        span.text_len += 1;
-                        prev_text_span = Some(span);
-                    }
-
-                    (Some(span), _pen) => {
-                        self.text_spans.push(span);
-                        prev_text_span = Some(build_text_span(column, idx, fg_color, cell));
-                    }
-                }
-            }
+            append_text_span(
+                &mut self.text_spans,
+                &mut prev_text_span,
+                build_text_span(column, idx, fg_color, cell),
+                ch,
+                is_standalone_char(ch, width),
+            );
 
             self.codepoints.push(ch as u32);
             column += width;
@@ -390,10 +365,32 @@ fn build_text_span(
     }
 }
 
-fn is_same_text_style(span: &TextSpan, pen: &avt::Pen) -> bool {
-    let pen_attrs: TextAttrs = pen.into();
+fn append_text_span(
+    spans: &mut Vec<TextSpan>,
+    pending: &mut Option<TextSpan>,
+    next: TextSpan,
+    ch: char,
+    standalone: bool,
+) {
+    if !standalone {
+        if let Some(span) = pending.as_mut() {
+            if span.can_extend_with(&next, ch) {
+                span.text_len += next.text_len;
+                return;
+            }
+        }
+    }
 
-    (span.attrs.0 & !INVERSE_MASK) == (pen_attrs.0 & !INVERSE_MASK)
+    if let Some(span) = pending.take() {
+        spans.push(span);
+    }
+
+    // Standalone glyphs form a boundary on both sides.
+    if standalone {
+        spans.push(next);
+    } else {
+        *pending = Some(next);
+    }
 }
 
 fn is_standalone_char(ch: char, width: u16) -> bool {
@@ -458,12 +455,17 @@ fn is_raster_symbol(ch: char) -> bool {
 }
 
 impl TextSpan {
-    fn is_underline(&self) -> bool {
-        self.attrs.0 & UNDERLINE_MASK != 0
-    }
+    fn can_extend_with(&self, next: &Self, ch: char) -> bool {
+        // Inverse video has already been resolved into foreground/background colors.
+        let same_style = self.color == next.color
+            && (self.attrs.0 & !INVERSE_MASK) == (next.attrs.0 & !INVERSE_MASK);
 
-    fn is_strikethrough(&self) -> bool {
-        self.attrs.0 & STRIKETHROUGH_MASK != 0
+        // Only undecorated spaces are invisible regardless of their text styling.
+        // Both spans must be undecorated to avoid extending a visible decoration.
+        let undecorated_space =
+            ch == ' ' && (self.attrs.0 | next.attrs.0) & (UNDERLINE_MASK | STRIKETHROUGH_MASK) == 0;
+
+        same_style || undecorated_space
     }
 }
 

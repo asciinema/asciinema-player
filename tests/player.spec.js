@@ -1313,6 +1313,147 @@ test("padding repaints after clearing, resizing, and seeking backward", async ({
   }
 });
 
+test.describe("decorated spaces", () => {
+  for (const { name, sgr } of [
+    { name: "underline", sgr: 4 },
+    { name: "strikethrough", sgr: 9 },
+  ]) {
+    test(`${name} on spaces preserves color and stops at undecorated spaces`, async ({ page }) => {
+      const player = await createPlayer(
+        page,
+        {
+          data: [
+            { version: 2, width: 7, height: 1 },
+            [
+              0,
+              "o",
+              `\x1b[?25l\x1b[${sgr};38;2;255;0;0m X\x1b[38;2;0;255;0m X\x1b[0m \x1b[${sgr};38;2;255;0;0m X`,
+            ],
+            [0.1, "x", "0"],
+          ],
+        },
+        { autoPlay: true, theme: "tango", fit: "none", terminalFontSize: "32px" },
+      );
+      await player.events.waitFor("ended");
+      const { strips } = await sampleTerminalPixels(page, {
+        strips: [
+          [0, 0],
+          [0, 2],
+          [0, 4],
+          [0, 5],
+        ],
+      });
+      expect(strips[0]).toContain("#ff0000");
+      expect(strips[1]).toContain("#00ff00");
+      expect([...new Set(strips[2])]).toEqual(["#121314"]);
+      expect(strips[3]).toContain("#ff0000");
+    });
+  }
+
+  test("faint decorated spaces dim independently of adjacent text", async ({ page }) => {
+    const player = await createPlayer(
+      page,
+      {
+        data: [
+          { version: 2, width: 4, height: 1 },
+          [0, "o", "\x1b[?25l\x1b[4;38;2;255;255;255m X\x1b[2m X"],
+          [0.1, "x", "0"],
+        ],
+      },
+      { autoPlay: true, theme: "tango", fit: "none", terminalFontSize: "32px" },
+    );
+    await player.events.waitFor("ended");
+    const { strips } = await sampleTerminalPixels(page, {
+      strips: [
+        [0, 0],
+        [0, 2],
+      ],
+    });
+    const line = strips[0].indexOf("#ffffff");
+    expect(line).toBeGreaterThanOrEqual(0);
+    const dimmed = strips[1][line].match(/[0-9a-f]{2}/g).map((channel) => parseInt(channel, 16));
+    for (const channel of dimmed) {
+      expect(channel).toBeGreaterThanOrEqual(135);
+      expect(channel).toBeLessThanOrEqual(139);
+    }
+  });
+
+  test("blinking decorated spaces disappear independently of adjacent text", async ({ page }) => {
+    await page.clock.install({ time: new Date("2026-01-01T00:00:00Z") });
+    const player = await createPlayer(
+      page,
+      {
+        data: [
+          { version: 2, width: 4, height: 1 },
+          [0, "o", "\x1b[?25l\x1b[4m X\x1b[5m X"],
+          [10, "x", "0"],
+        ],
+      },
+      { theme: "tango", preload: true, fit: "none", terminalFontSize: "32px" },
+    );
+    await page.clock.pauseAt(new Date("2026-01-01T01:00:00Z"));
+    await player.play();
+    await player.events.waitFor("playing");
+    await page.clock.runFor(100);
+    let frame = await sampleTerminalPixels(page, {
+      strips: [
+        [0, 0],
+        [0, 2],
+      ],
+    });
+    expect(frame.strips[0]).toContain("#cccccc");
+    expect(frame.strips[1]).toContain("#cccccc");
+    await page.clock.runFor(600);
+    frame = await sampleTerminalPixels(page, {
+      strips: [
+        [0, 0],
+        [0, 2],
+      ],
+    });
+    expect(frame.strips[0]).toContain("#cccccc");
+    expect([...new Set(frame.strips[1])]).toEqual(["#121314"]);
+  });
+
+  test("cursor inverts the decoration on a space without recoloring its neighbor", async ({
+    page,
+  }) => {
+    const player = await createPlayer(
+      page,
+      {
+        data: [
+          { version: 2, width: 2, height: 1 },
+          [0, "o", "\x1b[4;38;2;255;0;0m  \x1b[1;2H"],
+          [1, "o", "\x1b[?25l"],
+          [2, "x", "0"],
+        ],
+      },
+      { cursorMode: "steady", theme: "tango", fit: "none", terminalFontSize: "32px" },
+    );
+    await player.play();
+    await player.pause();
+    await player.seek(0.5);
+    const on = await sampleTerminalPixels(page, {
+      strips: [
+        [0, 0],
+        [0, 1],
+      ],
+    });
+    const line = on.strips[0].indexOf("#ff0000");
+    expect(line).toBeGreaterThanOrEqual(0);
+    expect(on.strips[1][line]).toBe("#121314");
+    expect(on.strips[1][5]).toBe("#ff0000");
+    await player.seek(1.5);
+    const off = await sampleTerminalPixels(page, {
+      strips: [
+        [0, 0],
+        [0, 1],
+      ],
+    });
+    expect(off.strips[0]).toEqual(on.strips[0]);
+    expect(off.strips[1]).toEqual(off.strips[0]);
+  });
+});
+
 for (const lineHeight of [1, 1.7]) {
   test(`glyphs stay aligned while scaling with line height ${lineHeight}`, async ({ page }) => {
     const player = await createPlayer(
@@ -1601,7 +1742,7 @@ async function setPlayerContainerSize(page, width, height) {
 }
 
 async function sampleTerminalPixels(page, options = {}) {
-  const { cells = [], padding = false } = options;
+  const { cells = [], padding = false, strips = [] } = options;
 
   const term = page.locator(".ap-term");
   await term.waitFor();
@@ -1609,7 +1750,7 @@ async function sampleTerminalPixels(page, options = {}) {
   const dataUrl = `data:image/png;base64,${buffer.toString("base64")}`;
 
   return await term.evaluate(
-    async (node, { dataUrl, cells, padding }) => {
+    async (node, { dataUrl, cells, padding, strips }) => {
       const style = getComputedStyle(node);
       const rect = node.getBoundingClientRect();
       const img = new Image();
@@ -1686,12 +1827,21 @@ async function sampleTerminalPixels(page, options = {}) {
           )
         : undefined;
 
+      // A vertical screenshot strip finds decoration pixels without assuming a
+      // font-specific underline or strikethrough position.
+      const sampledStrips = strips.map(([row, col]) =>
+        Array.from({ length: Math.floor(cellHeight) }, (_, y) =>
+          samplePixel(paddingLeft + (col + 0.5) * cellWidth, paddingTop + row * cellHeight + y),
+        ),
+      );
+
       return {
         cells: sampledCells,
         padding: sampledPadding,
+        strips: sampledStrips,
       };
     },
-    { dataUrl, cells, padding },
+    { dataUrl, cells, padding, strips },
   );
 }
 

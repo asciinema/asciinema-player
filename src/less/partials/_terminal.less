@@ -48,6 +48,8 @@ div.ap-term pre.ap-term-text {
   margin: 0px;
   display: block;
   white-space: pre;
+  // Terminal spaces retain their decorations, including at span boundaries.
+  text-decoration-skip-spaces: none;
   word-wrap: normal;
   word-break: normal;
   cursor: text;
