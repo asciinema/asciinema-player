@@ -1,10 +1,13 @@
 div.ap-term {
   position: relative;
   font-family: var(--term-font-family);
-  border-width: 0.75em;
+  // 10x14 raster px approximates 0.75em with typical fonts/default line height.
+  // Divide by the 8x24 raster cell size to get matching CSS spacing.
+  --pad-x: calc(1ch * 10 / 8);
+  --pad-y: calc(var(--term-line-height) * 14 / 24);
+  padding: var(--pad-y) var(--pad-x);
+  border: 0;
   border-radius: 0;
-  border-style: solid;
-  border-color: var(--term-color-background);
   box-sizing: content-box;
 }
 
@@ -18,10 +21,10 @@ div.ap-term canvas {
 
 div.ap-term svg.ap-term-symbols {
   position: absolute;
-  inset: 0;
+  inset: var(--pad-y) auto auto var(--pad-x);
   display: block;
-  width: 100%;
-  height: 100%;
+  width: calc(var(--term-cols) * 1ch);
+  height: calc(var(--term-rows) * var(--term-line-height));
   overflow: hidden;
   pointer-events: none;
 
@@ -36,7 +39,9 @@ div.ap-term svg.ap-term-symbols:not(.ap-blink) .ap-blink {
 
 div.ap-term pre.ap-term-text {
   position: absolute;
-  inset: 0;
+  inset: var(--pad-y) auto auto var(--pad-x);
+  width: calc(var(--term-cols) * 1ch);
+  height: calc(var(--term-rows) * var(--term-line-height));
   box-sizing: content-box;
   overflow: hidden;
   padding: 0;

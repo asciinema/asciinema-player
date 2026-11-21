@@ -990,12 +990,12 @@ test("automatic embedded theme", async ({ page }) => {
 
   const expectedColors = buildThemeSamples(embeddedTheme);
 
-  const { cells, border } = await sampleTerminalPixels(page, {
+  const { cells, padding } = await sampleTerminalPixels(page, {
     cells: expectedColors,
-    border: true,
+    padding: true,
   });
 
-  expect(border).toBe("#bababa");
+  expect(padding.left).toBe("#bababa");
 
   for (let i = 0; i < expectedColors.length; i += 1) {
     expect(cells[i]).toBe(expectedColors[i][4]);
@@ -1110,12 +1110,12 @@ test("explicit theme", async ({ page }) => {
 
   const expectedColors = buildThemeSamples(draculaTheme);
 
-  const { cells, border } = await sampleTerminalPixels(page, {
+  const { cells, padding } = await sampleTerminalPixels(page, {
     cells: expectedColors,
-    border: true,
+    padding: true,
   });
 
-  expect(border).toBe("#282a36");
+  expect(padding.left).toBe("#282a36");
 
   for (let i = 0; i < expectedColors.length; i += 1) {
     expect(cells[i]).toBe(expectedColors[i][4]);
@@ -1150,6 +1150,226 @@ test("poster - data:text/plain - clears when playback starts", async ({ page }) 
     })
     .toBe(false);
 });
+
+test("edge colors extend into padding without cursor or partial-glyph bleed", async ({ page }) => {
+  // Top: red space, green full block on blue, white half block on blue.
+  // Middle: inverse yellow/magenta space, two cyan spaces.
+  // Bottom: magenta, blue, yellow spaces.
+  const initial =
+    "\x1b[41m \x1b[32;44m█\x1b[37m▀" +
+    "\x1b[2;1H\x1b[33;45;7m \x1b[0;46m  " +
+    "\x1b[3;1H\x1b[45m \x1b[44m \x1b[43m \x1b[0m\x1b[1;1H";
+
+  const playerApi = await createPlayer(
+    page,
+    {
+      data: [
+        { version: 2, width: 3, height: 3 },
+        [0, "o", initial],
+        [1, "o", "\x1b[1;2H"], // Cursor on the full block.
+        [2, "o", "\x1b[1;3H"], // Cursor on the half block.
+        [3, "o", "\x1b[3;1H"], // Cursor in the bottom-left corner.
+        [4, "o", "\x1b[3;3H"], // Cursor in the bottom-right corner.
+        [5, "o", "\x1b[?25l"],
+        [6, "x", "0"],
+      ],
+    },
+    { cursorMode: "steady", theme: "asciinema" },
+  );
+
+  await playerApi.play();
+  await playerApi.pause();
+
+  const red = "#dd3c69";
+  const green = "#4ebf22";
+  const blue = "#26b0d7";
+  const yellow = "#ddaf3c";
+  const cyan = "#54e1b9";
+  const magenta = "#b954e1";
+  const white = "#d9d9d9";
+  const foreground = "#cccccc";
+
+  const padding = {
+    topLeft: red,
+    top: green,
+    topRight: blue,
+    left: yellow,
+    right: cyan,
+    bottomLeft: magenta,
+    bottom: blue,
+    bottomRight: yellow,
+  };
+
+  // Check the changed cells and unchanged padding in the same displayed frame.
+  const cells = [
+    [0, 0, 0.5, 0.5], // Red space.
+    [0, 1, 0.5, 0.5], // Full block.
+    [0, 2, 0.5, 0.25], // Half block: foreground.
+    [0, 2, 0.5, 0.75], // Half block: background.
+    [2, 0, 0.5, 0.5], // Bottom-left space.
+    [2, 2, 0.5, 0.5], // Bottom-right space.
+  ];
+
+  for (const { name, time, colors } of [
+    {
+      name: "cursor on red space",
+      time: 0.5,
+      colors: [foreground, green, white, blue, magenta, yellow],
+    },
+
+    {
+      name: "cursor on full block",
+      time: 1.5,
+      colors: [red, blue, white, blue, magenta, yellow],
+    },
+
+    {
+      name: "cursor on half block",
+      time: 2.5,
+      colors: [red, green, blue, white, magenta, yellow],
+    },
+
+    {
+      name: "cursor in bottom-left corner",
+      time: 3.5,
+      colors: [red, green, white, blue, foreground, yellow],
+    },
+
+    {
+      name: "cursor in bottom-right corner",
+      time: 4.5,
+      colors: [red, green, white, blue, magenta, foreground],
+    },
+
+    {
+      name: "cursor hidden",
+      time: 5.5,
+      colors: [red, green, white, blue, magenta, yellow],
+    },
+  ]) {
+    await playerApi.seek(time);
+    await expect
+      .poll(
+        async () => {
+          const frame = await sampleTerminalPixels(page, { cells, padding: true });
+          return { cells: frame.cells, padding: frame.padding };
+        },
+        { message: name },
+      )
+      .toEqual({ cells: colors, padding });
+  }
+});
+
+test("padding repaints after clearing, resizing, and seeking backward", async ({ page }) => {
+  const playerApi = await createPlayer(
+    page,
+    {
+      data: [
+        { version: 2, width: 3, height: 3 },
+        [0, "o", "\x1b[?25l\x1b[41m\x1b[2J"],
+        [1, "o", "\x1b[0m\x1b[2J"],
+        [2, "r", "4x2"],
+        [2, "o", "\x1b[44m\x1b[2J"],
+        [3, "x", "0"],
+      ],
+    },
+    { theme: "asciinema" },
+  );
+
+  await playerApi.play();
+  await playerApi.pause();
+
+  // Initial red screen.
+  await playerApi.seek(0.5);
+  await expectPaddingColor("#dd3c69");
+  const { height: initialHeight } = await page.locator(".ap-term").boundingBox();
+
+  // Clearing restores the default background.
+  await playerApi.seek(1.5);
+  await expectPaddingColor("#121314");
+
+  // Resizing to fewer rows and filling blue repaints the new padding.
+  await playerApi.seek(2.5);
+  await expectPaddingColor("#26b0d7");
+  const { height: resizedHeight } = await page.locator(".ap-term").boundingBox();
+  expect(resizedHeight).toBeLessThan(initialHeight);
+
+  // Rewinding restores both the original color and dimensions.
+  await playerApi.seek(0.5);
+  await expectPaddingColor("#dd3c69");
+  const { height: restoredHeight } = await page.locator(".ap-term").boundingBox();
+  expect(restoredHeight).toBeCloseTo(initialHeight, 0);
+
+  async function expectPaddingColor(color) {
+    await expect
+      .poll(
+        async () => {
+          const { padding } = await sampleTerminalPixels(page, { padding: true });
+          return [...new Set(Object.values(padding))];
+        },
+        { message: `all padding should be ${color}` },
+      )
+      .toEqual([color]);
+  }
+});
+
+for (const lineHeight of [1, 1.7]) {
+  test(`glyphs stay aligned while scaling with line height ${lineHeight}`, async ({ page }) => {
+    const player = await createPlayer(
+      page,
+      {
+        data: [
+          { version: 2, width: 20, height: 3 },
+          [0, "o", "\x1b[?25l\x1b[38;2;255;255;255;48;2;0;0;0m\x1b[2J\x1b[2;2HH全H─H▀\ue0b0H"],
+          [0.1, "x", "0"],
+        ],
+      },
+      {
+        autoPlay: true,
+        terminalLineHeight: lineHeight,
+        terminalFontFamily: "monospace",
+        controls: false,
+      },
+    );
+    await player.events.waitFor("ended");
+
+    for (const width of [813, 427]) {
+      await setPlayerContainerSize(page, width, 400);
+      await expect
+        .poll(() =>
+          page.locator(".ap-player").evaluate((node) => node.getBoundingClientRect().width),
+        )
+        .toBe(width);
+
+      await expect
+        .poll(async () => {
+          const { cells } = await sampleTerminalPixels(page, {
+            cells: [
+              [1, 1, 0.2, 0.5], // H before the wide character
+              [1, 4, 0.2, 0.5], // H after the wide character
+              [1, 6, 0.2, 0.5], // H after the standalone line glyph
+              [1, 7, 0.5, 0.25],
+              [1, 7, 0.5, 0.75], // half block
+              [1, 8, 0.25, 0.5],
+              [1, 8, 0.75, 0.1], // SVG triangle
+              [1, 9, 0.2, 0.5], // H after the SVG
+            ],
+          });
+          return cells;
+        })
+        .toEqual([
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#000000",
+          "#ffffff",
+          "#000000",
+          "#ffffff",
+        ]);
+    }
+  });
+}
 
 const PLAYER_EVENTS = ["play", "playing", "pause", "ended", "error", "input", "marker"];
 
@@ -1381,7 +1601,7 @@ async function setPlayerContainerSize(page, width, height) {
 }
 
 async function sampleTerminalPixels(page, options = {}) {
-  const { cells = [], border = false } = options;
+  const { cells = [], padding = false } = options;
 
   const term = page.locator(".ap-term");
   await term.waitFor();
@@ -1389,7 +1609,7 @@ async function sampleTerminalPixels(page, options = {}) {
   const dataUrl = `data:image/png;base64,${buffer.toString("base64")}`;
 
   return await term.evaluate(
-    async (node, { dataUrl, cells, border }) => {
+    async (node, { dataUrl, cells, padding }) => {
       const style = getComputedStyle(node);
       const rect = node.getBoundingClientRect();
       const img = new Image();
@@ -1413,8 +1633,14 @@ async function sampleTerminalPixels(page, options = {}) {
       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
       const scaleX = img.width / rect.width;
       const scaleY = img.height / rect.height;
-      const borderLeft = (Number.parseFloat(style.borderLeftWidth) || 0) * scaleX;
-      const borderTop = (Number.parseFloat(style.borderTopWidth) || 0) * scaleY;
+      const paddingLeft = (Number.parseFloat(style.paddingLeft) || 0) * scaleX;
+      const paddingTop = (Number.parseFloat(style.paddingTop) || 0) * scaleY;
+      const paddingRight = (Number.parseFloat(style.paddingRight) || 0) * scaleX;
+      const paddingBottom = (Number.parseFloat(style.paddingBottom) || 0) * scaleY;
+      const cols = Number.parseInt(style.getPropertyValue("--term-cols"), 10);
+      const rows = Number.parseInt(style.getPropertyValue("--term-rows"), 10);
+      const cellWidth = (img.width - paddingLeft - paddingRight) / cols;
+      const cellHeight = (img.height - paddingTop - paddingBottom) / rows;
 
       const toHex = (value) => value.toString(16).padStart(2, "0");
       const rgbToHex = (r, g, b) => `#${toHex(r)}${toHex(g)}${toHex(b)}`;
@@ -1432,34 +1658,40 @@ async function sampleTerminalPixels(page, options = {}) {
       let sampledCells = [];
 
       if (cells.length > 0) {
-        const cols = Number.parseInt(style.getPropertyValue("--term-cols"), 10);
-        const rows = Number.parseInt(style.getPropertyValue("--term-rows"), 10);
-        const borderRight = (Number.parseFloat(style.borderRightWidth) || 0) * scaleX;
-        const borderBottom = (Number.parseFloat(style.borderBottomWidth) || 0) * scaleY;
-        const contentWidth = img.width - borderLeft - borderRight;
-        const contentHeight = img.height - borderTop - borderBottom;
-        const cellWidth = contentWidth / cols;
-        const cellHeight = contentHeight / rows;
-
         sampledCells = cells.map((sample) => {
           const [row, col, x, y] = sample;
-          const px = borderLeft + (col + x) * cellWidth;
-          const py = borderTop + (row + y) * cellHeight;
+          const px = paddingLeft + (col + x) * cellWidth;
+          const py = paddingTop + (row + y) * cellHeight;
           return samplePixel(px, py);
         });
       }
 
-      let borderColor = null;
+      const left = paddingLeft / 2;
+      const right = img.width - paddingRight / 2;
+      const top = paddingTop / 2;
+      const bottom = img.height - paddingBottom / 2;
+      const paddingPoints = {
+        topLeft: [left, top],
+        top: [img.width / 2, top],
+        topRight: [right, top],
+        left: [left, img.height / 2],
+        right: [right, img.height / 2],
+        bottomLeft: [left, bottom],
+        bottom: [img.width / 2, bottom],
+        bottomRight: [right, bottom],
+      };
+      const sampledPadding = padding
+        ? Object.fromEntries(
+            Object.entries(paddingPoints).map(([name, [x, y]]) => [name, samplePixel(x, y)]),
+          )
+        : undefined;
 
-      if (border) {
-        const px = Math.max(0, borderLeft / 2);
-        const py = img.height / 2;
-        borderColor = samplePixel(px, py);
-      }
-
-      return { cells: sampledCells, border: borderColor };
+      return {
+        cells: sampledCells,
+        padding: sampledPadding,
+      };
     },
-    { dataUrl, cells, border },
+    { dataUrl, cells, padding },
   );
 }
 

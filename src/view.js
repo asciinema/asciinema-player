@@ -53,15 +53,18 @@ function measureTerminal(fontFamily, lineHeight) {
   termDiv.style.width = `${cols}ch`;
   termDiv.style.height = `${rows * (lineHeight ?? 1.3333333333)}em`;
   termDiv.style.fontSize = "100%";
+  termDiv.style.setProperty("--term-line-height", `${lineHeight ?? 1.3333333333}em`);
 
   playerDiv.appendChild(termDiv);
   document.body.appendChild(playerDiv);
 
+  const style = getComputedStyle(termDiv);
+
   const metrics = {
-    charW: termDiv.clientWidth / cols,
-    charH: termDiv.clientHeight / rows,
-    bordersW: termDiv.offsetWidth - termDiv.clientWidth,
-    bordersH: termDiv.offsetHeight - termDiv.clientHeight,
+    charW: parseFloat(style.width) / cols,
+    charH: parseFloat(style.height) / rows,
+    paddingW: parseFloat(style.paddingLeft) + parseFloat(style.paddingRight),
+    paddingH: parseFloat(style.paddingTop) + parseFloat(style.paddingBottom),
   };
 
   document.body.removeChild(playerDiv);

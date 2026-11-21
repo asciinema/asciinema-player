@@ -23,8 +23,8 @@ export default (props) => {
   const autoPlay = props.autoPlay;
   const charW = props.charW;
   const charH = props.charH;
-  const bordersW = props.bordersW;
-  const bordersH = props.bordersH;
+  const paddingW = props.paddingW;
+  const paddingH = props.paddingH;
   const themeOption = props.theme ?? "auto/asciinema";
   /* eslint-enable solid/reactivity */
   const preferEmbeddedTheme = themeOption.slice(0, 5) === "auto/";
@@ -330,8 +330,8 @@ export default (props) => {
   });
 
   const terminalElementSize = createMemo(() => {
-    const terminalW = charW * terminalCols() + bordersW;
-    const terminalH = charH * terminalRows() + bordersH;
+    const terminalW = charW * terminalCols() + paddingW;
+    const terminalH = charH * terminalRows() + paddingH;
 
     let fit = props.fit ?? "width";
 

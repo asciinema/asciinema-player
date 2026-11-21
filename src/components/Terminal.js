@@ -5,6 +5,9 @@ import { Vt } from "../vt";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const BLOCK_H_RES = 8;
 const BLOCK_V_RES = 24;
+// Keep these in sync with --pad-x and --pad-y in _terminal.less.
+const PADDING_X = 10;
+const PADDING_Y = 14;
 
 const BOLD_MASK = 1;
 const FAINT_MASK = 1 << 1;
@@ -123,16 +126,15 @@ export default (props) => {
   function setupCanvas() {
     canvasCtx = canvasEl.getContext("2d");
     if (!canvasCtx) throw new Error("2D ctx not available");
-    const { cols, rows } = size();
-    canvasEl.width = cols * BLOCK_H_RES;
-    canvasEl.height = rows * BLOCK_V_RES;
+    resizeCanvas(size());
     canvasEl.style.imageRendering = "pixelated";
     canvasCtx.imageSmoothingEnabled = false;
   }
 
   function resizeCanvas({ cols, rows }) {
-    canvasEl.width = cols * BLOCK_H_RES;
-    canvasEl.height = rows * BLOCK_V_RES;
+    canvasEl.width = cols * BLOCK_H_RES + 2 * PADDING_X;
+    canvasEl.height = rows * BLOCK_V_RES + 2 * PADDING_Y;
+    canvasCtx.setTransform(1, 0, 0, 1, PADDING_X, PADDING_Y);
     canvasCtx.imageSmoothingEnabled = false;
   }
 
@@ -279,23 +281,34 @@ export default (props) => {
   function renderRow(rowIndex, theme, cursorOn) {
     const line = vt.getLine(rowIndex, cursorOn);
 
-    clearCanvasRow(rowIndex);
-    renderRowFills(rowIndex, line.fills, theme);
+    clearCanvasRow(rowIndex, theme);
+    renderRowFills(rowIndex, line.fills, theme, true);
     renderRowFills(rowIndex, line.cursor_fill, theme);
     renderRowRasterSymbols(rowIndex, line.raster_symbols, theme);
     renderRowVectorSymbols(rowIndex, line.vector_symbols, theme);
     renderRowText(rowIndex, line.text, line.codepoints, theme);
   }
 
-  function clearCanvasRow(rowIndex) {
-    canvasCtx.clearRect(0, rowIndex * BLOCK_V_RES, size().cols * BLOCK_H_RES, BLOCK_V_RES);
+  function rowBounds(rowIndex, extend) {
+    const top = rowIndex * BLOCK_V_RES - (extend && rowIndex === 0 ? PADDING_Y : 0);
+
+    const bottom =
+      (rowIndex + 1) * BLOCK_V_RES + (extend && rowIndex === size().rows - 1 ? PADDING_Y : 0);
+
+    return [top, bottom - top];
   }
 
-  function renderRowFills(rowIndex, spans, theme) {
+  function clearCanvasRow(rowIndex, theme) {
+    const [y, height] = rowBounds(rowIndex, true);
+    canvasCtx.fillStyle = theme.bg;
+    canvasCtx.fillRect(-PADDING_X, y, canvasEl.width, height);
+  }
+
+  function renderRowFills(rowIndex, spans, theme, extend = false) {
     // Must match FillSpan's layout assertions in lib.rs.
     const view = vt.getDataView(spans, 8);
 
-    const y = rowIndex * BLOCK_V_RES;
+    const [y, height] = rowBounds(rowIndex, extend);
     let i = 0;
 
     while (i < view.byteLength) {
@@ -304,8 +317,13 @@ export default (props) => {
       const color = getColor(view, i + 4, theme);
       i += 8;
 
+      const left = column * BLOCK_H_RES - (extend && column === 0 ? PADDING_X : 0);
+
+      const right =
+        (column + width) * BLOCK_H_RES + (extend && column + width === size().cols ? PADDING_X : 0);
+
       canvasCtx.fillStyle = color;
-      canvasCtx.fillRect(column * BLOCK_H_RES, y, width * BLOCK_H_RES, BLOCK_V_RES);
+      canvasCtx.fillRect(left, y, right - left, height);
     }
   }
 
