@@ -279,23 +279,23 @@ export default (props) => {
   }
 
   function renderRow(rowIndex, theme, cursorOn) {
-    const line = vt.getLine(rowIndex, cursorOn);
+    const row = vt.getRow(rowIndex, cursorOn);
 
     const extension = {
       horizontal: true,
       vertical:
         (rowIndex === 0 || rowIndex === size().rows - 1) &&
-        !line.has_padding_powerline &&
-        rowHasNonDefaultBackground(line.backgrounds, theme),
+        !row.has_padding_powerline &&
+        rowHasNonDefaultBackground(row.backgrounds, theme),
     };
 
     clearCanvasRow(rowIndex, theme);
-    renderRowFills(rowIndex, line.backgrounds, theme, extension);
-    renderRowRasterSymbols(rowIndex, line.raster_symbols, theme, extension);
-    renderRowFills(rowIndex, line.cursor_fill, theme);
-    renderRowRasterSymbols(rowIndex, line.cursor_raster_symbols, theme);
-    renderRowVectorSymbols(rowIndex, line.vector_symbols, theme);
-    renderRowText(rowIndex, line.text, line.codepoints, theme);
+    renderRowFills(rowIndex, row.backgrounds, theme, extension);
+    renderRowRasterSymbols(rowIndex, row.raster_symbols, theme, extension);
+    renderRowFills(rowIndex, row.cursor_fill, theme);
+    renderRowRasterSymbols(rowIndex, row.cursor_raster_symbols, theme);
+    renderRowVectorSymbols(rowIndex, row.vector_symbols, theme);
+    renderRowText(rowIndex, row.text, row.codepoints, theme);
   }
 
   function rowHasNonDefaultBackground(spans, theme) {
@@ -564,7 +564,7 @@ export default (props) => {
 
     if (row === undefined) {
       row = document.createElement("span");
-      row.className = "ap-line";
+      row.className = "ap-row";
     }
 
     return row;
@@ -575,7 +575,7 @@ export default (props) => {
 
     if (row === undefined) {
       row = document.createElementNS(SVG_NS, "g");
-      row.setAttribute("class", "ap-symbol-line");
+      row.setAttribute("class", "ap-symbol-row");
     }
 
     return row;

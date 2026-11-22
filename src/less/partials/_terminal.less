@@ -65,7 +65,7 @@ div.ap-term pre.ap-term-text {
 }
 
 pre.ap-term-text {
-  .ap-line {
+  .ap-row {
     display: block;
     width: 100%;
     height: var(--term-line-height);
@@ -83,7 +83,7 @@ pre.ap-term-text {
     }
   }
 
-  &:not(.ap-blink) .ap-line .ap-blink {
+  &:not(.ap-blink) .ap-row .ap-blink {
     color: transparent;
     border-color: transparent;
   }
@@ -109,6 +109,6 @@ pre.ap-term-text {
   }
 }
 
-.ap-line span {
+.ap-row span {
   color: var(--term-color-foreground);
 }

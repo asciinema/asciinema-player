@@ -35,7 +35,7 @@ pub struct Terminal {
 }
 
 #[derive(Serialize)]
-struct Line {
+struct Row {
     has_padding_powerline: bool,
     // Original cell backgrounds, before foreground glyphs and cursor paint.
     backgrounds: (usize, u16),
@@ -140,8 +140,8 @@ impl Terminal {
         vec![cols, rows]
     }
 
-    #[wasm_bindgen(js_name = getLine)]
-    pub fn get_line(&mut self, row: usize, cursor_on: bool) -> JsValue {
+    #[wasm_bindgen(js_name = getRow)]
+    pub fn get_row(&mut self, row_index: usize, cursor_on: bool) -> JsValue {
         let mut prev_fill: Option<FillSpan> = None;
         let mut prev_text_span: Option<TextSpan> = None;
         let mut column = 0u16;
@@ -158,7 +158,7 @@ impl Terminal {
         let cursor_column = {
             let cursor = self.terminal.cursor();
 
-            if cursor.visible && cursor.row == row && cursor_on {
+            if cursor.visible && cursor.row == row_index && cursor_on {
                 Some(cursor.col as u16)
             } else {
                 None
@@ -168,7 +168,7 @@ impl Terminal {
         let cells = self
             .terminal
             .screen()
-            .row(row)
+            .row(row_index)
             .unwrap()
             .cells()
             .iter()
@@ -277,7 +277,7 @@ impl Terminal {
             self.text_spans.push(span);
         }
 
-        let line = Line {
+        let row = Row {
             has_padding_powerline,
             backgrounds: (
                 self.backgrounds.as_ptr() as usize,
@@ -309,7 +309,7 @@ impl Terminal {
             ),
         };
 
-        serde_wasm_bindgen::to_value(&line).unwrap()
+        serde_wasm_bindgen::to_value(&row).unwrap()
     }
 
     #[wasm_bindgen(js_name = getCursor)]

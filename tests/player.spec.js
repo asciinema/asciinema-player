@@ -605,14 +605,14 @@ test("seeking matches playback across resizes and screen switches", async ({ pag
   });
 
   const terminal = page.locator(".ap-term");
-  const lines = page.locator(".ap-term-text .ap-line");
+  const rows = page.locator(".ap-term-text .ap-row");
   const frames = [];
 
   for (const { cols, text } of checkpoints) {
     await playerApi.play();
     await playerApi.events.waitFor("pause");
     await expectTermSize(terminal, cols, text.length);
-    await expect(lines).toHaveText(text);
+    await expect(rows).toHaveText(text);
     frames.push(await readTerminalFrame(page));
   }
 
@@ -624,7 +624,7 @@ test("seeking matches playback across resizes and screen switches", async ({ pag
     const { time, cols, text } = checkpoints[index];
     await playerApi.seek(time);
     await expectTermSize(terminal, cols, text.length);
-    await expect(lines).toHaveText(text);
+    await expect(rows).toHaveText(text);
     expect(await readTerminalFrame(page)).toEqual(frames[index]);
   }
 });
@@ -813,7 +813,7 @@ test("cursor changes repaint the affected terminal cells", async ({ page }) => {
 
   for (const { time, text, colors } of checkpoints) {
     await playerApi.seek(time);
-    await expect(page.locator(".ap-term-text .ap-line")).toHaveText(["abcd", text]);
+    await expect(page.locator(".ap-term-text .ap-row")).toHaveText(["abcd", text]);
 
     const { cells } = await sampleTerminalPixels(page, {
       cells: [

@@ -45,8 +45,8 @@ class Vt {
     return changedRows;
   }
 
-  getLine(n, cursorOn) {
-    return this.vt.getLine(n, cursorOn);
+  getRow(rowIndex, cursorOn) {
+    return this.vt.getRow(rowIndex, cursorOn);
   }
 
   getDataView([ptr, len], size) {
