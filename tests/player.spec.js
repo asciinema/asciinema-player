@@ -1260,6 +1260,179 @@ test("edge colors extend into padding without cursor or partial-glyph bleed", as
   }
 });
 
+test("vertical padding follows edge-row background changes", async ({ page }) => {
+  const player = await createPlayer(
+    page,
+    {
+      data: [
+        { version: 2, width: 3, height: 3 },
+        [0, "o", "\x1b[?25l\x1b[48;2;18;52;86m\x1b[2J"],
+        [1, "o", "\x1b[1;2H\x1b[49m "],
+        [2, "o", "\x1b[1;2H\x1b[48;2;18;52;86m "],
+        [3, "o", "\x1b[3;2H\x1b[49m "],
+        [4, "o", "\x1b[3;2H\x1b[48;2;18;52;86m "],
+        [5, "x", "0"],
+      ],
+    },
+    { theme: "asciinema" },
+  );
+  await player.play();
+  await player.pause();
+
+  const blue = "#123456";
+  const bg = "#121314";
+
+  for (const [time, top, bottom] of [
+    [0.5, blue, blue],
+    [1.5, bg, blue],
+    [2.5, blue, blue],
+    [3.5, blue, bg],
+    [4.5, blue, blue],
+  ]) {
+    await player.seek(time);
+    await expect
+      .poll(async () => (await sampleTerminalPixels(page, { padding: true })).padding, {
+        message: `background checkpoint ${time}`,
+      })
+      .toEqual({
+        topLeft: top,
+        top,
+        topRight: top,
+        left: blue,
+        right: blue,
+        bottomLeft: bottom,
+        bottom,
+        bottomRight: bottom,
+      });
+  }
+});
+
+for (const { name, sgr } of [
+  { name: "RGB", sgr: "48;2;18;19;20" },
+  { name: "palette", sgr: "48;5;16" },
+]) {
+  test(`${name} color matching the theme background prevents vertical extension`, async ({
+    page,
+  }) => {
+    const player = await createPlayer(
+      page,
+      {
+        data: [
+          { version: 2, width: 3, height: 1 },
+          [0, "o", `\x1b[?25l\x1b[48;2;18;52;86m\x1b[2J\x1b[1;2H\x1b[${sgr}m `],
+          [0.1, "x", "0"],
+        ],
+      },
+      { autoPlay: true, theme: "asciinema", adaptivePalette: true },
+    );
+    await player.events.waitFor("ended");
+    const { padding } = await sampleTerminalPixels(page, { padding: true });
+    expect(padding).toEqual({
+      topLeft: "#121314",
+      top: "#121314",
+      topRight: "#121314",
+      left: "#123456",
+      right: "#123456",
+      bottomLeft: "#121314",
+      bottom: "#121314",
+      bottomRight: "#121314",
+    });
+  });
+}
+
+test("full blocks and cursor paint do not determine vertical extension", async ({ page }) => {
+  const player = await createPlayer(
+    page,
+    {
+      data: [
+        { version: 2, width: 1, height: 1 },
+        [0, "o", "\x1b[?25l\x1b[38;2;255;0;0m█"],
+        [1, "o", "\x1b[H\x1b[?25h"],
+        [2, "o", "\x1b[H\x1b[48;2;0;0;255m█\x1b[H"],
+        [3, "x", "0"],
+      ],
+    },
+    { theme: "asciinema", cursorMode: "steady" },
+  );
+  await player.play();
+  await player.pause();
+
+  for (const [time, vertical, cell] of [
+    [0.5, "#121314", "#ff0000"],
+    [1.5, "#121314", "#121314"],
+    [2.5, "#ff0000", "#0000ff"],
+  ]) {
+    await player.seek(time);
+    await expect
+      .poll(async () => {
+        const { padding, cells } = await sampleTerminalPixels(page, {
+          padding: true,
+          cells: [[0, 0, 0.5, 0.5]],
+        });
+        return { padding, cells };
+      })
+      .toEqual({
+        padding: {
+          topLeft: vertical,
+          top: vertical,
+          topRight: vertical,
+          left: "#ff0000",
+          right: "#ff0000",
+          bottomLeft: vertical,
+          bottom: vertical,
+          bottomRight: vertical,
+        },
+        cells: [cell],
+      });
+  }
+});
+
+test("cursor movement preserves shade blending and padding", async ({ page }) => {
+  const player = await createPlayer(
+    page,
+    {
+      data: [
+        { version: 2, width: 3, height: 1 },
+        [0, "o", "\x1b[?25l\x1b[38;2;204;204;204;48;2;0;0;0m░▒▓"],
+        [1, "o", "\x1b[H\x1b[?25h"],
+        [2, "o", "\x1b[1;2H"],
+        [3, "o", "\x1b[1;3H"],
+        [4, "o", "\x1b[?25l"],
+        [5, "x", "0"],
+      ],
+    },
+    { theme: "asciinema", cursorMode: "steady" },
+  );
+  await player.play();
+  await player.pause();
+
+  for (const [time, colors] of [
+    [0.5, ["#333333", "#666666", "#999999"]],
+    [1.5, ["#999999", "#666666", "#999999"]],
+    [2.5, ["#333333", "#666666", "#999999"]],
+    [3.5, ["#333333", "#666666", "#333333"]],
+    [4.5, ["#333333", "#666666", "#999999"]],
+  ]) {
+    await player.seek(time);
+    await expect
+      .poll(
+        async () => {
+          const { cells, padding } = await sampleTerminalPixels(page, {
+            cells: [
+              [0, 0, 0.5, 0.5],
+              [0, 1, 0.5, 0.5],
+              [0, 2, 0.5, 0.5],
+            ],
+            padding: true,
+          });
+          return { cells, padding: [...new Set(Object.values(padding))] };
+        },
+        { message: `shade cursor checkpoint ${time}` },
+      )
+      .toEqual({ cells: colors, padding: ["#000000"] });
+  }
+});
+
 test("padding repaints after clearing, resizing, and seeking backward", async ({ page }) => {
   const playerApi = await createPlayer(
     page,

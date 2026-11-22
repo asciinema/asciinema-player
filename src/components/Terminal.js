@@ -281,12 +281,34 @@ export default (props) => {
   function renderRow(rowIndex, theme, cursorOn) {
     const line = vt.getLine(rowIndex, cursorOn);
 
+    const extension = {
+      horizontal: true,
+      vertical:
+        (rowIndex === 0 || rowIndex === size().rows - 1) &&
+        rowHasNonDefaultBackground(line.backgrounds, theme),
+    };
+
     clearCanvasRow(rowIndex, theme);
-    renderRowFills(rowIndex, line.fills, theme, true);
+    renderRowFills(rowIndex, line.backgrounds, theme, extension);
+    renderRowRasterSymbols(rowIndex, line.raster_symbols, theme, extension);
     renderRowFills(rowIndex, line.cursor_fill, theme);
-    renderRowRasterSymbols(rowIndex, line.raster_symbols, theme);
+    renderRowRasterSymbols(rowIndex, line.cursor_raster_symbols, theme);
     renderRowVectorSymbols(rowIndex, line.vector_symbols, theme);
     renderRowText(rowIndex, line.text, line.codepoints, theme);
+  }
+
+  function rowHasNonDefaultBackground(spans, theme) {
+    const view = vt.getDataView(spans, 8);
+    let covered = 0;
+
+    // Background runs are disjoint.
+    for (let i = 0; i < view.byteLength; i += 8) {
+      if (getColor(view, i + 4, theme) !== theme.bg) {
+        covered += view.getUint16(i + 2, true);
+      }
+    }
+
+    return covered === size().cols;
   }
 
   function rowBounds(rowIndex, extend) {
@@ -304,11 +326,21 @@ export default (props) => {
     canvasCtx.fillRect(-PADDING_X, y, canvasEl.width, height);
   }
 
-  function renderRowFills(rowIndex, spans, theme, extend = false) {
+  function fillCells(rowIndex, column, width, { horizontal = false, vertical = false } = {}) {
+    const [y, height] = rowBounds(rowIndex, vertical);
+    const left = column * BLOCK_H_RES - (horizontal && column === 0 ? PADDING_X : 0);
+
+    const right =
+      (column + width) * BLOCK_H_RES +
+      (horizontal && column + width === size().cols ? PADDING_X : 0);
+
+    canvasCtx.fillRect(left, y, right - left, height);
+  }
+
+  function renderRowFills(rowIndex, spans, theme, extension) {
     // Must match FillSpan's layout assertions in lib.rs.
     const view = vt.getDataView(spans, 8);
 
-    const [y, height] = rowBounds(rowIndex, extend);
     let i = 0;
 
     while (i < view.byteLength) {
@@ -317,17 +349,12 @@ export default (props) => {
       const color = getColor(view, i + 4, theme);
       i += 8;
 
-      const left = column * BLOCK_H_RES - (extend && column === 0 ? PADDING_X : 0);
-
-      const right =
-        (column + width) * BLOCK_H_RES + (extend && column + width === size().cols ? PADDING_X : 0);
-
       canvasCtx.fillStyle = color;
-      canvasCtx.fillRect(left, y, right - left, height);
+      fillCells(rowIndex, column, width, extension);
     }
   }
 
-  function renderRowRasterSymbols(rowIndex, symbols, theme) {
+  function renderRowRasterSymbols(rowIndex, symbols, theme, extension) {
     // The memory layout of a RasterSymbol must follow one defined in lib.rs (see the assertions at the bottom)
     const view = vt.getDataView(symbols, 12);
 
@@ -341,7 +368,12 @@ export default (props) => {
       i += 12;
 
       canvasCtx.fillStyle = color;
-      drawBlockGlyph(canvasCtx, codepoint, column * BLOCK_H_RES, y);
+
+      if (codepoint === 0x2588) {
+        fillCells(rowIndex, column, 1, extension);
+      } else {
+        drawBlockGlyph(canvasCtx, codepoint, column * BLOCK_H_RES, y);
+      }
     }
   }
 
@@ -470,7 +502,7 @@ export default (props) => {
         const r = view.getUint8(offset + 1);
         const g = view.getUint8(offset + 2);
         const b = view.getUint8(offset + 3);
-        c = "rgb(" + r + "," + g + "," + b + ")";
+        c = rgbToHex(r, g, b);
         colorsCache.set(key, c);
       }
 

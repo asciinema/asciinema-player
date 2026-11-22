@@ -26,8 +26,9 @@ pub struct Terminal {
     terminal: avt::Terminal,
     dirty: avt::observer::DirtyRows,
     bold_is_bright: bool,
-    fills: Vec<FillSpan>,
+    backgrounds: Vec<FillSpan>,
     cursor_fill: Vec<FillSpan>,
+    cursor_raster_symbols: Vec<RasterSymbol>,
     text_spans: Vec<TextSpan>,
     raster_symbols: Vec<RasterSymbol>,
     vector_symbols: Vec<VectorSymbol>,
@@ -36,10 +37,11 @@ pub struct Terminal {
 
 #[derive(Serialize)]
 struct Line {
-    // Original backgrounds and full blocks, eligible for padding extension.
-    fills: (usize, u16),
+    // Original cell backgrounds, before foreground glyphs and cursor paint.
+    backgrounds: (usize, u16),
     // Zero or one full-cell fill, painted only inside the grid.
     cursor_fill: (usize, u16),
+    cursor_raster_symbols: (usize, u16),
     text: (usize, u16),
     codepoints: (usize, u16),
     raster_symbols: (usize, u16),
@@ -106,8 +108,9 @@ pub fn create(
         terminal,
         dirty: avt::observer::DirtyRows::new(),
         bold_is_bright,
-        fills: Vec::with_capacity(cols),
+        backgrounds: Vec::with_capacity(cols),
         cursor_fill: Vec::with_capacity(1),
+        cursor_raster_symbols: Vec::with_capacity(1),
         text_spans: Vec::with_capacity(cols),
         raster_symbols: Vec::with_capacity(cols),
         vector_symbols: Vec::with_capacity(cols),
@@ -142,8 +145,9 @@ impl Terminal {
         let mut prev_text_span: Option<TextSpan> = None;
         let mut column = 0u16;
 
-        self.fills.clear();
+        self.backgrounds.clear();
         self.cursor_fill.clear();
+        self.cursor_raster_symbols.clear();
         self.text_spans.clear();
         self.raster_symbols.clear();
         self.vector_symbols.clear();
@@ -173,26 +177,21 @@ impl Terminal {
             let width = cell.width() as u16;
             let pen = cell.pen();
 
-            let inverse =
+            let cursor_here =
                 matches!(cursor_column, Some(col) if col >= column && col < column + width);
 
-            let full_block = ch == '\u{2588}';
-            let fill_color = self.fill_color(pen, full_block, false);
-            let fg_color = self.fg_color(pen, inverse);
+            let bg_color = self.bg_color(pen, false);
+            let fg_color = self.fg_color(pen, cursor_here);
 
-            if inverse {
+            if cursor_here {
                 self.cursor_fill.push(FillSpan {
                     column,
                     width,
-                    color: self
-                        .fill_color(pen, full_block, true)
-                        .unwrap_or(Color::DefaultBg),
+                    color: self.bg_color(pen, true).unwrap_or(Color::DefaultBg),
                 });
             }
 
-            // Cursor-independent full-cell fills.
-
-            match (prev_fill.take(), fill_color.as_ref()) {
+            match (prev_fill.take(), bg_color.as_ref()) {
                 (None, None) => {}
 
                 (None, Some(color)) => {
@@ -204,7 +203,7 @@ impl Terminal {
                 }
 
                 (Some(span), None) => {
-                    self.fills.push(span);
+                    self.backgrounds.push(span);
                     prev_fill = None;
                 }
 
@@ -214,7 +213,7 @@ impl Terminal {
                 }
 
                 (Some(span), Some(color)) => {
-                    self.fills.push(span);
+                    self.backgrounds.push(span);
 
                     prev_fill = Some(FillSpan {
                         column,
@@ -226,14 +225,22 @@ impl Terminal {
 
             // text spans and symbols
 
-            if full_block {
-                ch = ' ';
-            } else if is_raster_symbol(ch) {
-                self.raster_symbols.push(RasterSymbol {
+            if is_raster_symbol(ch) {
+                let symbol = RasterSymbol {
                     column,
                     codepoint: ch as u32,
-                    color: fg_color.clone(),
-                });
+                    color: self.fg_color(pen, false),
+                };
+
+                if cursor_here {
+                    self.cursor_raster_symbols.push(RasterSymbol {
+                        column,
+                        codepoint: ch as u32,
+                        color: fg_color.clone(),
+                    });
+                }
+
+                self.raster_symbols.push(symbol);
 
                 ch = ' ';
             } else if is_vector_symbol(ch) {
@@ -260,7 +267,7 @@ impl Terminal {
         }
 
         if let Some(span) = prev_fill {
-            self.fills.push(span);
+            self.backgrounds.push(span);
         }
 
         if let Some(span) = prev_text_span {
@@ -268,10 +275,17 @@ impl Terminal {
         }
 
         let line = Line {
-            fills: (self.fills.as_ptr() as usize, self.fills.len() as u16),
+            backgrounds: (
+                self.backgrounds.as_ptr() as usize,
+                self.backgrounds.len() as u16,
+            ),
             cursor_fill: (
                 self.cursor_fill.as_ptr() as usize,
                 self.cursor_fill.len() as u16,
+            ),
+            cursor_raster_symbols: (
+                self.cursor_raster_symbols.as_ptr() as usize,
+                self.cursor_raster_symbols.len() as u16,
             ),
             text: (
                 self.text_spans.as_ptr() as usize,
@@ -299,17 +313,6 @@ impl Terminal {
         let cursor = self.terminal.cursor().position();
 
         serde_wasm_bindgen::to_value(&cursor).unwrap()
-    }
-
-    fn fill_color(&self, pen: &avt::Pen, full_block: bool, inverse: bool) -> Option<Color> {
-        if full_block {
-            Some(match self.fg_color(pen, inverse) {
-                Color::None => Color::DefaultFg,
-                color => color,
-            })
-        } else {
-            self.bg_color(pen, inverse)
-        }
     }
 
     fn bg_color(&self, pen: &avt::Pen, inverse: bool) -> Option<Color> {
