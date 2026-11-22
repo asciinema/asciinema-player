@@ -507,6 +507,67 @@ test("resizes terminal view when the container changes size", async ({ page }) =
     .toBeLessThan(initialBox.height - 20);
 });
 
+test("auto-height fitting resizes without observer errors", async ({ page }) => {
+  await createPlayer(page, "/assets/simple.cast");
+
+  await page.evaluate(() => {
+    window.__resizeErrors = [];
+    window.addEventListener("error", (event) => window.__resizeErrors.push(event.message));
+    const container = document.getElementById("player");
+
+    // Embedding applications may also observe the player's auto-height container.
+    window.__hostObserver = new ResizeObserver(() => {});
+    window.__hostObserver.observe(container);
+    container.style.width = "427px";
+  });
+
+  await expect
+    .poll(() =>
+      page
+        .locator(".ap-term")
+        .evaluate((term) => Math.abs(term.getBoundingClientRect().width - 427)),
+    )
+    .toBeLessThan(1.5);
+
+  expect(await page.evaluate(() => window.__resizeErrors)).toEqual([]);
+  await page.evaluate(() => window.__hostObserver.disconnect());
+});
+
+test("does not emit resize events after disposal during resizing", async ({ page }) => {
+  const playerApi = await createPlayer(page, "/assets/simple.cast");
+  await playerApi.play();
+  await playerApi.pause();
+  await setPlayerContainerSize(page, 813, 400);
+  await expect(page.locator(".ap-player")).toHaveCSS("width", "813px");
+
+  const updatesAfterDispose = await page.evaluate(async () => {
+    const wrapper = window.player.el;
+    let updates = 0;
+
+    await new Promise((resolve) => {
+      // Dispose while the browser is delivering a size change.
+      const observer = new ResizeObserver(([entry]) => {
+        if (entry.contentRect.width !== 427) return;
+        window.player.dispose();
+        wrapper.addEventListener("resize", () => updates++);
+        observer.disconnect();
+        resolve();
+      });
+
+      observer.observe(wrapper);
+      document.getElementById("player").style.width = "427px";
+    });
+
+    for (let i = 0; i < 3; i++) {
+      await new Promise(requestAnimationFrame);
+    }
+
+    return updates;
+  });
+
+  expect(updatesAfterDispose).toBe(0);
+});
+
 test("resizes terminal grid when the session window changes size", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/resizing.cast", {
     markers: [1.5],

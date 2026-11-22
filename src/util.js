@@ -12,15 +12,6 @@ function parseNpt(time) {
   }
 }
 
-function debounce(f, delay) {
-  let timeout;
-
-  return function (...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => f.apply(this, args), delay);
-  };
-}
-
 function throttle(f, interval) {
   let enableCall = true;
 
@@ -33,4 +24,4 @@ function throttle(f, interval) {
   };
 }
 
-export { parseNpt, debounce, throttle };
+export { parseNpt, throttle };

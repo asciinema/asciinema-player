@@ -1,5 +1,4 @@
 import { batch, createMemo, createSignal, Match, onCleanup, onMount, Switch, Show } from "solid-js";
-import { debounce } from "../util";
 import { getTime } from "../timing";
 import Slide from "./Slide";
 import Terminal from "./Terminal";
@@ -83,6 +82,7 @@ export default (props) => {
   let terminalRef;
   let controlBarRef;
   let resizeObserver;
+  let resizeFrame;
 
   const onCoreReady = ({ isPausable, isSeekable }) => {
     batch(() => {
@@ -289,12 +289,16 @@ export default (props) => {
   document.addEventListener("visibilitychange", onVisibilityChange);
 
   const setupResizeObserver = () => {
-    resizeObserver = new ResizeObserver(
-      debounce((_entries) => {
+    resizeObserver = new ResizeObserver(() => {
+      if (resizeFrame !== undefined) return;
+
+      // Fitting can change the observed wrapper's height. Update outside observer delivery.
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = undefined;
         setContainerSize({ width: wrapperRef.offsetWidth, height: wrapperRef.offsetHeight });
         wrapperRef.dispatchEvent(new CustomEvent("resize", { detail: { el: playerRef } }));
-      }, 10),
-    );
+      });
+    });
 
     resizeObserver.observe(wrapperRef);
   };
@@ -341,6 +345,7 @@ export default (props) => {
     core.stop();
     clearInterval(timeUpdateIntervalId);
     resizeObserver.disconnect();
+    cancelAnimationFrame(resizeFrame);
   });
 
   const terminalElementSize = createMemo(() => {

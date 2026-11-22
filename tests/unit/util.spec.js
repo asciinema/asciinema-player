@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { parseNpt, debounce, throttle } from "../../src/util.js";
+import { parseNpt, throttle } from "../../src/util.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -19,30 +19,6 @@ for (const [name, input, expected] of nptCases) {
     expect(parseNpt(input)).toBe(expected);
   });
 }
-
-test("debounce collapses rapid calls into the last one", async () => {
-  const calls = [];
-  const f = debounce((x) => calls.push(x), 20);
-
-  f(1);
-  f(2);
-  f(3);
-  await sleep(60);
-
-  expect(calls).toEqual([3]);
-});
-
-test("debounce fires again for calls after the delay", async () => {
-  const calls = [];
-  const f = debounce((x) => calls.push(x), 20);
-
-  f(1);
-  await sleep(60);
-  f(2);
-  await sleep(60);
-
-  expect(calls).toEqual([1, 2]);
-});
 
 test("throttle drops calls made within the interval", async () => {
   const calls = [];
