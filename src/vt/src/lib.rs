@@ -168,7 +168,7 @@ impl Terminal {
         let cells = self
             .terminal
             .screen()
-            .line(row)
+            .row(row)
             .unwrap()
             .cells()
             .iter()

@@ -9,7 +9,7 @@ rust-version = "1.86"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-avt = "0.20.0"
+avt = "0.21.0"
 serde = { version = "1.0.130", features = ["derive"], default-features = false }
 serde-wasm-bindgen = "0.6.5"
 talc = "5.0.3"
