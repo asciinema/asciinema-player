@@ -19,7 +19,6 @@ const ITALIC_MASK: u8 = 1 << 2;
 const UNDERLINE_MASK: u8 = 1 << 3;
 const STRIKETHROUGH_MASK: u8 = 1 << 4;
 const BLINK_MASK: u8 = 1 << 5;
-const INVERSE_MASK: u8 = 1 << 6;
 
 #[wasm_bindgen(js_name = Vt)]
 pub struct Terminal {
@@ -92,6 +91,7 @@ enum Color {
     Rgb(u8, u8, u8) = 4,
 }
 
+// Render-only text attributes; inverse video is already resolved into colors.
 #[derive(PartialEq)]
 #[repr(transparent)]
 struct TextAttrs(u8);
@@ -470,9 +470,7 @@ fn is_raster_symbol(ch: char) -> bool {
 
 impl TextSpan {
     fn can_extend_with(&self, next: &Self, ch: char) -> bool {
-        // Inverse video has already been resolved into foreground/background colors.
-        let same_style = self.color == next.color
-            && (self.attrs.0 & !INVERSE_MASK) == (next.attrs.0 & !INVERSE_MASK);
+        let same_style = self.color == next.color && self.attrs == next.attrs;
 
         // Only undecorated spaces are invisible regardless of their text styling.
         // Both spans must be undecorated to avoid extending a visible decoration.
@@ -509,10 +507,6 @@ impl From<&avt::Pen> for TextAttrs {
 
         if pen.is_blink() {
             attrs |= BLINK_MASK;
-        }
-
-        if pen.is_inverse() {
-            attrs |= INVERSE_MASK;
         }
 
         TextAttrs(attrs)
