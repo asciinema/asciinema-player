@@ -350,50 +350,31 @@ export default (props) => {
     const terminalW = charW * terminalCols() + paddingW;
     const terminalH = charH * terminalRows() + paddingH;
 
-    let fit = props.fit ?? "width";
+    const fit = isFullscreen() ? "both" : (props.fit ?? "width");
+    if (fit === false || fit === "none") return {};
+    const { width, height } = containerSize();
+    const controlsH = controlBarHeight();
+    const widthScale = width / terminalW;
+    const heightScale = (height - controlsH) / terminalH;
+    let scale;
 
-    const currentContainerSize = containerSize();
-
-    if (fit === "both" || isFullscreen()) {
-      if (currentContainerSize.width <= 0 || currentContainerSize.height <= controlBarHeight()) {
-        return {};
-      }
-
-      const containerRatio =
-        currentContainerSize.width / (currentContainerSize.height - controlBarHeight());
-
-      const terminalRatio = terminalW / terminalH;
-
-      if (containerRatio > terminalRatio) {
-        fit = "height";
-      } else {
-        fit = "width";
-      }
-    }
-
-    if (fit === false || fit === "none") {
-      return {};
-    } else if (fit === "width") {
-      if (currentContainerSize.width <= 0) return {};
-      const scale = currentContainerSize.width / terminalW;
-
-      return {
-        scale: scale,
-        width: currentContainerSize.width,
-        height: terminalH * scale + controlBarHeight(),
-      };
+    if (fit === "width") {
+      scale = widthScale;
     } else if (fit === "height") {
-      if (currentContainerSize.height <= controlBarHeight()) return {};
-      const scale = (currentContainerSize.height - controlBarHeight()) / terminalH;
-
-      return {
-        scale: scale,
-        width: terminalW * scale,
-        height: currentContainerSize.height,
-      };
+      scale = heightScale;
+    } else if (fit === "both") {
+      scale = Math.min(widthScale, heightScale);
     } else {
       throw new Error(`unsupported fit mode: ${fit}`);
     }
+
+    if (scale <= 0) return {};
+
+    return {
+      scale,
+      width: terminalW * scale,
+      height: terminalH * scale + controlsH,
+    };
   });
 
   const onFullscreenChange = () => {
