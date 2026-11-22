@@ -21,10 +21,6 @@ export default (props) => {
   const logger = props.logger;
   const core = props.core;
   const autoPlay = props.autoPlay;
-  const charW = props.charW;
-  const charH = props.charH;
-  const paddingW = props.paddingW;
-  const paddingH = props.paddingH;
   const themeOption = props.theme ?? "auto/asciinema";
   /* eslint-enable solid/reactivity */
   const preferEmbeddedTheme = themeOption.slice(0, 5) === "auto/";
@@ -35,6 +31,8 @@ export default (props) => {
     { cols: props.cols, rows: props.rows },
     { equals: (newVal, oldVal) => newVal.cols === oldVal.cols && newVal.rows === oldVal.rows },
   );
+
+  const [terminalMetrics, setTerminalMetrics] = createSignal();
 
   const [containerSize, setContainerSize] = createSignal(
     { width: 0, height: 0 },
@@ -82,6 +80,7 @@ export default (props) => {
   let timeUpdateIntervalId;
   let wrapperRef;
   let playerRef;
+  let terminalRef;
   let controlBarRef;
   let resizeObserver;
 
@@ -300,11 +299,26 @@ export default (props) => {
     resizeObserver.observe(wrapperRef);
   };
 
-  onMount(async () => {
+  onMount(() => {
     logger.info("view: mounted");
-    logger.debug("view: font measurements", { charW, charH });
+    // Fitting starts after this measurement, so the terminal is still at 100% font size.
+    const style = getComputedStyle(terminalRef);
+
+    const metrics = {
+      charW: parseFloat(style.width) / terminalCols(),
+      charH: parseFloat(style.height) / terminalRows(),
+      paddingW: parseFloat(style.paddingLeft) + parseFloat(style.paddingRight),
+      paddingH: parseFloat(style.paddingTop) + parseFloat(style.paddingBottom),
+    };
+
+    logger.debug("view: font measurements", metrics);
+
+    batch(() => {
+      setTerminalMetrics(metrics);
+      setContainerSize({ width: wrapperRef.offsetWidth, height: wrapperRef.offsetHeight });
+    });
+
     setupResizeObserver();
-    setContainerSize({ width: wrapperRef.offsetWidth, height: wrapperRef.offsetHeight });
   });
 
   onCleanup(() => {
@@ -330,6 +344,9 @@ export default (props) => {
   });
 
   const terminalElementSize = createMemo(() => {
+    const metrics = terminalMetrics();
+    if (!metrics) return {};
+    const { charW, charH, paddingW, paddingH } = metrics;
     const terminalW = charW * terminalCols() + paddingW;
     const terminalH = charH * terminalRows() + paddingH;
 
@@ -338,6 +355,10 @@ export default (props) => {
     const currentContainerSize = containerSize();
 
     if (fit === "both" || isFullscreen()) {
+      if (currentContainerSize.width <= 0 || currentContainerSize.height <= controlBarHeight()) {
+        return {};
+      }
+
       const containerRatio =
         currentContainerSize.width / (currentContainerSize.height - controlBarHeight());
 
@@ -353,6 +374,7 @@ export default (props) => {
     if (fit === false || fit === "none") {
       return {};
     } else if (fit === "width") {
+      if (currentContainerSize.width <= 0) return {};
       const scale = currentContainerSize.width / terminalW;
 
       return {
@@ -361,6 +383,7 @@ export default (props) => {
         height: terminalH * scale + controlBarHeight(),
       };
     } else if (fit === "height") {
+      if (currentContainerSize.height <= controlBarHeight()) return {};
       const scale = (currentContainerSize.height - controlBarHeight()) / terminalH;
 
       return {
@@ -570,6 +593,7 @@ export default (props) => {
         ref={playerRef}
       >
         <Terminal
+          ref={terminalRef}
           cols={terminalCols()}
           rows={terminalRows()}
           scale={terminalScale()}

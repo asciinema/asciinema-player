@@ -2,8 +2,6 @@ import { render } from "solid-js/web";
 import Player from "./components/Player";
 
 function mount(core, elem, opts = {}) {
-  const metrics = measureTerminal(opts.terminalFontFamily, opts.terminalLineHeight);
-
   const props = {
     core: core,
     logger: opts.logger,
@@ -21,7 +19,6 @@ function mount(core, elem, opts = {}) {
     terminalLineHeight: opts.terminalLineHeight,
     theme: opts.theme,
     onTerminalReady: opts.onTerminalReady,
-    ...metrics,
   };
 
   let el;
@@ -32,44 +29,6 @@ function mount(core, elem, opts = {}) {
   }, elem);
 
   return { el: el, dispose: dispose };
-}
-
-function measureTerminal(fontFamily, lineHeight) {
-  const cols = 80;
-  const rows = 24;
-
-  const playerDiv = document.createElement("div");
-  playerDiv.className = "ap-default-term-ff";
-  playerDiv.style.height = "0px";
-  playerDiv.style.overflow = "hidden";
-  playerDiv.style.fontSize = "15px"; // must match font-size of div.asciinema-player in CSS
-
-  if (fontFamily !== undefined) {
-    playerDiv.style.setProperty("--term-font-family", fontFamily);
-  }
-
-  const termDiv = document.createElement("div");
-  termDiv.className = "ap-term";
-  termDiv.style.width = `${cols}ch`;
-  termDiv.style.height = `${rows * (lineHeight ?? 1.3333333333)}em`;
-  termDiv.style.fontSize = "100%";
-  termDiv.style.setProperty("--term-line-height", `${lineHeight ?? 1.3333333333}em`);
-
-  playerDiv.appendChild(termDiv);
-  document.body.appendChild(playerDiv);
-
-  const style = getComputedStyle(termDiv);
-
-  const metrics = {
-    charW: parseFloat(style.width) / cols,
-    charH: parseFloat(style.height) / rows,
-    paddingW: parseFloat(style.paddingLeft) + parseFloat(style.paddingRight),
-    paddingH: parseFloat(style.paddingTop) + parseFloat(style.paddingBottom),
-  };
-
-  document.body.removeChild(playerDiv);
-
-  return metrics;
 }
 
 export { mount };

@@ -35,6 +35,102 @@ test("initializes successfully and mounts in DOM", async ({ page }) => {
   expect(hasApiMethods).toBe(true);
 });
 
+for (const fit of ["width", "height", "both"]) {
+  test(`fit=${fit} measures scoped typography while hidden`, async ({ page }) => {
+    await page.goto("/index.html");
+
+    await page.addStyleTag({
+      content: `
+        #player { display: none; width: 813px; height: 400px; }
+        #player .ap-player { font-size: 24px; --term-font-family: monospace; }
+      `,
+    });
+
+    await page.evaluate(async (fit) => {
+      window.player = AsciinemaPlayer.create(
+        "/assets/resizing.cast",
+        document.getElementById("player"),
+        { fit, terminalLineHeight: 1.7 },
+      );
+      await window.player.play();
+      await window.player.pause();
+      await window.player.seek(2.05);
+      document.getElementById("player").style.display = "block";
+    }, fit);
+
+    for (const [width, height, time, cols] of [
+      [813, 400, 2.05, 50],
+      [fit === "height" ? 1200 : 427, 800, 0, 80],
+    ]) {
+      await page.evaluate((time) => window.player.seek(time), time);
+      await setPlayerContainerSize(page, width, height);
+
+      await expect(page.locator(".ap-term")).toHaveCSS("--term-cols", String(cols));
+
+      await expect
+        .poll(() =>
+          page.locator(".ap-player").evaluate(
+            (player, { fit, width, height }) => {
+              const rect = player.getBoundingClientRect();
+              const dx = Math.abs(rect.width - width);
+              const dy = Math.abs(rect.height - height);
+
+              if (fit === "width") return dx < 1;
+              if (fit === "height") return dy < 1;
+
+              return rect.width <= width + 1 && rect.height <= height + 1 && Math.min(dx, dy) < 1;
+            },
+            { fit, width, height },
+          ),
+        )
+        .toBe(true);
+
+      await expect
+        .poll(() =>
+          page.locator(".ap-term").evaluate((term) => {
+            const frame = term.parentElement.getBoundingClientRect();
+            const terminal = term.getBoundingClientRect();
+
+            return Math.max(
+              Math.abs(terminal.width - frame.width),
+              Math.abs(terminal.height + 32 - frame.height),
+            );
+          }),
+        )
+        .toBeLessThan(1.5);
+    }
+  });
+}
+
+test("fullscreen fits a terminal with a custom fixed font size", async ({ page }) => {
+  await createPlayer(page, "/assets/simple.cast", {
+    fit: "none",
+    terminalFontSize: "24px",
+    controls: true,
+  });
+
+  await expect(page.locator(".ap-term")).toHaveCSS("font-size", "24px");
+  await page.locator(".ap-fullscreen-button").click();
+  await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+
+  await expect
+    .poll(() =>
+      page.locator(".ap-term").evaluate((term) => {
+        const frame = term.parentElement.getBoundingClientRect();
+        const terminal = term.getBoundingClientRect();
+
+        return Math.max(
+          Math.abs(terminal.width - frame.width),
+          Math.abs(terminal.height + 32 - frame.height),
+        );
+      }),
+    )
+    .toBeLessThan(1.5);
+
+  await page.evaluate(() => document.exitFullscreen());
+  await expect(page.locator(".ap-term")).toHaveCSS("font-size", "24px");
+});
+
 test("initializes and plays with null option values", async ({ page }) => {
   const playerApi = await createPlayer(page, "/assets/simple.cast", {
     markers: null,

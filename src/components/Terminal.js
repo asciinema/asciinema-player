@@ -654,7 +654,14 @@ export default (props) => {
   }
 
   return (
-    <div class="ap-term" style={style()} ref={el}>
+    <div
+      class="ap-term"
+      style={style()}
+      ref={(node) => {
+        el = node;
+        props.ref?.(node);
+      }}
+    >
       <canvas ref={canvasEl} />
       <svg
         class="ap-term-symbols"
