@@ -285,6 +285,7 @@ export default (props) => {
       horizontal: true,
       vertical:
         (rowIndex === 0 || rowIndex === size().rows - 1) &&
+        !line.has_padding_powerline &&
         rowHasNonDefaultBackground(line.backgrounds, theme),
     };
 

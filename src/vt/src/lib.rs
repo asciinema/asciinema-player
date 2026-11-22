@@ -37,6 +37,7 @@ pub struct Terminal {
 
 #[derive(Serialize)]
 struct Line {
+    has_padding_powerline: bool,
     // Original cell backgrounds, before foreground glyphs and cursor paint.
     backgrounds: (usize, u16),
     // Zero or one full-cell fill, painted only inside the grid.
@@ -144,6 +145,7 @@ impl Terminal {
         let mut prev_fill: Option<FillSpan> = None;
         let mut prev_text_span: Option<TextSpan> = None;
         let mut column = 0u16;
+        let mut has_padding_powerline = false;
 
         self.backgrounds.clear();
         self.cursor_fill.clear();
@@ -176,6 +178,7 @@ impl Terminal {
             let mut ch = cell.char();
             let width = cell.width() as u16;
             let pen = cell.pen();
+            has_padding_powerline |= is_padding_powerline(ch);
 
             let cursor_here =
                 matches!(cursor_column, Some(col) if col >= column && col < column + width);
@@ -275,6 +278,7 @@ impl Terminal {
         }
 
         let line = Line {
+            has_padding_powerline,
             backgrounds: (
                 self.backgrounds.as_ptr() as usize,
                 self.backgrounds.len() as u16,
@@ -429,6 +433,13 @@ const fn standalone_chars_lut_byte_and_mask(cp: u32) -> (usize, u8) {
     let bit_mask = 1u8 << (idx & 7);
 
     (byte_idx, bit_mask)
+}
+
+fn is_padding_powerline(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{e0b0}'..='\u{e0c8}' | '\u{e0ca}' | '\u{e0cc}'..='\u{e0d2}' | '\u{e0d4}'
+    )
 }
 
 fn is_vector_symbol(ch: char) -> bool {
@@ -644,6 +655,25 @@ mod tests {
         assert!(is_vector_symbol('\u{e0b7}'));
         assert!(is_vector_symbol('\u{e0b8}'));
         assert!(is_vector_symbol('\u{e0bf}'));
+    }
+
+    #[test]
+    fn padding_powerline_boundaries() {
+        for (ch, expected) in [
+            ('\u{e0af}', false),
+            ('\u{e0b0}', true),
+            ('\u{e0c8}', true),
+            ('\u{e0c9}', false),
+            ('\u{e0ca}', true),
+            ('\u{e0cb}', false),
+            ('\u{e0cc}', true),
+            ('\u{e0d2}', true),
+            ('\u{e0d3}', false),
+            ('\u{e0d4}', true),
+            ('\u{e0d5}', false),
+        ] {
+            assert_eq!(is_padding_powerline(ch), expected, "U+{:04X}", ch as u32);
+        }
     }
 
     #[test]

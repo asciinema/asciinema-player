@@ -1433,6 +1433,98 @@ test("cursor movement preserves shade blending and padding", async ({ page }) =>
   }
 });
 
+test("Powerline veto follows edge rows and disappears when their symbols are erased", async ({
+  page,
+}) => {
+  const player = await createPlayer(
+    page,
+    {
+      data: [
+        { version: 2, width: 3, height: 3 },
+        // A symbol in the middle row does not affect either vertical edge.
+        [0, "o", "\x1b[?25l\x1b[48;2;18;52;86m\x1b[2J\x1b[2;2H\uE0B0"],
+        [1, "o", "\x1b[1;2H\uE0B0"],
+        [2, "o", "\x1b[3;2H\uE0B0"],
+        [3, "o", "\x1b[1;2H "],
+        [4, "o", "\x1b[3;2H "],
+        [5, "x", "0"],
+      ],
+    },
+    { theme: "asciinema", fit: "none", terminalFontSize: "32px" },
+  );
+  await player.play();
+  await player.pause();
+
+  const blue = "#123456";
+  const bg = "#121314";
+
+  for (const [time, top, bottom] of [
+    [0.5, blue, blue],
+    [1.5, bg, blue],
+    [2.5, bg, bg],
+    [3.5, blue, bg],
+    [4.5, blue, blue],
+  ]) {
+    await player.seek(time);
+    await expect
+      .poll(async () => (await sampleTerminalPixels(page, { padding: true })).padding, {
+        message: `Powerline checkpoint ${time}`,
+      })
+      .toEqual({
+        topLeft: top,
+        top,
+        topRight: top,
+        left: blue,
+        right: blue,
+        bottomLeft: bottom,
+        bottom,
+        bottomRight: bottom,
+      });
+  }
+});
+
+for (const [codepoint, blocksPadding] of [
+  [0xe0c8, true],
+  [0xe0c9, false],
+]) {
+  test(`Powerline U+${codepoint.toString(16)} ${blocksPadding ? "blocks" : "allows"} vertical padding`, async ({
+    page,
+  }) => {
+    // These characters lie beyond the player's SVG Powerline set. The padding
+    // rule also applies to font-rendered symbols, but not every nearby codepoint.
+    const player = await createPlayer(
+      page,
+      {
+        data: [
+          { version: 2, width: 3, height: 1 },
+          [
+            0,
+            "o",
+            `\x1b[?25l\x1b[48;2;18;52;86m\x1b[2J\x1b[1;2H${String.fromCodePoint(codepoint)}`,
+          ],
+          [0.1, "x", "0"],
+        ],
+      },
+      { autoPlay: true, theme: "asciinema", fit: "none", terminalFontSize: "32px" },
+    );
+    await player.events.waitFor("ended");
+
+    const blue = "#123456";
+    const vertical = blocksPadding ? "#121314" : blue;
+    const { padding } = await sampleTerminalPixels(page, { padding: true });
+    expect(padding).toEqual({
+      topLeft: vertical,
+      top: vertical,
+      topRight: vertical,
+      left: blue,
+      right: blue,
+      bottomLeft: vertical,
+      bottom: vertical,
+      bottomRight: vertical,
+    });
+  });
+}
+
 test("padding repaints after clearing, resizing, and seeking backward", async ({ page }) => {
   const playerApi = await createPlayer(
     page,
